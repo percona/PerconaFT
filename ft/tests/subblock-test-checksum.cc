@@ -235,6 +235,7 @@ test_main (int argc, const char *argv[]) {
             run_test(size, n_cores, pool, TOKU_ZLIB_WITHOUT_CHECKSUM_METHOD);
             run_test(size, n_cores, pool, TOKU_QUICKLZ_METHOD);
             run_test(size, n_cores, pool, TOKU_LZMA_METHOD);
+            run_test(size, n_cores, pool, TOKU_LZ4_METHOD);
         }
     }
 

@@ -202,5 +202,6 @@ test_main(int argc, char *const argv[])
     run_test(TOKU_ZLIB_WITHOUT_CHECKSUM_METHOD);
     run_test(TOKU_QUICKLZ_METHOD);
     run_test(TOKU_LZMA_METHOD);
+    run_test(TOKU_LZ4_METHOD);
     return 0;
 }
