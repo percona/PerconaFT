@@ -26,6 +26,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/toku_include
   ${CMAKE_CURRENT_SOURCE_DIR}/portability
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/lz4
   ${CMAKE_CURRENT_SOURCE_DIR}  ## so you can include <ft/ft-ops.h> from inside src/
   ${CMAKE_CURRENT_BINARY_DIR}  ## for logging code
   )
@@ -45,6 +46,7 @@ include_directories(SYSTEM
 ## add subdirectories
 add_subdirectory(util)
 add_subdirectory(portability)
+add_subdirectory(third_party/lz4)
 add_subdirectory(ft)
 add_subdirectory(locktree)
 add_subdirectory(src)

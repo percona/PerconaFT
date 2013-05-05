@@ -18,14 +18,15 @@ set(tokudb_srcs
 ## make the shared library
 add_library(${LIBTOKUDB} SHARED ${tokudb_srcs})
 add_dependencies(${LIBTOKUDB} install_tdb_h generate_log_code)
-target_link_libraries(${LIBTOKUDB} LINK_PRIVATE locktree_static ft_static util_static lzma ${LIBTOKUPORTABILITY})
+target_link_libraries(${LIBTOKUDB} LINK_PRIVATE locktree_static ft_static
+    util_static lzma lz4 ${LIBTOKUPORTABILITY})
 target_link_libraries(${LIBTOKUDB} LINK_PUBLIC z)
 
 ## make the static library
 add_library(tokudb_static_conv STATIC ${tokudb_srcs})
 add_dependencies(tokudb_static_conv install_tdb_h generate_log_code)
 set_target_properties(tokudb_static_conv PROPERTIES POSITION_INDEPENDENT_CODE ON)
-set(tokudb_source_libs tokudb_static_conv locktree_static ft_static util_static lzma)
+set(tokudb_source_libs tokudb_static_conv locktree_static ft_static util_static lzma lz4)
 toku_merge_static_libs(${LIBTOKUDB}_static ${LIBTOKUDB}_static "${tokudb_source_libs}")
 
 ## add gcov and define _GNU_SOURCE
