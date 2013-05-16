@@ -219,7 +219,7 @@ void toku_compress (enum toku_compression_method a,
         return;
     }
     case TOKU_LZ4_METHOD: {
-        int r = LZ4_compress((const char *) source, (char *) dest + 1, sourceLen);
+        int r = LZ4_compressHC((const char *) source, (char *) dest + 1, sourceLen);
         lazy_assert(r >= 0);
         lazy_assert(r < (int) *destLen);
         dest[0] = TOKU_LZ4_METHOD;
