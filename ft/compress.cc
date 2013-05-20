@@ -91,6 +91,7 @@ PATENT RIGHTS GRANT:
 #include <zlib.h>
 #include <lzma.h>
 #include <lz4.h>
+#include <lz4hc.h>
 
 #include "compress.h"
 #include "memory.h"
