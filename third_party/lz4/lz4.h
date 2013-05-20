@@ -139,8 +139,8 @@ LZ4_decompress_safe_partial() :
 // Obsolete Functions
 //****************************
 
-inline int LZ4_uncompress (const char* source, char* dest, int outputSize)   { return LZ4_decompress_fast(source, dest, outputSize); }
-inline int LZ4_uncompress_unknownOutputSize (const char* source, char* dest, int isize, int maxOutputSize)   { return LZ4_decompress_safe(source, dest, isize, maxOutputSize); }
+static inline int LZ4_uncompress (const char* source, char* dest, int outputSize)   { return LZ4_decompress_fast(source, dest, outputSize); }
+static inline int LZ4_uncompress_unknownOutputSize (const char* source, char* dest, int isize, int maxOutputSize)   { return LZ4_decompress_safe(source, dest, isize, maxOutputSize); }
 
 /* 
 These functions are deprecated and should no longer be used.
