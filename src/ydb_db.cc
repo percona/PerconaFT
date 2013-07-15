@@ -142,7 +142,7 @@ create_iname_hint(const char *dname, char *hint) {
     //Replace strings of non-alphanumeric characters with a single underscore.
     bool underscored = false;
     while (*dname) {
-        if (isalnum(*dname)) {
+        if (isalnum(*dname) || *dname == '/') {
             char c = *dname++;
             *hint++ = c;
             underscored = false;
