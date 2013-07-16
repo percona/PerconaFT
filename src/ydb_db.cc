@@ -142,7 +142,7 @@ create_iname_hint(const char *dname, char *hint) {
     //Replace strings of non-alphanumeric characters with a single underscore.
     bool underscored = false;
     while (*dname) {
-        if (isalnum(*dname) || *dname == '/') {
+        if (isalnum(*dname) || *dname == '.' || *dname == '/') {
             char c = *dname++;
             *hint++ = c;
             underscored = false;
@@ -182,7 +182,7 @@ create_iname(DB_ENV *env, uint64_t id1, uint64_t id2, char *hint, const char *ma
     assert(bytes>0);
     assert(bytes<=(int)sizeof(inamebase)-1);
     char *rval;
-    if (env->i->data_dir)
+    if (env->i->data_dir && strcmp(env->i->data_dir, "."))
         rval = toku_construct_full_name(2, env->i->data_dir, inamebase);
     else
         rval = toku_construct_full_name(1, inamebase);
