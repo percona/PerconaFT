@@ -307,4 +307,6 @@ void env_panic(DB_ENV * env, int cause, const char * msg);
 void env_note_db_opened(DB_ENV *env, DB *db);
 void env_note_db_closed(DB_ENV *env, DB *db);
 
+char *generate_iname(const char *dname, DB_TXN *txn, DB_ENV *env);
+
 #endif

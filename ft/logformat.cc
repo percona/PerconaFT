@@ -176,6 +176,9 @@ const struct logtype rollbacks[] = {
     {"change_fdescriptor", 'D', FA{{"FILENUM",    "filenum", 0},
                             {"BYTESTRING", "old_descriptor", 0},
                             NULLFIELD}, LOG_BEGIN_ACTION_NA},
+    {"frename", 'N', FA{{"BYTESTRING", "orig_iname", 0},
+                        {"BYTESTRING", "new_iname", 0},
+                        NULLFIELD}, LOG_BEGIN_ACTION_NA},
     {0,0,FA{NULLFIELD}, LOG_BEGIN_ACTION_NA}
 };
 

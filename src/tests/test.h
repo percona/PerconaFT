@@ -410,12 +410,8 @@ default_parse_args (int argc, char * const argv[]) {
 
 
 int test_main (int argc, char * const argv[]);
-int
-#if defined(__cilkplusplus)
-cilk_main(int argc, char *argv[]) 
-#else
-main(int argc, char * const argv[]) 
-#endif
+
+int main(int argc, char * const argv[]) 
 {
     int r;
 #if IS_TDB && TOKU_WINDOWS

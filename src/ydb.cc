@@ -2630,15 +2630,16 @@ env_dbrename(DB_ENV *env, DB_TXN *txn, const char *fname, const char *dbname, co
     }
     
     DBT old_dname_dbt;  
-    DBT new_dname_dbt;  
-    DBT iname_dbt;  
     toku_fill_dbt(&old_dname_dbt, dname, strlen(dname)+1);
+    DBT new_dname_dbt;  
     toku_fill_dbt(&new_dname_dbt, newname, strlen(newname)+1);
-    toku_init_dbt_flags(&iname_dbt, DB_DBT_REALLOC);
+    DBT old_iname_dbt;  
+    toku_init_dbt_flags(&old_iname_dbt, DB_DBT_REALLOC);
+    DBT new_iname_dbt;
+    memset(&new_iname_dbt, 0, sizeof new_iname_dbt);
 
     // get iname
-    r = toku_db_get(env->i->directory, txn, &old_dname_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
-    char *iname = (char *) iname_dbt.data;
+    r = toku_db_get(env->i->directory, txn, &old_dname_dbt, &old_iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
     if (r == DB_NOTFOUND) {
         r = ENOENT;
     } else if (r == 0) {
@@ -2648,10 +2649,13 @@ env_dbrename(DB_ENV *env, DB_TXN *txn, const char *fname, const char *dbname, co
             r = EEXIST;
         }
         else if (r == DB_NOTFOUND) {
+            char *old_iname = (char *) old_iname_dbt.data;
+            char *new_iname = generate_iname(newname, txn, env);
             // remove old (dname,iname) and insert (newname,iname) in directory
             r = toku_db_del(env->i->directory, txn, &old_dname_dbt, DB_DELETE_ANY, true);
             if (r != 0) { goto exit; }
-            r = toku_db_put(env->i->directory, txn, &new_dname_dbt, &iname_dbt, 0, true);
+            toku_fill_dbt(&new_iname_dbt, new_iname, strlen(new_iname)+1);
+            r = toku_db_put(env->i->directory, txn, &new_dname_dbt, &new_iname_dbt, 0, true);
             if (r != 0) { goto exit; }
 
             //Now that we have writelocks on both dnames, verify that there are still no handles open. (to prevent race conditions)
@@ -2674,18 +2678,19 @@ env_dbrename(DB_ENV *env, DB_TXN *txn, const char *fname, const char *dbname, co
             // otherwise, we're okay in marking this ft as remove on
             // commit. no new handles can open for this dictionary
             // because the txn has directory write locks on the dname
-            if (txn && !can_acquire_table_lock(env, txn, iname)) {
+            if (txn && !can_acquire_table_lock(env, txn, old_iname)) {
                 r = DB_LOCK_NOTGRANTED;
             }
-            // We don't do anything at the ft or cachetable layer for rename.
-            // We just update entries in the environment's directory.
+            if (r == 0) {
+                TOKUTXN tokutxn = db_txn_struct_i(txn)->tokutxn;
+                r = toku_ft_frename(old_iname, new_iname, env->i->cachetable, tokutxn);
+            }
         }
     }
 
 exit:
-    if (iname) {
-        toku_free(iname);
-    }
+    toku_free(old_iname_dbt.data);
+    toku_free(new_iname_dbt.data);
     return r;
 }
 

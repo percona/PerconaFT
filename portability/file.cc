@@ -122,8 +122,7 @@ void toku_fs_get_write_info(time_t *enospc_last_time, uint64_t *enospc_current, 
 
 //Print any necessary errors
 //Return whether we should try the write again.
-static void
-try_again_after_handling_write_error(int fd, size_t len, ssize_t r_write) {
+static void try_again_after_handling_write_error(int fd, size_t len, ssize_t r_write) {
     int try_again = 0;
 
     assert(r_write < 0);
@@ -237,8 +236,7 @@ void toku_set_func_pread (ssize_t (*pread_fun)(int, void *, size_t, off_t)) {
     t_pread = pread_fun;
 }
 
-void
-toku_os_full_write (int fd, const void *buf, size_t len) {
+void toku_os_full_write (int fd, const void *buf, size_t len) {
     const char *bp = (const char *) buf;
     while (len > 0) {
         ssize_t r;
@@ -258,8 +256,7 @@ toku_os_full_write (int fd, const void *buf, size_t len) {
     assert(len == 0);
 }
 
-int
-toku_os_write (int fd, const void *buf, size_t len) {
+int toku_os_write (int fd, const void *buf, size_t len) {
     const char *bp = (const char *) buf;
     int result = 0;
     while (len > 0) {
@@ -279,8 +276,7 @@ toku_os_write (int fd, const void *buf, size_t len) {
     return result;
 }
 
-void
-toku_os_full_pwrite (int fd, const void *buf, size_t len, toku_off_t off) {
+void toku_os_full_pwrite (int fd, const void *buf, size_t len, toku_off_t off) {
     assert(0==((long long)buf)%512);
     assert((len%512 == 0) && (off%512)==0); // to make pwrite work.
     const char *bp = (const char *) buf;
@@ -303,8 +299,7 @@ toku_os_full_pwrite (int fd, const void *buf, size_t len, toku_off_t off) {
     assert(len == 0);
 }
 
-ssize_t
-toku_os_pwrite (int fd, const void *buf, size_t len, toku_off_t off) {
+ssize_t toku_os_pwrite (int fd, const void *buf, size_t len, toku_off_t off) {
     assert(0==((long long)buf)%512); // these asserts are to ensure that direct I/O will work.
     assert(0==len             %512);
     assert(0==off             %512);
@@ -328,8 +323,7 @@ toku_os_pwrite (int fd, const void *buf, size_t len, toku_off_t off) {
     return result;
 }
 
-FILE * 
-toku_os_fdopen(int fildes, const char *mode) {
+FILE *toku_os_fdopen(int fildes, const char *mode) {
     FILE * rval;
     if (t_fdopen)
 	rval = t_fdopen(fildes, mode);
@@ -339,8 +333,7 @@ toku_os_fdopen(int fildes, const char *mode) {
 }
     
 
-FILE *
-toku_os_fopen(const char *filename, const char *mode){
+FILE *toku_os_fopen(const char *filename, const char *mode){
     FILE * rval;
     if (t_fopen)
 	rval = t_fopen(filename, mode);
@@ -349,8 +342,7 @@ toku_os_fopen(const char *filename, const char *mode){
     return rval;
 }
 
-int 
-toku_os_open(const char *path, int oflag, int mode) {
+int toku_os_open(const char *path, int oflag, int mode) {
     int rval;
     if (t_open)
 	rval = t_open(path, oflag, mode);
@@ -359,8 +351,7 @@ toku_os_open(const char *path, int oflag, int mode) {
     return rval;
 }
 
-int
-toku_os_open_direct(const char *path, int oflag, int mode) {
+int toku_os_open_direct(const char *path, int oflag, int mode) {
     int rval;
 #if defined(HAVE_O_DIRECT)
     rval = toku_os_open(path, oflag | O_DIRECT, mode);
@@ -378,8 +369,7 @@ toku_os_open_direct(const char *path, int oflag, int mode) {
     return rval;
 }
 
-int
-toku_os_fclose(FILE * stream) {  
+int toku_os_fclose(FILE * stream) {  
     int rval = -1;
     if (t_fclose)
 	rval = t_fclose(stream);
@@ -393,8 +383,7 @@ toku_os_fclose(FILE * stream) {
     return rval;
 }
 
-int 
-toku_os_close(int fd) {  // if EINTR, retry until success
+int toku_os_close(int fd) {  // if EINTR, retry until success
     int r = -1;
     while (r != 0) {
 	r = close(fd);
@@ -407,8 +396,7 @@ toku_os_close(int fd) {  // if EINTR, retry until success
     return r;
 }
 
-ssize_t 
-toku_os_read(int fd, void *buf, size_t count) {
+ssize_t toku_os_read(int fd, void *buf, size_t count) {
     ssize_t r;
     if (t_read)
         r = t_read(fd, buf, count);
@@ -417,8 +405,7 @@ toku_os_read(int fd, void *buf, size_t count) {
     return r;
 }
 
-ssize_t
-toku_os_pread (int fd, void *buf, size_t count, off_t offset) {
+ssize_t toku_os_pread (int fd, void *buf, size_t count, off_t offset) {
     assert(0==((long long)buf)%512);
     assert(0==count%512);
     assert(0==offset%512);
@@ -548,5 +535,10 @@ int toku_fsync_directory(const char *fname) {
         result = toku_fsync_dir_by_name_without_accounting(dirname);
     }
     toku_free(dirname);
+    return result;
+}
+
+int toku_file_rename(const char *old_name, const char *new_name) {
+    int result = rename(old_name, new_name);
     return result;
 }
