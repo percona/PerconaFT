@@ -345,4 +345,7 @@ int toku_ft_strerror_r(int error, char *buf, size_t buflen);
 extern bool garbage_collection_debug;
 
 void toku_ft_set_direct_io(bool direct_io_on);
+
+int toku_ft_frename(const char *orig_fname, const char *new_fname, CACHETABLE ct, TOKUTXN txn);
+
 #endif

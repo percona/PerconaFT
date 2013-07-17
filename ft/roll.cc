@@ -623,5 +623,25 @@ done:
     return r;
 }
 
+// commit a file rename
+// nothing to do
+int toku_commit_frename(BYTESTRING UU(orig_iname), BYTESTRING UU(new_iname), TOKUTXN UU(txn), LSN UU(oplsn)) {
+    return 0;
+}
+
+// rollback a file rename
+// rename the new name to the old name if the old name does not exist
+int toku_rollback_frename(BYTESTRING orig_iname, BYTESTRING new_iname, TOKUTXN UU(txn), LSN UU(oplsn)) {
+    int r;
+    struct stat orig_s;
+    r = toku_stat(orig_iname.data, &orig_s);
+    if (r == -1) {
+        assert(errno == ENOENT);
+        r = toku_file_rename(new_iname.data, orig_iname.data);
+    }
+    return r;
+}
+
+
 
 

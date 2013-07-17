@@ -190,6 +190,26 @@ create_iname(DB_ENV *env, uint64_t id1, uint64_t id2, char *hint, const char *ma
     return rval;
 }
 
+static uint64_t nontransactional_open_id = 0;
+
+char *generate_iname(const char *dname, DB_TXN *txn, DB_ENV *env) {
+    char hint[strlen(dname) + 1];
+
+    // create iname and make entry in directory
+    uint64_t id1 = 0;
+    uint64_t id2 = 0;
+    
+    if (txn) {
+        id1 = toku_txn_get_txnid(db_txn_struct_i(txn)->tokutxn).parent_id64;
+        id2 = toku_txn_get_txnid(db_txn_struct_i(txn)->tokutxn).child_id64;
+    } else {
+        id1 = toku_sync_fetch_and_add(&nontransactional_open_id, 1);
+    }
+    create_iname_hint(dname, hint);
+    char *iname = create_iname(env, id1, id2, hint, NULL, -1);  // allocated memory for iname
+    return iname;
+}
+
 static int toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYPE dbtype, uint32_t flags, int mode);
 
 // Effect: Do the work required of DB->close().
@@ -279,8 +299,6 @@ db_open_subdb(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTY
     return r;
 }
 
-static uint64_t nontransactional_open_id = 0;
-
 // inames are created here.
 // algorithm:
 //  begin txn
@@ -344,20 +362,7 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
     } else if (r==0 && is_db_excl) {
         r = EEXIST;
     } else if (r == DB_NOTFOUND) {
-        char hint[strlen(dname) + 1];
-
-        // create iname and make entry in directory
-        uint64_t id1 = 0;
-        uint64_t id2 = 0;
-
-        if (txn) {
-            id1 = toku_txn_get_txnid(db_txn_struct_i(txn)->tokutxn).parent_id64;
-            id2 = toku_txn_get_txnid(db_txn_struct_i(txn)->tokutxn).child_id64;
-        } else {
-            id1 = toku_sync_fetch_and_add(&nontransactional_open_id, 1);
-        }
-        create_iname_hint(dname, hint);
-        iname = create_iname(db->dbenv, id1, id2, hint, NULL, -1);  // allocated memory for iname
+        iname = generate_iname(dname, txn, db->dbenv);
         toku_fill_dbt(&iname_dbt, iname, strlen(iname) + 1);
         //
         // put_flags will be 0 for performance only, avoid unnecessary query

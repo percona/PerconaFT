@@ -6469,6 +6469,33 @@ bool toku_ft_is_empty_fast (FT_HANDLE brt)
     return r;
 }
 
+int toku_ft_frename(const char *orig_fname, const char *new_fname, CACHETABLE ct, TOKUTXN UU(txn)) {
+    int r = 0;
+
+    // get file names in current work dir
+    char *orig_fname_in_cwd = toku_cachetable_get_fname_in_cwd(ct, orig_fname);
+    char *new_fname_in_cwd = toku_cachetable_get_fname_in_cwd(ct, new_fname);
+
+    // log the rename
+    BYTESTRING orig_fname_bs = { .len = (uint32_t)strlen(orig_fname_in_cwd)+1, .data = (char*)orig_fname_in_cwd };
+    BYTESTRING new_fname_bs = { .len = (uint32_t)strlen(new_fname_in_cwd)+1, .data = (char*)new_fname_in_cwd };
+    toku_logger_save_rollback_frename(txn, &orig_fname_bs, &new_fname_bs);
+
+    // TODO recovery log
+
+    // do the rename
+    if (r == 0) {
+        r = toku_file_rename(orig_fname_in_cwd, new_fname_in_cwd);
+        if (r == -1) {
+            r = errno;
+            assert(r != 0);
+        }
+    }
+    toku_free(orig_fname_in_cwd);
+    toku_free(new_fname_in_cwd);
+    return r;
+}
+
 // test-only
 int toku_ft_strerror_r(int error, char *buf, size_t buflen)
 {
