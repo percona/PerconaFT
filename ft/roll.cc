@@ -633,15 +633,24 @@ int toku_commit_frename(BYTESTRING UU(orig_iname), BYTESTRING UU(new_iname), TOK
 // rename the new name to the old name if the old name does not exist
 int toku_rollback_frename(BYTESTRING orig_iname, BYTESTRING new_iname, TOKUTXN UU(txn), LSN UU(oplsn)) {
     int r;
+
+    TOKULOGGER logger = toku_txn_logger(txn);
+    CACHETABLE ct = logger->ct;
+    char *orig_iname_in_cwd = toku_cachetable_get_fname_in_cwd(ct, orig_iname.data);
+    char *new_iname_in_cwd = toku_cachetable_get_fname_in_cwd(ct, new_iname.data);
+
     struct stat orig_s;
-    r = toku_stat(orig_iname.data, &orig_s);
+    r = toku_stat(orig_iname_in_cwd, &orig_s);
     if (r == -1) {
         assert(errno == ENOENT);
-        r = toku_file_rename(new_iname.data, orig_iname.data);
+        r = toku_file_rename(new_iname_in_cwd, orig_iname_in_cwd);
+        if (r == -1) {
+            r = errno;
+            assert(r != 0);
+        }
     }
+    toku_free(orig_iname_in_cwd);
+    toku_free(new_iname_in_cwd);
     return r;
 }
-
-
-
 

@@ -2683,7 +2683,7 @@ env_dbrename(DB_ENV *env, DB_TXN *txn, const char *fname, const char *dbname, co
             }
             if (r == 0) {
                 TOKUTXN tokutxn = db_txn_struct_i(txn)->tokutxn;
-                r = toku_ft_frename(old_iname, new_iname, env->i->cachetable, tokutxn);
+                r = toku_ft_frename(old_iname, new_iname, tokutxn);
             }
         }
     }

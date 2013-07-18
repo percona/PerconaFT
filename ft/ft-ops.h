@@ -346,6 +346,6 @@ extern bool garbage_collection_debug;
 
 void toku_ft_set_direct_io(bool direct_io_on);
 
-int toku_ft_frename(const char *orig_fname, const char *new_fname, CACHETABLE ct, TOKUTXN txn);
+int toku_ft_frename(const char *orig_fname, const char *new_fname, TOKUTXN txn);
 
 #endif
