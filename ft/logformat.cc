@@ -322,6 +322,10 @@ const struct logtype logtypes[] = {
                             {"BYTESTRING", "new_descriptor", 0},
                             {"bool",       "update_cmp_descriptor", 0},
                             NULLFIELD}, SHOULD_LOG_BEGIN},
+    {"frename", 'N', FA{{"TXNID_PAIR", "xid", 0},
+                        {"BYTESTRING", "old_fname", 0},
+                        {"BYTESTRING", "new_fname", 0},
+                        NULLFIELD}, SHOULD_LOG_BEGIN},
     {0,0,FA{NULLFIELD}, (enum log_begin_action) 0}
 };
 

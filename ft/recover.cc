@@ -1234,6 +1234,38 @@ static int toku_recover_backward_hot_index(struct logtype_hot_index *UU(l), RECO
     return 0;
 }
 
+static int toku_recover_frename(struct logtype_frename *l, RECOVER_ENV renv) {
+    int r;
+
+    TOKUTXN txn = NULL;
+    toku_txnid2txn(renv->logger, l->xid, &txn);
+    assert(txn != NULL);
+
+    r = toku_ft_frename(l->old_fname.data, l->new_fname.data, txn);
+    return r;
+}
+
+static int toku_recover_backward_frename(struct logtype_frename *l, RECOVER_ENV renv) {
+    int r;
+    CACHETABLE ct = renv->ct;
+    char *old_fname_in_cwd = toku_cachetable_get_fname_in_cwd(ct, l->old_fname.data);
+    char *new_fname_in_cwd = toku_cachetable_get_fname_in_cwd(ct, l->new_fname.data);
+
+    struct stat old_stat;
+    r = toku_stat(old_fname_in_cwd, &old_stat);
+    if (r == -1) {
+        assert(errno == ENOENT);
+        r = toku_file_rename(new_fname_in_cwd, old_fname_in_cwd);
+        if (r == -1) {
+            r = errno;
+            assert(r != 0);
+        }
+    }
+    toku_free(old_fname_in_cwd);
+    toku_free(new_fname_in_cwd);
+    return r;
+}
+
 // Effects: If there are no log files, or if there is a clean "shutdown" at
 // the end of the log, then we don't need recovery to run.
 // Returns: true if we need recovery, otherwise false.
