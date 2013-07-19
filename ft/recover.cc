@@ -97,7 +97,7 @@ PATENT RIGHTS GRANT:
 #include "checkpoint.h"
 #include "txn_manager.h"
 
-int tokudb_recovery_trace = 0;                    // turn on recovery tracing, default off.
+int tokudb_recovery_trace = 1;                    // turn on recovery tracing, default off.
 
 //#define DO_VERIFY_COUNTS
 #ifdef DO_VERIFY_COUNTS
@@ -1242,6 +1242,11 @@ static int toku_recover_frename(struct logtype_frename *l, RECOVER_ENV renv) {
     assert(txn != NULL);
 
     r = toku_ft_frename(l->old_fname.data, l->new_fname.data, txn);
+    if (r) {
+        if (r == ENOENT) {
+            r = 0;
+        }
+    }
     return r;
 }
 
@@ -1259,6 +1264,9 @@ static int toku_recover_backward_frename(struct logtype_frename *l, RECOVER_ENV 
         if (r == -1) {
             r = errno;
             assert(r != 0);
+            if (r == ENOENT) {
+                r = 0;
+            }
         }
     }
     toku_free(old_fname_in_cwd);
