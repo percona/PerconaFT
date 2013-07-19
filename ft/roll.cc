@@ -631,7 +631,7 @@ int toku_commit_frename(BYTESTRING UU(orig_iname), BYTESTRING UU(new_iname), TOK
 
 // rollback a file rename
 // rename the new name to the old name if the old name does not exist
-int toku_rollback_frename(BYTESTRING orig_iname, BYTESTRING new_iname, TOKUTXN UU(txn), LSN UU(oplsn)) {
+int toku_rollback_frename(BYTESTRING orig_iname, BYTESTRING new_iname, TOKUTXN txn, LSN oplsn) {
     int r;
 
     TOKULOGGER logger = toku_txn_logger(txn);
@@ -647,6 +647,8 @@ int toku_rollback_frename(BYTESTRING orig_iname, BYTESTRING new_iname, TOKUTXN U
         if (r == -1) {
             r = errno;
             assert(r != 0);
+            if (r == ENOENT && oplsn.lsn != ZERO_LSN.lsn)
+                r = 0; // crash recovery does not care about rename operations
         }
     }
     toku_free(orig_iname_in_cwd);
