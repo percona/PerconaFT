@@ -97,7 +97,7 @@ PATENT RIGHTS GRANT:
 #include "checkpoint.h"
 #include "txn_manager.h"
 
-int tokudb_recovery_trace = 1;                    // turn on recovery tracing, default off.
+int tokudb_recovery_trace = 0;                    // turn on recovery tracing, default off.
 
 //#define DO_VERIFY_COUNTS
 #ifdef DO_VERIFY_COUNTS
