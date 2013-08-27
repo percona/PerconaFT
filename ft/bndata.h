@@ -118,8 +118,12 @@ public:
     uint64_t get_disk_size();
     void verify_mempool();
 
-    // Info about "omt"
+    // Interact with "omt"
     uint32_t omt_size();
+
+    template<typename iterate_extra_t,
+             int (*f)(const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
+    int omt_iterate(iterate_extra_t *const iterate_extra) const;
 
     // get info about a single leafentry by index
     size_t fetch_le_disksize(uint32_t idx);
