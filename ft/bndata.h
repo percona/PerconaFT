@@ -1,14 +1,5 @@
-/* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
+/* -*- mode: C; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
-
-/* Purpose of this file is to provide the test programs with internal 
- * ule mechanisms that do not belong in the public interface.
- */
-
-#ifndef TOKU_ULE_INTERNAL_H
-#define TOKU_ULE_INTERNAL_H
-
-#ident "$Id$"
 /*
 COPYING CONDITIONS NOTICE:
 
@@ -97,64 +88,68 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 
-//1 does much slower debugging
-#define ULE_DEBUG 0
+#pragma once
 
-/////////////////////////////////////////////////////////////////////////////////
-// Following data structures are the unpacked format of a leafentry. 
-//   * ule is the unpacked leaf entry, that contains an array of unpacked
-//     transaction records
-//   * uxr is the unpacked transaction record
-//
+#include <util/omt.h>
+#include "leafentry.h"
+#include <util/mempool.h>
 
+#if 0 //for implementation
+static int
+UU() verify_in_mempool(OMTVALUE lev, uint32_t UU(idx), void *mpv)
+{
+    LEAFENTRY CAST_FROM_VOIDP(le, lev);
+    struct mempool *CAST_FROM_VOIDP(mp, mpv);
+    int r = toku_mempool_inrange(mp, le, leafentry_memsize(le));
+    lazy_assert(r);
+    return 0;
+}
+            toku_omt_iterate(bn->buffer, verify_in_mempool, &bn->buffer_mempool);
 
-//Types of transaction records.
-enum {XR_INSERT      = 1,
-      XR_DELETE      = 2,
-      XR_PLACEHOLDER = 3};
+#endif
 
-typedef struct uxr {     // unpacked transaction record
-    uint8_t   type;     // delete/insert/placeholder
-    uint32_t  vallen;   // number of bytes in value
-    void *    valp;     // pointer to value  (Where is value really stored?)
-    TXNID     xid;      // transaction id
-    // Note: when packing ule into a new leafentry, will need
-    //       to copy actual data from valp to new leafentry
-} UXR_S, *UXR;
+//TODO: #warning make sure destroy destroys the mempool (OR IS THIS BAD?) Allow manual killing of it for now
+//TODO: #warning can't necessarily do this because of destroying basement nodes not doing it.. they might pass things along?
+typedef toku::omt<LEAFENTRY> le_omt_t;
+// This class stores the data associated with a basement node
+class bn_data {
+public:
+    // globals
+    uint64_t get_disk_size();
+    void verify_mempool();
 
+    // Info about "omt"
+    uint32_t omt_size();
 
-// Unpacked Leaf Entry is of fixed size because it's just on the 
-// stack and we care about ease of access more than the memory footprint.
-typedef struct ule {     // unpacked leaf entry
-    uint32_t  num_puxrs;   // how many of uxrs[] are provisional
-    uint32_t  num_cuxrs;   // how many of uxrs[] are committed
-    uint32_t  keylen;
-    void *    keyp;
-    UXR_S     uxrs_static[MAX_TRANSACTION_RECORDS*2];    // uxrs[0] is oldest committed (txn commit time, not txn start time), uxrs[num_cuxrs] is outermost provisional value (if any exist/num_puxrs > 0)
-    UXR       uxrs;                                      //If num_cuxrs < MAX_TRANSACTION_RECORDS then &uxrs_static[0].
-                                                         //Otherwise we use a dynamically allocated array of size num_cuxrs + 1 + MAX_TRANSATION_RECORD.
-} ULE_S, *ULE;
+    // get info about a single leafentry by index
+    size_t fetch_le_disksize(uint32_t idx);
+    void* fetch_le_key_and_len(uint32_t idx, uint32_t *len);
 
+    // Interact with another bn_data
+    void move_leafentries_to(BN_DATA dest_bd,
+                                      uint32_t lbi, //lower bound inclusive
+                                      uint32_t ube, //upper bound exclusive
+                                      uint32_t* num_bytes_moved);
 
+    void destroy_mempool();
+private:
+    le_omt_t m_buffer;                     // pointers to individual leaf entries
+    struct mempool m_buffer_mempool;  // storage for all leaf entries
+    uint64_t m_n_bytes_in_buffer; // How many bytes to represent the OMT (including the per-key overheads, ...
+                                    // ... but not including the overheads for the node.
 
-void test_msg_modify_ule(ULE ule, FT_MSG msg);
+#if 0 //disabled but may use
+public:
+    uint64_t get_memory_size();
+    uint32_t get_num_entries();
+    int fetch_leafentry(uint32_t idx, LEAFENTRY le);
+    void delete_leafentry (uint32_t idx, LEAFENTRY le);
+    void get_space_for_overwrite(uint32_t idx, uint32_t old_size, void* old_le_space, uint32_t new_size, void** new_le_space);
+    void get_space_for_insert(uint32_t idx, uint32_t size, void** new_le_space);
+    int find_zero(int (*h)(OMTVALUE, void*extra), void* extra, LEAFENTRY* value, uint32_t* index);
+    int find(int (*h)(OMTVALUE, void*extra), void*extra, int direction, LEAFENTRY *value, uint32_t *index);
+    int iterate_on_range(uint32_t left, uint32_t right, int (*f)(LEAFENTRY, uint32_t, void*), void* v);
 
-
-//////////////////////////////////////////////////////////////////////////////////////
-//Functions exported for test purposes only (used internally for non-test purposes).
-void le_unpack(ULE ule,  LEAFENTRY le);
-int le_pack(ULE ule, // data to be packed into new leafentry
-        bn_data* data_buffer,
-        uint32_t idx,
-        uint32_t old_le_size,
-        LEAFENTRY old_le_space,
-        LEAFENTRY * const new_leafentry_p // this is what this function creates
-        );
-
-
-size_t le_memsize_from_ule (ULE ule);
-void ule_cleanup(ULE ule);
-
-
-#endif  // TOKU_ULE_H
+#endif
+};
 

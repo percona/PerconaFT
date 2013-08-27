@@ -253,28 +253,25 @@ toku_le_upgrade_13_14(LEAFENTRY_13 old_leafentry, // NULL if there was no stored
 
 void toku_le_apply_msg(FT_MSG   msg,
                        LEAFENTRY old_leafentry, // NULL if there was no stored data.
+                       bn_data* data_buffer, // bn_data storing leafentry, if NULL, means there is no bn_data
+                       uint32_t idx, // index in data_buffer where leafentry is stored (and should be replaced
                        TXNID oldest_referenced_xid,
                        GC_INFO gc_info,
-                       size_t *new_leafentry_memorysize,
                        LEAFENTRY *new_leafentry_p,
-                       OMT *omtp,
-                       struct mempool *mp,
-                       void **maybe_free,
                        int64_t * numbytes_delta_p);
 
 bool toku_le_worth_running_garbage_collection(LEAFENTRY le, TXNID oldest_referenced_xid_known);
 
-void toku_le_garbage_collect(LEAFENTRY old_leaf_entry,
-                             LEAFENTRY *new_leaf_entry,
-                             size_t *new_leaf_entry_memory_size,
-                             OMT *omtp,
-                             struct mempool *mp,
-                             void **maybe_free,
-                             const xid_omt_t &snapshot_xids,
-                             const rx_omt_t &referenced_xids,
-                             const xid_omt_t &live_root_txns,
-                             TXNID oldest_referenced_xid_known,
-                             int64_t * numbytes_delta_p);
+void
+toku_le_garbage_collect(LEAFENTRY old_leaf_entry,
+                        bn_data* data_buffer,
+                        uint32_t idx,
+                        LEAFENTRY *new_leaf_entry,
+                        const xid_omt_t &snapshot_xids,
+                        const rx_omt_t &referenced_xids,
+                        const xid_omt_t &live_root_txns,
+                        TXNID oldest_referenced_xid_known,
+                        int64_t * numbytes_delta_p);
 
 #endif /* TOKU_LEAFENTRY_H */
 
