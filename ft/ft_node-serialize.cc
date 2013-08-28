@@ -283,9 +283,7 @@ serialize_node_header(FTNODE node, FTNODE_DISK_DATA ndd, struct wbuf *wbuf) {
 }
 
 static int
-wbufwriteleafentry(OMTVALUE lev, const uint32_t UU(idx), void *wbv) {
-    const LEAFENTRY CAST_FROM_VOIDP(le, lev);
-    struct wbuf *CAST_FROM_VOIDP(wb, wbv);
+wbufwriteleafentry(const LEAFENTRY &le, const uint32_t UU(idx), struct wbuf * const wb) {
     wbuf_nocrc_LEAFENTRY(wb, le);
     return 0;
 }
@@ -302,7 +300,7 @@ serialize_ftnode_partition_size (FTNODE node, int i)
     }
     else {
         result += 4; // n_entries in buffer table
-        result += BLB_NBYTESINBUF(node, i);
+        result += BLB_NBYTESINDATA(node, i);
     }
     result += 4; // checksum
     return result;
@@ -353,14 +351,15 @@ serialize_ftnode_partition(FTNODE node, int i, struct sub_block *sb) {
     }
     else {
         unsigned char ch = FTNODE_PARTITION_OMT_LEAVES;
-        OMT buffer = BLB_BUFFER(node, i);
+        BN_DATA bd = BLB_DATA(node, i);
+
         wbuf_nocrc_char(&wb, ch);
-        wbuf_nocrc_uint(&wb, toku_omt_size(buffer));
+        wbuf_nocrc_uint(&wb, bd->omt_size());
 
         //
         // iterate over leafentries and place them into the buffer
         //
-        toku_omt_iterate(buffer, wbufwriteleafentry, &wb);
+        bd->omt_iterate<struct wbuf, wbufwriteleafentry>(&wb);
     }
     uint32_t end_to_end_checksum = x1764_memory(sb->uncompressed_ptr, wbuf_get_woffset(&wb));
     wbuf_nocrc_int(&wb, end_to_end_checksum);
