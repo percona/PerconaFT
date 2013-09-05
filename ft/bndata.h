@@ -115,6 +115,7 @@ typedef toku::omt<LEAFENTRY> le_omt_t;
 class bn_data {
 public:
     // globals
+    uint64_t get_memory_size();
     uint64_t get_disk_size(void);
     void verify_mempool(void);
 
@@ -125,10 +126,22 @@ public:
              int (*f)(const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
     int omt_iterate(iterate_extra_t *const iterate_extra) const;
 
+    template<typename iterate_extra_t,
+             int (*f)(const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
+    int omt_iterate_on_range(const uint32_t left, const uint32_t right, iterate_extra_t *const iterate_extra) const;
+
+    template<typename omtcmp_t,
+             int (*h)(const LEAFENTRY &, const omtcmp_t &)>
+    int find_zero(const omtcmp_t &extra, LEAFENTRY *const value, uint32_t *const idxp) const;
+
+    template<typename omtcmp_t,
+             int (*h)(const LEAFENTRY &, const omtcmp_t &)>
+    int find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, uint32_t *const idxp) const;
+
     // get info about a single leafentry by index
-    LEAFENTRY fetch_le(uint32_t idx);
-    size_t fetch_le_disksize(uint32_t idx);
-    void* fetch_le_key_and_len(uint32_t idx, uint32_t *len);
+    int fetch_le(uint32_t idx, LEAFENTRY *le);
+    int fetch_le_disksize(uint32_t idx, size_t *size);
+    int fetch_le_key_and_len(uint32_t idx, uint32_t *len, void** key);
 
     // Interact with another bn_data
     void move_leafentries_to(BN_DATA dest_bd,
@@ -137,6 +150,7 @@ public:
                                       uint32_t* num_bytes_moved);
 
     void destroy_mempool(void);
+    void destroy(void);
 
     void* mempool_get_base(void);
 
@@ -151,16 +165,10 @@ private:
 
 #if 0 //disabled but may use
 public:
-    uint64_t get_memory_size();
-    uint32_t get_num_entries();
-    int fetch_leafentry(uint32_t idx, LEAFENTRY le);
     void delete_leafentry (uint32_t idx, LEAFENTRY le);
+
     void get_space_for_overwrite(uint32_t idx, uint32_t old_size, void* old_le_space, uint32_t new_size, void** new_le_space);
     void get_space_for_insert(uint32_t idx, uint32_t size, void** new_le_space);
-    int find_zero(int (*h)(OMTVALUE, void*extra), void* extra, LEAFENTRY* value, uint32_t* index);
-    int find(int (*h)(OMTVALUE, void*extra), void*extra, int direction, LEAFENTRY *value, uint32_t *index);
-    int iterate_on_range(uint32_t left, uint32_t right, int (*f)(LEAFENTRY, uint32_t, void*), void* v);
-
 #endif
 };
 

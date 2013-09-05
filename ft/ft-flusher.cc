@@ -716,7 +716,10 @@ ftleaf_get_split_loc(
             BN_DATA bd = BLB_DATA(node, i);
             uint32_t n_leafentries = bd->omt_size();
             for (uint32_t j=0; j < n_leafentries; j++) {
-                size_so_far += bd->fetch_le_disksize(j);
+                size_t size_this_le;
+                int rr = bd->fetch_le_disksize(j, &size_this_le);
+                invariant_zero(rr);
+                size_so_far += size_this_le;
                 if (size_so_far >= sumlesizes/2) {
                     *num_left_bns = i + 1;
                     *num_left_les = j + 1;
@@ -961,7 +964,9 @@ ftleaf_split(
         } else if (splitk) {
             BN_DATA bd = BLB_DATA(node, num_left_bns - 1);
             uint32_t keylen;
-            void *key = bd->fetch_le_key_and_len(bd->omt_size() - 1, &keylen);
+            void *key;
+            int rr = bd->fetch_le_key_and_len(bd->omt_size() - 1, &keylen, &key);
+            invariant_zero(rr);
             toku_memdup_dbt(splitk, key, keylen);
         }
 
@@ -1202,7 +1207,9 @@ merge_leaf_nodes(FTNODE a, FTNODE b)
     // fill in pivot for what used to be max of node 'a', if it is needed
     if (a_has_tail) {
         uint32_t keylen;
-        void *key = a_last_bd->fetch_le_key_and_len(a_last_bd->omt_size() - 1, &keylen);
+        void *key;
+        int rr = bd->fetch_le_key_and_len(a_last_bd->omt_size() - 1, &keylen, &key);
+        invariant_zero(rr);
         toku_memdup_dbt(&a->childkeys[a->n_children-1], key, keylen);
         a->totalchildkeylens += keylen;
     }

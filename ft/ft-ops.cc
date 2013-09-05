@@ -405,7 +405,7 @@ get_leaf_num_entries(FTNODE node) {
     int i;
     toku_assert_entire_node_in_memory(node);
     for ( i = 0; i < node->n_children; i++) {
-        result += toku_omt_size(BLB_BUFFER(node, i));
+        result += BLB_DATA(node, i)->omt_size();
     }
     return result;
 }
@@ -610,15 +610,7 @@ ftnode_memory_size (FTNODE node)
             else {
                 BASEMENTNODE bn = BLB(node, i);
                 retval += sizeof(*bn);
-                {
-                    // include fragmentation overhead but do not include space in the
-                    // mempool that has not yet been allocated for leaf entries
-                    size_t poolsize = toku_mempool_footprint(&bn->buffer_mempool);
-                    invariant (poolsize >= BLB_NBYTESINBUF(node,i));
-                    retval += poolsize;
-                }
-                OMT curr_omt = BLB_BUFFER(node, i);
-                retval += (toku_omt_memory_size(curr_omt));
+                retval += BLB_DATA(node, i)->get_memory_size();
             }
         }
         else {
@@ -1878,7 +1870,6 @@ toku_ft_bn_apply_cmd (
 // The leaf could end up "too big" or "too small".  The caller must fix that up.
 {
     LEAFENTRY storeddata;
-    OMTVALUE storeddatav=NULL;
 
     uint32_t omt_size;
     int r;
@@ -1892,23 +1883,20 @@ toku_ft_bn_apply_cmd (
     case FT_INSERT: {
         uint32_t idx;
         if (doing_seqinsert) {
-            idx = toku_omt_size(bn->buffer);
-            r = toku_omt_fetch(bn->buffer, idx-1, &storeddatav);
+            idx = bn->data_buffer.omt_size();
+            r = bn->data_buffer.fetch_le(idx-1, &storeddata);
             if (r != 0) goto fz;
-            CAST_FROM_VOIDP(storeddata, storeddatav);
             int cmp = toku_cmd_leafval_heaviside(storeddata, &be);
             if (cmp >= 0) goto fz;
             r = DB_NOTFOUND;
         } else {
         fz:
-            r = toku_omt_find_zero(bn->buffer, toku_cmd_leafval_heaviside, &be,
-                                   &storeddatav, &idx);
+            r = bn->data_buffer.omt_find_zero<__typeof__(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
         }
         if (r==DB_NOTFOUND) {
             storeddata = 0;
         } else {
             assert_zero(r);
-            CAST_FROM_VOIDP(storeddata, storeddatav);
         }
         toku_ft_bn_apply_cmd_once(bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
 
@@ -1916,7 +1904,7 @@ toku_ft_bn_apply_cmd (
         // the leaf then it is sequential
         // window = min(32, number of leaf entries/16)
         {
-            uint32_t s = toku_omt_size(bn->buffer);
+            uint32_t s = bn->data_buffer.omt_size();
             uint32_t w = s / 16;
             if (w == 0) w = 1;
             if (w > 32) w = 32;
@@ -1933,11 +1921,9 @@ toku_ft_bn_apply_cmd (
         uint32_t idx;
         // Apply to all the matches
 
-        r = toku_omt_find_zero(bn->buffer, toku_cmd_leafval_heaviside, &be,
-                               &storeddatav, &idx);
+        r = bn->data_buffer.omt_find_zero<__typeof__(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
         if (r == DB_NOTFOUND) break;
         assert_zero(r);
-        CAST_FROM_VOIDP(storeddata, storeddatav);
         toku_ft_bn_apply_cmd_once(bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
 
         break;
@@ -1947,15 +1933,14 @@ toku_ft_bn_apply_cmd (
     case FT_COMMIT_BROADCAST_ALL:
     case FT_OPTIMIZE:
         // Apply to all leafentries
-        omt_size = toku_omt_size(bn->buffer);
+        omt_size = bn->data_buffer.omt_size();
         for (uint32_t idx = 0; idx < omt_size; ) {
-            r = toku_omt_fetch(bn->buffer, idx, &storeddatav);
+            r = bn->data_buffer.fetch_le(idx, &storeddata);
             assert_zero(r);
-            CAST_FROM_VOIDP(storeddata, storeddatav);
             int deleted = 0;
             if (!le_is_clean(storeddata)) { //If already clean, nothing to do.
                 toku_ft_bn_apply_cmd_once(bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
-                uint32_t new_omt_size = toku_omt_size(bn->buffer);
+                uint32_t new_omt_size = bn->data_buffer.omt_size();
                 if (new_omt_size != omt_size) {
                     paranoid_invariant(new_omt_size+1 == omt_size);
                     //Item was deleted.
@@ -1967,21 +1952,20 @@ toku_ft_bn_apply_cmd (
             else
                 idx++;
         }
-        paranoid_invariant(toku_omt_size(bn->buffer) == omt_size);
+        paranoid_invariant(bn->data_buffer.omt_size() == omt_size);
 
         break;
     case FT_COMMIT_BROADCAST_TXN:
     case FT_ABORT_BROADCAST_TXN:
         // Apply to all leafentries if txn is represented
-        omt_size = toku_omt_size(bn->buffer);
+        omt_size = bn->data_buffer.omt_size();
         for (uint32_t idx = 0; idx < omt_size; ) {
-            r = toku_omt_fetch(bn->buffer, idx, &storeddatav);
+            r = bn->data_buffer.fetch_le(idx, &storeddata);
             assert_zero(r);
-            CAST_FROM_VOIDP(storeddata, storeddatav);
             int deleted = 0;
             if (le_has_xids(storeddata, cmd->xids)) {
                 toku_ft_bn_apply_cmd_once(bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
-                uint32_t new_omt_size = toku_omt_size(bn->buffer);
+                uint32_t new_omt_size = bn->data_buffer.omt_size();
                 if (new_omt_size != omt_size) {
                     paranoid_invariant(new_omt_size+1 == omt_size);
                     //Item was deleted.
@@ -1993,17 +1977,15 @@ toku_ft_bn_apply_cmd (
             else
                 idx++;
         }
-        paranoid_invariant(toku_omt_size(bn->buffer) == omt_size);
+        paranoid_invariant(bn->data_buffer.omt_size() == omt_size);
 
         break;
     case FT_UPDATE: {
         uint32_t idx;
-        r = toku_omt_find_zero(bn->buffer, toku_cmd_leafval_heaviside, &be,
-                               &storeddatav, &idx);
+        r = bn->data_buffer.omt_find_zero<__typeof__(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
         if (r==DB_NOTFOUND) {
             r = do_update(update_fun, desc, bn, cmd, idx, NULL, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
         } else if (r==0) {
-            CAST_FROM_VOIDP(storeddata, storeddatav);
             r = do_update(update_fun, desc, bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
         } // otherwise, a worse error, just return it
         break;
@@ -2012,14 +1994,13 @@ toku_ft_bn_apply_cmd (
         // apply to all leafentries.
         uint32_t idx = 0;
         uint32_t num_leafentries_before;
-        while (idx < (num_leafentries_before = toku_omt_size(bn->buffer))) {
-            r = toku_omt_fetch(bn->buffer, idx, &storeddatav);
+        while (idx < (num_leafentries_before = bn->data_buffer.omt_size())) {
+            r = bn->data_buffer.fetch_le(idx, &storeddata);
             assert_zero(r);
-            CAST_FROM_VOIDP(storeddata, storeddatav);
             r = do_update(update_fun, desc, bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
             assert_zero(r);
 
-            if (num_leafentries_before == toku_omt_size(bn->buffer)) {
+            if (num_leafentries_before == bn->data_buffer.omt_size()) {
                 // we didn't delete something, so increment the index.
                 idx++;
             }
@@ -2345,15 +2326,13 @@ basement_node_gc_all_les(BASEMENTNODE bn,
     int r = 0;
     uint32_t index = 0;
     uint32_t num_leafentries_before;
-    while (index < (num_leafentries_before = toku_omt_size(bn->buffer))) {
-        OMTVALUE storedatav = NULL;
+    while (index < (num_leafentries_before = bn->data_buffer.omt_size())) {
         LEAFENTRY leaf_entry;
-        r = toku_omt_fetch(bn->buffer, index, &storedatav);
+        bn->data_buffer.fetch_le(index, &leaf_entry);
         assert_zero(r);
-        CAST_FROM_VOIDP(leaf_entry, storedatav);
         ft_basement_node_gc_once(bn, index, leaf_entry, snapshot_xids, referenced_xids, live_root_txns, oldest_referenced_xid_known, delta);
         // Check if the leaf entry was deleted or not.
-        if (num_leafentries_before == toku_omt_size(bn->buffer)) {
+        if (num_leafentries_before == bn->data_buffer.omt_size()) {
             ++index;
         }
     }
@@ -4848,16 +4827,11 @@ ft_search_basement_node(
     }
     return EINVAL;  // This return and the goto are a hack to get both compile-time and run-time checking on enum
 ok: ;
-    OMTVALUE datav;
     uint32_t idx = 0;
-    int r = toku_omt_find(bn->buffer,
-                          heaviside_from_search_t,
-                          search,
-                          direction,
-                          &datav, &idx);
+    LEAFENTRY le;
+    int r = bn->data_buffer.omt_find<__typeof__(*search), heaviside_from_search_t>(search, direction, &le, &idx);
     if (r!=0) return r;
 
-    LEAFENTRY CAST_FROM_VOIDP(le, datav);
     if (toku_ft_cursor_is_leaf_mode(ftcursor))
         goto got_a_good_value;        // leaf mode cursors see all leaf entries
     if (is_le_val_del(le,ftcursor)) {
@@ -4867,7 +4841,7 @@ ok: ;
             switch (search->direction) {
             case FT_SEARCH_LEFT:
                 idx++;
-                if (idx >= toku_omt_size(bn->buffer))
+                if (idx >= bn->data_buffer.omt_size())
                     return DB_NOTFOUND;
                 break;
             case FT_SEARCH_RIGHT:
@@ -4878,9 +4852,8 @@ ok: ;
             default:
                 abort();
             }
-            r = toku_omt_fetch(bn->buffer, idx, &datav);
+            r = bn->data_buffer.fetch_le(idx, &le);
             assert_zero(r); // we just validated the index
-            CAST_FROM_VOIDP(le, datav);
             if (!is_le_val_del(le,ftcursor)) goto got_a_good_value;
         }
     }
@@ -4903,9 +4876,6 @@ got_a_good_value:
             r = getf(keylen, key, vallen, val, getf_v, false);
         }
         if (r==0 || r == TOKUDB_CURSOR_CONTINUE) {
-            ftcursor->leaf_info.to_be.omt   = bn->buffer;
-            ftcursor->leaf_info.to_be.index = idx;
-
             // 
             // IMPORTANT: bulk fetch CANNOT go past the current basement node,
             // because there is no guarantee that messages have been applied
@@ -4915,6 +4885,8 @@ got_a_good_value:
                 r = ft_cursor_shortcut(
                     ftcursor,
                     direction,
+                    idx,
+                    bn->data_buffer,
                     getf,
                     getf_v,
                     &keylen,
@@ -5525,6 +5497,8 @@ static int
 ft_cursor_shortcut (
     FT_CURSOR cursor,
     int direction,
+    uint32_t index,
+    bn_data* bd,
     FT_GET_CALLBACK_FUNCTION getf,
     void *getf_v,
     uint32_t *keylen,
@@ -5534,19 +5508,16 @@ ft_cursor_shortcut (
     )
 {
     int r = 0;
-    uint32_t index = cursor->leaf_info.to_be.index;
-    OMT omt = cursor->leaf_info.to_be.omt;
     // if we are searching towards the end, limit is last element
     // if we are searching towards the beginning, limit is the first element
-    uint32_t limit = (direction > 0) ? (toku_omt_size(omt) - 1) : 0;
+    uint32_t limit = (direction > 0) ? (bd->omt_size() - 1) : 0;
 
     //Starting with the prev, find the first real (non-provdel) leafentry.
-    OMTVALUE lev = NULL;
     while (index != limit) {
         index += direction;
-        r = toku_omt_fetch(omt, index, &lev);
-        assert_zero(r);
-        LEAFENTRY CAST_FROM_VOIDP(le, lev);
+        LEAFENTRY le;
+        r = bd->fetch_le(index, &le);
+        invariant_zero(r);
 
         if (toku_ft_cursor_is_leaf_mode(cursor) || !is_le_val_del(le, cursor)) {
 
@@ -5569,10 +5540,6 @@ ft_cursor_shortcut (
                 break;
             }
             r = getf(*keylen, *key, *vallen, *val, getf_v, false);
-            if (r == 0 || r == TOKUDB_CURSOR_CONTINUE) {
-                //Update cursor.
-                cursor->leaf_info.to_be.index = index;
-            }
             if (r == TOKUDB_CURSOR_CONTINUE) {
                 continue;
             }
@@ -5832,19 +5799,18 @@ keysrange_in_leaf_partition (FT_HANDLE brt, FTNODE node,
         // The partition is in main memory then get an exact count.
         struct keyrange_compare_s s_left = {brt->ft, key_left};
         BASEMENTNODE bn = BLB(node, left_child_number);
-        OMTVALUE datav;
         uint32_t idx_left = 0;
         // if key_left is NULL then set r==-1 and idx==0.
-        r = key_left ? toku_omt_find_zero(bn->buffer, keyrange_compare, &s_left, &datav, &idx_left) : -1;
+        r = key_left ? bn->data_buffer.omt_find_zero<__typeof__(s_left), keyrange_compare>(&s_left, nullptr, &idx_left) : -1;
         *less = idx_left;
         *equal_left = (r==0) ? 1 : 0;
 
-        uint32_t size = toku_omt_size(bn->buffer);
+        uint32_t size = bn->data_buffer.omt_size();
         uint32_t idx_right = size;
         r = -1;
         if (single_basement && key_right) {
             struct keyrange_compare_s s_right = {brt->ft, key_right};
-            r = toku_omt_find_zero(bn->buffer, keyrange_compare, &s_right, &datav, &idx_right);
+            r = bn->data_buffer.omt_find_zero<__typeof__(s_right), keyrange_compare>(&s_right, nullptr, &idx_right);
         }
         *middle = idx_right - idx_left - *equal_left;
         *equal_right = (r==0) ? 1 : 0;
@@ -6075,9 +6041,7 @@ struct get_key_after_bytes_iterate_extra {
     void *cb_extra;
 };
 
-static int get_key_after_bytes_iterate(OMTVALUE lev, uint32_t UU(idx), void *extra) {
-    struct get_key_after_bytes_iterate_extra *CAST_FROM_VOIDP(e, extra);
-    LEAFENTRY CAST_FROM_VOIDP(le, lev);
+static int get_key_after_bytes_iterate(const LEAFENTRY & le, const uint32_t UU(idx),  uint32_t UU(idx), struct get_key_after_bytes_iterate_extra * const e) {
     uint32_t keylen;
     void *key = le_key_and_len(le, &keylen);
     // only checking the latest val, mvcc will make this inaccurate
@@ -6099,12 +6063,12 @@ static int get_key_after_bytes_in_basementnode(FT ft, BASEMENTNODE bn, const DBT
     uint32_t idx_left = 0;
     if (start_key != nullptr) {
         struct keyrange_compare_s cmp = {ft, start_key};
-        OMTVALUE v;
-        r = toku_omt_find_zero(bn->buffer, keyrange_compare, &cmp, &v, &idx_left);
+        r = bn->data_buffer.omt_find_zero<__typeof__(cmp), keyrange_compare>(&cmp, nullptr, &idx_left);
         assert(r == 0 || r == DB_NOTFOUND);
     }
     struct get_key_after_bytes_iterate_extra iter_extra = {skip_len, skipped, callback, cb_extra};
-    r = toku_omt_iterate_on_range(bn->buffer, idx_left, toku_omt_size(bn->buffer), get_key_after_bytes_iterate, &iter_extra);
+    r = bn->data_buffer.omt_iterate_on_range<get_key_after_bytes_iterate_extra, get_key_after_bytes_iterate>(idx_left, bn->data_buffer.omt_size(), &iter_extra);
+
     // Invert the sense of r == 0 (meaning the iterate finished, which means we didn't find what we wanted)
     if (r == 1) {
         r = 0;

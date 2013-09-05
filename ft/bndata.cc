@@ -90,17 +90,20 @@ PATENT RIGHTS GRANT:
 
 #include <bndata.h>
 
-#if 0
 uint64_t bn_data::get_memory_size() {
     uint64_t retval = 0;
     // include fragmentation overhead but do not include space in the
     // mempool that has not yet been allocated for leaf entries
     size_t poolsize = toku_mempool_footprint(&m_buffer_mempool);
-    invariant (poolsize >= m_n_bytes_in_buffer);
+    //TODO: (yoni) Make sure m_n_bytes_in_buffer is consistent.. with.. what?
+//    invariant (poolsize >= m_n_bytes_in_buffer);
+    invariant(poolsize >= get_disk_size());
     retval += poolsize;
-    retval += (toku_omt_memory_size(m_buffer));
+    retval += m_buffer.memory_size();
     return retval;
 }
+
+#if 0
 
 
 uint32_t bn_data::get_num_entries() {
@@ -313,5 +316,30 @@ void* bn_data::replace_contents_with_clone_of_sorted_array(uint32_t num_les, LEA
     m_buffer.destroy();
     m_buffer.create_steal_sorted_array(&le_array, num_les, num_les);
     return retval;
+}
+
+
+template<typename iterate_extra_t,
+         int (*f)(const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
+int bn_data::omt_iterate(iterate_extra_t *const iterate_extra) const {
+    return m_buffer.iterate<iterate_extra_t, f>(iterate_extra);
+}
+
+template<typename iterate_extra_t,
+         int (*f)(const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
+int bn_data::omt_iterate_on_range(const uint32_t left, const uint32_t right, iterate_extra_t *const iterate_extra) const {
+    return m_buffer.iterate<iterate_extra_t, f>(left, right, iterate_extra);
+}
+
+template<typename omtcmp_t,
+         int (*h)(const LEAFENTRY &, const omtcmp_t &)>
+int bn_data::find_zero(const omtcmp_t &extra, LEAFENTRY *const value, uint32_t *const idxp) const {
+    return m_buffer.find_zero<omtcmp_t, h>(extra, value, idxp);
+}
+
+template<typename omtcmp_t,
+         int (*h)(const LEAFENTRY &, const omtcmp_t &)>
+int bn_data::find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, uint32_t *const idxp) const {
+    return m_buffer.find<omtcmp_t, h>(extra, direction, value, idxp);
 }
 

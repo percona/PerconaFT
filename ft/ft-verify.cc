@@ -168,7 +168,10 @@ verify_msg_in_child_buffer(FT_HANDLE brt, enum ft_msg_type type, MSN msn, byteve
 
 static LEAFENTRY 
 get_ith_leafentry (BASEMENTNODE bn, int i) {
-    return bn->bndata->fetch_le(i);
+    LEAFENTRY le;
+    int r = bn->data_buffer.fetch_le(i, &le);
+    invariant_zero(r); // this is a bad failure if it happens.
+    return le;
 }
 
 #define VERIFY_ASSERTION(predicate, i, string) ({                                                                              \
