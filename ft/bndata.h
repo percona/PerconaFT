@@ -115,17 +115,18 @@ typedef toku::omt<LEAFENTRY> le_omt_t;
 class bn_data {
 public:
     // globals
-    uint64_t get_disk_size();
-    void verify_mempool();
+    uint64_t get_disk_size(void);
+    void verify_mempool(void);
 
     // Interact with "omt"
-    uint32_t omt_size();
+    uint32_t omt_size(void);
 
     template<typename iterate_extra_t,
              int (*f)(const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
     int omt_iterate(iterate_extra_t *const iterate_extra) const;
 
     // get info about a single leafentry by index
+    LEAFENTRY fetch_le(uint32_t idx);
     size_t fetch_le_disksize(uint32_t idx);
     void* fetch_le_key_and_len(uint32_t idx, uint32_t *len);
 
@@ -135,12 +136,18 @@ public:
                                       uint32_t ube, //upper bound exclusive
                                       uint32_t* num_bytes_moved);
 
-    void destroy_mempool();
+    void destroy_mempool(void);
+
+    void* mempool_get_base(void);
+
+    // Replaces contents, into brand new mempool.
+    // Returns old mempool base, expects caller to free it.
+    void* replace_contents_with_clone_of_sorted_array(uint32_t num_les, LEAFENTRY* old_les, size_t *le_sizes, size_t mempool_size);
 private:
     le_omt_t m_buffer;                     // pointers to individual leaf entries
     struct mempool m_buffer_mempool;  // storage for all leaf entries
-    uint64_t m_n_bytes_in_buffer; // How many bytes to represent the OMT (including the per-key overheads, ...
-                                    // ... but not including the overheads for the node.
+//    uint64_t m_n_bytes_in_buffer; // How many bytes to represent the OMT (including the per-key overheads, ...
+//                                    // ... but not including the overheads for the node.
 
 #if 0 //disabled but may use
 public:

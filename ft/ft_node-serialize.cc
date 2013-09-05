@@ -494,13 +494,12 @@ toku_serialize_ftnode_size (FTNODE node) {
 
 struct array_info {
     uint32_t offset;
-    OMTVALUE* array;
+    LEAFENTRY* array;
 };
 
 static int
-array_item (OMTVALUE lev, const uint32_t idx, void *aiv) {
-    struct array_info *CAST_FROM_VOIDP(ai, aiv);
-    ai->array[idx+ai->offset] = lev;
+array_item(const LEAFENTRY &le, const uint32_t idx, struct array_info *const ai) {
+    ai->array[idx+ai->offset] = le;
     return 0;
 }
 
@@ -533,14 +532,14 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
     // Count number of leaf entries in this leaf (num_le).
     uint32_t num_le = 0;  
     for (uint32_t i = 0; i < num_orig_basements; i++) {
-        num_le += toku_omt_size(BLB_BUFFER(node, i));
+        num_le += BLB_DATA(node, i)->omt_size();
     }
 
     uint32_t num_alloc = num_le ? num_le : 1;  // simplify logic below by always having at least one entry per array
 
     // Create an array of OMTVALUE's that store all the pointers to all the data.
     // Each element in leafpointers is a pointer to a leaf.
-    OMTVALUE *XMALLOC_N(num_alloc, leafpointers);
+    LEAFENTRY *XMALLOC_N(num_alloc, leafpointers);
     leafpointers[0] = NULL;
 
     // Capture pointers to old mempools' buffers (so they can be destroyed)
@@ -548,14 +547,14 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
 
     uint32_t curr_le = 0;
     for (uint32_t i = 0; i < num_orig_basements; i++) {
-        OMT curr_omt = BLB_BUFFER(node, i);
+        BN_DATA bd = BLB_DATA(node, i);
         struct array_info ai;
         ai.offset = curr_le;         // index of first le in basement
         ai.array = leafpointers;
-        toku_omt_iterate(curr_omt, array_item, &ai);
-        curr_le += toku_omt_size(curr_omt);
-        BASEMENTNODE bn = BLB(node, i);
-        old_mempool_bases[i] = toku_mempool_get_base(&bn->buffer_mempool);
+        bd->omt_iterate<array_info, array_item>(&ai);
+        curr_le += bd->omt_size();
+
+        old_mempool_bases[i] = bd->mempool_get_base();
     }
 
     // Create an array that will store indexes of new pivots.
@@ -662,29 +661,9 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
 
         // construct mempool for this basement
         size_t size_this_bn = bn_sizes[i];
-        BASEMENTNODE bn = BLB(node, i);
-        struct mempool *mp = &bn->buffer_mempool;
-        toku_mempool_construct(mp, size_this_bn);
 
-        OMTVALUE *XMALLOC_N(num_in_bn, bn_array);
-        for (uint32_t le_index = 0; le_index < num_les_to_copy; le_index++) {
-            uint32_t le_within_node = baseindex_this_bn + le_index;
-            size_t   le_size = le_sizes[le_within_node];
-            void *new_le = toku_mempool_malloc(mp, le_size, 1); // point to new location
-            void *old_le = leafpointers[le_within_node];
-            memcpy(new_le, old_le, le_size);  // put le data at new location
-            bn_array[le_index] = new_le;      // point to new location (in new mempool)
-        }
-
-        toku_omt_destroy(&BLB_BUFFER(node, i));
-        int r = toku_omt_create_steal_sorted_array(
-            &BLB_BUFFER(node, i),
-            &bn_array,
-            num_in_bn,
-            num_in_bn
-            );
-        invariant_zero(r);
-        BLB_NBYTESINBUF(node, i) = size_this_bn;
+        BN_DATA bd = BLB_DATA(node, i);
+        bd->replace_contents_with_clone_of_sorted_array(num_les_to_copy, &leafpointers[baseindex_this_bn], &le_sizes[baseindex_this_bn], size_this_bn);
 
         BP_STATE(node,i) = PT_AVAIL;
         BP_TOUCH_CLOCK(node,i);

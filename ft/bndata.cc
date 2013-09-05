@@ -88,6 +88,8 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
+#include <bndata.h>
+
 #if 0
 uint64_t bn_data::get_memory_size() {
     uint64_t retval = 0;
@@ -246,7 +248,8 @@ int bn_data::iterate_on_range(
 }
 #endif
 
-#warning Yoni did only below
+//TODO: implement the rest (e.g. above)
+//#warning Yoni did only below
 
 void bn_data::move_leafentries_to(
      BN_DATA dest_bd,
@@ -261,7 +264,7 @@ void bn_data::move_leafentries_to(
     LEAFENTRY *XMALLOC_N(ube-lbi, newleafpointers);    // create new omt
 
     size_t mpsize = toku_mempool_get_used_space(&m_buffer_mempool);   // overkill, but safe
-    struct mempool *dest_mp = &dest_bd->buffer_mempool;
+    struct mempool *dest_mp = &dest_bd->m_buffer_mempool;
     struct mempool *src_mp  = &m_buffer_mempool;
     toku_mempool_construct(dest_mp, mpsize);
 
@@ -287,11 +290,28 @@ void bn_data::move_leafentries_to(
 }
 
 uint64_t bn_data::get_disk_size() {
-    return m_n_bytes_in_buffer;
+    //TODO: any reason why we can't just do this?  As opposed to keeping track of a number manually.
+    return toku_mempool_get_used_space(&m_buffer_mempool);
 }
 
 void bn_data::destroy_mempool() {
     toku_mempool_destroy(&m_buffer_mempool);
 }
 
+//TODO: Splitting key/val requires changing this
+void* bn_data::replace_contents_with_clone_of_sorted_array(uint32_t num_les, LEAFENTRY* old_les, size_t *le_sizes, size_t mempool_size) {
+    void * retval = toku_mempool_get_base(&m_buffer_mempool);
+    toku_mempool_construct(&m_buffer_mempool, mempool_size);
+    LEAFENTRY *XMALLOC_N(num_les, le_array);
+    for (uint32_t idx = 0; idx < num_les; idx++) {
+        void *new_le = toku_mempool_malloc(&m_buffer_mempool, le_sizes[idx], 1); // point to new location
+        //TODO: Splitting key/val requires changing this; memcpy may not be sufficient
+        memcpy(new_le, old_les[idx], le_sizes[idx]);
+        CAST_FROM_VOIDP(le_array[idx], new_le);
+    }
+    //TODO: Splitting key/val requires changing this; keys are stored in old omt.. cannot delete it yet?
+    m_buffer.destroy();
+    m_buffer.create_steal_sorted_array(&le_array, num_les, num_les);
+    return retval;
+}
 

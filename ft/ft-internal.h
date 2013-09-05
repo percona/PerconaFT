@@ -450,6 +450,7 @@ static inline void set_BSB(FTNODE node, int i, SUB_BLOCK sb) {
 #define BLB_MAX_DSN_APPLIED(node,i) (BLB(node,i)->max_dsn_applied)
 #define BLB_DATA(node,i) (&(BLB(node,i)->data_buffer))
 #define BLB_NBYTESINDATA(node,i) (BLB_DATA(node,i)->get_disk_size())
+//TODO: (yoni) remove this macro entirely
 #define BLB_NBYTESINBUF(node,i) (BLB(node,i)->n_bytes_in_buffer)
 #define BLB_SEQINSERT(node,i) (BLB(node,i)->seqinsert)
 

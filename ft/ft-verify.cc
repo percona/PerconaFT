@@ -168,10 +168,7 @@ verify_msg_in_child_buffer(FT_HANDLE brt, enum ft_msg_type type, MSN msn, byteve
 
 static LEAFENTRY 
 get_ith_leafentry (BASEMENTNODE bn, int i) {
-    OMTVALUE le_v;
-    int r = toku_omt_fetch(bn->buffer, i, &le_v);
-    invariant(r == 0); // this is a bad failure if it happens.
-    return (LEAFENTRY)le_v;
+    return bn->bndata->fetch_le(i);
 }
 
 #define VERIFY_ASSERTION(predicate, i, string) ({                                                                              \
