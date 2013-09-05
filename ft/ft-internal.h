@@ -727,6 +727,8 @@ STAT64INFO_S toku_get_and_clear_basement_stats(FTNODE leafnode);
 #define VERIFY_NODE(t,n) ((void)0)
 #endif
 
+#define INTERNAL_NODE_COMPRESSION_METHOD TOKU_QUICKLZ_METHOD
+
 void toku_ft_status_update_pivot_fetch_reason(struct ftnode_fetch_extra *bfe);
 void toku_ft_status_update_flush_reason(FTNODE node, uint64_t uncompressed_bytes_flushed, uint64_t bytes_written, tokutime_t write_time, bool for_checkpoint);
 void toku_ft_status_update_serialize_times(FTNODE node, tokutime_t serialize_time, tokutime_t compress_time);

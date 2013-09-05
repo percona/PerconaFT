@@ -1084,7 +1084,9 @@ int toku_ftnode_pe_callback (void *ftnode_pv, PAIR_ATTR UU(old_attr), PAIR_ATTR*
             if (BP_STATE(node,i) == PT_AVAIL) {
                 if (BP_SHOULD_EVICT(node,i)) {
                     long size_before = ftnode_memory_size(node);
-                    compress_internal_node_partition(node, i, ft->h->compression_method);
+                    // for in-memory usage, just compress with something fast
+                    // to use few resources
+                    compress_internal_node_partition(node, i, INTERNAL_NODE_COMPRESSION_METHOD);
                     long delta = size_before - ftnode_memory_size(node);
                     STATUS_INC(FT_PARTIAL_EVICTIONS_NONLEAF, 1);
                     STATUS_INC(FT_PARTIAL_EVICTIONS_NONLEAF_BYTES, delta);

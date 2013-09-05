@@ -1007,11 +1007,18 @@ toku_serialize_ftnode_to (int fd, BLOCKNUM blocknum, FTNODE node, FTNODE_DISK_DA
     //
     // alternatively, we could have made in_parallel a parameter
     // for toku_serialize_ftnode_to, but instead we did this.
+    //
+    // also, note the compression method is predefined
+    // to a global constant for internal nodes, and user
+    // specified for leaf nodes. Internal nodes make
+    // up a small percentage of the data but are written
+    // to disk many many more times. Therefore, we want
+    // a compression method that is really fast.
     int r = toku_serialize_ftnode_to_memory(
         node,
         ndd,
         h->h->basementnodesize,
-        h->h->compression_method,
+        (node->height == 0) ? h->h->compression_method : INTERNAL_NODE_COMPRESSION_METHOD,
         do_rebalancing,
         false, // in_parallel
         &n_to_write,
