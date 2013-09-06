@@ -152,7 +152,6 @@ public:
                                       uint32_t ube, //upper bound exclusive
                                       uint32_t* num_bytes_moved);
 
-    void destroy_mempool(void);
     void destroy(void);
 
     void* mempool_detach_base(void);

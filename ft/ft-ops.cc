@@ -1049,7 +1049,6 @@ void toku_evict_bn_from_memory(FTNODE node, int childnum, FT h) {
     BASEMENTNODE bn = BLB(node, childnum);
     toku_ft_decrease_stats(&h->in_memory_stats, bn->stat64_delta);
     struct mempool * mp = &bn->buffer_mempool;
-    toku_mempool_destroy(mp);
     destroy_basement_node(bn);
     set_BNULL(node, childnum);
     BP_STATE(node, childnum) = PT_ON_DISK;
@@ -1459,12 +1458,6 @@ void toku_destroy_ftnode_internals(FTNODE node)
 void toku_ftnode_free(FTNODE *nodep) {
     FTNODE node = *nodep;
     if (node->height == 0) {
-        for (int i = 0; i < node->n_children; i++) {
-            if (BP_STATE(node,i) == PT_AVAIL) {
-                struct mempool * mp = &(BLB_BUFFER_MEMPOOL(node, i));
-                toku_mempool_destroy(mp);
-            }
-        }
         STATUS_INC(FT_DESTROY_LEAF, 1);
     } else {
         STATUS_INC(FT_DESTROY_NONLEAF, 1);

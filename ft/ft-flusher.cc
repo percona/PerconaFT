@@ -1193,7 +1193,6 @@ merge_leaf_nodes(FTNODE a, FTNODE b)
             // verify that last basement in a is empty, then destroy mempool
             size_t used_space = a_last_bd->get_disk_size();
             invariant_zero(used_space);
-            a_last_bd->destroy_mempool();
         }
         destroy_basement_node(bn);
         set_BNULL(a, a->n_children-1);

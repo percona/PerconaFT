@@ -1170,10 +1170,7 @@ NONLEAF_CHILDINFO toku_clone_nl(NONLEAF_CHILDINFO orig_childinfo) {
 
 void destroy_basement_node (BASEMENTNODE bn)
 {
-    // The buffer may have been freed already, in some cases.
-    if (bn->buffer) {
-        toku_omt_destroy(&bn->buffer);
-    }
+    bn->data_buffer.destroy();
     toku_free(bn);
 }
 

@@ -330,7 +330,11 @@ uint64_t bn_data::get_disk_size() {
     return toku_mempool_get_used_space(&m_buffer_mempool);
 }
 
-void bn_data::destroy_mempool() {
+void bn_data::destroy(void) {
+    // The buffer may have been freed already, in some cases.
+    if (m_buffer) {
+        toku_omt_destroy(&m_buffer);
+    }
     toku_mempool_destroy(&m_buffer_mempool);
 }
 
