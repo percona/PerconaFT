@@ -1122,23 +1122,8 @@ dump_bad_block(unsigned char *vp, uint64_t size) {
 
 BASEMENTNODE toku_create_empty_bn(void) {
     BASEMENTNODE bn = toku_create_empty_bn_no_buffer();
-    int r = toku_omt_create(&bn->buffer);
-    lazy_assert_zero(r);
+    bn->data_buffer.initialize();
     return bn;
-}
-
-struct mp_pair {
-    void* orig_base;
-    void* new_base;
-    OMT omt;
-};
-
-static int fix_mp_offset(OMTVALUE v, uint32_t i, void* extra) {
-    struct mp_pair *CAST_FROM_VOIDP(p, extra);
-    char* old_value = (char *) v;
-    char *new_value = old_value - (char *)p->orig_base + (char *)p->new_base;
-    toku_omt_set_at(p->omt, (OMTVALUE) new_value, i);
-    return 0;
 }
 
 BASEMENTNODE toku_clone_bn(BASEMENTNODE orig_bn) {
@@ -1148,29 +1133,17 @@ BASEMENTNODE toku_clone_bn(BASEMENTNODE orig_bn) {
     bn->seqinsert = orig_bn->seqinsert;
     bn->stale_ancestor_messages_applied = orig_bn->stale_ancestor_messages_applied;
     bn->stat64_delta = orig_bn->stat64_delta;
-    toku_mempool_clone(&orig_bn->buffer_mempool, &bn->buffer_mempool);
-    toku_omt_clone_noptr(&bn->buffer, orig_bn->buffer);
-    struct mp_pair p;
-    p.orig_base = toku_mempool_get_base(&orig_bn->buffer_mempool);
-    p.new_base = toku_mempool_get_base(&bn->buffer_mempool);
-    p.omt = bn->buffer;
-    toku_omt_iterate(
-        bn->buffer,
-        fix_mp_offset,
-        &p
-        );
+    bn->data_buffer.clone(&orig_bn.data_buffer);
     return bn;
 }
 
 BASEMENTNODE toku_create_empty_bn_no_buffer(void) {
     BASEMENTNODE XMALLOC(bn);
     bn->max_msn_applied.msn = 0;
-    bn->buffer = NULL;
-    bn->n_bytes_in_buffer = 0;
     bn->seqinsert = 0;
     bn->stale_ancestor_messages_applied = false;
-    toku_mempool_zero(&bn->buffer_mempool);
     bn->stat64_delta = ZEROSTATS;
+    bn->data_buffer.init_zero();
     return bn;
 }
 

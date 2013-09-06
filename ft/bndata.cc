@@ -90,6 +90,17 @@ PATENT RIGHTS GRANT:
 
 #include <bndata.h>
 
+void bn_data::init_zero() {
+    m_buffer = NULL;
+    toku_mempool_zero(&m_buffer_mempool);
+}
+
+void bn_data::initialize() {
+    toku_mempool_zero(m_buffer_mempool);
+    int r = toku_omt_create(&m_buffer);
+    lazy_assert_zero(r);
+}
+
 uint64_t bn_data::get_memory_size() {
     uint64_t retval = 0;
     // include fragmentation overhead but do not include space in the
@@ -342,4 +353,34 @@ template<typename omtcmp_t,
 int bn_data::find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, uint32_t *const idxp) const {
     return m_buffer.find<omtcmp_t, h>(extra, direction, value, idxp);
 }
+
+struct mp_pair {
+    void* orig_base;
+    void* new_base;
+    OMT omt;
+};
+
+static int fix_mp_offset(OMTVALUE v, uint32_t i, void* extra) {
+    struct mp_pair *CAST_FROM_VOIDP(p, extra);
+    char* old_value = (char *) v;
+    char *new_value = old_value - (char *)p->orig_base + (char *)p->new_base;
+    toku_omt_set_at(p->omt, (OMTVALUE) new_value, i);
+    return 0;
+}
+
+void bn_data::clone(bn_data* orig_bn_data) {
+    toku_mempool_clone(&orig_bn_data->m_buffer_mempool, &m_buffer_mempool);
+    toku_omt_clone_noptr(&m_buffer, orig_bn_data->m_buffer);
+    struct mp_pair p;
+    p.orig_base = toku_mempool_get_base(&orig_bn_data->m_buffer_mempool);
+    p.new_base = toku_mempool_get_base(&m_buffer_mempool);
+    p.omt = m_buffer;
+    // TODO: fix this to use the right API
+    toku_omt_iterate(
+        m_buffer,
+        fix_mp_offset,
+        &p
+        );
+}
+
 
