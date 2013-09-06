@@ -108,8 +108,8 @@ void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uin
     LEAFENTRY *XMALLOC_N(num_entries, array); // create array of pointers to leafentries
     uint32_t curr_offset = 0;
     toku_mempool_copy_construct(&m_buffer_mempool, buf, data_size);
-    uint8_t *CAST_FROM_VOIDP(le_base, toku_mempool_get_base(&m_buffer_mempool));   // point to first le in mempool
-    for (uint32_t i = 0; i < num_entries; i++) {                     // now set up the pointers in the omt
+    uint8_t *CAST_FROM_VOIDP(le_base, toku_mempool_get_base(&m_buffer_mempool)); // point to first le in mempool
+    for (uint32_t i = 0; i < num_entries; i++) { // now set up the pointers in the omt
         LEAFENTRY le = reinterpret_cast<LEAFENTRY>(&le_base[curr_offset]); // point to durable mempool, not to transient rbuf
         uint32_t disksize = leafentry_disksize(le);
         curr_offset += disksize;
