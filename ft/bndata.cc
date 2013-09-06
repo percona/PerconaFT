@@ -95,10 +95,32 @@ void bn_data::init_zero() {
     toku_mempool_zero(&m_buffer_mempool);
 }
 
-void bn_data::initialize() {
+void bn_data::initialize_empty() {
     toku_mempool_zero(m_buffer_mempool);
     int r = toku_omt_create(&m_buffer);
     lazy_assert_zero(r);
+}
+
+void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uint32_t data_size) {
+    if (data_size == 0) {
+        invariant_zero(num_entries);
+    }
+    OMTVALUE *XMALLOC_N(num_entries, array); // create array of pointers to leafentries
+    uint32_t curr_offset = 0;
+    toku_mempool_copy_construct(&m_buffer_mempool, buf, data_size);
+    uint8_t *CAST_FROM_VOIDP(le_base, toku_mempool_get_base(&m_buffer_mempool));   // point to first le in mempool
+    for (uint32_t i = 0; i < num_entries; i++) {                     // now set up the pointers in the omt
+        LEAFENTRY le = reinterpret_cast<LEAFENTRY>(&le_base[curr_offset]); // point to durable mempool, not to transient rbuf
+        uint32_t disksize = leafentry_disksize(le);
+        curr_offset += disksize;
+        invariant(curr_offset <= data_size);
+        array[i] = le;
+    }
+    
+    // destroy old omt that was created by toku_create_empty_bn(), so we can create a new one
+    toku_omt_destroy(&m_buffer);
+    int r = toku_omt_create_steal_sorted_array(&m_buffer, &array, num_entries, num_entries);
+    invariant_zero(r);
 }
 
 uint64_t bn_data::get_memory_size() {

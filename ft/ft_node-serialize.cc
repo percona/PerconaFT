@@ -1122,7 +1122,7 @@ dump_bad_block(unsigned char *vp, uint64_t size) {
 
 BASEMENTNODE toku_create_empty_bn(void) {
     BASEMENTNODE bn = toku_create_empty_bn_no_buffer();
-    bn->data_buffer.initialize();
+    bn->data_buffer.initialize_empty();
     return bn;
 }
 
@@ -1519,32 +1519,12 @@ deserialize_ftnode_partition(
         assert(ch == FTNODE_PARTITION_OMT_LEAVES);
         BLB_SEQINSERT(node, childnum) = 0;
         uint32_t num_entries = rbuf_int(&rb);
-        uint32_t start_of_data = rb.ndone;                                // index of first byte of first leafentry
-        data_size -= start_of_data;                                       // remaining bytes of leafentry data
-        // TODO 3988 Count empty basements (data_size == 0)
-        if (data_size == 0) {
-            // printf("#### Deserialize empty basement, childnum = %d\n", childnum);
-            invariant_zero(num_entries);
-        }
-        OMTVALUE *XMALLOC_N(num_entries, array);                          // create array of pointers to leafentries
-	BASEMENTNODE bn = BLB(node, childnum);
-	toku_mempool_copy_construct(&bn->buffer_mempool, &rb.buf[rb.ndone], data_size);
-	uint8_t *CAST_FROM_VOIDP(le_base, toku_mempool_get_base(&bn->buffer_mempool));   // point to first le in mempool
-        for (uint32_t i = 0; i < num_entries; i++) {                     // now set up the pointers in the omt
-            LEAFENTRY le = reinterpret_cast<LEAFENTRY>(&le_base[rb.ndone - start_of_data]); // point to durable mempool, not to transient rbuf
-            uint32_t disksize = leafentry_disksize(le);
-            rb.ndone += disksize;
-            invariant(rb.ndone<=rb.size);
-            array[i] = le;
-        }
-        uint32_t end_of_data = rb.ndone;
-
-        BLB_NBYTESINBUF(node, childnum) += end_of_data-start_of_data;
-
-        // destroy old omt (bn.buffer) that was created by toku_create_empty_bn(), so we can create a new one
-        toku_omt_destroy(&BLB_BUFFER(node, childnum));
-        r = toku_omt_create_steal_sorted_array(&BLB_BUFFER(node, childnum), &array, num_entries, num_entries);
-        invariant_zero(r);
+        // we are now at the first byte of first leafentry
+        data_size -= rb.ndone; // remaining bytes of leafentry data
+        
+        BASEMENTNODE bn = BLB(node, childnum);
+        bn->data_buffer.initialize_from_data(num_entries, &rb.buf[rb.ndone], data_size);
+        rb.ndone += data_size;
     }
     assert(rb.ndone == rb.size);
     toku_free(sb->uncompressed_ptr);
@@ -2054,7 +2034,6 @@ deserialize_and_upgrade_leaf_node(FTNODE node,
 
     // The number of leaf entries in buffer.
     int n_in_buf = rbuf_int(rb);                        // 15. # of leaves
-    BLB_NBYTESINBUF(node,0) = 0;
     BLB_SEQINSERT(node,0) = 0;
     BASEMENTNODE bn = BLB(node, 0);
 
@@ -2123,8 +2102,6 @@ deserialize_and_upgrade_leaf_node(FTNODE node,
             unsigned char *mp_base = (unsigned char *) toku_mempool_get_base(&bn->buffer_mempool);
             array[i] = &mp_base[offset];
         }
-
-        BLB_NBYTESINBUF(node, 0) = data_size;
 
         toku_omt_destroy(&BLB_BUFFER(node, 0));
         // Construct the omt.
@@ -2637,7 +2614,6 @@ toku_verify_or_set_counts(FTNODE node) {
             struct sum_info sum_info = {0,0};
             toku_omt_iterate(BLB_BUFFER(node, i), sum_item, &sum_info);
             lazy_assert(sum_info.count==toku_omt_size(BLB_BUFFER(node, i)));
-            lazy_assert(sum_info.dsum==BLB_NBYTESINBUF(node, i));
         }
     }
     else {

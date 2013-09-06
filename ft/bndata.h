@@ -115,7 +115,8 @@ typedef toku::omt<LEAFENTRY> le_omt_t;
 class bn_data {
 public:
     void init_zero();
-    void initialize();
+    void initialize_empty();
+    void initialize_from_data(uint32_t num_entries, unsigned char *buf, uint32_t data_size);
     // globals
     uint64_t get_memory_size();
     uint64_t get_disk_size(void);
