@@ -554,7 +554,7 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
         bd->omt_iterate<array_info, array_item>(&ai);
         curr_le += bd->omt_size();
 
-        old_mempool_bases[i] = bd->mempool_get_base();
+        old_mempool_bases[i] = bd->mempool_detach_base();
     }
 
     // Create an array that will store indexes of new pivots.

@@ -155,7 +155,7 @@ public:
     void destroy_mempool(void);
     void destroy(void);
 
-    void* mempool_get_base(void);
+    void* mempool_detach_base(void);
 
     // Replaces contents, into brand new mempool.
     // Returns old mempool base, expects caller to free it.

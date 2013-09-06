@@ -334,6 +334,14 @@ void bn_data::destroy_mempool() {
     toku_mempool_destroy(&m_buffer_mempool);
 }
 
+// note, bn_data is essentially unusable after this call
+void* bn_data::mempool_detach_base(void) {
+    void* base = toku_mempool_get_base(&m_buffer_mempool);
+    toku_mempool_zero(&m_buffer_mempool);
+    return base;
+}
+
+
 //TODO: Splitting key/val requires changing this
 void* bn_data::replace_contents_with_clone_of_sorted_array(uint32_t num_les, LEAFENTRY* old_les, size_t *le_sizes, size_t mempool_size) {
     void * retval = toku_mempool_get_base(&m_buffer_mempool);
