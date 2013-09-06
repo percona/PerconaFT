@@ -105,7 +105,7 @@ void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uin
     if (data_size == 0) {
         invariant_zero(num_entries);
     }
-    OMTVALUE *XMALLOC_N(num_entries, array); // create array of pointers to leafentries
+    LEAFENTRY *XMALLOC_N(num_entries, array); // create array of pointers to leafentries
     uint32_t curr_offset = 0;
     toku_mempool_copy_construct(&m_buffer_mempool, buf, data_size);
     uint8_t *CAST_FROM_VOIDP(le_base, toku_mempool_get_base(&m_buffer_mempool));   // point to first le in mempool
@@ -119,8 +119,7 @@ void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uin
     
     // destroy old omt that was created by toku_create_empty_bn(), so we can create a new one
     toku_omt_destroy(&m_buffer);
-    int r = toku_omt_create_steal_sorted_array(&m_buffer, &array, num_entries, num_entries);
-    invariant_zero(r);
+    m_buffer.create_steal_sorted_array(&array, num_les, num_les);
 }
 
 uint64_t bn_data::get_memory_size() {
