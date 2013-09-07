@@ -91,14 +91,12 @@ PATENT RIGHTS GRANT:
 #include <bndata.h>
 
 void bn_data::init_zero() {
-    m_buffer = NULL;
     toku_mempool_zero(&m_buffer_mempool);
 }
 
 void bn_data::initialize_empty() {
-    toku_mempool_zero(m_buffer_mempool);
-    int r = toku_omt_create(&m_buffer);
-    lazy_assert_zero(r);
+    toku_mempool_zero(&m_buffer_mempool);
+    m_buffer.create();
 }
 
 void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uint32_t data_size) {
@@ -118,8 +116,8 @@ void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uin
     }
     
     // destroy old omt that was created by toku_create_empty_bn(), so we can create a new one
-    toku_omt_destroy(&m_buffer);
-    m_buffer.create_steal_sorted_array(&array, num_les, num_les);
+    m_buffer.destroy();
+    m_buffer.create_steal_sorted_array(&array, num_entries, num_entries);
 }
 
 uint64_t bn_data::get_memory_size() {
@@ -136,11 +134,7 @@ uint64_t bn_data::get_memory_size() {
 }
 
 void bn_data::delete_leafentry (uint32_t idx, LEAFENTRY le) {
-    {
-        int r = toku_omt_delete_at(m_buffer, idx);
-        assert_zero(r);
-    }
-
+    m_buffer.delete_at(idx);
     toku_mempool_mfree(&m_buffer_mempool, 0, leafentry_memsize(le)); // Must pass 0, since le is no good any more.
 }
 
