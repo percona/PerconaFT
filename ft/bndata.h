@@ -161,6 +161,9 @@ public:
     void* replace_contents_with_clone_of_sorted_array(uint32_t num_les, LEAFENTRY* old_les, size_t *le_sizes, size_t mempool_size);
 
     void clone(bn_data* orig_bn_data);
+    void delete_leafentry (uint32_t idx, LEAFENTRY le);
+    void get_space_for_overwrite(uint32_t idx, uint32_t old_size, void* old_le_space, uint32_t new_size, void** new_le_space);
+    void get_space_for_insert(uint32_t idx, uint32_t size, void** new_le_space);
 private:
     le_omt_t m_buffer;                     // pointers to individual leaf entries
     struct mempool m_buffer_mempool;  // storage for all leaf entries
@@ -169,10 +172,7 @@ private:
 
 #if 0 //disabled but may use
 public:
-    void delete_leafentry (uint32_t idx, LEAFENTRY le);
 
-    void get_space_for_overwrite(uint32_t idx, uint32_t old_size, void* old_le_space, uint32_t new_size, void** new_le_space);
-    void get_space_for_insert(uint32_t idx, uint32_t size, void** new_le_space);
 #endif
 };
 

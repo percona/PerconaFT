@@ -135,29 +135,12 @@ uint64_t bn_data::get_memory_size() {
     return retval;
 }
 
-#if 0
-
-
-uint32_t bn_data::get_num_entries() {
-    return toku_omt_size(m_buffer);
-}
-
-int bn_data::fetch_leafentry(uint32_t idx, LEAFENTRY* le) {
-    OMTVALUE lev;
-    int r = toku_omt_fetch(m_buffer, idx, &lev);
-    if (r == 0) {
-        CAST_FROM_VOIDP(*le, lev);
-    }
-    return r;
-}
-
 void bn_data::delete_leafentry (uint32_t idx, LEAFENTRY le) {
     {
         int r = toku_omt_delete_at(m_buffer, idx);
         assert_zero(r);
     }
 
-    m_n_bytes_in_buffer -= leafentry_disksize(le);
     toku_mempool_mfree(&m_buffer_mempool, 0, leafentry_memsize(le)); // Must pass 0, since le is no good any more.
 }
 
@@ -169,31 +152,17 @@ void bn_data::get_space_for_overwrite(
     LEAFENTRY* new_le_space
     )
 {
-    if (old_size >= new_size) {
-        // simple little optimization, reuse space allocated in mempool if possible,
-        //
-        //
-        // This may not be wise, as we need to check for fragmentation.
-        //
-        //
-        *new_le_space = old_le_space;
-        toku_mempool_mfree(m_buffer_mempool, NULL, old_size - new_size);
+    void* maybe_free;
+    *new_le_space = mempool_malloc_from_omt(
+        m_buffer,
+        m_buffer_mempool,
+        new_size,
+        &maybe_free
+        );
+    if (maybe_free) {
+        toku_free(maybe_free);
     }
-    else {
-        void* maybe_free;
-        *new_le_space = mempool_malloc_from_omt(
-            m_buffer,
-            m_buffer_mempool,
-            new_size,
-            &maybe_free
-            );
-        if (maybe_free) {
-            toku_free(maybe_free);
-        }
-        toku_omt_set_at(m_buffer, new_le_space, idx);
-    }
-    m_n_bytes_in_buffer += new_size;
-    m_n_bytes_in_buffer -= old_size;
+    toku_omt_set_at(m_buffer, new_le_space, idx);
 }
 
 void bn_data::get_space_for_insert(uint32_t idx, size_t size, LEAFENTRY* new_le_space) {
@@ -208,7 +177,24 @@ void bn_data::get_space_for_insert(uint32_t idx, size_t size, LEAFENTRY* new_le_
         toku_free(maybe_free);
     }
     toku_omt_insert_at(m_buffer, new_le_space, idx);
-    m_n_bytes_in_buffer += size;
+}
+
+
+
+#if 0
+
+
+uint32_t bn_data::get_num_entries() {
+    return toku_omt_size(m_buffer);
+}
+
+int bn_data::fetch_leafentry(uint32_t idx, LEAFENTRY* le) {
+    OMTVALUE lev;
+    int r = toku_omt_fetch(m_buffer, idx, &lev);
+    if (r == 0) {
+        CAST_FROM_VOIDP(*le, lev);
+    }
+    return r;
 }
 
 int bn_data::find_zero(

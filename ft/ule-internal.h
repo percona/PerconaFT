@@ -143,7 +143,8 @@ void test_msg_modify_ule(ULE ule, FT_MSG msg);
 //////////////////////////////////////////////////////////////////////////////////////
 //Functions exported for test purposes only (used internally for non-test purposes).
 void le_unpack(ULE ule,  LEAFENTRY le);
-int le_pack(ULE ule, // data to be packed into new leafentry
+int
+le_pack(ULE ule, // data to be packed into new leafentry
         bn_data* data_buffer,
         uint32_t idx,
         uint32_t old_le_size,

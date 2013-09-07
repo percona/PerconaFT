@@ -1620,28 +1620,6 @@ toku_ft_nonleaf_append_child(FTNODE node, FTNODE child, const DBT *pivotkey) {
     node->dirty = 1;
 }
 
-static void
-ft_leaf_delete_leafentry (
-    BASEMENTNODE bn,
-    uint32_t idx,
-    LEAFENTRY le
-    )
-// Effect: Delete leafentry
-//   idx is the location where it is
-//   le is the leafentry to be deleted
-{
-    // Figure out if one of the other keys is the same key
-
-    {
-        int r = toku_omt_delete_at(bn->buffer, idx);
-        assert_zero(r);
-    }
-
-    bn->n_bytes_in_buffer -= leafentry_disksize(le);
-
-    toku_mempool_mfree(&bn->buffer_mempool, 0, leafentry_memsize(le)); // Must pass 0, since le is no good any more.
-}
-
 void
 toku_ft_bn_apply_cmd_once (
     BASEMENTNODE bn,
@@ -1660,51 +1638,41 @@ toku_ft_bn_apply_cmd_once (
 {
     size_t newsize=0, oldsize=0, workdone_this_le=0;
     LEAFENTRY new_le=0;
-    void *maybe_free = 0;
     int64_t numbytes_delta = 0;  // how many bytes of user data (not including overhead) were added or deleted from this row
     int64_t numrows_delta = 0;   // will be +1 or -1 or 0 (if row was added or deleted or not)
 
-    if (le)
+    if (le) {
         oldsize = leafentry_memsize(le);
-
+    }
+    
     // toku_le_apply_msg() may call mempool_malloc_from_omt() to allocate more space.
     // That means le is guaranteed to not cause a sigsegv but it may point to a mempool that is
     // no longer in use.  We'll have to release the old mempool later.
-    toku_le_apply_msg(cmd, le, oldest_referenced_xid, gc_info, &newsize, &new_le, &bn->buffer, &bn->buffer_mempool, &maybe_free, &numbytes_delta);
+    toku_le_apply_msg(
+        cmd, 
+        le,
+        &bn->data_buffer,
+        idx,
+        oldest_referenced_xid, 
+        gc_info, 
+        &new_le, 
+        &numbytes_delta
+        );
 
     if (new_le) {
         paranoid_invariant(newsize == leafentry_disksize(new_le));
     }
     if (le && new_le) {
-        bn->n_bytes_in_buffer -= oldsize;
-        bn->n_bytes_in_buffer += newsize;
-
-        // This mfree must occur after the mempool_malloc so that when
-        // the mempool is compressed everything is accounted for.  But
-        // we must compute the size before doing the mempool mfree
-        // because otherwise the le pointer is no good.
-        toku_mempool_mfree(&bn->buffer_mempool, 0, oldsize); // Must pass 0, since le may be no good any more.
-
-        {
-            int r = toku_omt_set_at(bn->buffer, new_le, idx);
-            invariant(r==0);
-        }
-
         workdone_this_le = (oldsize > newsize ? oldsize : newsize);  // work done is max of le size before and after message application
 
     } else {           // we did not just replace a row, so ...
         if (le) {
             //            ... we just deleted a row ...
-            // It was there, note that it's gone and remove it from the mempool
-            ft_leaf_delete_leafentry (bn, idx, le);
             workdone_this_le = oldsize;
             numrows_delta = -1;
         }
         if (new_le) {
             //            ... or we just added a row
-            int r = toku_omt_insert_at(bn->buffer, new_le, idx);
-            invariant(r==0);
-            bn->n_bytes_in_buffer += newsize;
             workdone_this_le = newsize;
             numrows_delta = 1;
         }
@@ -1712,9 +1680,6 @@ toku_ft_bn_apply_cmd_once (
     if (workdone) {  // test programs may call with NULL
         *workdone += workdone_this_le;
     }
-
-    // if we created a new mempool buffer, free the old one
-    if (maybe_free) toku_free(maybe_free);
 
     // now update stat64 statistics
     bn->stat64_delta.numrows  += numrows_delta;
@@ -2264,11 +2229,9 @@ ft_basement_node_gc_once(BASEMENTNODE bn,
     int64_t numbytes_delta;
     int64_t numrows_delta;
     toku_le_garbage_collect(leaf_entry,
+                            &bn->data_buffer,
+                            index,
                             &new_leaf_entry,
-                            &newsize,
-                            &bn->buffer,
-                            &bn->buffer_mempool,
-                            &maybe_free,
                             snapshot_xids,
                             referenced_xids,
                             live_root_txns,
@@ -2277,17 +2240,8 @@ ft_basement_node_gc_once(BASEMENTNODE bn,
 
     numrows_delta = 0;
     if (new_leaf_entry) {
-        // If we have a new leaf entry, we must update the size of the
-        // memory object.
-        bn->n_bytes_in_buffer -= oldsize;
-        bn->n_bytes_in_buffer += newsize;
-        toku_mempool_mfree(&bn->buffer_mempool, 0, oldsize);
-        toku_omt_set_at(bn->buffer, new_leaf_entry, index);
         numrows_delta = 0;
     } else {
-        // Our garbage collection removed the leaf entry so we must
-        // remove it from the mempool.
-        ft_leaf_delete_leafentry (bn, index, leaf_entry);
         numrows_delta = -1;
     }
 
