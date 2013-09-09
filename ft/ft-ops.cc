@@ -5676,16 +5676,14 @@ struct keyrange_compare_s {
 };
 
 static int
-keyrange_compare (OMTVALUE lev, void *extra) {
-    LEAFENTRY CAST_FROM_VOIDP(le, lev);
+keyrange_compare (LEAFENTRY const &le, const struct keyrange_compare_s &s) {
     uint32_t keylen;
     void* key = le_key_and_len(le, &keylen);
     DBT   omt_dbt;
     toku_fill_dbt(&omt_dbt, key, keylen);
-    struct keyrange_compare_s *CAST_FROM_VOIDP(s, extra);
     // TODO: maybe put a const fake_db in the header
-    FAKE_DB(db, &s->ft->cmp_descriptor);
-    return s->ft->compare_fun(&db, &omt_dbt, s->key);
+    FAKE_DB(db, &s.ft->cmp_descriptor);
+    return s.ft->compare_fun(&db, &omt_dbt, s.key);
 }
 
 static void
@@ -5710,7 +5708,7 @@ keysrange_in_leaf_partition (FT_HANDLE brt, FTNODE node,
         BASEMENTNODE bn = BLB(node, left_child_number);
         uint32_t idx_left = 0;
         // if key_left is NULL then set r==-1 and idx==0.
-        r = key_left ? bn->data_buffer.omt_find_zero<decltype(s_left), keyrange_compare>(&s_left, nullptr, &idx_left) : -1;
+        r = key_left ? bn->data_buffer.find_zero<decltype(s_left), keyrange_compare>(s_left, nullptr, &idx_left) : -1;
         *less = idx_left;
         *equal_left = (r==0) ? 1 : 0;
 
@@ -5719,7 +5717,7 @@ keysrange_in_leaf_partition (FT_HANDLE brt, FTNODE node,
         r = -1;
         if (single_basement && key_right) {
             struct keyrange_compare_s s_right = {brt->ft, key_right};
-            r = bn->data_buffer.omt_find_zero<decltype(s_right), keyrange_compare>(&s_right, nullptr, &idx_right);
+            r = bn->data_buffer.find_zero<decltype(s_right), keyrange_compare>(s_right, nullptr, &idx_right);
         }
         *middle = idx_right - idx_left - *equal_left;
         *equal_right = (r==0) ? 1 : 0;
@@ -5972,7 +5970,7 @@ static int get_key_after_bytes_in_basementnode(FT ft, BASEMENTNODE bn, const DBT
     uint32_t idx_left = 0;
     if (start_key != nullptr) {
         struct keyrange_compare_s cmp = {ft, start_key};
-        r = bn->data_buffer.omt_find_zero<decltype(cmp), keyrange_compare>(&cmp, nullptr, &idx_left);
+        r = bn->data_buffer.find_zero<decltype(cmp), keyrange_compare>(cmp, nullptr, &idx_left);
         assert(r == 0 || r == DB_NOTFOUND);
     }
     struct get_key_after_bytes_iterate_extra iter_extra = {skip_len, skipped, callback, cb_extra};
