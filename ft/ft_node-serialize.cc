@@ -2049,44 +2049,17 @@ deserialize_and_upgrade_leaf_node(FTNODE node,
         uint32_t end_of_data;
         uint32_t data_size;
 
-        // Leaf Entry creation for version 14 and above:
-        // Allocate space for our leaf entry pointers.
-        OMTVALUE *XMALLOC_N(n_in_buf, array);
-
-        // Iterate over leaf entries copying their addresses into our
-        // temporary array.
+        // Iterate over leaf entries to find the end
         for (int i = 0; i < n_in_buf; ++i) {
             LEAFENTRY le = reinterpret_cast<LEAFENTRY>(&rb->buf[rb->ndone]);
             uint32_t disksize = leafentry_disksize(le);
             rb->ndone += disksize;                       // 16. leaf entry (14)
             invariant(rb->ndone <= rb->size);
-            array[i] = le;
         }
-
         end_of_data = rb->ndone;
         data_size = end_of_data - start_of_data;
 
-        // Now we must create the OMT and it's associated mempool.
-
-        // Allocate mempool in basement node and memcpy from start of
-        // input/deserialized buffer.
-        toku_mempool_copy_construct(&bn->buffer_mempool,
-                                    &rb->buf[start_of_data],
-                                    data_size);
-
-        // Adjust the array of OMT values to point to the correct
-        // position in the mempool.  The mempool should have all the
-        // data at this point.
-        for (int i = 0; i < n_in_buf; ++i) {
-            int offset = (unsigned char *) array[i] - &rb->buf[start_of_data];
-            unsigned char *mp_base = (unsigned char *) toku_mempool_get_base(&bn->buffer_mempool);
-            array[i] = &mp_base[offset];
-        }
-
-        toku_omt_destroy(&BLB_BUFFER(node, 0));
-        // Construct the omt.
-        r = toku_omt_create_steal_sorted_array(&BLB_BUFFER(node, 0), &array, n_in_buf, n_in_buf);
-        invariant_zero(r);
+        bn->data_buffer.initialize_from_data(n_in_buf, &rb->buf[start_of_data], data_size);
     }
 
     // Whatever this is must be less than the MSNs of every message above

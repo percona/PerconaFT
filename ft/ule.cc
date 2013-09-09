@@ -2536,9 +2536,10 @@ toku_le_upgrade_13_14(LEAFENTRY_13 old_leafentry,
                    NULL,
                    0, //only matters if we are passing in a bn_data
                    0, //only matters if we are passing in a bn_data
-                   new_leafentry_memorysize, 
+                   NULL, //only matters if we are passing in a bn_data
                    new_leafentry_p);  
     ule_cleanup(&ule);
+    *new_leafentry_memorysize = leafentry_memsize(*new_leafentry_p);
     return rval;
 }
 

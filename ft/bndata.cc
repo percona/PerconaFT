@@ -361,6 +361,14 @@ uint64_t bn_data::get_disk_size() {
     return toku_mempool_get_used_space(&m_buffer_mempool);
 }
 
+void bn_data::verify_mempool(void) {
+    // TODO: implement something
+}
+
+void bn_data::omt_size(void) {
+    return m_buffer.size();
+}
+
 void bn_data::destroy(void) {
     // The buffer may have been freed already, in some cases.
     m_buffer.destroy();
@@ -417,6 +425,28 @@ template<typename omtcmp_t,
 int bn_data::find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, uint32_t *const idxp) const {
     return m_buffer.find<omtcmp_t, h>(extra, direction, value, idxp);
 }
+
+// get info about a single leafentry by index
+int bn_data::fetch_le(uint32_t idx, LEAFENTRY *le) {
+    return m_buffer.fetch(idx, le);
+}
+int bn_data::fetch_le_disksize(uint32_t idx, size_t *size) {
+    LEAFENTRY le;
+    int r = fetch_le(idx, &le);
+    if (r == 0) {
+        *size = leafentry_disksize(le);
+    }
+    return r;
+}
+int bn_data::fetch_le_key_and_len(uint32_t idx, uint32_t *len, void** key) {
+    LEAFENTRY le;
+    int r = fetch_le(idx, &le);
+    if (r == 0) {
+        *key = le_key_and_len(LEAFENTRY le, len)
+    }
+    return r;
+}
+
 
 struct mp_pair {
     void* orig_base;
