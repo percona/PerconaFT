@@ -195,13 +195,15 @@ LEAFENTRY bn_data::mempool_malloc_from_omt(size_t size, void **maybe_free) {
 //TODO: probably not free the "maybe_free" right away?
 void bn_data::get_space_for_overwrite(
     uint32_t idx,
-    uint32_t old_size UU(),
-    LEAFENTRY old_le_space UU(),
+    uint32_t old_le_size,
+    LEAFENTRY old_le_space,
     uint32_t new_size,
     LEAFENTRY* new_le_space
     )
 {
     void* maybe_free = nullptr;
+    //TODO: don't use old_le_space (0) if we move this to after the malloc
+    toku_mempool_mfree(&m_buffer_mempool, old_le_space, old_le_size);
     *new_le_space = mempool_malloc_from_omt(
         new_size,
         &maybe_free
@@ -316,6 +318,8 @@ void* bn_data::replace_contents_with_clone_of_sorted_array(uint32_t num_les, LEA
 int bn_data::fetch_le(uint32_t idx, LEAFENTRY *le) {
     return m_buffer.fetch(idx, le);
 }
+
+//TODO: reimplement if/when we split keys and vals
 int bn_data::fetch_le_disksize(uint32_t idx, size_t *size) {
     LEAFENTRY le;
     int r = fetch_le(idx, &le);
@@ -324,6 +328,8 @@ int bn_data::fetch_le_disksize(uint32_t idx, size_t *size) {
     }
     return r;
 }
+
+//TODO: reimplement if/when we split keys and vals
 int bn_data::fetch_le_key_and_len(uint32_t idx, uint32_t *len, void** key) {
     LEAFENTRY le;
     int r = fetch_le(idx, &le);
