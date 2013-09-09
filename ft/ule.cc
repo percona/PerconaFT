@@ -2523,9 +2523,8 @@ leafentry_disksize_13(LEAFENTRY_13 le) {
 int 
 toku_le_upgrade_13_14(LEAFENTRY_13 old_leafentry,
                      size_t *new_leafentry_memorysize, 
-                     LEAFENTRY *new_leafentry_p,
-                     OMT* omtp,
-                     struct mempool *mp) {
+                     LEAFENTRY *new_leafentry_p
+                     ) {
     ULE_S ule;
     int rval;
     invariant(old_leafentry);
@@ -2533,10 +2532,12 @@ toku_le_upgrade_13_14(LEAFENTRY_13 old_leafentry,
     // We used to pass NULL for omt and mempool, so that we would use
     // malloc instead of a mempool.  However after supporting upgrade,
     // we need to use mempools and the OMT.
-    rval = le_pack(&ule,                // create packed leafentry
+    rval = le_pack(&ule, // create packed leafentry
+                   NULL,
+                   0, //only matters if we are passing in a bn_data
+                   0, //only matters if we are passing in a bn_data
                    new_leafentry_memorysize, 
-                   new_leafentry_p,
-                   omtp, mp, NULL);  
+                   new_leafentry_p);  
     ule_cleanup(&ule);
     return rval;
 }

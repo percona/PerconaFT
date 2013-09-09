@@ -2027,7 +2027,6 @@ deserialize_and_upgrade_leaf_node(FTNODE node,
     // as we go.
     if (version <= FT_LAYOUT_VERSION_13) {
         // Create our mempool.
-        toku_mempool_construct(&bn->buffer_mempool, 0);
         // Loop through
         for (int i = 0; i < n_in_buf; ++i) {
             LEAFENTRY_13 le = reinterpret_cast<LEAFENTRY_13>(&rb->buf[rb->ndone]);
@@ -2038,14 +2037,13 @@ deserialize_and_upgrade_leaf_node(FTNODE node,
             size_t new_le_size;
             r = toku_le_upgrade_13_14(le,
                                       &new_le_size,
-                                      &new_le,
-                                      &bn->buffer,
-                                      &bn->buffer_mempool);
+                                      &new_le);
             assert_zero(r);
             // Copy the pointer value straight into the OMT
-            r = toku_omt_insert_at(bn->buffer, new_le, i);
-            assert_zero(r);
-            bn->n_bytes_in_buffer += new_le_size;
+            LEAFENTRY new_le_in_bn = nullptr;
+            bn->data_buffer.get_space_for_insert(i, new_le_size, &new_le_in_bn);
+            memcpy(new_le_in_bn, new_le, new_le_size);
+            toku_free(new_le);
         }
     } else {
         uint32_t end_of_data;
