@@ -312,30 +312,6 @@ void* bn_data::replace_contents_with_clone_of_sorted_array(uint32_t num_les, LEA
 }
 
 
-template<typename iterate_extra_t,
-         int (*f)(const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
-int bn_data::omt_iterate(iterate_extra_t *const iterate_extra) const {
-    return m_buffer.iterate<iterate_extra_t, f>(iterate_extra);
-}
-
-template<typename iterate_extra_t,
-         int (*f)(const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
-int bn_data::omt_iterate_on_range(const uint32_t left, const uint32_t right, iterate_extra_t *const iterate_extra) const {
-    return m_buffer.iterate<iterate_extra_t, f>(left, right, iterate_extra);
-}
-
-template<typename omtcmp_t,
-         int (*h)(const LEAFENTRY &, const omtcmp_t &)>
-int bn_data::find_zero(const omtcmp_t &extra, LEAFENTRY *const value, uint32_t *const idxp) const {
-    return m_buffer.find_zero<omtcmp_t, h>(extra, value, idxp);
-}
-
-template<typename omtcmp_t,
-         int (*h)(const LEAFENTRY &, const omtcmp_t &)>
-int bn_data::find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, uint32_t *const idxp) const {
-    return m_buffer.find<omtcmp_t, h>(extra, direction, value, idxp);
-}
-
 // get info about a single leafentry by index
 int bn_data::fetch_le(uint32_t idx, LEAFENTRY *le) {
     return m_buffer.fetch(idx, le);
