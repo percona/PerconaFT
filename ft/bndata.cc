@@ -365,7 +365,7 @@ void bn_data::verify_mempool(void) {
     // TODO: implement something
 }
 
-void bn_data::omt_size(void) {
+uint32_t bn_data::omt_size(void) {
     return m_buffer.size();
 }
 
@@ -442,7 +442,7 @@ int bn_data::fetch_le_key_and_len(uint32_t idx, uint32_t *len, void** key) {
     LEAFENTRY le;
     int r = fetch_le(idx, &le);
     if (r == 0) {
-        *key = le_key_and_len(LEAFENTRY le, len)
+        *key = le_key_and_len(le, len);
     }
     return r;
 }
