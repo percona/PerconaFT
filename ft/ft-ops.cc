@@ -1048,7 +1048,6 @@ void toku_evict_bn_from_memory(FTNODE node, int childnum, FT h) {
     assert(!node->dirty);
     BASEMENTNODE bn = BLB(node, childnum);
     toku_ft_decrease_stats(&h->in_memory_stats, bn->stat64_delta);
-    struct mempool * mp = &bn->buffer_mempool;
     destroy_basement_node(bn);
     set_BNULL(node, childnum);
     BP_STATE(node, childnum) = PT_ON_DISK;
@@ -1849,7 +1848,7 @@ toku_ft_bn_apply_cmd (
             r = DB_NOTFOUND;
         } else {
         fz:
-            r = bn->data_buffer.omt_find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
+            r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
         }
         if (r==DB_NOTFOUND) {
             storeddata = 0;
@@ -1879,7 +1878,7 @@ toku_ft_bn_apply_cmd (
         uint32_t idx;
         // Apply to all the matches
 
-        r = bn->data_buffer.omt_find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
+        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
         if (r == DB_NOTFOUND) break;
         assert_zero(r);
         toku_ft_bn_apply_cmd_once(bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
@@ -1940,7 +1939,7 @@ toku_ft_bn_apply_cmd (
         break;
     case FT_UPDATE: {
         uint32_t idx;
-        r = bn->data_buffer.omt_find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
+        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
         if (r==DB_NOTFOUND) {
             r = do_update(update_fun, desc, bn, cmd, idx, NULL, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
         } else if (r==0) {

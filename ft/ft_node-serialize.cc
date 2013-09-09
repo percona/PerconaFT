@@ -1129,11 +1129,10 @@ BASEMENTNODE toku_create_empty_bn(void) {
 BASEMENTNODE toku_clone_bn(BASEMENTNODE orig_bn) {
     BASEMENTNODE bn = toku_create_empty_bn_no_buffer();
     bn->max_msn_applied = orig_bn->max_msn_applied;
-    bn->n_bytes_in_buffer = orig_bn->n_bytes_in_buffer;
     bn->seqinsert = orig_bn->seqinsert;
     bn->stale_ancestor_messages_applied = orig_bn->stale_ancestor_messages_applied;
     bn->stat64_delta = orig_bn->stat64_delta;
-    bn->data_buffer.clone(&orig_bn.data_buffer);
+    bn->data_buffer.clone(&orig_bn->data_buffer);
     return bn;
 }
 
@@ -2604,19 +2603,7 @@ toku_deserialize_ftnode_from (int fd,
 }
 
 void
-toku_verify_or_set_counts(FTNODE node) {
-    if (node->height==0) {
-        for (int i=0; i<node->n_children; i++) {
-            lazy_assert(BLB_BUFFER(node, i));
-            struct sum_info sum_info = {0,0};
-            toku_omt_iterate(BLB_BUFFER(node, i), sum_item, &sum_info);
-            lazy_assert(sum_info.count==toku_omt_size(BLB_BUFFER(node, i)));
-        }
-    }
-    else {
-        // nothing to do because we no longer store n_bytes_in_buffers for
-        // the whole node
-    }
+toku_verify_or_set_counts(FTNODE UU(node)) {
 }
 
 int 

@@ -1207,7 +1207,7 @@ merge_leaf_nodes(FTNODE a, FTNODE b)
     if (a_has_tail) {
         uint32_t keylen;
         void *key;
-        int rr = bd->fetch_le_key_and_len(a_last_bd->omt_size() - 1, &keylen, &key);
+        int rr = a_last_bd->fetch_le_key_and_len(a_last_bd->omt_size() - 1, &keylen, &key);
         invariant_zero(rr);
         toku_memdup_dbt(&a->childkeys[a->n_children-1], key, keylen);
         a->totalchildkeylens += keylen;
