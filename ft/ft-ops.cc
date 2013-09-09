@@ -4044,14 +4044,12 @@ pair_leafval_heaviside_le (uint32_t klen, void *kval,
     int cmp = search.compare(&search,
                               search.k ? toku_fill_dbt(&x, kval, klen) : 0);
     // The search->compare function returns only 0 or 1
-    switch (search->direction) {
+    switch (search.direction) {
     case FT_SEARCH_LEFT:   return cmp==0 ? -1 : +1;
     case FT_SEARCH_RIGHT:  return cmp==0 ? +1 : -1; // Because the comparison runs backwards for right searches.
     }
     abort(); return 0;
 }
-
-LEAFENTRY const &le, const struct cmd_leafval_heaviside_extra &be
 
 static int
 heaviside_from_search_t (LEAFENTRY const &le, const ft_search_t &search) {
