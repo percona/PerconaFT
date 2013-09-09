@@ -156,7 +156,7 @@ static int move_it (const LEAFENTRY& le, const uint32_t idx, struct omt_compress
 
 // Compress things, and grow the mempool if needed.
 void bn_data::omt_compress_kvspace(size_t added_size, void **maybe_free) {
-    uint32_t total_size_needed = m_buffer_mempool.free_offset - m_buffer_mempool.frag_size + added_size;
+    uint32_t total_size_needed = toku_mempool_get_used_space(&m_buffer_mempool) + added_size;
     if (total_size_needed+total_size_needed >= m_buffer_mempool.size) {
         m_buffer_mempool.size = total_size_needed+total_size_needed;
     }
@@ -196,18 +196,18 @@ LEAFENTRY bn_data::mempool_malloc_from_omt(size_t size, void **maybe_free) {
 void bn_data::get_space_for_overwrite(
     uint32_t idx,
     uint32_t old_le_size,
-    LEAFENTRY old_le_space,
+    LEAFENTRY old_le_space UU(),
     uint32_t new_size,
     LEAFENTRY* new_le_space
     )
 {
     void* maybe_free = nullptr;
-    //TODO: don't use old_le_space (0) if we move this to after the malloc
-    toku_mempool_mfree(&m_buffer_mempool, old_le_space, old_le_size);
     *new_le_space = mempool_malloc_from_omt(
         new_size,
         &maybe_free
         );
+    //TODO: See if we can improve perf? by freeing first?  But then compress kvspace recopies it!
+    toku_mempool_mfree(&m_buffer_mempool, nullptr, old_le_size);  // Must pass nullptr, since le is no good any more.
     if (maybe_free) {
         toku_free(maybe_free);
     }
