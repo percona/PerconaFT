@@ -1389,9 +1389,15 @@ int toku_ftnode_pf_callback(void* ftnode_pv, void* disk_data, void* read_extraar
     return 0;
 }
 
+struct cmd_leafval_heaviside_extra {
+    ft_compare_func compare_fun;
+    DESCRIPTOR desc;
+    DBT const * const key;
+};
+
 static int
 leafval_heaviside_le (uint32_t klen, void *kval,
-                      struct cmd_leafval_heaviside_extra *be) {
+                      const struct cmd_leafval_heaviside_extra *be) {
     DBT dbt;
     DBT const * const key = be->key;
     FAKE_DB(db, be->desc);
@@ -1401,14 +1407,12 @@ leafval_heaviside_le (uint32_t klen, void *kval,
 }
 
 //TODO: #1125 optimize
-int
-toku_cmd_leafval_heaviside (OMTVALUE lev, void *extra) {
-    LEAFENTRY CAST_FROM_VOIDP(le, lev);
-    struct cmd_leafval_heaviside_extra *CAST_FROM_VOIDP(be, extra);
+static int
+toku_cmd_leafval_heaviside (LEAFENTRY const &le, const struct cmd_leafval_heaviside_extra &be) {
     uint32_t keylen;
     void*     key = le_key_and_len(le, &keylen);
     return leafval_heaviside_le(keylen, key,
-                                be);
+                                &be);
 }
 
 static int
@@ -1843,12 +1847,12 @@ toku_ft_bn_apply_cmd (
             idx = bn->data_buffer.omt_size();
             r = bn->data_buffer.fetch_le(idx-1, &storeddata);
             if (r != 0) goto fz;
-            int cmp = toku_cmd_leafval_heaviside(storeddata, &be);
+            int cmp = toku_cmd_leafval_heaviside(storeddata, be);
             if (cmp >= 0) goto fz;
             r = DB_NOTFOUND;
         } else {
         fz:
-            r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
+            r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(be, &storeddata, &idx);
         }
         if (r==DB_NOTFOUND) {
             storeddata = 0;
@@ -1878,7 +1882,7 @@ toku_ft_bn_apply_cmd (
         uint32_t idx;
         // Apply to all the matches
 
-        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
+        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(be, &storeddata, &idx);
         if (r == DB_NOTFOUND) break;
         assert_zero(r);
         toku_ft_bn_apply_cmd_once(bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
@@ -1939,7 +1943,7 @@ toku_ft_bn_apply_cmd (
         break;
     case FT_UPDATE: {
         uint32_t idx;
-        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
+        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(be, &storeddata, &idx);
         if (r==DB_NOTFOUND) {
             r = do_update(update_fun, desc, bn, cmd, idx, NULL, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
         } else if (r==0) {
@@ -2208,10 +2212,6 @@ ft_basement_node_gc_once(BASEMENTNODE bn,
         goto exit;
     }
 
-    size_t oldsize;
-    oldsize = 0;
-    size_t newsize;
-    newsize = 0;
     LEAFENTRY new_leaf_entry;
     new_leaf_entry = NULL;
 
@@ -2221,8 +2221,6 @@ ft_basement_node_gc_once(BASEMENTNODE bn,
     void * maybe_free;
     maybe_free = NULL;
 
-    // Cache the size of the leaf entry.
-    oldsize = leafentry_memsize(leaf_entry);
     // These will represent the number of bytes and rows changed as
     // part of the garbage collection.
     int64_t numbytes_delta;
@@ -4041,10 +4039,10 @@ ft_cursor_not_set(FT_CURSOR cursor) {
 
 static int
 pair_leafval_heaviside_le (uint32_t klen, void *kval,
-                           ft_search_t *search) {
+                           const ft_search_t &search) {
     DBT x;
-    int cmp = search->compare(search,
-                              search->k ? toku_fill_dbt(&x, kval, klen) : 0);
+    int cmp = search.compare(&search,
+                              search.k ? toku_fill_dbt(&x, kval, klen) : 0);
     // The search->compare function returns only 0 or 1
     switch (search->direction) {
     case FT_SEARCH_LEFT:   return cmp==0 ? -1 : +1;
@@ -4053,11 +4051,10 @@ pair_leafval_heaviside_le (uint32_t klen, void *kval,
     abort(); return 0;
 }
 
+LEAFENTRY const &le, const struct cmd_leafval_heaviside_extra &be
 
 static int
-heaviside_from_search_t (OMTVALUE lev, void *extra) {
-    LEAFENTRY CAST_FROM_VOIDP(le, lev);
-    ft_search_t *CAST_FROM_VOIDP(search, extra);
+heaviside_from_search_t (LEAFENTRY const &le, const ft_search_t &search) {
     uint32_t keylen;
     void* key = le_key_and_len(le, &keylen);
 
@@ -4722,7 +4719,7 @@ ft_search_basement_node(
 ok: ;
     uint32_t idx = 0;
     LEAFENTRY le;
-    int r = bn->data_buffer.omt_find<decltype(*search), heaviside_from_search_t>(search, direction, &le, &idx);
+    int r = bn->data_buffer.find<decltype(*search), heaviside_from_search_t>(*search, direction, &le, &idx);
     if (r!=0) return r;
 
     if (toku_ft_cursor_is_leaf_mode(ftcursor))

@@ -1026,15 +1026,6 @@ int toku_testsetup_insert_to_leaf (FT_HANDLE brt, BLOCKNUM, const char *key, int
 int toku_testsetup_insert_to_nonleaf (FT_HANDLE brt, BLOCKNUM, enum ft_msg_type, const char *key, int keylen, const char *val, int vallen);
 void toku_pin_node_with_min_bfe(FTNODE* node, BLOCKNUM b, FT_HANDLE t);
 
-// These two go together to do lookups in a ftnode using the keys in a command.
-struct cmd_leafval_heaviside_extra {
-    ft_compare_func compare_fun;
-    DESCRIPTOR desc;
-    DBT const * const key;
-};
-int toku_cmd_leafval_heaviside (OMTVALUE leafentry, void *extra)
-    __attribute__((__warn_unused_result__));
-
 // toku_ft_root_put_cmd() accepts non-constant cmd because this is where we set the msn
 void toku_ft_root_put_cmd(FT h, FT_MSG_S * cmd, TXNID oldest_referenced_xid, GC_INFO gc_info);
 
