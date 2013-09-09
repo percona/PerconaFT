@@ -5948,7 +5948,7 @@ struct get_key_after_bytes_iterate_extra {
     void *cb_extra;
 };
 
-static int get_key_after_bytes_iterate(const LEAFENTRY & le, const uint32_t UU(idx),  uint32_t UU(idx), struct get_key_after_bytes_iterate_extra * const e) {
+static int get_key_after_bytes_iterate(const LEAFENTRY & le, const uint32_t UU(idx), struct get_key_after_bytes_iterate_extra * const e) {
     uint32_t keylen;
     void *key = le_key_and_len(le, &keylen);
     // only checking the latest val, mvcc will make this inaccurate
@@ -6170,13 +6170,12 @@ toku_dump_ftnode (FILE *file, FT_HANDLE brt, BLOCKNUM blocknum, int depth, const
                              });
             }
             else {
-                int size = toku_omt_size(BLB_BUFFER(node, i));
+                int size = BLB_DATA(node, i)->omt_size();
                 if (0)
                     for (int j=0; j<size; j++) {
-                        OMTVALUE v = 0;
-                        int r = toku_omt_fetch(BLB_BUFFER(node, i), j, &v);
+                        LEAFENTRY le;
+                        int r = BLB_DATA(node,i)->fetch_le(j, &le);
                         assert_zero(r);
-                        LEAFENTRY CAST_FROM_VOIDP(le, v);
                         fprintf(file, " [%d]=", j);
                         print_leafentry(file, le);
                         fprintf(file, "\n");
@@ -6351,7 +6350,7 @@ static bool is_empty_fast_iter (FT_HANDLE brt, FTNODE node) {
     } else {
         // leaf:  If the omt is empty, we are happy.
         for (int i = 0; i < node->n_children; i++) {
-            if (toku_omt_size(BLB_BUFFER(node, i))) {
+            if (BLB_DATA(node, i)->omt_size()) {
                 return false;
             }
         }
