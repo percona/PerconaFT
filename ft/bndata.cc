@@ -201,7 +201,7 @@ void bn_data::get_space_for_overwrite(
     LEAFENTRY* new_le_space
     )
 {
-    void* maybe_free;
+    void* maybe_free = nullptr;
     *new_le_space = mempool_malloc_from_omt(
         new_size,
         &maybe_free
@@ -214,7 +214,7 @@ void bn_data::get_space_for_overwrite(
 
 //TODO: probably not free the "maybe_free" right away?
 void bn_data::get_space_for_insert(uint32_t idx, size_t size, LEAFENTRY* new_le_space) {
-    void* maybe_free;
+    void* maybe_free = nullptr;
     *new_le_space = mempool_malloc_from_omt(
         size,
         &maybe_free
@@ -237,7 +237,7 @@ void bn_data::move_leafentries_to(
 //Effect: move leafentries in the range [lbi, ube) from this to src_omt to newly created dest_omt
 {
     paranoid_invariant(lbi < ube);
-    paranoid_invariant(ube <= dest_bd->omt_size());
+    paranoid_invariant(ube <= omt_size());
     LEAFENTRY *XMALLOC_N(ube-lbi, newleafpointers);    // create new omt
 
     size_t mpsize = toku_mempool_get_used_space(&m_buffer_mempool);   // overkill, but safe

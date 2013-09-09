@@ -1662,9 +1662,7 @@ toku_ft_bn_apply_cmd_once (
         &numbytes_delta
         );
 
-    if (new_le) {
-        paranoid_invariant(newsize == leafentry_disksize(new_le));
-    }
+    newsize = leafentry_disksize(new_le);
     if (le && new_le) {
         workdone_this_le = (oldsize > newsize ? oldsize : newsize);  // work done is max of le size before and after message application
 
