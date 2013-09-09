@@ -4041,7 +4041,7 @@ static int
 pair_leafval_heaviside_le (uint32_t klen, void *kval,
                            const ft_search_t &search) {
     DBT x;
-    int cmp = search.compare(&search,
+    int cmp = search.compare(search,
                               search.k ? toku_fill_dbt(&x, kval, klen) : 0);
     // The search->compare function returns only 0 or 1
     switch (search.direction) {
@@ -4051,8 +4051,27 @@ pair_leafval_heaviside_le (uint32_t klen, void *kval,
     abort(); return 0;
 }
 
+//
+//
+//
+//
+//
+//
+//
+//
+//
+// TODO: ask Yoni why second parameter here is not const 
+//
+//
+//
+//
+//
+//
+//
+//
+//
 static int
-heaviside_from_search_t (LEAFENTRY const &le, const ft_search_t &search) {
+heaviside_from_search_t (LEAFENTRY const &le, ft_search_t &search) {
     uint32_t keylen;
     void* key = le_key_and_len(le, &keylen);
 
@@ -4686,6 +4705,8 @@ static int
 ft_cursor_shortcut (
     FT_CURSOR cursor,
     int direction,
+    uint32_t index,
+    bn_data* bd,
     FT_GET_CALLBACK_FUNCTION getf,
     void *getf_v,
     uint32_t *keylen,
@@ -4774,7 +4795,7 @@ got_a_good_value:
                     ftcursor,
                     direction,
                     idx,
-                    bn->data_buffer,
+                    &bn->data_buffer,
                     getf,
                     getf_v,
                     &keylen,
@@ -5008,7 +5029,7 @@ toku_ft_search_which_child(
         // so if we're searching from the left and search->compare says
         // "1", we want to go left from here, if it says "0" we want to go
         // right.  searching from the right does the opposite.
-        bool c = search->compare(search, &pivotkey);
+        bool c = search->compare(*search, &pivotkey);
         if (((search->direction == FT_SEARCH_LEFT) && c) ||
             ((search->direction == FT_SEARCH_RIGHT) && !c)) {
             hi = mi;
@@ -5308,14 +5329,14 @@ static inline int compare_k_x(FT_HANDLE brt, const DBT *k, const DBT *x) {
 }
 
 static int
-ft_cursor_compare_one(ft_search_t *search __attribute__((__unused__)), DBT *x __attribute__((__unused__)))
+ft_cursor_compare_one(const ft_search_t &search __attribute__((__unused__)), DBT *x __attribute__((__unused__)))
 {
     return 1;
 }
 
-static int ft_cursor_compare_set(ft_search_t *search, DBT *x) {
-    FT_HANDLE CAST_FROM_VOIDP(brt, search->context);
-    return compare_k_x(brt, search->k, x) <= 0; /* return min xy: kv <= xy */
+static int ft_cursor_compare_set(const ft_search_t &search, DBT *x) {
+    FT_HANDLE CAST_FROM_VOIDP(brt, search.context);
+    return compare_k_x(brt, search.k, x) <= 0; /* return min xy: kv <= xy */
 }
 
 static int
@@ -5376,9 +5397,9 @@ toku_ft_cursor_last(FT_CURSOR cursor, FT_GET_CALLBACK_FUNCTION getf, void *getf_
     return r;
 }
 
-static int ft_cursor_compare_next(ft_search_t *search, DBT *x) {
-    FT_HANDLE CAST_FROM_VOIDP(brt, search->context);
-    return compare_k_x(brt, search->k, x) < 0; /* return min xy: kv < xy */
+static int ft_cursor_compare_next(const ft_search_t &search, DBT *x) {
+    FT_HANDLE CAST_FROM_VOIDP(brt, search.context);
+    return compare_k_x(brt, search.k, x) < 0; /* return min xy: kv < xy */
 }
 
 static int
@@ -5482,9 +5503,9 @@ ft_cursor_search_eq_k_x(FT_CURSOR cursor, ft_search_t *search, FT_GET_CALLBACK_F
     return r;
 }
 
-static int ft_cursor_compare_prev(ft_search_t *search, DBT *x) {
-    FT_HANDLE CAST_FROM_VOIDP(brt, search->context);
-    return compare_k_x(brt, search->k, x) > 0; /* return max xy: kv > xy */
+static int ft_cursor_compare_prev(const ft_search_t &search, DBT *x) {
+    FT_HANDLE CAST_FROM_VOIDP(brt, search.context);
+    return compare_k_x(brt, search.k, x) > 0; /* return max xy: kv > xy */
 }
 
 int
@@ -5497,9 +5518,9 @@ toku_ft_cursor_prev(FT_CURSOR cursor, FT_GET_CALLBACK_FUNCTION getf, void *getf_
     return r;
 }
 
-static int ft_cursor_compare_set_range(ft_search_t *search, DBT *x) {
-    FT_HANDLE CAST_FROM_VOIDP(brt, search->context);
-    return compare_k_x(brt, search->k,        x) <= 0; /* return kv <= xy */
+static int ft_cursor_compare_set_range(const ft_search_t &search, DBT *x) {
+    FT_HANDLE CAST_FROM_VOIDP(brt, search.context);
+    return compare_k_x(brt, search.k, x) <= 0; /* return kv <= xy */
 }
 
 int
@@ -5522,9 +5543,9 @@ toku_ft_cursor_set_range(FT_CURSOR cursor, DBT *key, FT_GET_CALLBACK_FUNCTION ge
     return r;
 }
 
-static int ft_cursor_compare_set_range_reverse(ft_search_t *search, DBT *x) {
-    FT_HANDLE CAST_FROM_VOIDP(brt, search->context);
-    return compare_k_x(brt, search->k, x) >= 0; /* return kv >= xy */
+static int ft_cursor_compare_set_range_reverse(const ft_search_t &search, DBT *x) {
+    FT_HANDLE CAST_FROM_VOIDP(brt, search.context);
+    return compare_k_x(brt, search.k, x) >= 0; /* return kv >= xy */
 }
 
 int
