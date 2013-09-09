@@ -1038,11 +1038,6 @@ int toku_cmd_leafval_heaviside (OMTVALUE leafentry, void *extra)
 // toku_ft_root_put_cmd() accepts non-constant cmd because this is where we set the msn
 void toku_ft_root_put_cmd(FT h, FT_MSG_S * cmd, TXNID oldest_referenced_xid, GC_INFO gc_info);
 
-void *mempool_malloc_from_omt(OMT *omtp, struct mempool *mp, size_t size, void **maybe_free);
-// Effect: Allocate a new object of size SIZE in MP.  If MP runs out of space, allocate new a new mempool space, and copy all the items
-//  from the OMT (which items refer to items in the old mempool) into the new mempool.
-//  If MAYBE_FREE is NULL then free the old mempool's space.
-//  Otherwise, store the old mempool's space in maybe_free.
 void
 toku_get_node_for_verify(
     BLOCKNUM blocknum,

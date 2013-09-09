@@ -1849,7 +1849,7 @@ toku_ft_bn_apply_cmd (
             r = DB_NOTFOUND;
         } else {
         fz:
-            r = bn->data_buffer.omt_find_zero<__typeof__(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
+            r = bn->data_buffer.omt_find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
         }
         if (r==DB_NOTFOUND) {
             storeddata = 0;
@@ -1879,7 +1879,7 @@ toku_ft_bn_apply_cmd (
         uint32_t idx;
         // Apply to all the matches
 
-        r = bn->data_buffer.omt_find_zero<__typeof__(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
+        r = bn->data_buffer.omt_find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
         if (r == DB_NOTFOUND) break;
         assert_zero(r);
         toku_ft_bn_apply_cmd_once(bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
@@ -1940,7 +1940,7 @@ toku_ft_bn_apply_cmd (
         break;
     case FT_UPDATE: {
         uint32_t idx;
-        r = bn->data_buffer.omt_find_zero<__typeof__(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
+        r = bn->data_buffer.omt_find_zero<decltype(be), toku_cmd_leafval_heaviside>(&be, &storeddata, &idx);
         if (r==DB_NOTFOUND) {
             r = do_update(update_fun, desc, bn, cmd, idx, NULL, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
         } else if (r==0) {
@@ -3348,59 +3348,6 @@ void toku_ft_send_delete(FT_HANDLE brt, DBT *key, XIDS xids, TXNID oldest_refere
     toku_ft_root_put_cmd(brt->ft, &ftcmd, oldest_referenced_xid, gc_info);
 }
 
-/* mempool support */
-
-struct omt_compressor_state {
-    struct mempool *new_kvspace;
-    OMTVALUE *newvals;
-};
-
-static int move_it (OMTVALUE lev, uint32_t idx, void *v) {
-    LEAFENTRY CAST_FROM_VOIDP(le, lev);
-    struct omt_compressor_state *CAST_FROM_VOIDP(oc, v);
-    uint32_t size = leafentry_memsize(le);
-    LEAFENTRY CAST_FROM_VOIDP(newdata, toku_mempool_malloc(oc->new_kvspace, size, 1));
-    paranoid_invariant_notnull(newdata); // we do this on a fresh mempool, so nothing bad should happen
-    memcpy(newdata, le, size);
-    oc->newvals[idx] = newdata;
-    return 0;
-}
-
-// Compress things, and grow the mempool if needed.
-static void omt_compress_kvspace (OMT *omtp, struct mempool *memp, size_t added_size, void **maybe_free) {
-    uint32_t total_size_needed = memp->free_offset-memp->frag_size + added_size;
-    if (total_size_needed+total_size_needed >= memp->size) {
-        memp->size = total_size_needed+total_size_needed;
-    }
-    void *newmem = toku_xmalloc(memp->size);
-    struct mempool new_kvspace;
-    toku_mempool_init(&new_kvspace, newmem, memp->size);
-    uint32_t numvals = toku_omt_size(*omtp);
-    OMTVALUE *XMALLOC_N(numvals, newvals);
-    struct omt_compressor_state oc = { &new_kvspace, newvals };
-    toku_omt_iterate(*omtp, move_it, &oc);
-    toku_omt_destroy(omtp);
-    toku_omt_create_steal_sorted_array(omtp, &newvals, numvals, numvals);
-
-    if (maybe_free) {
-        *maybe_free = memp->base;
-    } else {
-        toku_free(memp->base);
-    }
-    *memp = new_kvspace;
-}
-
-void *
-mempool_malloc_from_omt(OMT *omtp, struct mempool *mp, size_t size, void **maybe_free) {
-    void *v = toku_mempool_malloc(mp, size, 1);
-    if (v == NULL) {
-        omt_compress_kvspace(omtp, mp, size, maybe_free);
-        v = toku_mempool_malloc(mp, size, 1);
-        paranoid_invariant_notnull(v);
-    }
-    return v;
-}
-
 /* ******************** open,close and create  ********************** */
 
 // Test only function (not used in running system). This one has no env
@@ -4776,7 +4723,7 @@ ft_search_basement_node(
 ok: ;
     uint32_t idx = 0;
     LEAFENTRY le;
-    int r = bn->data_buffer.omt_find<__typeof__(*search), heaviside_from_search_t>(search, direction, &le, &idx);
+    int r = bn->data_buffer.omt_find<decltype(*search), heaviside_from_search_t>(search, direction, &le, &idx);
     if (r!=0) return r;
 
     if (toku_ft_cursor_is_leaf_mode(ftcursor))
@@ -5748,7 +5695,7 @@ keysrange_in_leaf_partition (FT_HANDLE brt, FTNODE node,
         BASEMENTNODE bn = BLB(node, left_child_number);
         uint32_t idx_left = 0;
         // if key_left is NULL then set r==-1 and idx==0.
-        r = key_left ? bn->data_buffer.omt_find_zero<__typeof__(s_left), keyrange_compare>(&s_left, nullptr, &idx_left) : -1;
+        r = key_left ? bn->data_buffer.omt_find_zero<decltype(s_left), keyrange_compare>(&s_left, nullptr, &idx_left) : -1;
         *less = idx_left;
         *equal_left = (r==0) ? 1 : 0;
 
@@ -5757,7 +5704,7 @@ keysrange_in_leaf_partition (FT_HANDLE brt, FTNODE node,
         r = -1;
         if (single_basement && key_right) {
             struct keyrange_compare_s s_right = {brt->ft, key_right};
-            r = bn->data_buffer.omt_find_zero<__typeof__(s_right), keyrange_compare>(&s_right, nullptr, &idx_right);
+            r = bn->data_buffer.omt_find_zero<decltype(s_right), keyrange_compare>(&s_right, nullptr, &idx_right);
         }
         *middle = idx_right - idx_left - *equal_left;
         *equal_right = (r==0) ? 1 : 0;
@@ -6010,7 +5957,7 @@ static int get_key_after_bytes_in_basementnode(FT ft, BASEMENTNODE bn, const DBT
     uint32_t idx_left = 0;
     if (start_key != nullptr) {
         struct keyrange_compare_s cmp = {ft, start_key};
-        r = bn->data_buffer.omt_find_zero<__typeof__(cmp), keyrange_compare>(&cmp, nullptr, &idx_left);
+        r = bn->data_buffer.omt_find_zero<decltype(cmp), keyrange_compare>(&cmp, nullptr, &idx_left);
         assert(r == 0 || r == DB_NOTFOUND);
     }
     struct get_key_after_bytes_iterate_extra iter_extra = {skip_len, skipped, callback, cb_extra};

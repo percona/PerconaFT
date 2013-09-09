@@ -233,18 +233,6 @@ static inline size_t uxr_unpack_type_and_length(UXR uxr, uint8_t *p);
 static inline size_t uxr_unpack_length_and_bit(UXR uxr, uint8_t *p);
 static inline size_t uxr_unpack_data(UXR uxr, uint8_t *p);
 
-static void *
-le_malloc(OMT *omtp, struct mempool *mp, size_t size, void **maybe_free)
-{
-    void * rval;
-    if (omtp)
-        rval = mempool_malloc_from_omt(omtp, mp, size, maybe_free);
-    else
-        rval = toku_xmalloc(size);
-    resource_assert(rval);
-    return rval;
-}
-
 static void do_something(
     bn_data* data_buffer, 
     uint32_t idx, 
@@ -255,7 +243,7 @@ static void do_something(
     ) 
 {
     if (data_buffer == NULL) {
-        *new_le_space = toku_xmalloc(size);
+        CAST_FROM_VOIDP(*new_le_space, toku_xmalloc(size));
     }
     else {
         // this means we are overwriting something
@@ -476,15 +464,15 @@ toku_le_apply_msg(FT_MSG   msg,
     int64_t newnumbytes = 0;
     uint64_t oldmemsize = 0;
     LEAFENTRY copied_old_le = NULL;
-    BOOL old_le_malloced = false;
+    bool old_le_malloced = false;
     if (old_leafentry) {
         size_t old_le_size = leafentry_memsize(old_leafentry);
         if (old_le_size > 100*1024) { // completely arbitrary limit
-            copied_old_le = toku_malloc(old_le_size);
+            CAST_FROM_VOIDP(copied_old_le, toku_malloc(old_le_size));
             old_le_malloced = true;
         }
         else {
-            copied_old_le = alloca(old_le_size);
+            CAST_FROM_VOIDP(copied_old_le, alloca(old_le_size));
         }
         memcpy(copied_old_le, old_leafentry, old_le_size);
     }
@@ -568,15 +556,15 @@ toku_le_garbage_collect(LEAFENTRY old_leaf_entry,
     int64_t oldnumbytes = 0;
     int64_t newnumbytes = 0;
     LEAFENTRY copied_old_le = NULL;
-    BOOL old_le_malloced = false;
-    if (old_leafentry) {
-        size_t old_le_size = leafentry_memsize(old_leafentry);
+    bool old_le_malloced = false;
+    if (old_leaf_entry) {
+        size_t old_le_size = leafentry_memsize(old_leaf_entry);
         if (old_le_size > 100*1024) { // completely arbitrary limit
-            copied_old_le = toku_malloc(old_le_size);
+            CAST_FROM_VOIDP(copied_old_le, toku_malloc(old_le_size));
             old_le_malloced = true;
         }
         else {
-            copied_old_le = alloca(old_le_size);
+            CAST_FROM_VOIDP(copied_old_le, alloca(old_le_size));
         }
         memcpy(copied_old_le, old_leaf_entry, old_le_size);
     }

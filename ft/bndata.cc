@@ -138,39 +138,91 @@ void bn_data::delete_leafentry (uint32_t idx, LEAFENTRY le) {
     toku_mempool_mfree(&m_buffer_mempool, 0, leafentry_memsize(le)); // Must pass 0, since le is no good any more.
 }
 
+/* mempool support */
+
+struct omt_compressor_state {
+    struct mempool *new_kvspace;
+    LEAFENTRY *newvals;
+};
+
+static int move_it (const LEAFENTRY& le, const uint32_t idx, struct omt_compressor_state * const oc) {
+    uint32_t size = leafentry_memsize(le);
+    LEAFENTRY CAST_FROM_VOIDP(newdata, toku_mempool_malloc(oc->new_kvspace, size, 1));
+    paranoid_invariant_notnull(newdata); // we do this on a fresh mempool, so nothing bad should happen
+    memcpy(newdata, le, size);
+    oc->newvals[idx] = newdata;
+    return 0;
+}
+
+// Compress things, and grow the mempool if needed.
+void bn_data::omt_compress_kvspace(size_t added_size, void **maybe_free) {
+    uint32_t total_size_needed = m_buffer_mempool.free_offset - m_buffer_mempool.frag_size + added_size;
+    if (total_size_needed+total_size_needed >= m_buffer_mempool.size) {
+        m_buffer_mempool.size = total_size_needed+total_size_needed;
+    }
+    void *newmem = toku_xmalloc(m_buffer_mempool.size);
+    struct mempool new_kvspace;
+    toku_mempool_init(&new_kvspace, newmem, m_buffer_mempool.size);
+    uint32_t numvals = omt_size();
+    LEAFENTRY *XMALLOC_N(numvals, newvals);
+    struct omt_compressor_state oc = { &new_kvspace, newvals };
+    omt_iterate<decltype(oc), move_it>(&oc);
+    m_buffer.destroy();
+    m_buffer.create_steal_sorted_array(&newvals, numvals, numvals);
+
+    if (maybe_free) {
+        *maybe_free = m_buffer_mempool.base;
+    } else {
+        toku_free(m_buffer_mempool.base);
+    }
+    m_buffer_mempool = new_kvspace;
+}
+
+// Effect: Allocate a new object of size SIZE in MP.  If MP runs out of space, allocate new a new mempool space, and copy all the items
+//  from the OMT (which items refer to items in the old mempool) into the new mempool.
+//  If MAYBE_FREE is NULL then free the old mempool's space.
+//  Otherwise, store the old mempool's space in maybe_free.
+LEAFENTRY bn_data::mempool_malloc_from_omt(size_t size, void **maybe_free) {
+    void *v = toku_mempool_malloc(&m_buffer_mempool, size, 1);
+    if (v == NULL) {
+        omt_compress_kvspace(size, maybe_free);
+        v = toku_mempool_malloc(&m_buffer_mempool, size, 1);
+        paranoid_invariant_notnull(v);
+    }
+    return (LEAFENTRY)v;
+}
+
+//TODO: probably not free the "maybe_free" right away?
 void bn_data::get_space_for_overwrite(
     uint32_t idx,
-    uint32_t old_size,
-    LEAFENTRY old_le_space,
+    uint32_t old_size UU(),
+    LEAFENTRY old_le_space UU(),
     uint32_t new_size,
     LEAFENTRY* new_le_space
     )
 {
     void* maybe_free;
     *new_le_space = mempool_malloc_from_omt(
-        m_buffer,
-        m_buffer_mempool,
         new_size,
         &maybe_free
         );
     if (maybe_free) {
         toku_free(maybe_free);
     }
-    toku_omt_set_at(m_buffer, new_le_space, idx);
+    m_buffer.set_at(*new_le_space, idx);
 }
 
+//TODO: probably not free the "maybe_free" right away?
 void bn_data::get_space_for_insert(uint32_t idx, size_t size, LEAFENTRY* new_le_space) {
     void* maybe_free;
     *new_le_space = mempool_malloc_from_omt(
-        m_buffer,
-        m_buffer_mempool,
         size,
         &maybe_free
         );
     if (maybe_free) {
         toku_free(maybe_free);
     }
-    toku_omt_insert_at(m_buffer, new_le_space, idx);
+    m_buffer.insert_at(*new_le_space, idx);
 }
 
 
@@ -311,9 +363,8 @@ uint64_t bn_data::get_disk_size() {
 
 void bn_data::destroy(void) {
     // The buffer may have been freed already, in some cases.
-    if (m_buffer) {
-        toku_omt_destroy(&m_buffer);
-    }
+    m_buffer.destroy();
+    //TODO: Can we just always call mempool_destroy?
     toku_mempool_destroy(&m_buffer_mempool);
 }
 
@@ -370,30 +421,27 @@ int bn_data::find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, 
 struct mp_pair {
     void* orig_base;
     void* new_base;
-    OMT omt;
+    le_omt_t* omt;
 };
 
-static int fix_mp_offset(OMTVALUE v, uint32_t i, void* extra) {
-    struct mp_pair *CAST_FROM_VOIDP(p, extra);
-    char* old_value = (char *) v;
+static int fix_mp_offset(const LEAFENTRY &le, const uint32_t i, struct mp_pair * const p) {
+    char* old_value = (char *) le;
     char *new_value = old_value - (char *)p->orig_base + (char *)p->new_base;
-    toku_omt_set_at(p->omt, (OMTVALUE) new_value, i);
+    p->omt->set_at((LEAFENTRY)new_value, i);
     return 0;
 }
 
 void bn_data::clone(bn_data* orig_bn_data) {
     toku_mempool_clone(&orig_bn_data->m_buffer_mempool, &m_buffer_mempool);
-    toku_omt_clone_noptr(&m_buffer, orig_bn_data->m_buffer);
+    m_buffer.clone(orig_bn_data->m_buffer);
     struct mp_pair p;
     p.orig_base = toku_mempool_get_base(&orig_bn_data->m_buffer_mempool);
     p.new_base = toku_mempool_get_base(&m_buffer_mempool);
-    p.omt = m_buffer;
+    p.omt = &m_buffer;
     // TODO: fix this to use the right API
-    toku_omt_iterate(
-        m_buffer,
-        fix_mp_offset,
-        &p
-        );
+
+    int r = omt_iterate<decltype(p), fix_mp_offset>(&p);
+    invariant_zero(r);
 }
 
 

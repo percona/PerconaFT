@@ -162,11 +162,17 @@ public:
 
     void clone(bn_data* orig_bn_data);
     void delete_leafentry (uint32_t idx, LEAFENTRY le);
-    void get_space_for_overwrite(uint32_t idx, uint32_t old_size, void* old_le_space, uint32_t new_size, void** new_le_space);
-    void get_space_for_insert(uint32_t idx, uint32_t size, void** new_le_space);
+    void get_space_for_overwrite(uint32_t idx, uint32_t old_size, LEAFENTRY old_le_space, uint32_t new_size, LEAFENTRY* new_le_space);
+    void get_space_for_insert(uint32_t idx, size_t size, LEAFENTRY* new_le_space);
 private:
     le_omt_t m_buffer;                     // pointers to individual leaf entries
     struct mempool m_buffer_mempool;  // storage for all leaf entries
+
+private:
+    // Private functions
+    LEAFENTRY mempool_malloc_from_omt(size_t size, void **maybe_free);
+    void omt_compress_kvspace(size_t added_size, void **maybe_free);
+
 //    uint64_t m_n_bytes_in_buffer; // How many bytes to represent the OMT (including the per-key overheads, ...
 //                                    // ... but not including the overheads for the node.
 
