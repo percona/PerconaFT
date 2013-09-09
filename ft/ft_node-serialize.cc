@@ -503,20 +503,6 @@ array_item(const LEAFENTRY &le, const uint32_t idx, struct array_info *const ai)
     return 0;
 }
 
-struct sum_info {
-    unsigned int dsum;
-    unsigned int count;
-};
-
-static int
-sum_item (OMTVALUE lev, uint32_t UU(idx), void *vsi) {
-    LEAFENTRY le = (LEAFENTRY) lev;
-    struct sum_info *si = (struct sum_info *) vsi;
-    si->count++;
-    si->dsum += leafentry_disksize(le);     // TODO 4050 delete this redundant call and use le_sizes[]
-    return 0;
-}
-
 // There must still be at least one child
 // Requires that all messages in buffers above have been applied.
 // Because all messages above have been applied, setting msn of all new basements 

@@ -1079,7 +1079,6 @@ found_insert:;
 #endif
 
     *new_leafentry_p = (LEAFENTRY)new_leafentry;
-    *new_leafentry_memorysize = memsize;
     rval = 0;
 cleanup:
     update_le_status(ule, memsize);
