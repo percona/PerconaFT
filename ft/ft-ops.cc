@@ -4744,7 +4744,6 @@ ft_search_basement_node(
 ok: ;
     uint32_t idx = 0;
     LEAFENTRY le;
-    // TODO: use this below once we've taken care of fetch_le as well
     uint32_t keylen;
     void *key;
     int r = bn->data_buffer.find<decltype(*search), heaviside_from_search_t>(
