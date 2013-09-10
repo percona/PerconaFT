@@ -645,16 +645,6 @@ handle_split_of_child(
     VERIFY_NODE(t, childb);
 }
 
-static int
-UU() verify_in_mempool(OMTVALUE lev, uint32_t UU(idx), void *mpv)
-{
-    LEAFENTRY CAST_FROM_VOIDP(le, lev);
-    struct mempool *CAST_FROM_VOIDP(mp, mpv);
-    int r = toku_mempool_inrange(mp, le, leafentry_memsize(le));
-    lazy_assert(r);
-    return 0;
-}
-
 static void
 verify_all_in_mempool(FTNODE UU() node)
 {
