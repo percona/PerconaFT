@@ -1977,6 +1977,9 @@ toku_ft_bn_apply_cmd (
         while (idx < (num_leafentries_before = bn->data_buffer.omt_size())) {
             r = bn->data_buffer.fetch_le(idx, &storeddata);
             assert_zero(r);
+            // This is broken below. Have a compilation error checked
+            // in as a reminder
+            asdf
             r = do_update(update_fun, desc, bn, cmd, idx, storeddata, key, keylen, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
             assert_zero(r);
 
