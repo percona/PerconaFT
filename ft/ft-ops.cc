@@ -1831,10 +1831,9 @@ toku_ft_bn_apply_cmd (
         uint32_t idx;
         if (doing_seqinsert) {
             idx = bn->data_buffer.omt_size();
-            r = bn->data_buffer.fetch_le(idx-1, &storeddata);
-            if (r != 0) goto fz;
             DBT kdbt;
-            kdbt.data = le_key_and_len(storeddata, &kdbt.size);
+            r = bn->data_buffer.fetch_le_key_and_len(idx-1, &kdbt.size, &kdbt.data);
+            if (r != 0) goto fz;
             int cmp = toku_cmd_leafval_heaviside(kdbt, be);
             if (cmp >= 0) goto fz;
             r = DB_NOTFOUND;

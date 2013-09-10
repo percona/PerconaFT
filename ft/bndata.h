@@ -114,6 +114,7 @@ UU() verify_in_mempool(OMTVALUE lev, uint32_t UU(idx), void *mpv)
 template<typename omtcmp_t,
          int (*h)(const DBT &, const omtcmp_t &)>
 static int wrappy_fun(const LEAFENTRY &le, const omtcmp_t &extra) {
+    //TODO: kill this function when we split, and/or use toku_fill_dbt
     DBT kdbt;
     kdbt.data = le_key_and_len(le, &kdbt.size);
     return h(kdbt, extra);
