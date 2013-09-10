@@ -110,6 +110,15 @@ UU() verify_in_mempool(OMTVALUE lev, uint32_t UU(idx), void *mpv)
 
 //TODO: #warning make sure destroy destroys the mempool (OR IS THIS BAD?) Allow manual killing of it for now
 //TODO: #warning can't necessarily do this because of destroying basement nodes not doing it.. they might pass things along?
+
+template<typename omtcmp_t,
+         int (*h)(const DBT &, const omtcmp_t &)>
+static int wrappy_fun(const LEAFENTRY &le, const omtcmp_t &extra) {
+    DBT kdbt;
+    kdbt.data = le_key_and_len(le, &kdbt.size);
+    return h(kdbt, extra);
+}
+
 typedef toku::omt<LEAFENTRY> le_omt_t;
 // This class stores the data associated with a basement node
 class bn_data {
@@ -138,15 +147,15 @@ public:
     }
 
     template<typename omtcmp_t,
-             int (*h)(const LEAFENTRY &, const omtcmp_t &)>
+             int (*h)(const DBT &, const omtcmp_t &)>
     int find_zero(const omtcmp_t &extra, LEAFENTRY *const value, uint32_t *const idxp) const {
-        return m_buffer.find_zero<omtcmp_t, h>(extra, value, idxp);
+        return m_buffer.find_zero< omtcmp_t, wrappy_fun<omtcmp_t, h> >(extra, value, idxp);
     }
 
     template<typename omtcmp_t,
-             int (*h)(const LEAFENTRY &, const omtcmp_t &)>
+             int (*h)(const DBT &, const omtcmp_t &)>
     int find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, uint32_t *const idxp) const {
-        return m_buffer.find<omtcmp_t, h>(extra, direction, value, idxp);
+        return m_buffer.find< omtcmp_t, wrappy_fun<omtcmp_t, h> >(extra, direction, value, idxp);
     }
 
     // get info about a single leafentry by index

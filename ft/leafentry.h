@@ -223,9 +223,9 @@ uint32_t le_latest_vallen (LEAFENTRY le); // Return the latest vallen.  Returns 
 void* le_latest_val_and_len (LEAFENTRY le, uint32_t *len);
 
  // Return any key or value (even if it's only provisional).
-void* le_key (LEAFENTRY le);
-uint32_t le_keylen (LEAFENTRY le);
-void* le_key_and_len (LEAFENTRY le, uint32_t *len);
+void* le_key (const LEAFENTRY le);
+uint32_t le_keylen (const LEAFENTRY le);
+void* le_key_and_len (const LEAFENTRY le, uint32_t *len);
 
 uint64_t le_outermost_uncommitted_xid (LEAFENTRY le);
 

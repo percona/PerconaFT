@@ -1395,24 +1395,12 @@ struct cmd_leafval_heaviside_extra {
     DBT const * const key;
 };
 
-static int
-leafval_heaviside_le (uint32_t klen, void *kval,
-                      const struct cmd_leafval_heaviside_extra *be) {
-    DBT dbt;
-    DBT const * const key = be->key;
-    FAKE_DB(db, be->desc);
-    return be->compare_fun(&db,
-                           toku_fill_dbt(&dbt, kval, klen),
-                           key);
-}
-
 //TODO: #1125 optimize
 static int
-toku_cmd_leafval_heaviside (LEAFENTRY const &le, const struct cmd_leafval_heaviside_extra &be) {
-    uint32_t keylen;
-    void*     key = le_key_and_len(le, &keylen);
-    return leafval_heaviside_le(keylen, key,
-                                &be);
+toku_cmd_leafval_heaviside(DBT const &kdbt, const struct cmd_leafval_heaviside_extra &be) {
+    FAKE_DB(db, be.desc);
+    DBT const * const key = be.key;
+    return be.compare_fun(&db, &kdbt, key);
 }
 
 static int
@@ -1845,7 +1833,9 @@ toku_ft_bn_apply_cmd (
             idx = bn->data_buffer.omt_size();
             r = bn->data_buffer.fetch_le(idx-1, &storeddata);
             if (r != 0) goto fz;
-            int cmp = toku_cmd_leafval_heaviside(storeddata, be);
+            DBT kdbt;
+            kdbt.data = le_key_and_len(storeddata, &kdbt.size);
+            int cmp = toku_cmd_leafval_heaviside(kdbt, be);
             if (cmp >= 0) goto fz;
             r = DB_NOTFOUND;
         } else {
@@ -4035,20 +4025,6 @@ ft_cursor_not_set(FT_CURSOR cursor) {
     return (bool)(cursor->key.data == NULL);
 }
 
-static int
-pair_leafval_heaviside_le (uint32_t klen, void *kval,
-                           const ft_search_t &search) {
-    DBT x;
-    int cmp = search.compare(search,
-                              search.k ? toku_fill_dbt(&x, kval, klen) : 0);
-    // The search->compare function returns only 0 or 1
-    switch (search.direction) {
-    case FT_SEARCH_LEFT:   return cmp==0 ? -1 : +1;
-    case FT_SEARCH_RIGHT:  return cmp==0 ? +1 : -1; // Because the comparison runs backwards for right searches.
-    }
-    abort(); return 0;
-}
-
 //
 //
 //
@@ -4069,12 +4045,15 @@ pair_leafval_heaviside_le (uint32_t klen, void *kval,
 //
 //
 static int
-heaviside_from_search_t (LEAFENTRY const &le, ft_search_t &search) {
-    uint32_t keylen;
-    void* key = le_key_and_len(le, &keylen);
-
-    return pair_leafval_heaviside_le (keylen, key,
-                                      search);
+heaviside_from_search_t(const DBT &kdbt, ft_search_t &search) {
+    int cmp = search.compare(search,
+                              search.k ? &kdbt : 0);
+    // The search->compare function returns only 0 or 1
+    switch (search.direction) {
+    case FT_SEARCH_LEFT:   return cmp==0 ? -1 : +1;
+    case FT_SEARCH_RIGHT:  return cmp==0 ? +1 : -1; // Because the comparison runs backwards for right searches.
+    }
+    abort(); return 0;
 }
 
 
@@ -5327,12 +5306,12 @@ static inline int compare_k_x(FT_HANDLE brt, const DBT *k, const DBT *x) {
 }
 
 static int
-ft_cursor_compare_one(const ft_search_t &search __attribute__((__unused__)), DBT *x __attribute__((__unused__)))
+ft_cursor_compare_one(const ft_search_t &search __attribute__((__unused__)), const DBT *x __attribute__((__unused__)))
 {
     return 1;
 }
 
-static int ft_cursor_compare_set(const ft_search_t &search, DBT *x) {
+static int ft_cursor_compare_set(const ft_search_t &search, const DBT *x) {
     FT_HANDLE CAST_FROM_VOIDP(brt, search.context);
     return compare_k_x(brt, search.k, x) <= 0; /* return min xy: kv <= xy */
 }
@@ -5395,7 +5374,7 @@ toku_ft_cursor_last(FT_CURSOR cursor, FT_GET_CALLBACK_FUNCTION getf, void *getf_
     return r;
 }
 
-static int ft_cursor_compare_next(const ft_search_t &search, DBT *x) {
+static int ft_cursor_compare_next(const ft_search_t &search, const DBT *x) {
     FT_HANDLE CAST_FROM_VOIDP(brt, search.context);
     return compare_k_x(brt, search.k, x) < 0; /* return min xy: kv < xy */
 }
@@ -5501,7 +5480,7 @@ ft_cursor_search_eq_k_x(FT_CURSOR cursor, ft_search_t *search, FT_GET_CALLBACK_F
     return r;
 }
 
-static int ft_cursor_compare_prev(const ft_search_t &search, DBT *x) {
+static int ft_cursor_compare_prev(const ft_search_t &search, const DBT *x) {
     FT_HANDLE CAST_FROM_VOIDP(brt, search.context);
     return compare_k_x(brt, search.k, x) > 0; /* return max xy: kv > xy */
 }
@@ -5516,7 +5495,7 @@ toku_ft_cursor_prev(FT_CURSOR cursor, FT_GET_CALLBACK_FUNCTION getf, void *getf_
     return r;
 }
 
-static int ft_cursor_compare_set_range(const ft_search_t &search, DBT *x) {
+static int ft_cursor_compare_set_range(const ft_search_t &search, const DBT *x) {
     FT_HANDLE CAST_FROM_VOIDP(brt, search.context);
     return compare_k_x(brt, search.k, x) <= 0; /* return kv <= xy */
 }
@@ -5541,7 +5520,7 @@ toku_ft_cursor_set_range(FT_CURSOR cursor, DBT *key, FT_GET_CALLBACK_FUNCTION ge
     return r;
 }
 
-static int ft_cursor_compare_set_range_reverse(const ft_search_t &search, DBT *x) {
+static int ft_cursor_compare_set_range_reverse(const ft_search_t &search, const DBT *x) {
     FT_HANDLE CAST_FROM_VOIDP(brt, search.context);
     return compare_k_x(brt, search.k, x) >= 0; /* return kv >= xy */
 }
@@ -5674,14 +5653,10 @@ struct keyrange_compare_s {
 };
 
 static int
-keyrange_compare (LEAFENTRY const &le, const struct keyrange_compare_s &s) {
-    uint32_t keylen;
-    void* key = le_key_and_len(le, &keylen);
-    DBT   omt_dbt;
-    toku_fill_dbt(&omt_dbt, key, keylen);
+keyrange_compare (DBT const &kdbt, const struct keyrange_compare_s &s) {
     // TODO: maybe put a const fake_db in the header
     FAKE_DB(db, &s.ft->cmp_descriptor);
-    return s.ft->compare_fun(&db, &omt_dbt, s.key);
+    return s.ft->compare_fun(&db, &kdbt, s.key);
 }
 
 static void

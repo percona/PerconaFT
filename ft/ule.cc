@@ -1464,7 +1464,7 @@ le_latest_vallen (LEAFENTRY le) {
 
 //Return key and keylen unconditionally
 void*
-le_key_and_len (LEAFENTRY le, uint32_t *len) {
+le_key_and_len (const LEAFENTRY le, uint32_t *len) {
     *len = toku_dtoh32(le->keylen);
     uint8_t  type = le->type;
 
