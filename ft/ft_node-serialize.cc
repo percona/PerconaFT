@@ -283,7 +283,7 @@ serialize_node_header(FTNODE node, FTNODE_DISK_DATA ndd, struct wbuf *wbuf) {
 }
 
 static int
-wbufwriteleafentry(const LEAFENTRY &le, const uint32_t UU(idx), struct wbuf * const wb) {
+wbufwriteleafentry(const void* key UU(), const uint32_t keylen UU(), const LEAFENTRY &le, const uint32_t UU(idx), struct wbuf * const wb) {
     wbuf_nocrc_LEAFENTRY(wb, le);
     return 0;
 }
@@ -498,7 +498,7 @@ struct array_info {
 };
 
 static int
-array_item(const LEAFENTRY &le, const uint32_t idx, struct array_info *const ai) {
+array_item(const void* key UU(), const uint32_t keylen UU(), const LEAFENTRY &le, const uint32_t idx, struct array_info *const ai) {
     ai->array[idx+ai->offset] = le;
     return 0;
 }

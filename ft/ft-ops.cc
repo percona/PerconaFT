@@ -5920,9 +5920,7 @@ struct get_key_after_bytes_iterate_extra {
     void *cb_extra;
 };
 
-static int get_key_after_bytes_iterate(const LEAFENTRY & le, const uint32_t UU(idx), struct get_key_after_bytes_iterate_extra * const e) {
-    uint32_t keylen;
-    void *key = le_key_and_len(le, &keylen);
+static int get_key_after_bytes_iterate(const void* key, const uint32_t keylen, const LEAFENTRY & le, const uint32_t UU(idx), struct get_key_after_bytes_iterate_extra * const e) {
     // only checking the latest val, mvcc will make this inaccurate
     uint64_t pairlen = keylen + le_latest_vallen(le);
     if (*e->skipped + pairlen > e->skip_len) {

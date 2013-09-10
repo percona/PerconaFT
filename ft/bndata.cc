@@ -146,7 +146,7 @@ struct omt_compressor_state {
     LEAFENTRY *newvals;
 };
 
-static int move_it (const LEAFENTRY& le, const uint32_t idx, struct omt_compressor_state * const oc) {
+static int move_it (const void* key UU(), const uint32_t keylen UU(), const LEAFENTRY& le, const uint32_t idx, struct omt_compressor_state * const oc) {
     uint32_t size = leafentry_memsize(le);
     LEAFENTRY CAST_FROM_VOIDP(newdata, toku_mempool_malloc(oc->new_kvspace, size, 1));
     paranoid_invariant_notnull(newdata); // we do this on a fresh mempool, so nothing bad should happen
@@ -344,7 +344,7 @@ struct mp_pair {
     le_omt_t* omt;
 };
 
-static int fix_mp_offset(const LEAFENTRY &le, const uint32_t i, struct mp_pair * const p) {
+static int fix_mp_offset(const void* key UU(), const uint32_t keylen UU(), const LEAFENTRY &le, const uint32_t i, struct mp_pair * const p) {
     char* old_value = (char *) le;
     char *new_value = old_value - (char *)p->orig_base + (char *)p->new_base;
     p->omt->set_at((LEAFENTRY)new_value, i);

@@ -113,11 +113,20 @@ UU() verify_in_mempool(OMTVALUE lev, uint32_t UU(idx), void *mpv)
 
 template<typename omtcmp_t,
          int (*h)(const DBT &, const omtcmp_t &)>
-static int wrappy_fun(const LEAFENTRY &le, const omtcmp_t &extra) {
+static int wrappy_fun_find(const LEAFENTRY &le, const omtcmp_t &extra) {
     //TODO: kill this function when we split, and/or use toku_fill_dbt
     DBT kdbt;
     kdbt.data = le_key_and_len(le, &kdbt.size);
     return h(kdbt, extra);
+}
+
+template<typename iterate_extra_t,
+         int (*h)(const void * key, const uint32_t keylen, const LEAFENTRY &, const uint32_t idx, iterate_extra_t *const)>
+static int wrappy_fun_iterate(const LEAFENTRY &le, const uint32_t idx, iterate_extra_t *const extra) {
+    //TODO: rewrite this function when we split
+    uint32_t keylen;
+    void* key = le_key_and_len(le, &keylen);
+    return h(key, keylen, le, idx, extra);
 }
 
 typedef toku::omt<LEAFENTRY> le_omt_t;
@@ -136,27 +145,28 @@ public:
     uint32_t omt_size(void) const;
 
     template<typename iterate_extra_t,
-             int (*f)(const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const void * key, const uint32_t keylen, const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
     int omt_iterate(iterate_extra_t *const iterate_extra) const {
-        return omt_iterate_on_range<iterate_extra_t, f>(0, omt_size(), iterate_extra);
+//        return omt_iterate_on_range<iterate_extra_t, f>(0, omt_size(), iterate_extra);
+        return m_buffer.iterate< iterate_extra_t, wrappy_fun_iterate<iterate_extra_t, f> >(iterate_extra);
     }
 
     template<typename iterate_extra_t,
-             int (*f)(const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const void * key, const uint32_t keylen, const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
     int omt_iterate_on_range(const uint32_t left, const uint32_t right, iterate_extra_t *const iterate_extra) const {
-        return m_buffer.iterate_on_range<iterate_extra_t, f>(left, right, iterate_extra);
+        return m_buffer.iterate_on_range< iterate_extra_t, wrappy_fun_iterate<iterate_extra_t, f> >(left, right, iterate_extra);
     }
 
     template<typename omtcmp_t,
              int (*h)(const DBT &, const omtcmp_t &)>
     int find_zero(const omtcmp_t &extra, LEAFENTRY *const value, uint32_t *const idxp) const {
-        return m_buffer.find_zero< omtcmp_t, wrappy_fun<omtcmp_t, h> >(extra, value, idxp);
+        return m_buffer.find_zero< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, value, idxp);
     }
 
     template<typename omtcmp_t,
              int (*h)(const DBT &, const omtcmp_t &)>
     int find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, uint32_t *const idxp) const {
-        return m_buffer.find< omtcmp_t, wrappy_fun<omtcmp_t, h> >(extra, direction, value, idxp);
+        return m_buffer.find< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, direction, value, idxp);
     }
 
     // get info about a single leafentry by index
