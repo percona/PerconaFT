@@ -1747,6 +1747,8 @@ static void setval_fun (const DBT *new_val, void *svextra_v) {
 // the original msn seems cleaner and it preserves accountability at a lower layer.
 static int do_update(ft_update_func update_fun, DESCRIPTOR desc, BASEMENTNODE bn, FT_MSG cmd, uint32_t idx,
                      LEAFENTRY le,
+                     void* keydata,
+                     uint32_t keylen,
                      TXNID oldest_referenced_xid,
                      GC_INFO gc_info,
                      uint64_t * workdone,
@@ -1771,9 +1773,11 @@ static int do_update(ft_update_func update_fun, DESCRIPTOR desc, BASEMENTNODE bn
         // update function extra is passed in with command
         paranoid_invariant(le);  // for broadcast updates, we just hit all leafentries
                      // so this cannot be null
+        paranoid_invariant(keydata);
+        paranoid_invariant(keylen);
         paranoid_invariant(cmd->u.id.key->size == 0);
         STATUS_INC(FT_UPDATES_BROADCAST, 1);
-        keyp = toku_fill_dbt(&key, le_key(le), le_keylen(le));
+        keyp = toku_fill_dbt(&key, keydata, keylen);
         update_function_extra = cmd->u.id.val;
     } else {
         abort();
@@ -1825,6 +1829,8 @@ toku_ft_bn_apply_cmd (
 // The leaf could end up "too big" or "too small".  The caller must fix that up.
 {
     LEAFENTRY storeddata;
+    void* key = NULL;
+    uint32_t keylen = 0;
 
     uint32_t omt_size;
     int r;
@@ -1847,7 +1853,13 @@ toku_ft_bn_apply_cmd (
             r = DB_NOTFOUND;
         } else {
         fz:
-            r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(be, &storeddata, &idx);
+            r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(
+                be,
+                &storeddata,
+                &key,
+                &keylen,
+                &idx
+                );
         }
         if (r==DB_NOTFOUND) {
             storeddata = 0;
@@ -1877,7 +1889,13 @@ toku_ft_bn_apply_cmd (
         uint32_t idx;
         // Apply to all the matches
 
-        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(be, &storeddata, &idx);
+        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(
+            be,
+            &storeddata,
+            &key,
+            &keylen,
+            &idx
+            );
         if (r == DB_NOTFOUND) break;
         assert_zero(r);
         toku_ft_bn_apply_cmd_once(bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
@@ -1938,11 +1956,17 @@ toku_ft_bn_apply_cmd (
         break;
     case FT_UPDATE: {
         uint32_t idx;
-        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(be, &storeddata, &idx);
+        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(
+            be,
+            &storeddata,
+            &key,
+            &keylen,
+            &idx
+            );
         if (r==DB_NOTFOUND) {
-            r = do_update(update_fun, desc, bn, cmd, idx, NULL, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
+            r = do_update(update_fun, desc, bn, cmd, idx, NULL, NULL, 0, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
         } else if (r==0) {
-            r = do_update(update_fun, desc, bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
+            r = do_update(update_fun, desc, bn, cmd, idx, storeddata, key, keylen, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
         } // otherwise, a worse error, just return it
         break;
     }
@@ -1953,7 +1977,7 @@ toku_ft_bn_apply_cmd (
         while (idx < (num_leafentries_before = bn->data_buffer.omt_size())) {
             r = bn->data_buffer.fetch_le(idx, &storeddata);
             assert_zero(r);
-            r = do_update(update_fun, desc, bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
+            r = do_update(update_fun, desc, bn, cmd, idx, storeddata, key, keylen, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
             assert_zero(r);
 
             if (num_leafentries_before == bn->data_buffer.omt_size()) {
@@ -5691,7 +5715,7 @@ keysrange_in_leaf_partition (FT_HANDLE brt, FTNODE node,
         BASEMENTNODE bn = BLB(node, left_child_number);
         uint32_t idx_left = 0;
         // if key_left is NULL then set r==-1 and idx==0.
-        r = key_left ? bn->data_buffer.find_zero<decltype(s_left), keyrange_compare>(s_left, nullptr, &idx_left) : -1;
+        r = key_left ? bn->data_buffer.find_zero<decltype(s_left), keyrange_compare>(s_left, nullptr, nullptr, nullptr, &idx_left) : -1;
         *less = idx_left;
         *equal_left = (r==0) ? 1 : 0;
 
@@ -5700,7 +5724,7 @@ keysrange_in_leaf_partition (FT_HANDLE brt, FTNODE node,
         r = -1;
         if (single_basement && key_right) {
             struct keyrange_compare_s s_right = {brt->ft, key_right};
-            r = bn->data_buffer.find_zero<decltype(s_right), keyrange_compare>(s_right, nullptr, &idx_right);
+            r = bn->data_buffer.find_zero<decltype(s_right), keyrange_compare>(s_right, nullptr, nullptr, nullptr, &idx_right);
         }
         *middle = idx_right - idx_left - *equal_left;
         *equal_right = (r==0) ? 1 : 0;
@@ -5951,7 +5975,7 @@ static int get_key_after_bytes_in_basementnode(FT ft, BASEMENTNODE bn, const DBT
     uint32_t idx_left = 0;
     if (start_key != nullptr) {
         struct keyrange_compare_s cmp = {ft, start_key};
-        r = bn->data_buffer.find_zero<decltype(cmp), keyrange_compare>(cmp, nullptr, &idx_left);
+        r = bn->data_buffer.find_zero<decltype(cmp), keyrange_compare>(cmp, nullptr, nullptr, nullptr, &idx_left);
         assert(r == 0 || r == DB_NOTFOUND);
     }
     struct get_key_after_bytes_iterate_extra iter_extra = {skip_len, skipped, callback, cb_extra};

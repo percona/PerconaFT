@@ -159,8 +159,18 @@ public:
     //TODO: key/val split
     template<typename omtcmp_t,
              int (*h)(const DBT &, const omtcmp_t &)>
-    int find_zero(const omtcmp_t &extra, LEAFENTRY *const value, uint32_t *const idxp) const {
-        return m_buffer.find_zero< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, value, idxp);
+    int find_zero(const omtcmp_t &extra, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
+        int r = m_buffer.find_zero< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, value, idxp);
+        if (r == 0) {
+            if (key) {
+                paranoid_invariant(keylen != NULL);
+                *key = le_key_and_len(*value, keylen);
+            }
+            else {
+                paranoid_invariant(keylen == NULL);
+            }
+        }
+        return r;
     }
 
     //TODO: key/val split
