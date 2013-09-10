@@ -114,6 +114,7 @@ void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uin
         invariant(curr_offset <= data_size);
         array[i] = le;
     }
+    //TODO: Verify we used EXACTLY all memory provided
     
     // destroy old omt that was created by toku_create_empty_bn(), so we can create a new one
     m_buffer.destroy();
@@ -274,7 +275,7 @@ void bn_data::verify_mempool(void) {
     // TODO: implement something
 }
 
-uint32_t bn_data::omt_size(void) {
+uint32_t bn_data::omt_size(void) const {
     return m_buffer.size();
 }
 

@@ -133,12 +133,12 @@ public:
     void verify_mempool(void);
 
     // Interact with "omt"
-    uint32_t omt_size(void);
+    uint32_t omt_size(void) const;
 
     template<typename iterate_extra_t,
              int (*f)(const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
     int omt_iterate(iterate_extra_t *const iterate_extra) const {
-        return m_buffer.iterate<iterate_extra_t, f>(iterate_extra);
+        return omt_iterate_on_range<iterate_extra_t, f>(0, omt_size(), iterate_extra);
     }
 
     template<typename iterate_extra_t,

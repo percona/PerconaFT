@@ -516,7 +516,7 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
 
     uint32_t num_orig_basements = node->n_children;
     // Count number of leaf entries in this leaf (num_le).
-    uint32_t num_le = 0;  
+    uint32_t num_le = 0;
     for (uint32_t i = 0; i < num_orig_basements; i++) {
         num_le += BLB_DATA(node, i)->omt_size();
     }
