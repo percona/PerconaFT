@@ -147,8 +147,7 @@ public:
     template<typename iterate_extra_t,
              int (*f)(const void * key, const uint32_t keylen, const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
     int omt_iterate(iterate_extra_t *const iterate_extra) const {
-//        return omt_iterate_on_range<iterate_extra_t, f>(0, omt_size(), iterate_extra);
-        return m_buffer.iterate< iterate_extra_t, wrappy_fun_iterate<iterate_extra_t, f> >(iterate_extra);
+        return omt_iterate_on_range<iterate_extra_t, f>(0, omt_size(), iterate_extra);
     }
 
     template<typename iterate_extra_t,
@@ -157,12 +156,14 @@ public:
         return m_buffer.iterate_on_range< iterate_extra_t, wrappy_fun_iterate<iterate_extra_t, f> >(left, right, iterate_extra);
     }
 
+    //TODO: key/val split
     template<typename omtcmp_t,
              int (*h)(const DBT &, const omtcmp_t &)>
     int find_zero(const omtcmp_t &extra, LEAFENTRY *const value, uint32_t *const idxp) const {
         return m_buffer.find_zero< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, value, idxp);
     }
 
+    //TODO: key/val split
     template<typename omtcmp_t,
              int (*h)(const DBT &, const omtcmp_t &)>
     int find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, uint32_t *const idxp) const {
