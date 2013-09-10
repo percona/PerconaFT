@@ -739,6 +739,7 @@ bool toku_ftnode_pf_req_callback(void* ftnode_pv, void* read_extraargs);
 int toku_ftnode_pf_callback(void* ftnode_pv, void* UU(disk_data), void* read_extraargs, int fd, PAIR_ATTR* sizep);
 int toku_ftnode_cleaner_callback( void *ftnode_pv, BLOCKNUM blocknum, uint32_t fullhash, void *extraargs);
 void toku_evict_bn_from_memory(FTNODE node, int childnum, FT h);
+BASEMENTNODE toku_detach_bn(FTNODE node, int childnum);
 
 // Given pinned node and pinned child, split child into two
 // and update node with information about its new child.

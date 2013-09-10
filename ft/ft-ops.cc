@@ -1053,6 +1053,14 @@ void toku_evict_bn_from_memory(FTNODE node, int childnum, FT h) {
     BP_STATE(node, childnum) = PT_ON_DISK;
 }
 
+BASEMENTNODE toku_detach_bn(FTNODE node, int childnum) {
+    assert(BP_STATE(node, childnum) == PT_AVAIL);
+    BASEMENTNODE bn = BLB(node, childnum);
+    set_BNULL(node, childnum);
+    BP_STATE(node, childnum) = PT_ON_DISK;
+    return bn;
+}
+
 // callback for partially evicting a node
 int toku_ftnode_pe_callback (void *ftnode_pv, PAIR_ATTR UU(old_attr), PAIR_ATTR* new_attr, void* extraargs) {
     FTNODE node = (FTNODE)ftnode_pv;

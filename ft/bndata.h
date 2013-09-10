@@ -183,8 +183,6 @@ public:
 
     void destroy(void);
 
-    void* mempool_detach_base(void);
-
     // Replaces contents, into brand new mempool.
     // Returns old mempool base, expects caller to free it.
     void* replace_contents_with_clone_of_sorted_array(uint32_t num_les, LEAFENTRY* old_les, size_t *le_sizes, size_t mempool_size);

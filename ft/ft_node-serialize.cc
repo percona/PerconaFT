@@ -529,7 +529,7 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
     leafpointers[0] = NULL;
 
     // Capture pointers to old mempools' buffers (so they can be destroyed)
-    void **XMALLOC_N(num_orig_basements, old_mempool_bases);
+    BASEMENTNODE *XMALLOC_N(num_orig_basements, old_bns);
 
     uint32_t curr_le = 0;
     for (uint32_t i = 0; i < num_orig_basements; i++) {
@@ -539,8 +539,6 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
         ai.array = leafpointers;
         bd->omt_iterate<array_info, array_item>(&ai);
         curr_le += bd->omt_size();
-
-        old_mempool_bases[i] = bd->mempool_detach_base();
     }
 
     // Create an array that will store indexes of new pivots.
@@ -603,7 +601,13 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
         MSN curr_msn = BLB_MAX_MSN_APPLIED(node,i);
         max_msn = (curr_msn.msn > max_msn.msn) ? curr_msn : max_msn;
     }
-
+    // remove the basement node in the node, we've saved a copy
+    for (uint32_t i = 0; i < num_orig_basements; i++) {
+        // save a reference to the old basement nodes
+        // we will need them to ensure that the memory
+        // stays intact
+        old_bns[i] = toku_detach_bn(node, i);
+    }
     // Now destroy the old basements, but do not destroy leaves
     toku_destroy_ftnode_internals(node);
 
@@ -660,10 +664,10 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
 
     // destroy buffers of old mempools
     for (uint32_t i = 0; i < num_orig_basements; i++) {
-        toku_free(old_mempool_bases[i]);
+        destroy_basement_node(old_bns[i]);
     }
     toku_free(leafpointers);
-    toku_free(old_mempool_bases);
+    toku_free(old_bns);
     toku_free(new_pivots);
     toku_free(le_sizes);
     toku_free(bn_sizes);
