@@ -169,10 +169,13 @@ public:
     int find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
         int r = m_buffer.find< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, direction, value, idxp);
         if (r == 0) {
-            // TODO: figure out the contract here, can user
-            // pass in a NULL key or keylen if he is not interested
-            // in getting it? He can pass in a NULL value
-            *key = le_key_and_len(*value, keylen);
+            if (key) {
+                paranoid_invariant(keylen != NULL);
+                *key = le_key_and_len(*value, keylen);
+            }
+            else {
+                paranoid_invariant(keylen == NULL);
+            }
         }
         return r;
     }
