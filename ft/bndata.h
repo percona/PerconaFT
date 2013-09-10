@@ -167,8 +167,8 @@ public:
     // Interact with another bn_data
     void move_leafentries_to(BN_DATA dest_bd,
                                       uint32_t lbi, //lower bound inclusive
-                                      uint32_t ube, //upper bound exclusive
-                                      uint32_t* num_bytes_moved);
+                                      uint32_t ube //upper bound exclusive
+                                      );
 
     void destroy(void);
 

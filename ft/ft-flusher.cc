@@ -746,12 +746,11 @@ move_leafentries(
     BASEMENTNODE dest_bn,
     BASEMENTNODE src_bn,
     uint32_t lbi, //lower bound inclusive
-    uint32_t ube, //upper bound exclusive
-    uint32_t* num_bytes_moved
+    uint32_t ube //upper bound exclusive
     )
 //Effect: move leafentries in the range [lbi, upe) from src_omt to newly created dest_omt
 {
-    src_bn->data_buffer.move_leafentries_to(&dest_bn->data_buffer, lbi, ube, num_bytes_moved);
+    src_bn->data_buffer.move_leafentries_to(&dest_bn->data_buffer, lbi, ube);
 }
 
 static void ftnode_finalize_split(FTNODE node, FTNODE B, MSN max_msn_applied_to_node) {
@@ -903,15 +902,14 @@ ftleaf_split(
         // handle the move of a subset of data in last_bn_on_left from node to B
         if (!split_on_boundary) {
             BP_STATE(B,curr_dest_bn_index) = PT_AVAIL;
-            uint32_t diff_size = 0;
             destroy_basement_node(BLB(B, curr_dest_bn_index)); // Destroy B's empty OMT, so I can rebuild it from an array
             set_BNULL(B, curr_dest_bn_index);
             set_BLB(B, curr_dest_bn_index, toku_create_empty_bn_no_buffer());
             move_leafentries(BLB(B, curr_dest_bn_index),
                              BLB(node, curr_src_bn_index),
                              num_left_les,         // first row to be moved to B
-                             BLB_DATA(node, curr_src_bn_index)->omt_size(),  // number of rows in basement to be split
-                             &diff_size);
+                             BLB_DATA(node, curr_src_bn_index)->omt_size()  // number of rows in basement to be split
+                             );
             BLB_MAX_MSN_APPLIED(B, curr_dest_bn_index) = BLB_MAX_MSN_APPLIED(node, curr_src_bn_index);
             curr_dest_bn_index++;
         }

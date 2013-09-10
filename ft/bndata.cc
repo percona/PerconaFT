@@ -233,8 +233,7 @@ void bn_data::get_space_for_insert(uint32_t idx, size_t size, LEAFENTRY* new_le_
 void bn_data::move_leafentries_to(
      BN_DATA dest_bd,
      uint32_t lbi, //lower bound inclusive
-     uint32_t ube, //upper bound exclusive
-     uint32_t* num_bytes_moved
+     uint32_t ube //upper bound exclusive
      )
 //Effect: move leafentries in the range [lbi, ube) from this to src_omt to newly created dest_omt
 {
@@ -248,13 +247,11 @@ void bn_data::move_leafentries_to(
     toku_mempool_construct(dest_mp, mpsize);
 
     uint32_t i = 0;
-    *num_bytes_moved = 0;
     for (i = lbi; i < ube; i++) {
         LEAFENTRY curr_le;
         m_buffer.fetch(i, &curr_le);
 
         size_t le_size = leafentry_memsize(curr_le);
-        *num_bytes_moved += leafentry_disksize(curr_le);
         LEAFENTRY CAST_FROM_VOIDP(new_le, toku_mempool_malloc(dest_mp, le_size, 1));
         memcpy(new_le, curr_le, le_size);
         newleafpointers[i-lbi] = new_le;
