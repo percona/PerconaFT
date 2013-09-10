@@ -310,6 +310,15 @@ int bn_data::fetch_le(uint32_t idx, LEAFENTRY *le) {
 }
 
 //TODO: reimplement if/when we split keys and vals
+int bn_data::fetch_klpair(uint32_t idx, LEAFENTRY *le, uint32_t *len, void** key) {
+    int r = fetch_le(idx, le);
+    if (r == 0) {
+        *key = le_key_and_len(*le, len);
+    }
+    return r;
+}
+
+//TODO: reimplement if/when we split keys and vals
 int bn_data::fetch_le_disksize(uint32_t idx, size_t *size) {
     LEAFENTRY le;
     int r = fetch_le(idx, &le);

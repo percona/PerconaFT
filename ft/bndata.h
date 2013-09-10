@@ -166,12 +166,17 @@ public:
     //TODO: key/val split
     template<typename omtcmp_t,
              int (*h)(const DBT &, const omtcmp_t &)>
-    int find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, uint32_t *const idxp) const {
-        return m_buffer.find< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, direction, value, idxp);
+    int find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
+        int r = m_buffer.find< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, direction, value, idxp);
+        if (r == 0) {
+            *key = le_key_and_len(*value, keylen);
+        }
+        return r;
     }
 
     // get info about a single leafentry by index
     int fetch_le(uint32_t idx, LEAFENTRY *le);
+    int fetch_klpair(uint32_t idx, LEAFENTRY *le, uint32_t *len, void** key);
     int fetch_le_disksize(uint32_t idx, size_t *size);
     int fetch_le_key_and_len(uint32_t idx, uint32_t *len, void** key);
 

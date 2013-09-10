@@ -3907,14 +3907,11 @@ does_txn_read_entry(TXNID id, TOKUTXN context) {
 }
 
 static inline void
-ft_cursor_extract_key_and_val(LEAFENTRY le,
+ft_cursor_extract_val(LEAFENTRY le,
                                FT_CURSOR cursor,
-                               uint32_t *keylen,
-                               void            **key,
                                uint32_t *vallen,
                                void            **val) {
     if (toku_ft_cursor_is_leaf_mode(cursor)) {
-        *key = le_key_and_len(le, keylen);
         *val = le;
         *vallen = leafentry_memsize(le);
     } else if (cursor->is_snapshot_read) {
@@ -3926,9 +3923,7 @@ ft_cursor_extract_key_and_val(LEAFENTRY le,
             cursor->ttxn
             );
         lazy_assert_zero(r);
-        *key = le_key_and_len(le, keylen);
     } else {
-        *key = le_key_and_len(le, keylen);
         *val = le_latest_val_and_len(le, vallen);
     }
 }
@@ -4722,7 +4717,17 @@ ft_search_basement_node(
 ok: ;
     uint32_t idx = 0;
     LEAFENTRY le;
-    int r = bn->data_buffer.find<decltype(*search), heaviside_from_search_t>(*search, direction, &le, &idx);
+    // TODO: use this below once we've taken care of fetch_le as well
+    uint32_t keylen;
+    void *key;
+    int r = bn->data_buffer.find<decltype(*search), heaviside_from_search_t>(
+        *search, 
+        direction, 
+        &le, 
+        &key, 
+        &keylen, 
+        &idx
+        );
     if (r!=0) return r;
 
     if (toku_ft_cursor_is_leaf_mode(ftcursor))
@@ -4745,25 +4750,21 @@ ok: ;
             default:
                 abort();
             }
-            r = bn->data_buffer.fetch_le(idx, &le);
+            r = bn->data_buffer.fetch_klpair(idx, &le, &keylen, &key);
             assert_zero(r); // we just validated the index
             if (!is_le_val_del(le,ftcursor)) goto got_a_good_value;
         }
     }
 got_a_good_value:
     {
-        uint32_t keylen;
-        void *key;
         uint32_t vallen;
         void *val;
 
-        ft_cursor_extract_key_and_val(le,
-                                       ftcursor,
-                                       &keylen,
-                                       &key,
-                                       &vallen,
-                                       &val
-            );
+        ft_cursor_extract_val(le,
+                              ftcursor,
+                              &vallen,
+                              &val
+                              );
         r = cursor_check_restricted_range(ftcursor, key, keylen);
         if (r==0) {
             r = getf(keylen, key, vallen, val, getf_v, false);
@@ -5409,19 +5410,21 @@ ft_cursor_shortcut (
     while (index != limit) {
         index += direction;
         LEAFENTRY le;
-        r = bd->fetch_le(index, &le);
+        void* foundkey = NULL;
+        uint32_t foundkeylen = 0;
+        
+        r = bd->fetch_klpair(index, &le, &foundkeylen, &foundkey);
         invariant_zero(r);
 
         if (toku_ft_cursor_is_leaf_mode(cursor) || !is_le_val_del(le, cursor)) {
-
-            ft_cursor_extract_key_and_val(
+            ft_cursor_extract_val(
                 le,
                 cursor,
-                keylen,
-                key,
                 vallen,
                 val
                 );
+            *key = foundkey;
+            *keylen = foundkeylen;
 
             cursor->direction = direction;
             r = cursor_check_restricted_range(cursor, *key, *keylen);
@@ -6158,7 +6161,6 @@ toku_dump_ftnode (FILE *file, FT_HANDLE brt, BLOCKNUM blocknum, int depth, const
                         print_leafentry(file, le);
                         fprintf(file, "\n");
                     }
-                //               printf(" (%d)%u ", len, *(int*)le_key(data)));
                 fprintf(file, "\n");
             }
         }
