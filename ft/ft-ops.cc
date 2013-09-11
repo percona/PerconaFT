@@ -1975,12 +1975,13 @@ toku_ft_bn_apply_cmd (
         uint32_t idx = 0;
         uint32_t num_leafentries_before;
         while (idx < (num_leafentries_before = bn->data_buffer.omt_size())) {
-            r = bn->data_buffer.fetch_le(idx, &storeddata);
+            void* curr_key = nullptr;
+            uint32_t curr_keylen = 0;
+            r = bn->data_buffer.fetch_klpair(idx, &storeddata, &curr_keylen, &curr_key);
             assert_zero(r);
             // This is broken below. Have a compilation error checked
             // in as a reminder
-            asdf
-            r = do_update(update_fun, desc, bn, cmd, idx, storeddata, key, keylen, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
+            r = do_update(update_fun, desc, bn, cmd, idx, storeddata, curr_key, curr_keylen, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
             assert_zero(r);
 
             if (num_leafentries_before == bn->data_buffer.omt_size()) {
