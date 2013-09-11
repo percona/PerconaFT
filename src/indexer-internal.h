@@ -110,8 +110,8 @@ struct indexer_commit_keys {
 struct ule_prov_info {
     // these are pointers to the allocated leafentry and ule needed to calculate
     // provisional info. we only borrow them - whoever created the provisional info
-    // is responsible for cleaning up the key, leafentry, and ule when done.
-    void* key_and_le;
+    // is responsible for cleaning up the leafentry and ule when done.
+    LEAFENTRY le;
     ULEHANDLE ule;
     // provisional txn info for the ule
     uint32_t num_provisional;
