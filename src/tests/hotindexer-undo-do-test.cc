@@ -178,13 +178,6 @@ ule_init(ULE ule) {
 }
 
 static void
-ule_set_key(ULE ule, void *key, uint32_t keylen) {
-    ule->keyp = toku_realloc(ule->keyp, keylen);
-    memcpy(ule->keyp, key, keylen);
-    ule->keylen = keylen;
-}
-
-static void
 ule_destroy(ULE ule) {
     for (unsigned int i = 0; i < ule->num_cuxrs + ule->num_puxrs; i++) 
         uxr_destroy(&ule->uxrs[i]);
@@ -428,7 +421,7 @@ read_line(char **line_ptr, size_t *len_ptr, FILE *f) {
 }
 
 static int
-read_test(char *testname, ULE ule) {
+read_test(char *testname, ULE ule, DBT* key) {
     int r = 0;
     FILE *f = fopen(testname, "r");
     if (f) {
@@ -469,7 +462,7 @@ read_test(char *testname, ULE ule) {
             }
             // key KEY
             if (strcmp(fields[0], "key") == 0 && nfields == 2) {
-                ule_set_key(ule, fields[1], strlen(fields[1]));
+                toku_fill_dbt(key, fields[1], strlen(fields[1]));
                 continue;
             }
             // insert committed|provisional XID DATA
@@ -567,11 +560,12 @@ run_test(char *envdir, char *testname) {
     ule_init(ule);
 
     // read the test
-    r = read_test(testname, ule);
+    DBT key;
+    r = read_test(testname, ule, &key);
     if (r != 0)
         return r;
 
-    r = indexer->i->undo_do(indexer, dest_db, ule); assert_zero(r);
+    r = indexer->i->undo_do(indexer, dest_db, &key, ule); assert_zero(r);
 
     ule_free(ule);
 

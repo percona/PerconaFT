@@ -223,7 +223,7 @@ toku_indexer_unlock(DB_INDEXER* indexer) {
 }
 
 // forward declare the test-only wrapper function for undo-do
-static int test_indexer_undo_do(DB_INDEXER *indexer, DB *hotdb, ULEHANDLE ule);
+static int test_indexer_undo_do(DB_INDEXER *indexer, DB *hotdb, DBT* key, ULEHANDLE ule);
 
 int
 toku_indexer_create_indexer(DB_ENV *env,
@@ -364,9 +364,11 @@ toku_indexer_is_key_right_of_le_cursor(DB_INDEXER *indexer, const DBT *key) {
 // ids, states, and txns for each of the provisional entries in the ule. the 
 // ule and le remain owned by the caller, not this struct.
 static void 
-ule_prov_info_init(struct ule_prov_info *prov_info, LEAFENTRY le, ULEHANDLE ule) {
+ule_prov_info_init(struct ule_prov_info *prov_info, const void* key, uint32_t keylen, LEAFENTRY le, ULEHANDLE ule) {
     prov_info->le = le;
     prov_info->ule = ule;
+    prov_info->keylen = keylen;
+    memcpy(prov_info->key, key, keylen);
     prov_info->num_provisional = ule_get_num_provisional(ule);
     prov_info->num_committed = ule_get_num_committed(ule);
     uint32_t n = prov_info->num_provisional;
@@ -489,7 +491,7 @@ struct le_cursor_extra {
 // cachetable pair locks. because no txn can commit on this db, read
 // the provisional info for the newly read ule.
 static int
-le_cursor_callback(ITEMLEN UU(keylen), bytevec UU(key), ITEMLEN UU(vallen), bytevec val, void *extra, bool lock_only) {
+le_cursor_callback(ITEMLEN keylen, bytevec key, ITEMLEN UU(vallen), bytevec val, void *extra, bool lock_only) {
     if (lock_only || val == NULL) {
         ; // do nothing if only locking. do nothing if val==NULL, means DB_NOTFOUND
     } else {
@@ -504,7 +506,7 @@ le_cursor_callback(ITEMLEN UU(keylen), bytevec UU(key), ITEMLEN UU(vallen), byte
         // when we initialize prov info, we also pass in the leafentry and ule
         // pointers so the caller can access them later. it's their job to free
         // them when they're not needed.
-        ule_prov_info_init(prov_info, le, ule);
+        ule_prov_info_init(prov_info, key, keylen, le, ule);
         indexer_fill_prov_info(cursor_extra->indexer, prov_info);
     }
     return 0;
@@ -558,16 +560,15 @@ build_index(DB_INDEXER *indexer) {
         else {
             invariant(prov_info.le);
             invariant(prov_info.ule);
-            ULEHANDLE ule = prov_info.ule;
             for (int which_db = 0; (which_db < indexer->i->N) && (result == 0); which_db++) {
                 DB *db = indexer->i->dest_dbs[which_db];
                 DBT_ARRAY *hot_keys = &indexer->i->hot_keys[which_db];
                 DBT_ARRAY *hot_vals = &indexer->i->hot_vals[which_db];
-                result = indexer_undo_do(indexer, db, ule, &prov_info, hot_keys, hot_vals);
+                result = indexer_undo_do(indexer, db, &prov_info, hot_keys, hot_vals);
                 if ((result != 0) && (indexer->i->error_callback != NULL)) {
                     // grab the key and call the error callback
                     DBT key; toku_init_dbt_flags(&key, DB_DBT_REALLOC);
-                    toku_dbt_set(ule_get_keylen(ule), ule_get_key(ule), &key, NULL);
+                    toku_dbt_set(prov_info.keylen, prov_info.key, &key, NULL);
                     indexer->i->error_callback(db, which_db, result, &key, NULL, indexer->i->error_extra);
                     toku_destroy_dbt(&key);
                 }
@@ -575,6 +576,7 @@ build_index(DB_INDEXER *indexer) {
             // the leafentry and ule are not owned by the prov_info,
             // and are still our responsibility to free
             toku_free(prov_info.le);
+            toku_free(prov_info.key);
             toku_ule_free(prov_info.ule);
         }
 
@@ -711,7 +713,7 @@ toku_indexer_set_test_only_flags(DB_INDEXER *indexer, int flags) {
 // this allows us to call the undo do function in tests using
 // a convenience wrapper that gets and destroys the ule's prov info
 static int
-test_indexer_undo_do(DB_INDEXER *indexer, DB *hotdb, ULEHANDLE ule) {
+test_indexer_undo_do(DB_INDEXER *indexer, DB *hotdb, DBT* key, ULEHANDLE ule) {
     int which_db;
     for (which_db = 0; which_db < indexer->i->N; which_db++) {
         if (indexer->i->dest_dbs[which_db] == hotdb) {
@@ -724,11 +726,11 @@ test_indexer_undo_do(DB_INDEXER *indexer, DB *hotdb, ULEHANDLE ule) {
     struct ule_prov_info prov_info;
     memset(&prov_info, 0, sizeof(prov_info));
     // pass null for the leafentry - we don't need it, neither does the info
-    ule_prov_info_init(&prov_info, NULL, ule);
+    ule_prov_info_init(&prov_info, key->data, key->size, NULL, ule);
     indexer_fill_prov_info(indexer, &prov_info);
     DBT_ARRAY *hot_keys = &indexer->i->hot_keys[which_db];
     DBT_ARRAY *hot_vals = &indexer->i->hot_vals[which_db];
-    int r = indexer_undo_do(indexer, hotdb, ule, &prov_info, hot_keys, hot_vals);
+    int r = indexer_undo_do(indexer, hotdb, &prov_info, hot_keys, hot_vals);
     ule_prov_info_destroy(&prov_info);
     return r;
 }
