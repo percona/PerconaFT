@@ -1995,11 +1995,6 @@ ule_is_provisional(ULE ule, uint64_t ith) {
     return ith >= ule->num_cuxrs;
 }
 
-void *
-ule_get_key(ULE ule) {
-    return ule->keyp;
-}
-
 uint32_t 
 ule_get_keylen(ULE ule) {
     return ule->keylen;
