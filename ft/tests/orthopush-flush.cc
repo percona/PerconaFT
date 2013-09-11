@@ -205,9 +205,8 @@ insert_random_message_to_bn(FT_HANDLE t, BASEMENTNODE blb, LEAFENTRY *save, XIDS
     msg.xids = xids;
     msg.u.id.key = keydbt;
     msg.u.id.val = valdbt;
-    size_t memsize;
     int64_t numbytes;
-    toku_le_apply_msg(&msg, NULL, TXNID_NONE, make_gc_info(false), &memsize, save, NULL, NULL, NULL, &numbytes);
+    toku_le_apply_msg(&msg, NULL, NULL, 0, TXNID_NONE, make_gc_info(false), save, &numbytes);
     toku_ft_bn_apply_cmd(t->ft->compare_fun, t->ft->update_fun, NULL, blb, &msg, TXNID_NONE, make_gc_info(false), NULL, NULL);
     if (msn.msn > blb->max_msn_applied.msn) {
         blb->max_msn_applied = msn;
@@ -245,9 +244,8 @@ insert_same_message_to_bns(FT_HANDLE t, BASEMENTNODE blb1, BASEMENTNODE blb2, LE
     msg.xids = xids;
     msg.u.id.key = keydbt;
     msg.u.id.val = valdbt;
-    size_t memsize;
     int64_t numbytes;
-    toku_le_apply_msg(&msg, NULL, TXNID_NONE, make_gc_info(false), &memsize, save, NULL, NULL, NULL, &numbytes);
+    toku_le_apply_msg(&msg, NULL, NULL, 0, TXNID_NONE, make_gc_info(false), save, &numbytes);
     toku_ft_bn_apply_cmd(t->ft->compare_fun, t->ft->update_fun, NULL, blb1, &msg, TXNID_NONE, make_gc_info(false), NULL, NULL);
     if (msn.msn > blb1->max_msn_applied.msn) {
         blb1->max_msn_applied = msn;
@@ -621,9 +619,9 @@ flush_to_leaf(FT_HANDLE t, bool make_leaf_up_to_date, bool use_flush) {
 
     int total_size = 0;
     for (i = 0; total_size < 128*1024; ++i) {
-        total_size -= child_blbs[i%8]->n_bytes_in_buffer;
+        total_size -= child_blbs[i%8]->data_buffer.get_memory_size();
         insert_random_message_to_bn(t, child_blbs[i%8], &child_messages[i], xids_123, i%8);
-        total_size += child_blbs[i%8]->n_bytes_in_buffer;
+        total_size += child_blbs[i%8]->data_buffer.get_memory_size();
         if (i % 8 < 7) {
             uint32_t keylen;
             char *CAST_FROM_VOIDP(key, le_key_and_len(child_messages[i], &keylen));
@@ -711,7 +709,7 @@ flush_to_leaf(FT_HANDLE t, bool make_leaf_up_to_date, bool use_flush) {
 
     int total_messages = 0;
     for (i = 0; i < 8; ++i) {
-        total_messages += toku_omt_size(BLB_BUFFER(child, i));
+        total_messages += BLB_DATA(child, i)->omt_size();
     }
     assert(total_messages <= num_parent_messages + num_child_messages);
 
@@ -724,19 +722,17 @@ flush_to_leaf(FT_HANDLE t, bool make_leaf_up_to_date, bool use_flush) {
     memset(parent_messages_present, 0, sizeof parent_messages_present);
     memset(child_messages_present, 0, sizeof child_messages_present);
     for (int j = 0; j < 8; ++j) {
-        OMT omt = BLB_BUFFER(child, j);
-        uint32_t len = toku_omt_size(omt);
+        uint32_t len = BLB_DATA(child, j)->omt_size();
         for (uint32_t idx = 0; idx < len; ++idx) {
             LEAFENTRY le;
             DBT keydbt, valdbt;
             {
-                OMTVALUE v;
-                r = toku_omt_fetch(omt, idx, &v);
-                assert_zero(r);
-                CAST_FROM_VOIDP(le, v);
                 uint32_t keylen, vallen;
-                void *keyp = le_key_and_len(le, &keylen);
-                void *valp = le_latest_val_and_len(le, &vallen);
+                void *keyp = NULL;
+                void *valp = NULL;
+                r = BLB_DATA(child, j)->fetch_klpair(idx, &le, &keylen, &keyp);
+                assert_zero(r);
+                valp = le_latest_val_and_len(le, &vallen);
                 toku_fill_dbt(&keydbt, keyp, keylen);
                 toku_fill_dbt(&valdbt, valp, vallen);
             }
@@ -847,9 +843,9 @@ flush_to_leaf_with_keyrange(FT_HANDLE t, bool make_leaf_up_to_date) {
 
     int total_size = 0;
     for (i = 0; total_size < 128*1024; ++i) {
-        total_size -= child_blbs[i%8]->n_bytes_in_buffer;
+        total_size -= child_blbs[i%8]->data_buffer.get_memory_size();
         insert_random_message_to_bn(t, child_blbs[i%8], &child_messages[i], xids_123, i%8);
-        total_size += child_blbs[i%8]->n_bytes_in_buffer;
+        total_size += child_blbs[i%8]->data_buffer.get_memory_size();
         uint32_t keylen;
         char *CAST_FROM_VOIDP(key, le_key_and_len(child_messages[i], &keylen));
         DBT keydbt;
@@ -945,7 +941,7 @@ flush_to_leaf_with_keyrange(FT_HANDLE t, bool make_leaf_up_to_date) {
 
     int total_messages = 0;
     for (i = 0; i < 8; ++i) {
-        total_messages += toku_omt_size(BLB_BUFFER(child, i));
+        total_messages += BLB_DATA(child, i)->omt_size();
     }
     assert(total_messages <= num_parent_messages + num_child_messages);
 
@@ -1033,9 +1029,9 @@ compare_apply_and_flush(FT_HANDLE t, bool make_leaf_up_to_date) {
 
     int total_size = 0;
     for (i = 0; total_size < 128*1024; ++i) {
-        total_size -= child1_blbs[i%8]->n_bytes_in_buffer;
+        total_size -= child1_blbs[i%8]->data_buffer.get_memory_size();
         insert_same_message_to_bns(t, child1_blbs[i%8], child2_blbs[i%8], &child_messages[i], xids_123, i%8);
-        total_size += child1_blbs[i%8]->n_bytes_in_buffer;
+        total_size += child1_blbs[i%8]->data_buffer.get_memory_size();
         if (i % 8 < 7) {
             uint32_t keylen;
             char *CAST_FROM_VOIDP(key, le_key_and_len(child_messages[i], &keylen));
@@ -1117,31 +1113,27 @@ compare_apply_and_flush(FT_HANDLE t, bool make_leaf_up_to_date) {
     toku_ftnode_free(&parentnode);
 
     for (int j = 0; j < 8; ++j) {
-        OMT omt1 = BLB_BUFFER(child1, j);
-        OMT omt2 = BLB_BUFFER(child2, j);
-        uint32_t len = toku_omt_size(omt1);
-        assert(len == toku_omt_size(omt2));
+        BN_DATA first = BLB_DATA(child1, j);
+        BN_DATA second = BLB_DATA(child2, j);
+        uint32_t len = first->omt_size();
+        assert(len == second->omt_size());
         for (uint32_t idx = 0; idx < len; ++idx) {
             LEAFENTRY le1, le2;
             DBT key1dbt, val1dbt, key2dbt, val2dbt;
             {
-                OMTVALUE v;
-                r = toku_omt_fetch(omt1, idx, &v);
-                assert_zero(r);
-                CAST_FROM_VOIDP(le1, v);
                 uint32_t keylen, vallen;
-                void *keyp = le_key_and_len(le1, &keylen);
+                void *keyp = NULL;
+                r = first->fetch_klpair(idx, &le1, &keylen, &keyp);
+                assert_zero(r);                
                 void *valp = le_latest_val_and_len(le1, &vallen);
                 toku_fill_dbt(&key1dbt, keyp, keylen);
                 toku_fill_dbt(&val1dbt, valp, vallen);
             }
             {
-                OMTVALUE v;
-                r = toku_omt_fetch(omt2, idx, &v);
-                assert_zero(r);
-                CAST_FROM_VOIDP(le2, v);
                 uint32_t keylen, vallen;
-                void *keyp = le_key_and_len(le2, &keylen);
+                void *keyp = NULL;
+                r = second->fetch_klpair(idx, &le2, &keylen, &keyp);
+                assert_zero(r);                
                 void *valp = le_latest_val_and_len(le2, &vallen);
                 toku_fill_dbt(&key2dbt, keyp, keylen);
                 toku_fill_dbt(&val2dbt, valp, vallen);
