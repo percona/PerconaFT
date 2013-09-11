@@ -1214,7 +1214,7 @@ leafentry_memsize (LEAFENTRY le) {
     le_unpack(&ule, le);
     size_t slow_rval = le_memsize_from_ule(&ule);
     if (slow_rval!=rval) {
-        int r = print_leafentry(stderr, le);
+        int r = print_klpair(stderr, le, NULL, 0);
         fprintf(stderr, "\nSlow: [%" PRIu64 "] Fast: [%" PRIu64 "]\n", slow_rval, rval);
         invariant(r==0);
     }
@@ -1575,15 +1575,17 @@ le_outermost_uncommitted_xid (LEAFENTRY le) {
 //Optimization not required.  This is a debug only function.
 //Print a leafentry out in human-readable format
 int
-print_leafentry (FILE *outf, LEAFENTRY le) {
+print_klpair (FILE *outf, void* keyp, uint32_t keylen, LEAFENTRY le) {
     ULE_S ule;
     le_unpack(&ule, le);
     uint32_t i;
     invariant(ule.num_cuxrs > 0);
     UXR uxr;
     if (!le) { printf("NULL"); return 0; }
-    fprintf(outf, "{key=");
-    toku_print_BYTESTRING(outf, ule.keylen, (char *) ule.keyp);
+    if (keyp) {
+        fprintf(outf, "{key=");
+        toku_print_BYTESTRING(outf, keylen, (char *) keyp);
+    }
     for (i = 0; i < ule.num_cuxrs+ule.num_puxrs; i++) {
         // fprintf(outf, "\n%*s", i+1, " "); //Nested indenting
         uxr = &ule.uxrs[i];

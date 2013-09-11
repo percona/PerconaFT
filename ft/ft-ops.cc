@@ -6182,10 +6182,12 @@ toku_dump_ftnode (FILE *file, FT_HANDLE brt, BLOCKNUM blocknum, int depth, const
                 if (0)
                     for (int j=0; j<size; j++) {
                         LEAFENTRY le;
-                        int r = BLB_DATA(node,i)->fetch_le(j, &le);
+                        void* keyp = NULL;
+                        uint32_t keylen = 0;
+                        int r = BLB_DATA(node,i)->fetch_klpair(j, &le, &keylen, &keyp);
                         assert_zero(r);
                         fprintf(file, " [%d]=", j);
-                        print_leafentry(file, le);
+                        print_klpair(file, keyp, keylen, le);
                         fprintf(file, "\n");
                     }
                 fprintf(file, "\n");
