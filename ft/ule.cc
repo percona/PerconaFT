@@ -1575,7 +1575,7 @@ le_outermost_uncommitted_xid (LEAFENTRY le) {
 //Optimization not required.  This is a debug only function.
 //Print a leafentry out in human-readable format
 int
-print_klpair (FILE *outf, void* keyp, uint32_t keylen, LEAFENTRY le) {
+print_klpair (FILE *outf, const void* keyp, uint32_t keylen, LEAFENTRY le) {
     ULE_S ule;
     le_unpack(&ule, le);
     uint32_t i;
