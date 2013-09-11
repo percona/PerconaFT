@@ -133,11 +133,11 @@ typedef toku::omt<LEAFENTRY> le_omt_t;
 // This class stores the data associated with a basement node
 class bn_data {
 public:
-    void init_zero();
-    void initialize_empty();
+    void init_zero(void);
+    void initialize_empty(void);
     void initialize_from_data(uint32_t num_entries, unsigned char *buf, uint32_t data_size);
     // globals
-    uint64_t get_memory_size();
+    uint64_t get_memory_size(void);
     uint64_t get_disk_size(void);
     void verify_mempool(void);
 
