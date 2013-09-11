@@ -218,7 +218,7 @@ void bn_data::get_space_for_overwrite(
 //TODO: probably not free the "maybe_free" right away?
 void bn_data::get_space_for_insert(
     uint32_t idx,
-    void* keyp UU(),
+    const void* keyp UU(),
     uint32_t keylen UU(),
     size_t size,
     LEAFENTRY* new_le_space

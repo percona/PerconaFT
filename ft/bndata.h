@@ -211,7 +211,7 @@ public:
     void clone(bn_data* orig_bn_data);
     void delete_leafentry (uint32_t idx, LEAFENTRY le);
     void get_space_for_overwrite(uint32_t idx, uint32_t old_size, LEAFENTRY old_le_space, uint32_t new_size, LEAFENTRY* new_le_space);
-    void get_space_for_insert(uint32_t idx, void* keyp, uint32_t keylen, size_t size, LEAFENTRY* new_le_space);
+    void get_space_for_insert(uint32_t idx, const void* keyp, uint32_t keylen, size_t size, LEAFENTRY* new_le_space);
 private:
     // Private functions
     LEAFENTRY mempool_malloc_from_omt(size_t size, void **maybe_free);
