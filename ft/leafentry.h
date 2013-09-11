@@ -210,7 +210,6 @@ typedef struct leafentry_13 *LEAFENTRY_13;
 
 size_t leafentry_memsize (LEAFENTRY le); // the size of a leafentry in memory.
 size_t leafentry_disksize (LEAFENTRY le); // this is the same as logsizeof_LEAFENTRY.  The size of a leafentry on disk.
-void wbuf_LEAFENTRY(struct wbuf *w, LEAFENTRY le);
 void wbuf_nocrc_LEAFENTRY(struct wbuf *w, LEAFENTRY le);
 int print_klpair (FILE *outf, const void* key, uint32_t keylen, LEAFENTRY v); // Print a leafentry out in human-readable form.
 
