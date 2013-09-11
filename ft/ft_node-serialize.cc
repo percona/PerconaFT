@@ -2039,7 +2039,11 @@ deserialize_and_upgrade_leaf_node(FTNODE node,
             invariant(rb->ndone<=rb->size);
             LEAFENTRY new_le;
             size_t new_le_size;
+            void* key = NULL;
+            uint32_t keylen = 0;
             r = toku_le_upgrade_13_14(le,
+                                      &key,
+                                      &keylen,
                                       &new_le_size,
                                       &new_le);
             assert_zero(r);
@@ -2048,8 +2052,8 @@ deserialize_and_upgrade_leaf_node(FTNODE node,
             // le_key and le_keylen usage here is temporary
             bn->data_buffer.get_space_for_insert(
                 i,
-                le_key(new_le),
-                le_keylen(new_le),
+                key,
+                keylen,
                 new_le_size,
                 &new_le_in_bn
                 );

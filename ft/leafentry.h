@@ -244,6 +244,8 @@ leafentry_disksize_13(LEAFENTRY_13 le);
 
 int
 toku_le_upgrade_13_14(LEAFENTRY_13 old_leafentry, // NULL if there was no stored data.
+                      void** keyp,
+                      uint32_t* keylen,
                       size_t *new_leafentry_memorysize,
                       LEAFENTRY *new_leafentry_p);
 
