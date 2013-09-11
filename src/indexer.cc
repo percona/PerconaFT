@@ -368,6 +368,7 @@ ule_prov_info_init(struct ule_prov_info *prov_info, const void* key, uint32_t ke
     prov_info->le = le;
     prov_info->ule = ule;
     prov_info->keylen = keylen;
+    prov_info->key = toku_xmalloc(keylen);
     memcpy(prov_info->key, key, keylen);
     prov_info->num_provisional = ule_get_num_provisional(ule);
     prov_info->num_committed = ule_get_num_committed(ule);
