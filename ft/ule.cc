@@ -954,7 +954,7 @@ le_pack(ULE ule, // data to be packed into new leafentry
 found_insert:;
     memsize = le_memsize_from_ule(ule);
     LEAFENTRY new_leafentry;
-    do_something(data_buffer, idx, old_le_size, old_le_space, memsize, &new_leafentry);
+    do_something(data_buffer, idx, ule, old_le_size, old_le_space, memsize, &new_leafentry);
 
     //Universal data
     new_leafentry->keylen  = toku_htod32(ule->keylen);
