@@ -2515,8 +2515,8 @@ toku_le_upgrade_13_14(LEAFENTRY_13 old_leafentry,
     invariant(old_leafentry);
     le_unpack_13(&ule, old_leafentry);
     // TEMPORARY for now,
-    *keyp = ule->keyp;
-    *keylen = ule->keylen;
+    *keyp = ule.keyp;
+    *keylen = ule.keylen;
     // We used to pass NULL for omt and mempool, so that we would use
     // malloc instead of a mempool.  However after supporting upgrade,
     // we need to use mempools and the OMT.
