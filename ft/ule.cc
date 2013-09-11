@@ -158,8 +158,7 @@ toku_le_get_status(LE_STATUS statp) {
 //
 
 ULEHANDLE 
-toku_ule_create(void* key UU(), uint32_t keylen UU(), LEAFENTRY le) {
-    //TODO: use key and keylen
+toku_ule_create(LEAFENTRY le) {
     ULE XMALLOC(ule_p);
     le_unpack(ule_p, le);
     return (ULEHANDLE) ule_p;
