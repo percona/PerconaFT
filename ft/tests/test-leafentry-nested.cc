@@ -217,7 +217,7 @@ static void
 test_ule_packs_to_nothing (ULE ule) {
     size_t memsize;
     LEAFENTRY le;
-    int r = le_pack(ule, &memsize, &le, NULL, NULL, NULL);
+    int r = le_pack(ule, NULL, 0, 0, NULL, &le);
     assert(r==0);
     assert(le==NULL);
 }
