@@ -462,7 +462,7 @@ read_test(char *testname, ULE ule, DBT* key) {
             }
             // key KEY
             if (strcmp(fields[0], "key") == 0 && nfields == 2) {
-                toku_fill_dbt(key, fields[1], strlen(fields[1]));
+                dbt_init(key, fields[1], strlen(fields[1]));
                 continue;
             }
             // insert committed|provisional XID DATA
