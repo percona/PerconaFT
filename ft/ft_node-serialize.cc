@@ -2045,7 +2045,14 @@ deserialize_and_upgrade_leaf_node(FTNODE node,
             assert_zero(r);
             // Copy the pointer value straight into the OMT
             LEAFENTRY new_le_in_bn = nullptr;
-            bn->data_buffer.get_space_for_insert(i, new_le_size, &new_le_in_bn);
+            // le_key and le_keylen usage here is temporary
+            bn->data_buffer.get_space_for_insert(
+                i,
+                le_key(new_le),
+                le_keylen(new_le),
+                new_le_size,
+                &new_le_in_bn
+                );
             memcpy(new_le_in_bn, new_le, new_le_size);
             toku_free(new_le);
         }

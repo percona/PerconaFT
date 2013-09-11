@@ -236,7 +236,8 @@ static inline size_t uxr_unpack_data(UXR uxr, uint8_t *p);
 
 static void do_something(
     bn_data* data_buffer, 
-    uint32_t idx, 
+    uint32_t idx,
+    ULE ule, // temporary, used to pass in key and keylen to get_space_for_insert
     uint32_t old_le_size,
     LEAFENTRY old_le_space,
     size_t size, 
@@ -253,7 +254,7 @@ static void do_something(
         }
         // this means we are inserting something new
         else {
-            data_buffer->get_space_for_insert(idx, size, new_le_space);
+            data_buffer->get_space_for_insert(idx, ule->keyp, ule->keylen, size, new_le_space);
         }
     }
 }
