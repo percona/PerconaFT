@@ -1308,27 +1308,6 @@ le_has_xids(LEAFENTRY le, XIDS xids) {
     return rval;
 }
 
-uint32_t
-le_latest_keylen (LEAFENTRY le) {
-    uint32_t rval;
-    rval = le_latest_is_del(le) ? 0 : le_keylen(le);
-#if ULE_DEBUG
-    ULE_S ule;
-    le_unpack(&ule, le);
-    UXR uxr = ule_get_innermost_uxr(&ule);
-    uint32_t slow_rval;
-    if (uxr_is_insert(uxr)) {
-        slow_rval = ule.keylen;
-    }
-    else {
-        slow_rval = 0;
-    }
-    ule_cleanup(&ule);
-    invariant(slow_rval == rval);
-#endif
-    return rval;
-}
-
 void*
 le_latest_val_and_len (LEAFENTRY le, uint32_t *len) {
     uint32_t keylen = toku_dtoh32(le->keylen);

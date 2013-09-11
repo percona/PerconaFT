@@ -1033,7 +1033,6 @@ static void test_le_optimize(void) {
 //            - Check memsize function is correct
 //             - Assert == disksize (almost useless, but go ahead)
 //            - Check standard accessors
-//             - le_latest_keylen
 //             - le_latest_val_and_len
 //             - le_latest_val 
 //             - le_latest_vallen

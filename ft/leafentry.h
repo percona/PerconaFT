@@ -216,7 +216,6 @@ int print_klpair (FILE *outf, const void* key, uint32_t keylen, LEAFENTRY v); //
 int le_latest_is_del(LEAFENTRY le); // Return true if it is a provisional delete.
 bool le_is_clean(LEAFENTRY le); //Return how many xids exist (0 does not count)
 bool le_has_xids(LEAFENTRY le, XIDS xids); // Return true transaction represented by xids is still provisional in this leafentry (le's xid stack is a superset or equal to xids)
-uint32_t le_latest_keylen (LEAFENTRY le); // Return the latest keylen.
 void*     le_latest_val (LEAFENTRY le); // Return the latest val (return NULL for provisional deletes)
 uint32_t le_latest_vallen (LEAFENTRY le); // Return the latest vallen.  Returns 0 for provisional deletes.
 void* le_latest_val_and_len (LEAFENTRY le, uint32_t *len);
