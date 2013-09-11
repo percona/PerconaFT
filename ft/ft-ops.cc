@@ -1658,7 +1658,7 @@ toku_ft_bn_apply_cmd_once (
         &numbytes_delta
         );
 
-    newsize = leafentry_disksize(new_le);
+    newsize = new_le ? leafentry_disksize(new_le) : 0;
     if (le && new_le) {
         workdone_this_le = (oldsize > newsize ? oldsize : newsize);  // work done is max of le size before and after message application
 
