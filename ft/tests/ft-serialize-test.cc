@@ -656,7 +656,7 @@ test_serialize_leaf_with_many_rows(enum ftnode_verify_type bft, bool do_clone) {
                 assert(memcmp(curr_le, les[last_i], leafentry_memsize(curr_le)) == 0);
                 if (bn < npartitions-1) {
                     uint32_t keylen;
-                    assert(strcmp((char*)dn->childkeys[bn].data, (char*)le_key_and_len(les[last_i], &keylen)) <= 0);
+                    assert(*((uint32_t *)dn->childkeys[bn].data) >= *((uint32_t*)le_key_and_len(les[last_i], &keylen)));
                 }
                 // TODO for later, get a key comparison here as well
                 last_i++;
@@ -931,7 +931,6 @@ test_serialize_leaf_with_empty_basement_nodes(enum ftnode_verify_type bft, bool 
         assert(dn->totalchildkeylens==(2*(npartitions-1)));
         uint32_t last_i = 0;
         for (uint32_t bn = 0; bn < npartitions; ++bn) {
-            assert(BLB_MAX_MSN_APPLIED(dn, bn).msn == POSTSERIALIZE_MSN_ON_DISK.msn);
             assert(dest_ndd[bn].start > 0);
             assert(dest_ndd[bn].size  > 0);
             if (bn > 0) {
@@ -1211,40 +1210,12 @@ int
 test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
     initialize_dummymsn();
 
-    test_serialize_leaf_with_empty_basement_nodes(read_none, false);
-    test_serialize_leaf_with_empty_basement_nodes(read_all, false);
-    test_serialize_leaf_with_empty_basement_nodes(read_compressed, false);
-    test_serialize_leaf_with_empty_basement_nodes(read_none, true);
-    test_serialize_leaf_with_empty_basement_nodes(read_all, true);
-    test_serialize_leaf_with_empty_basement_nodes(read_compressed, true);
-
-    test_serialize_leaf_with_multiple_empty_basement_nodes(read_none, false);
-    test_serialize_leaf_with_multiple_empty_basement_nodes(read_all, false);
-    test_serialize_leaf_with_multiple_empty_basement_nodes(read_compressed, false);
-    test_serialize_leaf_with_multiple_empty_basement_nodes(read_none, true);
-    test_serialize_leaf_with_multiple_empty_basement_nodes(read_all, true);
-    test_serialize_leaf_with_multiple_empty_basement_nodes(read_compressed, true);
-
-    test_serialize_leaf_with_large_rows(read_none, false);
-    test_serialize_leaf_with_large_rows(read_all, false);
-    test_serialize_leaf_with_large_rows(read_compressed, false);
-    test_serialize_leaf_with_large_rows(read_none, true);
-    test_serialize_leaf_with_large_rows(read_all, true);
-    test_serialize_leaf_with_large_rows(read_compressed, true);
-
-    test_serialize_leaf_with_many_rows(read_none, false);
-    test_serialize_leaf_with_many_rows(read_all, false);
-    test_serialize_leaf_with_many_rows(read_compressed, false);
-    test_serialize_leaf_with_many_rows(read_none, true);
-    test_serialize_leaf_with_many_rows(read_all, true);
-    test_serialize_leaf_with_many_rows(read_compressed, true);
-
-    test_serialize_leaf_with_large_pivots(read_none, false);
-    test_serialize_leaf_with_large_pivots(read_all, false);
-    test_serialize_leaf_with_large_pivots(read_compressed, false);
-    test_serialize_leaf_with_large_pivots(read_none, true);
-    test_serialize_leaf_with_large_pivots(read_all, true);
-    test_serialize_leaf_with_large_pivots(read_compressed, true);
+    test_serialize_nonleaf(read_none, false);
+    test_serialize_nonleaf(read_all, false);
+    test_serialize_nonleaf(read_compressed, false);
+    test_serialize_nonleaf(read_none, true);
+    test_serialize_nonleaf(read_all, true);
+    test_serialize_nonleaf(read_compressed, true);
 
     test_serialize_leaf_check_msn(read_none, false);
     test_serialize_leaf_check_msn(read_all, false);
@@ -1253,12 +1224,40 @@ test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute_
     test_serialize_leaf_check_msn(read_all, true);
     test_serialize_leaf_check_msn(read_compressed, true);
 
-    test_serialize_nonleaf(read_none, false);
-    test_serialize_nonleaf(read_all, false);
-    test_serialize_nonleaf(read_compressed, false);
-    test_serialize_nonleaf(read_none, true);
-    test_serialize_nonleaf(read_all, true);
-    test_serialize_nonleaf(read_compressed, true);
+    test_serialize_leaf_with_multiple_empty_basement_nodes(read_none, false);
+    test_serialize_leaf_with_multiple_empty_basement_nodes(read_all, false);
+    test_serialize_leaf_with_multiple_empty_basement_nodes(read_compressed, false);
+    test_serialize_leaf_with_multiple_empty_basement_nodes(read_none, true);
+    test_serialize_leaf_with_multiple_empty_basement_nodes(read_all, true);
+    test_serialize_leaf_with_multiple_empty_basement_nodes(read_compressed, true);
+
+    test_serialize_leaf_with_empty_basement_nodes(read_none, false);
+    test_serialize_leaf_with_empty_basement_nodes(read_all, false);
+    test_serialize_leaf_with_empty_basement_nodes(read_compressed, false);
+    test_serialize_leaf_with_empty_basement_nodes(read_none, true);
+    test_serialize_leaf_with_empty_basement_nodes(read_all, true);
+    test_serialize_leaf_with_empty_basement_nodes(read_compressed, true);
+
+    test_serialize_leaf_with_large_rows(read_none, false);
+    test_serialize_leaf_with_large_rows(read_all, false);
+    test_serialize_leaf_with_large_rows(read_compressed, false);
+    test_serialize_leaf_with_large_rows(read_none, true);
+    test_serialize_leaf_with_large_rows(read_all, true);
+    test_serialize_leaf_with_large_rows(read_compressed, true);
+
+    test_serialize_leaf_with_large_pivots(read_none, false);
+    test_serialize_leaf_with_large_pivots(read_all, false);
+    test_serialize_leaf_with_large_pivots(read_compressed, false);
+    test_serialize_leaf_with_large_pivots(read_none, true);
+    test_serialize_leaf_with_large_pivots(read_all, true);
+    test_serialize_leaf_with_large_pivots(read_compressed, true);
+
+    test_serialize_leaf_with_many_rows(read_none, false);
+    test_serialize_leaf_with_many_rows(read_all, false);
+    test_serialize_leaf_with_many_rows(read_compressed, false);
+    test_serialize_leaf_with_many_rows(read_none, true);
+    test_serialize_leaf_with_many_rows(read_all, true);
+    test_serialize_leaf_with_many_rows(read_compressed, true);
 
     return 0;
 }
