@@ -215,7 +215,6 @@ test_le_offsets (void) {
 
 static void
 test_ule_packs_to_nothing (ULE ule) {
-    size_t memsize;
     LEAFENTRY le;
     int r = le_pack(ule, NULL, 0, 0, NULL, &le);
     assert(r==0);
@@ -343,19 +342,22 @@ test_le_pack_committed (void) {
 
             size_t memsize;
             LEAFENTRY le;
-            int r = le_pack(&ule, &memsize, &le, NULL, NULL, NULL);
+            int r = le_pack(&ule, nullptr, 0, 0, nullptr, &le);
             assert(r==0);
             assert(le!=NULL);
+            memsize = le_memsize_from_ule(&ule);
             le_verify_accessors(le, &ule, memsize);
             ULE_S tmp_ule;
             le_unpack(&tmp_ule, le);
             verify_ule_equal(&ule, &tmp_ule);
             LEAFENTRY tmp_le;
             size_t    tmp_memsize;
-            r = le_pack(&tmp_ule, &tmp_memsize, &tmp_le, NULL, NULL, NULL);
+            r = le_pack(&tmp_ule, nullptr, 0, 0, nullptr, &tmp_le);
+            tmp_memsize = le_memsize_from_ule(&tmp_ule);
             assert(r==0);
             assert(tmp_memsize == memsize);
             assert(memcmp(le, tmp_le, memsize) == 0);
+            le_verify_accessors(tmp_le, &tmp_ule, tmp_memsize);
 
             toku_free(tmp_le);
             toku_free(le);
@@ -405,19 +407,22 @@ test_le_pack_uncommitted (uint8_t committed_type, uint8_t prov_type, int num_pla
 
             size_t memsize;
             LEAFENTRY le;
-            int r = le_pack(&ule, &memsize, &le, NULL, NULL, NULL);
+            int r = le_pack(&ule, nullptr, 0, 0, nullptr, &le);
             assert(r==0);
             assert(le!=NULL);
+            memsize = le_memsize_from_ule(&ule);
             le_verify_accessors(le, &ule, memsize);
             ULE_S tmp_ule;
             le_unpack(&tmp_ule, le);
             verify_ule_equal(&ule, &tmp_ule);
             LEAFENTRY tmp_le;
             size_t    tmp_memsize;
-            r = le_pack(&tmp_ule, &tmp_memsize, &tmp_le, NULL, NULL, NULL);
+            r = le_pack(&tmp_ule, nullptr, 0, 0, nullptr, &tmp_le);
+            tmp_memsize = le_memsize_from_ule(&tmp_ule);
             assert(r==0);
             assert(tmp_memsize == memsize);
             assert(memcmp(le, tmp_le, memsize) == 0);
+            le_verify_accessors(tmp_le, &tmp_ule, tmp_memsize);
 
             toku_free(tmp_le);
             toku_free(le);
@@ -474,27 +479,30 @@ test_le_apply(ULE ule_initial, FT_MSG msg, ULE ule_expected) {
     LEAFENTRY le_expected;
     LEAFENTRY le_result;
 
-    size_t initial_memsize;
-    r = le_pack(ule_initial, &initial_memsize, &le_initial, NULL, NULL, NULL);
+    r = le_pack(ule_initial, nullptr, 0, 0, nullptr, &le_initial);
     CKERR(r);
 
-    size_t result_memsize;
+    size_t result_memsize = 0;
     int64_t ignoreme;
     toku_le_apply_msg(msg,
                       le_initial,
+                      nullptr,
+                      0,
                       TXNID_NONE,
                       make_gc_info(true),
-                      &result_memsize,
                       &le_result,
-                      NULL, 
-                      NULL, NULL, &ignoreme);
-
-    if (le_result)
+                      &ignoreme);
+    if (le_result) {
+        result_memsize = leafentry_memsize(le_result);
         le_verify_accessors(le_result, ule_expected, result_memsize);
+    }
 
-    size_t expected_memsize;
-    r = le_pack(ule_expected, &expected_memsize, &le_expected, NULL, NULL, NULL);
+    size_t expected_memsize = 0;
+    r = le_pack(ule_expected, nullptr, 0, 0, nullptr, &le_expected);
     CKERR(r);
+    if (le_expected) {
+        expected_memsize = leafentry_memsize(le_expected);
+    }
 
 
     verify_le_equal(le_result, le_expected);
@@ -788,8 +796,7 @@ test_le_apply_messages(void) {
 
 static bool ule_worth_running_garbage_collection(ULE ule, TXNID oldest_referenced_xid_known) {
     LEAFENTRY le;
-    size_t initial_memsize;
-    int r = le_pack(ule, &initial_memsize, &le, nullptr, nullptr, nullptr); CKERR(r);
+    int r = le_pack(ule, nullptr, 0, 0, nullptr, &le); CKERR(r);
     invariant_notnull(le);
     bool worth_running = toku_le_worth_running_garbage_collection(le, oldest_referenced_xid_known);
     toku_free(le);
