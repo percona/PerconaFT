@@ -117,7 +117,7 @@ static void
 le_add_to_bn(bn_data* bn, uint32_t idx, const  char *key, int keysize, const char *val, int valsize)
 {
     LEAFENTRY r = NULL;
-    uint32_t size_needed = LE_CLEAN_MEMSIZE(keylen, valsize);
+    uint32_t size_needed = LE_CLEAN_MEMSIZE(keysize, valsize);
     bn->get_space_for_insert(
         idx, 
         key,
