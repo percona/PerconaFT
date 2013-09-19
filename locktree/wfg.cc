@@ -192,29 +192,16 @@ void wfg::apply_edges(TXNID txnid,
 // find node by id
 wfg::node *wfg::find_node(TXNID txnid) {
     node *n = nullptr;
-    int r = m_nodes.find_zero([txnid](node *const &node_a) -> int { return find_by_txnid(node_a, txnid); }, &n, nullptr);
+    int r = m_nodes.find_zero(find_by_txnid(txnid), &n, nullptr);
     invariant(r == 0 || r == DB_NOTFOUND);
     return n;
-}
-
-// this is the omt comparison function
-// nodes are compared by their txnid.
-int wfg::find_by_txnid(node *const &node_a, const TXNID &txnid_b) {
-    TXNID txnid_a = node_a->txnid;
-    if (txnid_a < txnid_b) {
-        return -1;
-    } else if (txnid_a == txnid_b) {
-        return 0;
-    } else {
-        return 1;
-    }
 }
 
 // insert a new node
 wfg::node *wfg::find_create_node(TXNID txnid) {
     node *n;
     uint32_t idx;
-    int r = m_nodes.find_zero([txnid](node *const &node_a) -> int { return find_by_txnid(node_a, txnid); }, &n, &idx);
+    int r = m_nodes.find_zero(find_by_txnid(txnid), &n, &idx);
     if (r == DB_NOTFOUND) {
         n = node::alloc(txnid);
         r = m_nodes.insert_at(n, idx);

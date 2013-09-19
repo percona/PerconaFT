@@ -370,7 +370,20 @@ public:
         // requires: Manager's mutex is held
         void run_escalation(void);
 
-        static int find_by_dict_id(locktree *const &lt, const DICTIONARY_ID &dict_id);
+        class find_by_dict_id {
+            const DICTIONARY_ID _dict_id;
+            public:
+            find_by_dict_id(DICTIONARY_ID dict_id) : _dict_id(dict_id) {}
+            int operator()(locktree *const &lt) const {
+                if (lt->m_dict_id.dictid < _dict_id.dictid) {
+                    return -1;
+                } else if (lt->m_dict_id.dictid == _dict_id.dictid) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+        };
 
         friend class manager_unit_test;
     };

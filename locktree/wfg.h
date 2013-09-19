@@ -153,7 +153,21 @@ private:
 
     bool cycle_exists_from_node(node *target, node *head);
 
-    static int find_by_txnid(node *const &node_a, const TXNID &txnid_b);
+    class find_by_txnid {
+        const TXNID txnid_b;
+        public:
+        find_by_txnid(TXNID txnid) : txnid_b(txnid) {}
+        int operator()(node *const &node_a) const {
+            TXNID txnid_a = node_a->txnid;
+            if (txnid_a < txnid_b) {
+                return -1;
+            } else if (txnid_a == txnid_b) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+    };
 };
 ENSURE_POD(wfg);
 

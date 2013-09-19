@@ -163,33 +163,21 @@ void locktree::manager::set_lock_wait_time(uint64_t lock_wait_time_ms) {
     m_lock_wait_time_ms = lock_wait_time_ms;
 }
 
-int locktree::manager::find_by_dict_id(locktree *const &lt, const DICTIONARY_ID &dict_id) {
-    if (lt->m_dict_id.dictid < dict_id.dictid) {
-        return -1;
-    } else if (lt->m_dict_id.dictid == dict_id.dictid) {
-        return 0;
-    } else {
-        return 1;
-    }
-}
-
 locktree *locktree::manager::locktree_map_find(const DICTIONARY_ID &dict_id) {
     locktree *lt;
-    int r = m_locktree_map.find_zero([dict_id](locktree *const &ltree) -> int { return find_by_dict_id(ltree, dict_id); }, &lt, nullptr);
+    int r = m_locktree_map.find_zero(find_by_dict_id(dict_id), &lt, nullptr);
     return r == 0 ? lt : nullptr;
 }
 
 void locktree::manager::locktree_map_put(locktree *lt) {
-    int r = m_locktree_map.insert(lt, [lt](locktree *const &ltree) -> int { return find_by_dict_id(ltree, lt->m_dict_id); }, nullptr);
+    int r = m_locktree_map.insert(lt, find_by_dict_id(lt->m_dict_id), nullptr);
     invariant_zero(r);
 }
 
 void locktree::manager::locktree_map_remove(locktree *lt) {
     uint32_t idx;
     locktree *found_lt;
-    int r = m_locktree_map.find_zero(
-            [lt](locktree *const &ltree) -> int { return find_by_dict_id(ltree, lt->m_dict_id); },
-            &found_lt, &idx);
+    int r = m_locktree_map.find_zero(find_by_dict_id(lt->m_dict_id), &found_lt, &idx);
     invariant_zero(r);
     invariant(found_lt == lt);
     r = m_locktree_map.delete_at(idx);
