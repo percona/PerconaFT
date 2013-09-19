@@ -205,6 +205,22 @@ struct toku_fifo_entry_key_msn_heaviside_extra {
 int
 toku_fifo_entry_key_msn_heaviside(const int32_t &v, const struct toku_fifo_entry_key_msn_heaviside_extra &extra);
 
+class toku_fifo_entry_key_msn_heaviside_ftor {
+    struct toku_fifo_entry_key_msn_heaviside_extra e;
+public:
+    toku_fifo_entry_key_msn_heaviside_ftor(DESCRIPTOR desc, ft_compare_func cmp, FIFO fifo, const DBT *key, MSN msn) {
+        ZERO_STRUCT(e);
+        e.desc = desc;
+        e.cmp = cmp;
+        e.fifo = fifo;
+        e.key = key;
+        e.msn = msn;
+    }
+    int operator()(const int32_t &v) const {
+        return toku_fifo_entry_key_msn_heaviside(v, e);
+    }
+};
+
 struct toku_fifo_entry_key_msn_cmp_extra {
     DESCRIPTOR desc;
     ft_compare_func cmp;

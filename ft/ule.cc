@@ -267,7 +267,7 @@ static TXNID
 get_next_older_txnid(TXNID xc, const xid_omt_t &omt) {
     int r;
     TXNID xid;
-    r = omt.find<TXNID, toku_find_xid_by_xid>(xc, -1, &xid, nullptr);
+    r = omt.find(toku_find_xid_by_xid(xc), -1, &xid, nullptr);
     if (r==0) {
         invariant(xid < xc); //sanity check
     }
@@ -398,7 +398,7 @@ ule_garbage_collect(ULE ule, const xid_omt_t &snapshot_xids, const rx_omt_t &ref
         }
         if (garbage_collection_debug)
         {
-            int r = snapshot_xids.find_zero<TXNID, toku_find_xid_by_xid>(tl1, nullptr, nullptr);
+            int r = snapshot_xids.find_zero(toku_find_xid_by_xid(tl1), nullptr, nullptr);
             invariant(r==0); //make sure that the txn you are claiming is live is actually live
         }
         //

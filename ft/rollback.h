@@ -134,7 +134,16 @@ void toku_maybe_spill_rollbacks(TOKUTXN txn, ROLLBACK_LOG_NODE log);
 void toku_txn_maybe_note_ft (TOKUTXN txn, FT h);
 int toku_logger_txn_rollback_stats(TOKUTXN txn, struct txn_stat *txn_stat);
 
-int toku_find_xid_by_xid (const TXNID &xid, const TXNID &xidfind);
+class toku_find_xid_by_xid {
+    const TXNID _xidfind;
+public:
+    toku_find_xid_by_xid(const TXNID xidfind) : _xidfind(xidfind) {}
+    int operator()(const TXNID &xid) const {
+        if (xid<_xidfind) return -1;
+        if (xid>_xidfind) return +1;
+        return 0;
+    }
+};
 
 PAIR_ATTR rollback_memory_size(ROLLBACK_LOG_NODE log);
 

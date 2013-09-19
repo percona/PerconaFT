@@ -192,7 +192,7 @@ void wfg::apply_edges(TXNID txnid,
 // find node by id
 wfg::node *wfg::find_node(TXNID txnid) {
     node *n = nullptr;
-    int r = m_nodes.find_zero<TXNID, find_by_txnid>(txnid, &n, nullptr);
+    int r = m_nodes.find_zero([txnid](node *const &node_a) -> int { return find_by_txnid(node_a, txnid); }, &n, nullptr);
     invariant(r == 0 || r == DB_NOTFOUND);
     return n;
 }
@@ -214,7 +214,7 @@ int wfg::find_by_txnid(node *const &node_a, const TXNID &txnid_b) {
 wfg::node *wfg::find_create_node(TXNID txnid) {
     node *n;
     uint32_t idx;
-    int r = m_nodes.find_zero<TXNID, find_by_txnid>(txnid, &n, &idx);
+    int r = m_nodes.find_zero([txnid](node *const &node_a) -> int { return find_by_txnid(node_a, txnid); }, &n, &idx);
     if (r == DB_NOTFOUND) {
         n = node::alloc(txnid);
         r = m_nodes.insert_at(n, idx);

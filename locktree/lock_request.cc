@@ -380,7 +380,7 @@ void lock_request::retry_all_lock_requests(locktree *lt) {
 // find another lock request by txnid. must hold the mutex.
 lock_request *lock_request::find_lock_request(const TXNID &txnid) {
     lock_request *request;
-    int r = m_info->pending_lock_requests.find_zero<TXNID, find_by_txnid>(txnid, &request, nullptr);
+    int r = m_info->pending_lock_requests.find_zero(find_by_txnid(txnid), &request, nullptr);
     if (r != 0) {
         request = nullptr;
     }
@@ -391,7 +391,7 @@ lock_request *lock_request::find_lock_request(const TXNID &txnid) {
 void lock_request::insert_into_lock_requests(void) {
     uint32_t idx;
     lock_request *request;
-    int r = m_info->pending_lock_requests.find_zero<TXNID, find_by_txnid>(m_txnid, &request, &idx);
+    int r = m_info->pending_lock_requests.find_zero(find_by_txnid(m_txnid), &request, &idx);
     invariant(r == DB_NOTFOUND);
     r = m_info->pending_lock_requests.insert_at(this, idx);
     invariant_zero(r);
@@ -404,21 +404,10 @@ void lock_request::insert_into_lock_requests(void) {
 void lock_request::remove_from_lock_requests(void) {
     uint32_t idx;
     lock_request *request;
-    int r = m_info->pending_lock_requests.find_zero<TXNID, find_by_txnid>(m_txnid, &request, &idx);
+    int r = m_info->pending_lock_requests.find_zero(find_by_txnid(m_txnid), &request, &idx);
     invariant_zero(r && request == this);
     r = m_info->pending_lock_requests.delete_at(idx);
     invariant_zero(r);
-}
-
-int lock_request::find_by_txnid(lock_request * const &request, const TXNID &txnid) {
-    TXNID request_txnid = request->m_txnid;
-    if (request_txnid < txnid) {
-        return -1;
-    } else if (request_txnid == txnid) {
-        return 0;
-    } else {
-        return 1;
-    }
 }
 
 } /* namespace toku */

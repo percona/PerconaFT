@@ -268,14 +268,12 @@ verify_sorted_by_key_msn(FT_HANDLE brt, FIFO fifo, const verify_omt_t &mt) {
 template<typename count_omt_t>
 static int
 count_eq_key_msn(FT_HANDLE brt, FIFO fifo, const count_omt_t &mt, const DBT *key, MSN msn) {
-    struct toku_fifo_entry_key_msn_heaviside_extra extra;
-    ZERO_STRUCT(extra);
-    extra.desc = &brt->ft->cmp_descriptor;
-    extra.cmp = brt->ft->compare_fun;
-    extra.fifo = fifo;
-    extra.key = key;
-    extra.msn = msn;
-    int r = mt.template find_zero<struct toku_fifo_entry_key_msn_heaviside_extra, toku_fifo_entry_key_msn_heaviside>(extra, nullptr, nullptr);
+    toku_fifo_entry_key_msn_heaviside_ftor h(&brt->ft->cmp_descriptor,
+                                             brt->ft->compare_fun,
+                                             fifo,
+                                             key,
+                                             msn);
+    int r = mt.find_zero(h, nullptr, nullptr);
     int count;
     if (r == 0) {
         count = 1;

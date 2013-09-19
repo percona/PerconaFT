@@ -121,15 +121,18 @@ static LEAFENTRY get_le_from_klpair(KLPAIR klpair){
     return le;
 }
 
-template<typename omtcmp_t,
-         int (*h)(const DBT &, const omtcmp_t &)>
-static int wrappy_fun_find(const KLPAIR &klpair, const omtcmp_t &extra) {
-    //TODO: kill this function when we split, and/or use toku_fill_dbt
-    DBT kdbt;
-    kdbt.data = klpair->key_le;
-    kdbt.size = klpair->keylen;
-    return h(kdbt, extra);
-}
+template<class Heaviside>
+class wrappy_find {
+    Heaviside &_h;
+public:
+    wrappy_find(Heaviside h) : _h(h) {}
+    int operator()(const KLPAIR &klpair) const {
+        DBT kdbt;
+        kdbt.data = klpair->key_le;
+        kdbt.size = klpair->keylen;
+        return _h(kdbt);
+    }
+};
 
 template<typename iterate_extra_t,
          int (*h)(const void * key, const uint32_t keylen, const LEAFENTRY &, const uint32_t idx, iterate_extra_t *const)>
@@ -167,11 +170,10 @@ public:
         return m_buffer.iterate_on_range< iterate_extra_t, wrappy_fun_iterate<iterate_extra_t, f> >(left, right, iterate_extra);
     }
 
-    template<typename omtcmp_t,
-             int (*h)(const DBT &, const omtcmp_t &)>
-    int find_zero(const omtcmp_t &extra, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
+    template<class Heaviside>
+    int find_zero(Heaviside h, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
         KLPAIR klpair = NULL;
-        int r = m_buffer.find_zero< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, &klpair, idxp);
+        int r = m_buffer.find_zero(wrappy_find<Heaviside>(h), &klpair, idxp);
         if (r == 0) {
             if (value) {
                 *value = get_le_from_klpair(klpair);
@@ -188,11 +190,10 @@ public:
         return r;
     }
 
-    template<typename omtcmp_t,
-             int (*h)(const DBT &, const omtcmp_t &)>
-    int find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
+    template<class Heaviside>
+    int find(Heaviside h, int direction, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
         KLPAIR klpair = NULL;
-        int r = m_buffer.find< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, direction, &klpair, idxp);
+        int r = m_buffer.find(wrappy_find<Heaviside>(h), direction, &klpair, idxp);
         if (r == 0) {
             if (value) {
                 *value = get_le_from_klpair(klpair);

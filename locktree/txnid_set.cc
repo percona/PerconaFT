@@ -93,16 +93,20 @@ PATENT RIGHTS GRANT:
 
 namespace toku {
 
-int find_by_txnid(const TXNID &txnid_a, const TXNID &txnid_b);
-int find_by_txnid(const TXNID &txnid_a, const TXNID &txnid_b) {
-    if (txnid_a < txnid_b) {
-        return -1;
-    } else if (txnid_a == txnid_b) {
-        return 0;
-    } else {
-        return 1;
+class find_by_txnid {
+    const TXNID &_target;
+public:
+    find_by_txnid(const TXNID &target) : _target(target) {}
+    int operator()(const TXNID &query) const {
+        if (query < _target) {
+            return -1;
+        } else if (query == _target) {
+            return 0;
+        } else {
+            return 1;
+        }
     }
-}
+};
 
 void txnid_set::create(void) {
     // lazily allocate the underlying omt, since it is common
@@ -118,20 +122,20 @@ void txnid_set::destroy(void) {
 // Otherwise, return false.
 bool txnid_set::contains(TXNID txnid) const {
     TXNID find_txnid;
-    int r = m_txnids.find_zero<TXNID, find_by_txnid>(txnid, &find_txnid, nullptr);
+    int r = m_txnids.find_zero(find_by_txnid(txnid), &find_txnid, nullptr);
     return r == 0 ? true : false;
 }
 
 // Add a given txnid to the set
 void txnid_set::add(TXNID txnid) {
-    int r = m_txnids.insert<TXNID, find_by_txnid>(txnid, txnid, nullptr);
+    int r = m_txnids.insert(txnid, find_by_txnid(txnid), nullptr);
     invariant(r == 0 || r == DB_KEYEXIST);
 }
 
 // Delete a given txnid from the set.
 void txnid_set::remove(TXNID txnid) {
     uint32_t idx;
-    int r = m_txnids.find_zero<TXNID, find_by_txnid>(txnid, nullptr, &idx);
+    int r = m_txnids.find_zero(find_by_txnid(txnid), nullptr, &idx);
     if (r == 0) {
         r = m_txnids.delete_at(idx);
         invariant_zero(r);

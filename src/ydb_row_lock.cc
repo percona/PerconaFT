@@ -110,12 +110,14 @@ static DB_TXN *txn_oldest_ancester(DB_TXN* txn) {
     return txn;
 }
 
-int find_key_ranges_by_lt(const txn_lt_key_ranges &ranges,
-        const toku::locktree *const &find_lt);
-int find_key_ranges_by_lt(const txn_lt_key_ranges &ranges,
-        const toku::locktree *const &find_lt) {
-    return ranges.lt->compare(find_lt);
-}
+class find_key_ranges_by_lt {
+    const toku::locktree *const &_find_lt;
+public:
+    find_key_ranges_by_lt(const toku::locktree *const &find_lt) : _find_lt(find_lt) {}
+    int operator()(const txn_lt_key_ranges &ranges) const {
+        return ranges.lt->compare(_find_lt);
+    }
+};
 
 static void db_txn_note_row_lock(DB *db, DB_TXN *txn, const DBT *left_key, const DBT *right_key) {
     const toku::locktree *lt = db->i->lt;
@@ -128,7 +130,7 @@ static void db_txn_note_row_lock(DB *db, DB_TXN *txn, const DBT *left_key, const
 
     // if this txn has not yet already referenced this
     // locktree, then add it to this txn's locktree map
-    int r = map->find_zero<const toku::locktree *, find_key_ranges_by_lt>(lt, &ranges, &idx);
+    int r = map->find_zero(find_key_ranges_by_lt(lt), &ranges, &idx);
     if (r == DB_NOTFOUND) {
         ranges.lt = db->i->lt;
         XMALLOC(ranges.buffer);
@@ -194,7 +196,7 @@ void toku_db_txn_escalate_callback(TXNID txnid, const toku::locktree *lt, const 
         uint32_t idx;
         txn_lt_key_ranges ranges;
         toku::omt<txn_lt_key_ranges> *map = &db_txn_struct_i(txn)->lt_map;
-        int r = map->find_zero<const toku::locktree *, find_key_ranges_by_lt>(lt, &ranges, &idx);
+        int r = map->find_zero(find_key_ranges_by_lt(lt), &ranges, &idx);
         if (r == 0) {
             // Destroy the old range buffer, create a new one, and insert the new ranges.
             //

@@ -682,8 +682,10 @@ void locktree::escalate(manager::lt_escalate_cb after_escalate_callback, void *a
             uint32_t idx;
             struct txnid_range_buffer new_range_buffer;
             struct txnid_range_buffer *existing_range_buffer;
-            int r = range_buffers.find_zero<TXNID, txnid_range_buffer::find_by_txnid>(
-                    current_txnid,
+            int r = range_buffers.find_zero(
+                    [current_txnid](const struct txnid_range_buffer &other_buffer) -> int {
+                        return txnid_range_buffer::find_by_txnid(other_buffer, current_txnid);
+                    },
                     &existing_range_buffer,
                     &idx
                     );

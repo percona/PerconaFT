@@ -169,27 +169,25 @@ int toku_omt_iterate_on_range(OMT omt, uint32_t left, uint32_t right, int (*f)(O
 struct heftor {
     int (*h)(OMTVALUE, void *v);
     void *v;
+    int operator()(const OMTVALUE &val) const {
+        return h(const_cast<OMTVALUE>(val), v);
+    }
 };
 static_assert(std::is_pod<heftor>::value, "not POD");
 
-int call_heftor(const OMTVALUE &v, const heftor &htor);
-int call_heftor(const OMTVALUE &v, const heftor &htor) {
-    return htor.h(const_cast<OMTVALUE>(v), htor.v);
-}
-
 int toku_omt_insert(OMT omt, OMTVALUE value, int(*h)(OMTVALUE, void*v), void *v, uint32_t *index) {
     struct heftor htor = { .h = h, .v = v };
-    return omt->insert<heftor, call_heftor>(value, htor, index);
+    return omt->insert(value, htor, index);
 }
 
 int toku_omt_find_zero(OMT V, int (*h)(OMTVALUE, void*extra), void*extra, OMTVALUE *value, uint32_t *index) {
     struct heftor htor = { .h = h, .v = extra };
-    return V->find_zero<heftor, call_heftor>(htor, value, index);
+    return V->find_zero(htor, value, index);
 }
 
 int toku_omt_find(OMT V, int (*h)(OMTVALUE, void*extra), void*extra, int direction, OMTVALUE *value, uint32_t *index) {
     struct heftor htor = { .h = h, .v = extra };
-    return V->find<heftor, call_heftor>(htor, direction, value, index);
+    return V->find(htor, direction, value, index);
 }
 
 int toku_omt_split_at(OMT omt, OMT *newomtp, uint32_t index) {

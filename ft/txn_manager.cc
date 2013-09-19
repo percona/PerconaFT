@@ -114,7 +114,16 @@ static bool is_txnid_live(TXN_MANAGER txn_manager, TXNID txnid) {
 #endif
 
 //Heaviside function to search through an OMT by a TXNID
-int find_by_xid (const TOKUTXN &txn, const TXNID &txnidfind);
+class find_by_xid {
+    const TXNID _txnidfind;
+public:
+    find_by_xid(TXNID txnidfind) : _txnidfind(txnidfind) {}
+    int operator()(const TOKUTXN &txn) const {
+        if (txn->txnid.parent_id64 < _txnidfind) return -1;
+        if (txn->txnid.parent_id64 > _txnidfind) return +1;
+        return 0;
+    }
+};
 
 static bool is_txnid_live(TXN_MANAGER txn_manager, TXNID txnid) {
     TOKUTXN result = NULL;
@@ -227,9 +236,9 @@ verify_snapshot_system(TXN_MANAGER txn_manager UU()) {
 
             {
                 //verify neither pair->begin_id nor end_id is in live_list
-                r = txn_manager->live_root_txns.find_zero<TXNID, find_by_xid>(tuple->begin_id, nullptr, nullptr);
+                r = txn_manager->live_root_txns.find_zero(find_by_xid(tuple->begin_id), nullptr, nullptr);
                 invariant(r == DB_NOTFOUND);
-                r = txn_manager->live_root_txns.find_zero<TXNID, find_by_xid>(tuple->end_id, nullptr, nullptr);
+                r = txn_manager->live_root_txns.find_zero(find_by_xid(tuple->end_id), nullptr, nullptr);
                 invariant(r == DB_NOTFOUND);
             }
             {
@@ -268,7 +277,7 @@ verify_snapshot_system(TXN_MANAGER txn_manager UU()) {
                 invariant(youngest > tuple->begin_id);
                 invariant(youngest < tuple->end_id);
                 // Youngest must be found, and must be a snapshot txn
-                r = snapshot_txnids_omt.find_zero<TXNID, toku_find_xid_by_xid>(youngest, nullptr, nullptr);
+                r = snapshot_txnids_omt.find_zero(toku_find_xid_by_xid(youngest), nullptr, nullptr);
                 invariant_zero(r);
             }
         }
@@ -336,14 +345,6 @@ setup_live_root_txn_list(xid_omt_t* live_root_txnid, xid_omt_t* live_root_txn_li
     live_root_txn_list->clone(*live_root_txnid);
 }
 
-//Heaviside function to search through an OMT by a TXNID
-int
-find_by_xid (const TOKUTXN &txn, const TXNID &txnidfind) {
-    if (txn->txnid.parent_id64 < txnidfind) return -1;
-    if (txn->txnid.parent_id64 > txnidfind) return +1;
-    return 0;
-}
-
 #if 0
 static void
 omt_insert_at_end_unless_recovery(OMT omt, int (*h)(OMTVALUE, void*extra), TOKUTXN txn, OMTVALUE v, bool for_recovery)
@@ -402,14 +403,17 @@ static TXNID get_oldest_referenced_xid_unlocked(TXN_MANAGER txn_manager) {
 
 //Heaviside function to find a TOKUTXN by TOKUTXN (used to find the index)
 // template-only function, but must be extern
-int find_xid (const TOKUTXN &txn, const TOKUTXN &txnfind);
-int
-find_xid (const TOKUTXN &txn, const TOKUTXN &txnfind)
+class find_xid
 {
-    if (txn->txnid.parent_id64 < txnfind->txnid.parent_id64) return -1;
-    if (txn->txnid.parent_id64 > txnfind->txnid.parent_id64) return +1;
-    return 0;
-}
+    const TOKUTXN &_txnfind;
+ public:
+    find_xid(const TOKUTXN &txnfind) : _txnfind(txnfind) {}
+    int operator()(const TOKUTXN &txn) const {
+        if (txn->txnid.parent_id64 < _txnfind->txnid.parent_id64) return -1;
+        if (txn->txnid.parent_id64 > _txnfind->txnid.parent_id64) return +1;
+        return 0;
+    }
+};
 
 static inline void txn_manager_create_snapshot_unlocked(
     TXN_MANAGER txn_manager,
@@ -435,14 +439,16 @@ static inline void txn_manager_create_snapshot_unlocked(
 }
 
 // template-only function, but must be extern
-int find_tuple_by_xid (const struct referenced_xid_tuple &tuple, const TXNID &xidfind);
-int
-find_tuple_by_xid (const struct referenced_xid_tuple &tuple, const TXNID &xidfind)
-{
-    if (tuple.begin_id < xidfind) return -1;
-    if (tuple.begin_id > xidfind) return +1;
-    return 0;
-}
+class find_tuple_by_xid {
+    const TXNID _xidfind;
+public:
+    find_tuple_by_xid(TXNID xidfind) : _xidfind(xidfind) {}
+    int operator()(const struct referenced_xid_tuple &tuple) const {
+        if (tuple.begin_id < _xidfind) return -1;
+        if (tuple.begin_id > _xidfind) return +1;
+        return 0;
+    }
+};
 
 // template-only function, but must be extern
 int referenced_xids_note_snapshot_txn_end_iter(const TXNID &live_xid, const uint32_t UU(index), rx_omt_t *const referenced_xids)
@@ -453,7 +459,7 @@ int referenced_xids_note_snapshot_txn_end_iter(const TXNID &live_xid, const uint
     uint32_t idx;
     struct referenced_xid_tuple *tuple;
 
-    r = referenced_xids->find_zero<TXNID, find_tuple_by_xid>(live_xid, &tuple, &idx);
+    r = referenced_xids->find_zero(find_tuple_by_xid(live_xid), &tuple, &idx);
     if (r == DB_NOTFOUND) {
         goto done;
     }
@@ -494,7 +500,7 @@ int note_snapshot_txn_end_by_txn_live_list_iter(
     int r;
     uint32_t idx;
     TXNID txnid;
-    r = sie->live_root_txn_list->find_zero<TXNID, toku_find_xid_by_xid>(tuple->begin_id, &txnid, &idx);
+    r = sie->live_root_txn_list->find_zero(toku_find_xid_by_xid(tuple->begin_id), &txnid, &idx);
     if (r == DB_NOTFOUND) {
         goto done;
     }
@@ -612,7 +618,7 @@ void toku_txn_manager_start_txn_for_recovery(
     txn->oldest_referenced_xid = TXNID_NONE;
 
     uint32_t idx;
-    int r = txn_manager->live_root_txns.find_zero<TOKUTXN, find_xid>(txn, nullptr, &idx);
+    int r = txn_manager->live_root_txns.find_zero(find_xid(txn), nullptr, &idx);
     invariant(r == DB_NOTFOUND);
     r = txn_manager->live_root_txns.insert_at(txn, idx);
     invariant_zero(r);
@@ -693,13 +699,13 @@ toku_get_youngest_live_list_txnid_for(TXNID xc, const xid_omt_t &snapshot_txnids
     int r;
     TXNID rval = TXNID_NONE;
 
-    r = referenced_xids.find_zero<TXNID, find_tuple_by_xid>(xc, &tuple, nullptr);
+    r = referenced_xids.find_zero(find_tuple_by_xid(xc), &tuple, nullptr);
     if (r == DB_NOTFOUND) {
         goto done;
     }
     TXNID live;
 
-    r = snapshot_txnids.find<TXNID, toku_find_xid_by_xid>(tuple->end_id, -1, &live, nullptr);
+    r = snapshot_txnids.find(toku_find_xid_by_xid(tuple->end_id), -1, &live, nullptr);
     if (r == DB_NOTFOUND) {
         goto done;
     }
@@ -732,7 +738,7 @@ void toku_txn_manager_finish_txn(TXN_MANAGER txn_manager, TOKUTXN txn) {
         uint32_t idx;
         //Remove txn from list of live root txns
         TOKUTXN txnagain;
-        r = txn_manager->live_root_txns.find_zero<TOKUTXN, find_xid>(txn, &txnagain, &idx);
+        r = txn_manager->live_root_txns.find_zero(find_xid(txn), &txnagain, &idx);
         invariant_zero(r);
         invariant(txn==txnagain);
 
@@ -761,7 +767,7 @@ void toku_txn_manager_finish_txn(TXN_MANAGER txn_manager, TOKUTXN txn) {
                     .end_id = ++txn_manager->last_xid,
                     .references = num_references
                 };
-                r = txn_manager->referenced_xids.insert<TXNID, find_tuple_by_xid>(tuple, txn->txnid.parent_id64, nullptr);
+                r = txn_manager->referenced_xids.insert(tuple, find_tuple_by_xid(txn->txnid.parent_id64), nullptr);
                 lazy_assert_zero(r);
             }
         }
@@ -828,7 +834,7 @@ void toku_txn_manager_clone_state_for_gc(
 
 void toku_txn_manager_id2txn_unlocked(TXN_MANAGER txn_manager, TXNID_PAIR txnid, TOKUTXN *result) {
     TOKUTXN txn;
-    int r = txn_manager->live_root_txns.find_zero<TXNID, find_by_xid>(txnid.parent_id64, &txn, nullptr);
+    int r = txn_manager->live_root_txns.find_zero(find_by_xid(txnid.parent_id64), &txn, nullptr);
     if (r==0) {
         assert(txn->txnid.parent_id64 == txnid.parent_id64);
         *result = txn;

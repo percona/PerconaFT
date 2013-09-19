@@ -232,7 +232,8 @@ static int do_insertion (enum ft_msg_type type, FILENUM filenum, BYTESTRING key,
     //printf("%s:%d committing insert %s %s\n", __FILE__, __LINE__, key.data, data.data);
     FT h;
     h = NULL;
-    r = txn->open_fts.find_zero<FILENUM, find_ft_from_filenum>(filenum, &h, NULL);
+    auto heaviside = [filenum](const FT &ft) -> int { return find_ft_from_filenum(ft, filenum); };
+    r = txn->open_fts.find_zero(heaviside, &h, NULL);
     if (r == DB_NOTFOUND) {
         assert(txn->for_recovery);
         r = 0;
@@ -613,7 +614,9 @@ toku_rollback_change_fdescriptor(FILENUM    filenum,
 
     FT ft;
     ft = NULL;
-    r = txn->open_fts.find_zero<FILENUM, find_ft_from_filenum>(filenum, &ft, NULL);
+    r = txn->open_fts.find_zero([filenum](const FT &ftval) -> int {
+            return find_ft_from_filenum(ftval, filenum);
+        }, &ft, NULL);
     assert(r == 0);
 
     DESCRIPTOR_S d;

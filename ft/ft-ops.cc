@@ -1412,6 +1412,16 @@ toku_cmd_leafval_heaviside(DBT const &kdbt, const struct cmd_leafval_heaviside_e
     return be.compare_fun(&db, &kdbt, key);
 }
 
+class toku_cmd_leafval_heaviside_ftor {
+    struct cmd_leafval_heaviside_extra be;
+public:
+    toku_cmd_leafval_heaviside_ftor(ft_compare_func compare_fun, DESCRIPTOR desc, DBT const * const key)
+        : be{compare_fun, desc, key} {}
+    int operator()(DBT const &kdbt) const {
+        return toku_cmd_leafval_heaviside(kdbt, be);
+    }
+};
+
 static int
 ft_compare_pivot(DESCRIPTOR desc, ft_compare_func cmp, const DBT *key, const DBT *pivot)
 {
@@ -1835,7 +1845,7 @@ toku_ft_bn_apply_cmd (
 
     uint32_t omt_size;
     int r;
-    struct cmd_leafval_heaviside_extra be = {compare_fun, desc, cmd->u.id.key};
+    toku_cmd_leafval_heaviside_ftor be(compare_fun, desc, cmd->u.id.key);
 
     unsigned int doing_seqinsert = bn->seqinsert;
     bn->seqinsert = 0;
@@ -1849,12 +1859,12 @@ toku_ft_bn_apply_cmd (
             DBT kdbt;
             r = bn->data_buffer.fetch_le_key_and_len(idx-1, &kdbt.size, &kdbt.data);
             if (r != 0) goto fz;
-            int cmp = toku_cmd_leafval_heaviside(kdbt, be);
+            int cmp = be(kdbt);
             if (cmp >= 0) goto fz;
             r = DB_NOTFOUND;
         } else {
         fz:
-            r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(
+            r = bn->data_buffer.find_zero(
                 be,
                 &storeddata,
                 &key,
@@ -1890,7 +1900,7 @@ toku_ft_bn_apply_cmd (
         uint32_t idx;
         // Apply to all the matches
 
-        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(
+        r = bn->data_buffer.find_zero(
             be,
             &storeddata,
             &key,
@@ -1971,7 +1981,7 @@ toku_ft_bn_apply_cmd (
         break;
     case FT_UPDATE: {
         uint32_t idx;
-        r = bn->data_buffer.find_zero<decltype(be), toku_cmd_leafval_heaviside>(
+        r = bn->data_buffer.find_zero(
             be,
             &storeddata,
             &key,
@@ -2079,12 +2089,12 @@ void toku_bnc_insert_msg(NONLEAF_CHILDINFO bnc, const void *key, ITEMLEN keylen,
     assert_zero(r);
     if (ft_msg_type_applies_once(type)) {
         DBT keydbt;
-        struct toku_fifo_entry_key_msn_heaviside_extra extra = { .desc = desc, .cmp = cmp, .fifo = bnc->buffer, .key = toku_fill_dbt(&keydbt, key, keylen), .msn = msn };
+        toku_fifo_entry_key_msn_heaviside_ftor h(desc, cmp, bnc->buffer, toku_fill_dbt(&keydbt, key, keylen), msn);
         if (is_fresh) {
-            r = bnc->fresh_message_tree.insert<struct toku_fifo_entry_key_msn_heaviside_extra, toku_fifo_entry_key_msn_heaviside>(offset, extra, nullptr);
+            r = bnc->fresh_message_tree.insert(offset, h, nullptr);
             assert_zero(r);
         } else {
-            r = bnc->stale_message_tree.insert<struct toku_fifo_entry_key_msn_heaviside_extra, toku_fifo_entry_key_msn_heaviside>(offset, extra, nullptr);
+            r = bnc->stale_message_tree.insert(offset, h, nullptr);
             assert_zero(r);
         }
     } else {
@@ -4131,6 +4141,12 @@ heaviside_from_search_t(const DBT &kdbt, ft_search_t &search) {
     abort(); return 0;
 }
 
+class heaviside_from_search_t_ftor {
+    ft_search_t &search;
+public:
+    heaviside_from_search_t_ftor(ft_search_t &s) : search(s) {}
+    int operator()(const DBT &kdbt) const { return heaviside_from_search_t(kdbt, search); }
+};
 
 //
 // Returns true if the value that is to be read is empty.
@@ -4284,15 +4300,8 @@ find_bounds_within_message_tree(
         // message (with any msn) with the key lower_bound_exclusive.
         // This will be a message we want to try applying, so it is the
         // "lower bound inclusive" within the message_tree.
-        struct toku_fifo_entry_key_msn_heaviside_extra lbi_extra;
-        ZERO_STRUCT(lbi_extra);
-        lbi_extra.desc = desc;
-        lbi_extra.cmp = cmp;
-        lbi_extra.fifo = buffer;
-        lbi_extra.key = bounds->lower_bound_exclusive;
-        lbi_extra.msn = MAX_MSN;
         int32_t found_lb;
-        r = message_tree.template find<struct toku_fifo_entry_key_msn_heaviside_extra, toku_fifo_entry_key_msn_heaviside>(lbi_extra, +1, &found_lb, lbi);
+        r = message_tree.find(toku_fifo_entry_key_msn_heaviside_ftor(desc, cmp, buffer, bounds->lower_bound_exclusive, MAX_MSN), +1, &found_lb, lbi);
         if (r == DB_NOTFOUND) {
             // There is no relevant data (the lower bound is bigger than
             // any message in this tree), so we have no range and we're
@@ -4332,14 +4341,7 @@ find_bounds_within_message_tree(
         // the first thing bigger than the upper_bound_inclusive key.
         // This is therefore the smallest thing we don't want to apply,
         // and toku_omt_iterate_on_range will not examine it.
-        struct toku_fifo_entry_key_msn_heaviside_extra ube_extra;
-        ZERO_STRUCT(ube_extra);
-        ube_extra.desc = desc;
-        ube_extra.cmp = cmp;
-        ube_extra.fifo = buffer;
-        ube_extra.key = bounds->upper_bound_inclusive;
-        ube_extra.msn = MAX_MSN;
-        r = message_tree.template find<struct toku_fifo_entry_key_msn_heaviside_extra, toku_fifo_entry_key_msn_heaviside>(ube_extra, +1, nullptr, ube);
+        r = message_tree.find(toku_fifo_entry_key_msn_heaviside_ftor(desc, cmp, buffer, bounds->upper_bound_inclusive, MAX_MSN), +1, nullptr, ube);
         if (r == DB_NOTFOUND) {
             // Couldn't find anything in the buffer bigger than our key,
             // so we need to look at everything up to the end of
@@ -4710,8 +4712,8 @@ int copy_to_stale(const int32_t &offset, const uint32_t UU(idx), struct copy_to_
     struct fifo_entry *entry = toku_fifo_get_entry(extra->bnc->buffer, offset);
     DBT keydbt;
     DBT *key = fill_dbt_for_fifo_entry(&keydbt, entry);
-    struct toku_fifo_entry_key_msn_heaviside_extra heaviside_extra = { .desc = &extra->ft->cmp_descriptor, .cmp = extra->ft->compare_fun, .fifo = extra->bnc->buffer, .key = key, .msn = entry->msn };
-    int r = extra->bnc->stale_message_tree.insert<struct toku_fifo_entry_key_msn_heaviside_extra, toku_fifo_entry_key_msn_heaviside>(offset, heaviside_extra, nullptr);
+    toku_fifo_entry_key_msn_heaviside_ftor heaviside(&extra->ft->cmp_descriptor, extra->ft->compare_fun, extra->bnc->buffer, key, entry->msn);
+    int r = extra->bnc->stale_message_tree.insert(offset, heaviside, nullptr);
     invariant_zero(r);
     return 0;
 }
@@ -4792,8 +4794,8 @@ ok: ;
     LEAFENTRY le;
     uint32_t keylen;
     void *key;
-    int r = bn->data_buffer.find<decltype(*search), heaviside_from_search_t>(
-        *search, 
+    int r = bn->data_buffer.find(
+        heaviside_from_search_t_ftor(*search), 
         direction, 
         &le, 
         &key, 
@@ -5729,17 +5731,17 @@ toku_ft_cursor_delete(FT_CURSOR cursor, int flags, TOKUTXN txn) {
 /* ********************* keyrange ************************ */
 
 
-struct keyrange_compare_s {
-    FT ft;
-    const DBT *key;
+class keyrange_compare {
+    FT _ft;
+    const DBT *_key;
+public:
+    keyrange_compare(FT ft, const DBT *key) : _ft(ft), _key(key) {}
+    int operator() (DBT const &kdbt) const {
+        // TODO: maybe put a const fake_db in the header
+        FAKE_DB(db, &_ft->cmp_descriptor);
+        return _ft->compare_fun(&db, &kdbt, _key);
+    }
 };
-
-static int
-keyrange_compare (DBT const &kdbt, const struct keyrange_compare_s &s) {
-    // TODO: maybe put a const fake_db in the header
-    FAKE_DB(db, &s.ft->cmp_descriptor);
-    return s.ft->compare_fun(&db, &kdbt, s.key);
-}
 
 static void
 keysrange_in_leaf_partition (FT_HANDLE brt, FTNODE node,
@@ -5759,11 +5761,10 @@ keysrange_in_leaf_partition (FT_HANDLE brt, FTNODE node,
     if (BP_STATE(node, left_child_number) == PT_AVAIL) {
         int r;
         // The partition is in main memory then get an exact count.
-        struct keyrange_compare_s s_left = {brt->ft, key_left};
         BASEMENTNODE bn = BLB(node, left_child_number);
         uint32_t idx_left = 0;
         // if key_left is NULL then set r==-1 and idx==0.
-        r = key_left ? bn->data_buffer.find_zero<decltype(s_left), keyrange_compare>(s_left, nullptr, nullptr, nullptr, &idx_left) : -1;
+        r = key_left ? bn->data_buffer.find_zero(keyrange_compare(brt->ft, key_left), nullptr, nullptr, nullptr, &idx_left) : -1;
         *less = idx_left;
         *equal_left = (r==0) ? 1 : 0;
 
@@ -5771,8 +5772,7 @@ keysrange_in_leaf_partition (FT_HANDLE brt, FTNODE node,
         uint32_t idx_right = size;
         r = -1;
         if (single_basement && key_right) {
-            struct keyrange_compare_s s_right = {brt->ft, key_right};
-            r = bn->data_buffer.find_zero<decltype(s_right), keyrange_compare>(s_right, nullptr, nullptr, nullptr, &idx_right);
+            r = bn->data_buffer.find_zero(keyrange_compare(brt->ft, key_right), nullptr, nullptr, nullptr, &idx_right);
         }
         *middle = idx_right - idx_left - *equal_left;
         *equal_right = (r==0) ? 1 : 0;
@@ -6022,8 +6022,7 @@ static int get_key_after_bytes_in_basementnode(FT ft, BASEMENTNODE bn, const DBT
     int r;
     uint32_t idx_left = 0;
     if (start_key != nullptr) {
-        struct keyrange_compare_s cmp = {ft, start_key};
-        r = bn->data_buffer.find_zero<decltype(cmp), keyrange_compare>(cmp, nullptr, nullptr, nullptr, &idx_left);
+        r = bn->data_buffer.find_zero(keyrange_compare(ft, start_key), nullptr, nullptr, nullptr, &idx_left);
         assert(r == 0 || r == DB_NOTFOUND);
     }
     struct get_key_after_bytes_iterate_extra iter_extra = {skip_len, skipped, callback, cb_extra};

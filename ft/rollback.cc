@@ -112,13 +112,6 @@ void toku_rollback_log_unpin_and_remove(TOKUTXN txn, ROLLBACK_LOG_NODE log) {
     assert(r == 0);
 }
 
-int
-toku_find_xid_by_xid (const TXNID &xid, const TXNID &xidfind) {
-    if (xid<xidfind) return -1;
-    if (xid>xidfind) return +1;
-    return 0;
-}
-
 void *toku_malloc_in_rollback(ROLLBACK_LOG_NODE log, size_t size) {
     return malloc_in_memarena(log->rollentry_arena, size);
 }
@@ -279,7 +272,7 @@ void toku_txn_maybe_note_ft (TOKUTXN txn, FT ft) {
     toku_txn_lock(txn);
     FT ftv;
     uint32_t idx;
-    int r = txn->open_fts.find_zero<FT, find_filenum>(ft, &ftv, &idx);
+    int r = txn->open_fts.find_zero([ft](const FT &ftval) -> int { return find_filenum(ftval, ft); }, &ftv, &idx);
     if (r == 0) {
         // already there
         assert(ftv == ft);

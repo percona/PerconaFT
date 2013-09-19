@@ -694,7 +694,7 @@ TXNID toku_get_oldest_in_live_root_txn_list(TOKUTXN txn) {
 bool toku_is_txn_in_live_root_txn_list(const xid_omt_t &live_root_txn_list, TXNID xid) {
     TXNID txnid;
     bool retval = false;
-    int r = live_root_txn_list.find_zero<TXNID, toku_find_xid_by_xid>(xid, &txnid, nullptr);
+    int r = live_root_txn_list.find_zero(toku_find_xid_by_xid(xid), &txnid, nullptr);
     if (r==0) {
         invariant(txnid == xid);
         retval = true;

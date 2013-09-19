@@ -236,7 +236,21 @@ private:
 
     void calculate_cond_wakeup_time(struct timespec *ts);
 
-    static int find_by_txnid(lock_request * const &request, const TXNID &txnid);
+    class find_by_txnid {
+        const TXNID _txnid;
+    public:
+        find_by_txnid(TXNID txnid) : _txnid(txnid) {}
+        int operator()(lock_request * const &request) const {
+            TXNID request_txnid = request->m_txnid;
+            if (request_txnid < _txnid) {
+                return -1;
+            } else if (request_txnid == _txnid) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+    };
 
     friend class lock_request_unit_test;
 };
