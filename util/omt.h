@@ -413,7 +413,7 @@ public:
      * Rationale: Some future implementation may be O(\log N) worst-case time, but O(\log N) amortized is good enough for now.
      */
     template<class Heaviside>
-    int insert(const omtdata_t &value, Heaviside &h, uint32_t *const idx);
+    int insert(const omtdata_t &value, Heaviside h, uint32_t *const idx);
 
     /**
      * Effect: Increases indexes of all items at slot >= idx by 1.
@@ -587,7 +587,7 @@ public:
      *  Slight overloading in this case seemed to provide a better API and better type checking.
      */
     template<class Heaviside>
-    int find_zero(Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const;
+    int find_zero(Heaviside h, omtdataout_t *const value, uint32_t *const idxp) const;
 
     /**
      *   Effect:
@@ -650,7 +650,7 @@ public:
      *        AC    B
      */
     template<class Heaviside>
-    int find(Heaviside &h, int direction, omtdataout_t *const value, uint32_t *const idxp) const;
+    int find(Heaviside h, int direction, omtdataout_t *const value, uint32_t *const idxp) const;
 
     /**
      * Effect: Return the size (in bytes) of the omt, as it resides in main memory.  If the data stored are pointers, don't include the size of what they all point to.
@@ -782,22 +782,22 @@ private:
     static void copyout(omtdata_t **const out, omtdata_t *const stored_value_ptr);
 
     template<class Heaviside>
-    int find_internal_zero_array(Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const;
+    int find_internal_zero_array(Heaviside h, omtdataout_t *const value, uint32_t *const idxp) const;
 
     template<class Heaviside>
-    int find_internal_zero(const subtree &subtree, Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const;
+    int find_internal_zero(const subtree &subtree, Heaviside h, omtdataout_t *const value, uint32_t *const idxp) const;
 
     template<class Heaviside>
-    int find_internal_plus_array(Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const;
+    int find_internal_plus_array(Heaviside h, omtdataout_t *const value, uint32_t *const idxp) const;
 
     template<class Heaviside>
-    int find_internal_plus(const subtree &subtree, Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const;
+    int find_internal_plus(const subtree &subtree, Heaviside h, omtdataout_t *const value, uint32_t *const idxp) const;
 
     template<class Heaviside>
-    int find_internal_minus_array(Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const;
+    int find_internal_minus_array(Heaviside h, omtdataout_t *const value, uint32_t *const idxp) const;
 
     template<class Heaviside>
-    int find_internal_minus(const subtree &subtree, Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const;
+    int find_internal_minus(const subtree &subtree, Heaviside h, omtdataout_t *const value, uint32_t *const idxp) const;
 };
 
 } // namespace toku
