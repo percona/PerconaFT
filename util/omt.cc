@@ -247,12 +247,12 @@ uint32_t omt<omtdata_t, omtdataout_t, supports_marks>::size(void) const {
 
 
 template<typename omtdata_t, typename omtdataout_t, bool supports_marks>
-template<typename omtcmp_t, int (*h)(const omtdata_t &, const omtcmp_t &)>
-int omt<omtdata_t, omtdataout_t, supports_marks>::insert(const omtdata_t &value, const omtcmp_t &v, uint32_t *const idx) {
+template<class Heaviside>
+int omt<omtdata_t, omtdataout_t, supports_marks>::insert(const omtdata_t &value, Heaviside &h, uint32_t *const idx) {
     int r;
     uint32_t insert_idx;
 
-    r = this->find_zero<omtcmp_t, h>(v, nullptr, &insert_idx);
+    r = this->find_zero(h, nullptr, &insert_idx);
     if (r==0) {
         if (idx) *idx = insert_idx;
         return DB_KEYEXIST;
@@ -488,39 +488,37 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::fetch(const uint32_t idx, omtd
 }
 
 template<typename omtdata_t, typename omtdataout_t, bool supports_marks>
-template<typename omtcmp_t,
-         int (*h)(const omtdata_t &, const omtcmp_t &)>
-int omt<omtdata_t, omtdataout_t, supports_marks>::find_zero(const omtcmp_t &extra, omtdataout_t *const value, uint32_t *const idxp) const {
+template<class Heaviside>
+int omt<omtdata_t, omtdataout_t, supports_marks>::find_zero(Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const {
     uint32_t tmp_index;
     uint32_t *const child_idxp = (idxp != nullptr) ? idxp : &tmp_index;
     int r;
     if (this->is_array) {
-        r = this->find_internal_zero_array<omtcmp_t, h>(extra, value, child_idxp);
+        r = this->find_internal_zero_array(h, value, child_idxp);
     }
     else {
-        r = this->find_internal_zero<omtcmp_t, h>(this->d.t.root, extra, value, child_idxp);
+        r = this->find_internal_zero(this->d.t.root, h, value, child_idxp);
     }
     return r;
 }
 
 template<typename omtdata_t, typename omtdataout_t, bool supports_marks>
-template<typename omtcmp_t,
-         int (*h)(const omtdata_t &, const omtcmp_t &)>
-int omt<omtdata_t, omtdataout_t, supports_marks>::find(const omtcmp_t &extra, int direction, omtdataout_t *const value, uint32_t *const idxp) const {
+template<class Heaviside>
+int omt<omtdata_t, omtdataout_t, supports_marks>::find(Heaviside &h, int direction, omtdataout_t *const value, uint32_t *const idxp) const {
     uint32_t tmp_index;
     uint32_t *const child_idxp = (idxp != nullptr) ? idxp : &tmp_index;
     paranoid_invariant(direction != 0);
     if (direction < 0) {
         if (this->is_array) {
-            return this->find_internal_minus_array<omtcmp_t, h>(extra, value, child_idxp);
+            return this->find_internal_minus_array(h, value, child_idxp);
         } else {
-            return this->find_internal_minus<omtcmp_t, h>(this->d.t.root, extra, value, child_idxp);
+            return this->find_internal_minus(this->d.t.root, h, value, child_idxp);
         }
     } else {
         if (this->is_array) {
-            return this->find_internal_plus_array<omtcmp_t, h>(extra, value, child_idxp);
+            return this->find_internal_plus_array(h, value, child_idxp);
         } else {
-            return this->find_internal_plus<omtcmp_t, h>(this->d.t.root, extra, value, child_idxp);
+            return this->find_internal_plus(this->d.t.root, h, value, child_idxp);
         }
     }
 }
@@ -1006,9 +1004,8 @@ void omt<omtdata_t, omtdataout_t, supports_marks>::copyout(omtdata_t **const out
 }
 
 template<typename omtdata_t, typename omtdataout_t, bool supports_marks>
-template<typename omtcmp_t,
-         int (*h)(const omtdata_t &, const omtcmp_t &)>
-int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_zero_array(const omtcmp_t &extra, omtdataout_t *const value, uint32_t *const idxp) const {
+template<class Heaviside>
+int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_zero_array(Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     uint32_t min = this->d.a.start_idx;
     uint32_t limit = this->d.a.start_idx + this->d.a.num_values;
@@ -1017,7 +1014,7 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_zero_array(const
 
     while (min!=limit) {
         uint32_t mid = (min + limit) / 2;
-        int hv = h(this->d.a.values[mid], extra);
+        int hv = h(this->d.a.values[mid]);
         if (hv<0) {
             min = mid+1;
         }
@@ -1044,9 +1041,8 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_zero_array(const
 }
 
 template<typename omtdata_t, typename omtdataout_t, bool supports_marks>
-template<typename omtcmp_t,
-         int (*h)(const omtdata_t &, const omtcmp_t &)>
-int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_zero(const subtree &subtree, const omtcmp_t &extra, omtdataout_t *const value, uint32_t *const idxp) const {
+template<class Heaviside>
+int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_zero(const subtree &subtree, Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     if (subtree.is_null()) {
         *idxp = 0;
@@ -1055,13 +1051,13 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_zero(const subtr
     omt_node &n = this->d.t.nodes[subtree.get_index()];
     int hv = h(n.value, extra);
     if (hv<0) {
-        int r = this->find_internal_zero<omtcmp_t, h>(n.right, extra, value, idxp);
+        int r = this->find_internal_zero(n.right, h, value, idxp);
         *idxp += this->nweight(n.left)+1;
         return r;
     } else if (hv>0) {
-        return this->find_internal_zero<omtcmp_t, h>(n.left, extra, value, idxp);
+        return this->find_internal_zero(n.left, h, value, idxp);
     } else {
-        int r = this->find_internal_zero<omtcmp_t, h>(n.left, extra, value, idxp);
+        int r = this->find_internal_zero(n.left, h, value, idxp);
         if (r==DB_NOTFOUND) {
             *idxp = this->nweight(n.left);
             if (value != nullptr) {
@@ -1074,9 +1070,8 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_zero(const subtr
 }
 
 template<typename omtdata_t, typename omtdataout_t, bool supports_marks>
-template<typename omtcmp_t,
-         int (*h)(const omtdata_t &, const omtcmp_t &)>
-int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_plus_array(const omtcmp_t &extra, omtdataout_t *const value, uint32_t *const idxp) const {
+template<class Heaviside>
+int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_plus_array(Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     uint32_t min = this->d.a.start_idx;
     uint32_t limit = this->d.a.start_idx + this->d.a.num_values;
@@ -1084,7 +1079,7 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_plus_array(const
 
     while (min != limit) {
         const uint32_t mid = (min + limit) / 2;
-        const int hv = h(this->d.a.values[mid], extra);
+        const int hv = h(this->d.a.values[mid]);
         if (hv > 0) {
             best = mid;
             limit = mid;
@@ -1101,18 +1096,17 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_plus_array(const
 }
 
 template<typename omtdata_t, typename omtdataout_t, bool supports_marks>
-template<typename omtcmp_t,
-         int (*h)(const omtdata_t &, const omtcmp_t &)>
-int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_plus(const subtree &subtree, const omtcmp_t &extra, omtdataout_t *const value, uint32_t *const idxp) const {
+template<class Heaviside>
+int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_plus(const subtree &subtree, Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     if (subtree.is_null()) {
         return DB_NOTFOUND;
     }
     omt_node *const n = &this->d.t.nodes[subtree.get_index()];
-    int hv = h(n->value, extra);
+    int hv = h(n->value);
     int r;
     if (hv > 0) {
-        r = this->find_internal_plus<omtcmp_t, h>(n->left, extra, value, idxp);
+        r = this->find_internal_plus(n->left, h, value, idxp);
         if (r == DB_NOTFOUND) {
             *idxp = this->nweight(n->left);
             if (value != nullptr) {
@@ -1121,7 +1115,7 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_plus(const subtr
             r = 0;
         }
     } else {
-        r = this->find_internal_plus<omtcmp_t, h>(n->right, extra, value, idxp);
+        r = this->find_internal_plus(n->right, h, value, idxp);
         if (r == 0) {
             *idxp += this->nweight(n->left) + 1;
         }
@@ -1130,9 +1124,8 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_plus(const subtr
 }
 
 template<typename omtdata_t, typename omtdataout_t, bool supports_marks>
-template<typename omtcmp_t,
-         int (*h)(const omtdata_t &, const omtcmp_t &)>
-int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_minus_array(const omtcmp_t &extra, omtdataout_t *const value, uint32_t *const idxp) const {
+template<class Heaviside>
+int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_minus_array(Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     uint32_t min = this->d.a.start_idx;
     uint32_t limit = this->d.a.start_idx + this->d.a.num_values;
@@ -1140,7 +1133,7 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_minus_array(cons
 
     while (min != limit) {
         const uint32_t mid = (min + limit) / 2;
-        const int hv = h(this->d.a.values[mid], extra);
+        const int hv = h(this->d.a.values[mid]);
         if (hv < 0) {
             best = mid;
             min = mid + 1;
@@ -1157,17 +1150,16 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_minus_array(cons
 }
 
 template<typename omtdata_t, typename omtdataout_t, bool supports_marks>
-template<typename omtcmp_t,
-         int (*h)(const omtdata_t &, const omtcmp_t &)>
-int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_minus(const subtree &subtree, const omtcmp_t &extra, omtdataout_t *const value, uint32_t *const idxp) const {
+template<class Heaviside>
+int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_minus(const subtree &subtree, Heaviside &h, omtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     if (subtree.is_null()) {
         return DB_NOTFOUND;
     }
     omt_node *const n = &this->d.t.nodes[subtree.get_index()];
-    int hv = h(n->value, extra);
+    int hv = h(n->value);
     if (hv < 0) {
-        int r = this->find_internal_minus<omtcmp_t, h>(n->right, extra, value, idxp);
+        int r = this->find_internal_minus(n->right, h, value, idxp);
         if (r == 0) {
             *idxp += this->nweight(n->left) + 1;
         } else if (r == DB_NOTFOUND) {
@@ -1179,7 +1171,7 @@ int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_minus(const subt
         }
         return r;
     } else {
-        return this->find_internal_minus<omtcmp_t, h>(n->left, extra, value, idxp);
+        return this->find_internal_minus(n->left, h, value, idxp);
     }
 }
 } // namespace toku
