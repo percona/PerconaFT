@@ -91,9 +91,9 @@ PATENT RIGHTS GRANT:
 
 #pragma once
 
-#include <util/omt.h>
-#include "leafentry.h"
 #include <util/mempool.h>
+#include <util/dmt.h>
+#include "leafentry.h"
 
 #if 0 //for implementation
 static int
@@ -110,38 +110,68 @@ UU() verify_in_mempool(OMTVALUE lev, uint32_t UU(idx), void *mpv)
 #endif
 
 struct klpair_struct {
-    uint32_t keylen;
+    uint32_t le_offset;  //Offset of leafentry (in leafentry mempool)
     uint8_t key_le[0]; // key, followed by le
 };
 
-typedef struct klpair_struct *KLPAIR;
-
-static LEAFENTRY get_le_from_klpair(KLPAIR klpair){
-    uint32_t keylen = klpair->keylen;
-    LEAFENTRY le = (LEAFENTRY)(klpair->key_le + keylen);
-    return le;
+static constexpr uint32_t keylen_from_klpair_len(const uint32_t klpair_len) {
+    return klpair_len - __builtin_offsetof(klpair_struct, key_le);
 }
 
-template<typename omtcmp_t,
-         int (*h)(const DBT &, const omtcmp_t &)>
-static int wrappy_fun_find(const KLPAIR &klpair, const omtcmp_t &extra) {
-    //TODO: kill this function when we split, and/or use toku_fill_dbt
+typedef struct klpair_struct KLPAIR_S, *KLPAIR;
+
+static_assert(__builtin_offsetof(klpair_struct, key_le) == 1*sizeof(uint32_t), "klpair alignment issues");
+static_assert(__builtin_offsetof(klpair_struct, key_le) == sizeof(klpair_struct), "klpair size issues");
+
+template<typename dmtcmp_t,
+         int (*h)(const DBT &, const dmtcmp_t &)>
+static int wrappy_fun_find(const uint32_t klpair_len, const klpair_struct &klpair, const dmtcmp_t &extra) {
     DBT kdbt;
-    kdbt.data = klpair->key_le;
-    kdbt.size = klpair->keylen;
+    kdbt.data = const_cast<void*>(reinterpret_cast<const void*>(klpair.key_le));
+    kdbt.size = keylen_from_klpair_len(klpair_len);
     return h(kdbt, extra);
 }
 
+template<typename inner_iterate_extra_t>
+struct wrapped_iterate_extra_t {
+    public:
+    inner_iterate_extra_t *inner;
+    const class bn_data * bd;
+};
+
 template<typename iterate_extra_t,
          int (*h)(const void * key, const uint32_t keylen, const LEAFENTRY &, const uint32_t idx, iterate_extra_t *const)>
-static int wrappy_fun_iterate(const KLPAIR &klpair, const uint32_t idx, iterate_extra_t *const extra) {
-    uint32_t keylen = klpair->keylen;
-    void* key = klpair->key_le;
-    LEAFENTRY le = get_le_from_klpair(klpair);
-    return h(key, keylen, le, idx, extra);
+static int wrappy_fun_iterate(const uint32_t klpair_len, const klpair_struct &klpair, const uint32_t idx, wrapped_iterate_extra_t<iterate_extra_t> *const extra) {
+    const void* key = &klpair.key_le;
+    LEAFENTRY le = extra->bd->get_le_from_klpair(&klpair);
+    return h(key, keylen_from_klpair_len(klpair_len), le, idx, extra->inner);
 }
 
-typedef toku::omt<KLPAIR> klpair_omt_t;
+
+namespace toku {
+template<>
+class dmt_functor<klpair_struct> {
+    public:
+        size_t get_dmtdatain_t_size(void) const {
+            return sizeof(klpair_struct) + this->keylen;
+        }
+        void write_dmtdata_t_to(klpair_struct *const dest) const {
+            dest->le_offset = this->le_offset;
+            memcpy(dest->key_le, this->keyp, this->keylen);
+        }
+
+        dmt_functor(uint32_t _keylen, uint32_t _le_offset, const void* _keyp)
+            : keylen(_keylen), le_offset(_le_offset), keyp(_keyp) {}
+        dmt_functor(const uint32_t klpair_len, klpair_struct *const src)
+            : keylen(keylen_from_klpair_len(klpair_len)), le_offset(src->le_offset), keyp(src->key_le) {}
+    private:
+        const uint32_t keylen;
+        const uint32_t le_offset;
+        const void* keyp;
+};
+}
+
+typedef toku::dmt<KLPAIR_S, KLPAIR> klpair_dmt_t;
 // This class stores the data associated with a basement node
 class bn_data {
 public:
@@ -153,7 +183,7 @@ public:
     uint64_t get_disk_size(void);
     void verify_mempool(void);
 
-    // Interact with "omt"
+    // Interact with "dmt"
     uint32_t omt_size(void) const;
 
     template<typename iterate_extra_t,
@@ -165,14 +195,16 @@ public:
     template<typename iterate_extra_t,
              int (*f)(const void * key, const uint32_t keylen, const LEAFENTRY &, const uint32_t, iterate_extra_t *const)>
     int omt_iterate_on_range(const uint32_t left, const uint32_t right, iterate_extra_t *const iterate_extra) const {
-        return m_buffer.iterate_on_range< iterate_extra_t, wrappy_fun_iterate<iterate_extra_t, f> >(left, right, iterate_extra);
+        wrapped_iterate_extra_t<iterate_extra_t> wrapped_extra = { iterate_extra, this };
+        return m_buffer.iterate_on_range< wrapped_iterate_extra_t<iterate_extra_t>, wrappy_fun_iterate<iterate_extra_t, f> >(left, right, &wrapped_extra);
     }
 
-    template<typename omtcmp_t,
-             int (*h)(const DBT &, const omtcmp_t &)>
-    int find_zero(const omtcmp_t &extra, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
+    template<typename dmtcmp_t,
+             int (*h)(const DBT &, const dmtcmp_t &)>
+    int find_zero(const dmtcmp_t &extra, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
         KLPAIR klpair = NULL;
-        int r = m_buffer.find_zero< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, &klpair, idxp);
+        uint32_t klpair_len;
+        int r = m_buffer.find_zero< dmtcmp_t, wrappy_fun_find<dmtcmp_t, h> >(extra, &klpair_len, &klpair, idxp);
         if (r == 0) {
             if (value) {
                 *value = get_le_from_klpair(klpair);
@@ -180,20 +212,21 @@ public:
             if (key) {
                 paranoid_invariant(keylen != NULL);
                 *key = klpair->key_le;
-                *keylen = klpair->keylen;
+                *keylen = keylen_from_klpair_len(klpair_len);
             }
             else {
-                paranoid_invariant(keylen == NULL);
+                paranoid_invariant_null(keylen);
             }
         }
         return r;
     }
 
-    template<typename omtcmp_t,
-             int (*h)(const DBT &, const omtcmp_t &)>
-    int find(const omtcmp_t &extra, int direction, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
+    template<typename dmtcmp_t,
+             int (*h)(const DBT &, const dmtcmp_t &)>
+    int find(const dmtcmp_t &extra, int direction, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
         KLPAIR klpair = NULL;
-        int r = m_buffer.find< omtcmp_t, wrappy_fun_find<omtcmp_t, h> >(extra, direction, &klpair, idxp);
+        uint32_t klpair_len;
+        int r = m_buffer.find< dmtcmp_t, wrappy_fun_find<dmtcmp_t, h> >(extra, direction, &klpair_len, &klpair, idxp);
         if (r == 0) {
             if (value) {
                 *value = get_le_from_klpair(klpair);
@@ -201,7 +234,7 @@ public:
             if (key) {
                 paranoid_invariant(keylen != NULL);
                 *key = klpair->key_le;
-                *keylen = klpair->keylen;
+                *keylen = keylen_from_klpair_len(klpair_len);
             }
             else {
                 paranoid_invariant(keylen == NULL);
@@ -218,9 +251,9 @@ public:
 
     // Interact with another bn_data
     void move_leafentries_to(BN_DATA dest_bd,
-                                      uint32_t lbi, //lower bound inclusive
-                                      uint32_t ube //upper bound exclusive
-                                      );
+                              uint32_t lbi, //lower bound inclusive
+                              uint32_t ube //upper bound exclusive
+                              );
 
     void destroy(void);
 
@@ -243,12 +276,19 @@ public:
         );
     void get_space_for_overwrite(uint32_t idx, const void* keyp, uint32_t keylen, uint32_t old_size, uint32_t new_size, LEAFENTRY* new_le_space);
     void get_space_for_insert(uint32_t idx, const void* keyp, uint32_t keylen, size_t size, LEAFENTRY* new_le_space);
+
+    LEAFENTRY get_le_from_klpair(const klpair_struct *klpair) const;
 private:
     // Private functions
-    KLPAIR mempool_malloc_from_omt(size_t size, void **maybe_free);
+    LEAFENTRY mempool_malloc_and_update_omt(size_t size, void **maybe_free);
     void omt_compress_kvspace(size_t added_size, void **maybe_free);
+    void add_key(uint32_t keylen);
+    void remove_key(uint32_t keylen);
 
-    klpair_omt_t m_buffer;                     // pointers to individual leaf entries
+    klpair_dmt_t m_buffer;                     // pointers to individual leaf entries
     struct mempool m_buffer_mempool;  // storage for all leaf entries
+
+    uint32_t klpair_disksize(const uint32_t klpair_len, const klpair_struct *klpair) const;
+    size_t m_disksize_of_keys;
 };
 

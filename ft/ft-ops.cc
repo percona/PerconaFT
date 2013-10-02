@@ -1659,6 +1659,8 @@ toku_ft_bn_apply_cmd_once (
         &new_le, 
         &numbytes_delta
         );
+    // at this point, we cannot trust cmd->u.id.key to be valid.
+    // The dmt may have realloced its mempool and freed the one containing key.
 
     newsize = new_le ? (leafentry_memsize(new_le) +  + key_storage_size) : 0;
     if (le && new_le) {
@@ -1923,6 +1925,7 @@ toku_ft_bn_apply_cmd (
             int deleted = 0;
             if (!le_is_clean(storeddata)) { //If already clean, nothing to do.
                 toku_ft_bn_apply_cmd_once(bn, cmd, idx, storeddata, oldest_referenced_xid_known, gc_info, workdone, stats_to_update);
+                // at this point, we cannot trust cmd->u.id.key to be valid.
                 uint32_t new_omt_size = bn->data_buffer.omt_size();
                 if (new_omt_size != omt_size) {
                     paranoid_invariant(new_omt_size+1 == omt_size);
