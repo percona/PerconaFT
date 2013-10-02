@@ -136,6 +136,15 @@ void toku_mempool_destroy(struct mempool *mp);
 /* get the base address of the memory pool */
 void *toku_mempool_get_base(struct mempool *mp);
 
+/* get the a pointer that is offset bytes in front of base of the memory pool */
+void *toku_mempool_get_pointer_from_base_and_offset(const struct mempool *mp, size_t offset);
+
+/* get the offset from base of a pointer */
+size_t toku_mempool_get_offset_from_pointer_and_base(const struct mempool *mp, void* p);
+
+/* get the a pointer of the first free byte (if any) */
+void* toku_mempool_get_next_free_ptr(const struct mempool *mp);
+
 /* get the size of the memory pool */
 size_t toku_mempool_get_size(struct mempool *mp);
 
@@ -167,6 +176,8 @@ static inline int toku_mempool_inrange(struct mempool *mp, void *vp, size_t size
 /* get memory footprint */
 size_t toku_mempool_footprint(struct mempool *mp);
 
-void toku_mempool_clone(struct mempool* orig_mp, struct mempool* new_mp);
+void toku_mempool_clone(const struct mempool* orig_mp, struct mempool* new_mp);
+
+
 
 #endif // UTIL_MEMPOOL_H
