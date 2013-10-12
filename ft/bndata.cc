@@ -92,8 +92,8 @@ PATENT RIGHTS GRANT:
 #include <bndata.h>
 
 using namespace toku;
-uint32_t bn_data::klpair_disksize(const klpair_struct *klpair) const {
-    return sizeof(*klpair) + klpair->keylen + leafentry_disksize(get_le_from_klpair(klpair));
+uint32_t bn_data::klpair_disksize(const uint32_t klpair_len, const klpair_struct *klpair) const {
+    return sizeof(*klpair) + keylen_from_klpair_len(klpair_len) + leafentry_disksize(get_le_from_klpair(klpair));
 }
 
 void bn_data::init_zero() {
@@ -226,7 +226,7 @@ struct omt_compressor_state {
     class bn_data *bd;
 };
 
-static int move_it (klpair_struct *klpair, const uint32_t idx UU(), struct omt_compressor_state * const oc) {
+static int move_it (const uint32_t, klpair_struct *klpair, const uint32_t idx UU(), struct omt_compressor_state * const oc) {
     LEAFENTRY old_le = oc->bd->get_le_from_klpair(klpair);
     uint32_t size = leafentry_memsize(old_le);
     void* newdata = toku_mempool_malloc(oc->new_kvspace, size, 1);
@@ -286,11 +286,12 @@ void bn_data::get_space_for_overwrite(
         );
     toku_mempool_mfree(&m_buffer_mempool, nullptr, old_le_size);  // Must pass nullptr, since le is no good any more.
     KLPAIR klp = nullptr;
-    int r = m_buffer.fetch(idx, &klp);
+    uint32_t klpair_len;  //TODO: maybe delete klpair_len
+    int r = m_buffer.fetch(idx, &klpair_len, &klp);
     invariant_zero(r);
     paranoid_invariant(klp!=nullptr);
     // Key never changes.
-    paranoid_invariant(klp->keylen == keylen);
+    paranoid_invariant(keylen_from_klpair_len(klpair_len) == keylen);
     paranoid_invariant(!memcmp(klp->key_le, keyp, keylen));  // TODO: can keyp be pointing to the old space?  If so this could fail
 
     size_t new_le_offset = toku_mempool_get_offset_from_pointer_and_base(&this->m_buffer_mempool, new_le);
@@ -357,17 +358,18 @@ void bn_data::move_leafentries_to(
 
     for (uint32_t i = lbi; i < ube; i++) {
         KLPAIR curr_kl = nullptr;
-        m_buffer.fetch(i, &curr_kl);
+        uint32_t curr_kl_len;
+        m_buffer.fetch(i, &curr_kl_len, &curr_kl);
 
         LEAFENTRY old_le = get_le_from_klpair(curr_kl);
         size_t le_size = leafentry_memsize(old_le);
         void* new_le = toku_mempool_malloc(dest_mp, le_size, 1);
         memcpy(new_le, old_le, le_size);
         size_t le_offset = toku_mempool_get_offset_from_pointer_and_base(dest_mp, new_le);
-        dest_bd->m_buffer.insert_at(dmt_functor<klpair_struct>(curr_kl->keylen, le_offset, curr_kl->key_le), i-lbi);
+        dest_bd->m_buffer.insert_at(dmt_functor<klpair_struct>(keylen_from_klpair_len(curr_kl_len), le_offset, curr_kl->key_le), i-lbi);
 
-        this->remove_key(curr_kl->keylen);
-        dest_bd->add_key(curr_kl->keylen);
+        this->remove_key(keylen_from_klpair_len(curr_kl_len));
+        dest_bd->add_key(keylen_from_klpair_len(curr_kl_len));
 
         toku_mempool_mfree(src_mp, old_le, le_size);
     }
@@ -433,7 +435,7 @@ LEAFENTRY bn_data::get_le_from_klpair(const klpair_struct *klpair) const {
 // get info about a single leafentry by index
 int bn_data::fetch_le(uint32_t idx, LEAFENTRY *le) {
     KLPAIR klpair = NULL;
-    int r = m_buffer.fetch(idx, &klpair);
+    int r = m_buffer.fetch(idx, nullptr, &klpair);
     if (r == 0) {
         *le = get_le_from_klpair(klpair);
     }
@@ -442,9 +444,10 @@ int bn_data::fetch_le(uint32_t idx, LEAFENTRY *le) {
 
 int bn_data::fetch_klpair(uint32_t idx, LEAFENTRY *le, uint32_t *len, void** key) {
     KLPAIR klpair = NULL;
-    int r = m_buffer.fetch(idx, &klpair);
+    uint32_t klpair_len;
+    int r = m_buffer.fetch(idx, &klpair_len, &klpair);
     if (r == 0) {
-        *len = klpair->keylen;
+        *len = keylen_from_klpair_len(klpair_len);
         *key = klpair->key_le;
         *le = get_le_from_klpair(klpair);
     }
@@ -453,18 +456,20 @@ int bn_data::fetch_klpair(uint32_t idx, LEAFENTRY *le, uint32_t *len, void** key
 
 int bn_data::fetch_klpair_disksize(uint32_t idx, size_t *size) {
     KLPAIR klpair = NULL;
-    int r = m_buffer.fetch(idx, &klpair);
+    uint32_t klpair_len;
+    int r = m_buffer.fetch(idx, &klpair_len, &klpair);
     if (r == 0) {
-        *size = klpair_disksize(klpair);
+        *size = klpair_disksize(klpair_len, klpair);
     }
     return r;
 }
 
 int bn_data::fetch_le_key_and_len(uint32_t idx, uint32_t *len, void** key) {
     KLPAIR klpair = NULL;
-    int r = m_buffer.fetch(idx, &klpair);
+    uint32_t klpair_len;
+    int r = m_buffer.fetch(idx, &klpair_len, &klpair);
     if (r == 0) {
-        *len = klpair->keylen;
+        *len = keylen_from_klpair_len(klpair_len);
         *key = klpair->key_le;
     }
     return r;

@@ -110,22 +110,25 @@ UU() verify_in_mempool(OMTVALUE lev, uint32_t UU(idx), void *mpv)
 #endif
 
 struct klpair_struct {
-    uint32_t keylen;
     uint32_t le_offset;  //Offset of leafentry (in leafentry mempool)
     uint8_t key_le[0]; // key, followed by le
 };
 
+static constexpr uint32_t keylen_from_klpair_len(const uint32_t klpair_len) {
+    return klpair_len - __builtin_offsetof(klpair_struct, key_le);
+}
+
 typedef struct klpair_struct KLPAIR_S, *KLPAIR;
 
-static_assert(__builtin_offsetof(klpair_struct, key_le) == 2*sizeof(uint32_t), "klpair alignment issues");
+static_assert(__builtin_offsetof(klpair_struct, key_le) == 1*sizeof(uint32_t), "klpair alignment issues");
 static_assert(__builtin_offsetof(klpair_struct, key_le) == sizeof(klpair_struct), "klpair size issues");
 
 template<typename dmtcmp_t,
          int (*h)(const DBT &, const dmtcmp_t &)>
-static int wrappy_fun_find(const klpair_struct &klpair, const dmtcmp_t &extra) {
+static int wrappy_fun_find(const uint32_t klpair_len, const klpair_struct &klpair, const dmtcmp_t &extra) {
     DBT kdbt;
     kdbt.data = const_cast<void*>(reinterpret_cast<const void*>(klpair.key_le));
-    kdbt.size = klpair.keylen;
+    kdbt.size = keylen_from_klpair_len(klpair_len);
     return h(kdbt, extra);
 }
 
@@ -138,11 +141,10 @@ struct wrapped_iterate_extra_t {
 
 template<typename iterate_extra_t,
          int (*h)(const void * key, const uint32_t keylen, const LEAFENTRY &, const uint32_t idx, iterate_extra_t *const)>
-static int wrappy_fun_iterate(const klpair_struct &klpair, const uint32_t idx, wrapped_iterate_extra_t<iterate_extra_t> *const extra) {
-    uint32_t keylen = klpair.keylen;
+static int wrappy_fun_iterate(const uint32_t klpair_len, const klpair_struct &klpair, const uint32_t idx, wrapped_iterate_extra_t<iterate_extra_t> *const extra) {
     const void* key = &klpair.key_le;
     LEAFENTRY le = extra->bd->get_le_from_klpair(&klpair);
-    return h(key, keylen, le, idx, extra->inner);
+    return h(key, keylen_from_klpair_len(klpair_len), le, idx, extra->inner);
 }
 
 
@@ -150,22 +152,18 @@ namespace toku {
 template<>
 class dmt_functor<klpair_struct> {
     public:
-        static size_t get_dmtdata_t_size(const klpair_struct & kl_pair) {
-            return sizeof(kl_pair) + kl_pair.keylen;
-        }
         size_t get_dmtdatain_t_size(void) const {
             return sizeof(klpair_struct) + this->keylen;
         }
         void write_dmtdata_t_to(klpair_struct *const dest) const {
-            dest->keylen = this->keylen;
             dest->le_offset = this->le_offset;
             memcpy(dest->key_le, this->keyp, this->keylen);
         }
 
         dmt_functor(uint32_t _keylen, uint32_t _le_offset, const void* _keyp)
             : keylen(_keylen), le_offset(_le_offset), keyp(_keyp) {}
-        dmt_functor(klpair_struct *const src)
-            : keylen(src->keylen), le_offset(src->le_offset), keyp(src->key_le) {}
+        dmt_functor(const uint32_t klpair_len, klpair_struct *const src)
+            : keylen(keylen_from_klpair_len(klpair_len)), le_offset(src->le_offset), keyp(src->key_le) {}
     private:
         const uint32_t keylen;
         const uint32_t le_offset;
@@ -205,7 +203,8 @@ public:
              int (*h)(const DBT &, const dmtcmp_t &)>
     int find_zero(const dmtcmp_t &extra, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
         KLPAIR klpair = NULL;
-        int r = m_buffer.find_zero< dmtcmp_t, wrappy_fun_find<dmtcmp_t, h> >(extra, &klpair, idxp);
+        uint32_t klpair_len;
+        int r = m_buffer.find_zero< dmtcmp_t, wrappy_fun_find<dmtcmp_t, h> >(extra, &klpair_len, &klpair, idxp);
         if (r == 0) {
             if (value) {
                 *value = get_le_from_klpair(klpair);
@@ -213,7 +212,7 @@ public:
             if (key) {
                 paranoid_invariant(keylen != NULL);
                 *key = klpair->key_le;
-                *keylen = klpair->keylen;
+                *keylen = keylen_from_klpair_len(klpair_len);
             }
             else {
                 paranoid_invariant_null(keylen);
@@ -226,7 +225,8 @@ public:
              int (*h)(const DBT &, const dmtcmp_t &)>
     int find(const dmtcmp_t &extra, int direction, LEAFENTRY *const value, void** key, uint32_t* keylen, uint32_t *const idxp) const {
         KLPAIR klpair = NULL;
-        int r = m_buffer.find< dmtcmp_t, wrappy_fun_find<dmtcmp_t, h> >(extra, direction, &klpair, idxp);
+        uint32_t klpair_len;
+        int r = m_buffer.find< dmtcmp_t, wrappy_fun_find<dmtcmp_t, h> >(extra, direction, &klpair_len, &klpair, idxp);
         if (r == 0) {
             if (value) {
                 *value = get_le_from_klpair(klpair);
@@ -234,7 +234,7 @@ public:
             if (key) {
                 paranoid_invariant(keylen != NULL);
                 *key = klpair->key_le;
-                *keylen = klpair->keylen;
+                *keylen = keylen_from_klpair_len(klpair_len);
             }
             else {
                 paranoid_invariant(keylen == NULL);
@@ -288,7 +288,7 @@ private:
     klpair_dmt_t m_buffer;                     // pointers to individual leaf entries
     struct mempool m_buffer_mempool;  // storage for all leaf entries
 
-    uint32_t klpair_disksize(const klpair_struct *klpair) const;
+    uint32_t klpair_disksize(const uint32_t klpair_len, const klpair_struct *klpair) const;
     size_t m_disksize_of_keys;
 };
 

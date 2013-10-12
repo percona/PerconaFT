@@ -384,14 +384,14 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::delete_a
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename iterate_extra_t,
-         int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+         int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate(iterate_extra_t *const iterate_extra) const {
     return this->iterate_on_range<iterate_extra_t, f>(0, this->size(), iterate_extra);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename iterate_extra_t,
-         int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+         int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_on_range(const uint32_t left, const uint32_t right, iterate_extra_t *const iterate_extra) const {
     if (right > this->size()) { return EINVAL; }
     if (left == right) { return 0; }
@@ -403,7 +403,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename iterate_extra_t,
-         int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+         int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_and_mark_range(const uint32_t left, const uint32_t right, iterate_extra_t *const iterate_extra) {
     static_assert(supports_marks, "does not support marks");
     if (right > this->size()) { return EINVAL; }
@@ -415,7 +415,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_
 //TODO: We can optimize this if we steal 3 bits.  1 bit: this node is marked.  1 bit: left subtree has marks. 1 bit: right subtree has marks.
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename iterate_extra_t,
-         int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+         int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_over_marked(iterate_extra_t *const iterate_extra) const {
     static_assert(supports_marks, "does not support marks");
     paranoid_invariant(!this->is_array);
@@ -519,7 +519,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::verify_
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename iterate_extra_t,
-         int (*f)(dmtdata_t *, const uint32_t, iterate_extra_t *const)>
+         int (*f)(const uint32_t, dmtdata_t *, const uint32_t, iterate_extra_t *const)>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_ptr(iterate_extra_t *const iterate_extra) {
     if (this->is_array) {
         this->iterate_ptr_internal_array<iterate_extra_t, f>(0, this->size(), iterate_extra);
@@ -529,50 +529,50 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
-int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::fetch(const uint32_t idx, dmtdataout_t *const value) const {
+int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::fetch(const uint32_t idx, uint32_t *const value_len, dmtdataout_t *const value) const {
     if (idx >= this->size()) { return EINVAL; }
     if (this->is_array) {
-        this->fetch_internal_array(idx, value);
+        this->fetch_internal_array(idx, value_len, value);
     } else {
-        this->fetch_internal(this->d.t.root, idx, value);
+        this->fetch_internal(this->d.t.root, idx, value_len, value);
     }
     return 0;
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename dmtcmp_t,
-         int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_zero(const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const {
+         int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_zero(const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const {
     uint32_t tmp_index;
     uint32_t *const child_idxp = (idxp != nullptr) ? idxp : &tmp_index;
     int r;
     if (this->is_array) {
-        r = this->find_internal_zero_array<dmtcmp_t, h>(extra, value, child_idxp);
+        r = this->find_internal_zero_array<dmtcmp_t, h>(extra, value_len, value, child_idxp);
     }
     else {
-        r = this->find_internal_zero<dmtcmp_t, h>(this->d.t.root, extra, value, child_idxp);
+        r = this->find_internal_zero<dmtcmp_t, h>(this->d.t.root, extra, value_len, value, child_idxp);
     }
     return r;
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename dmtcmp_t,
-         int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find(const dmtcmp_t &extra, int direction, dmtdataout_t *const value, uint32_t *const idxp) const {
+         int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find(const dmtcmp_t &extra, int direction, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const {
     uint32_t tmp_index;
     uint32_t *const child_idxp = (idxp != nullptr) ? idxp : &tmp_index;
     paranoid_invariant(direction != 0);
     if (direction < 0) {
         if (this->is_array) {
-            return this->find_internal_minus_array<dmtcmp_t, h>(extra, value, child_idxp);
+            return this->find_internal_minus_array<dmtcmp_t, h>(extra, value_len,  value, child_idxp);
         } else {
-            return this->find_internal_minus<dmtcmp_t, h>(this->d.t.root, extra, value, child_idxp);
+            return this->find_internal_minus<dmtcmp_t, h>(this->d.t.root, extra, value_len,  value, child_idxp);
         }
     } else {
         if (this->is_array) {
-            return this->find_internal_plus_array<dmtcmp_t, h>(extra, value, child_idxp);
+            return this->find_internal_plus_array<dmtcmp_t, h>(extra, value_len,  value, child_idxp);
         } else {
-            return this->find_internal_plus<dmtcmp_t, h>(this->d.t.root, extra, value, child_idxp);
+            return this->find_internal_plus<dmtcmp_t, h>(this->d.t.root, extra, value_len, value, child_idxp);
         }
     }
 }
@@ -653,7 +653,9 @@ node_idx dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::nod
     void* np = toku_mempool_malloc(&this->mp, size_to_alloc, 1);
     paranoid_invariant(np != nullptr);
     dmt_node *CAST_FROM_VOIDP(n, np);
+    n->value_length = val_size;
     value.write_dmtdata_t_to(&n->value);
+
     n->clear_stolen_bits();
     return toku_mempool_get_offset_from_pointer_and_base(&this->mp, np);
 }
@@ -664,6 +666,8 @@ node_idx dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::nod
     paranoid_invariant(this->d.t.free_idx < this->capacity);
     dmt_node &n = get_node(this->d.t.free_idx);
     n.clear_stolen_bits();
+    //TODO: dynamic len
+    n.value_length = sizeof(dmtdata_t);
     n.value = value;
     return this->d.t.free_idx++;
 }
@@ -671,7 +675,7 @@ node_idx dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::nod
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::node_free(const type_is_dynamic&, const subtree &st) {
     dmt_node &n = get_node(st);
-    size_t size_to_free = __builtin_offsetof(dmt_node, value) + dmt_functor<dmtdata_t>::get_dmtdata_t_size(n.value);
+    size_t size_to_free = __builtin_offsetof(dmt_node, value) + n.value_length;
     size_to_free = roundup_to_multiple(ALIGNMENT, size_to_free);
     toku_mempool_mfree(&this->mp, &n, size_to_free);
 }
@@ -824,7 +828,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::maybe_r
             this->fill_array_with_subtree_idxs(tmp_array, this->d.t.root);
             for (node_idx i = 0; i < n.weight; i++) {
                 dmt_node &node = get_node(tmp_array[i]);
-                const size_t bytes_to_copy = __builtin_offsetof(dmt_node, value) + dmtdatain_t::get_dmtdata_t_size(node.value);
+                const size_t bytes_to_copy = __builtin_offsetof(dmt_node, value) + node.value_length;
                 const size_t bytes_to_alloc = roundup_to_multiple(ALIGNMENT, bytes_to_copy);
                 void* newdata = toku_mempool_malloc(&new_kvspace, bytes_to_alloc, 1);
                 memcpy(newdata, &node, bytes_to_copy);
@@ -990,12 +994,13 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::delete_
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename iterate_extra_t,
-         int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+         int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_internal_array(const uint32_t left, const uint32_t right,
                                                          iterate_extra_t *const iterate_extra) const {
     int r;
     for (uint32_t i = left; i < right; ++i) {
-        r = f(this->d.a.values[this->d.a.start_idx + i], i, iterate_extra);
+        //TODO: dynamic len
+        r = f(sizeof(dmtdata_t), this->d.a.values[this->d.a.start_idx + i], i, iterate_extra);
         if (r != 0) {
             return r;
         }
@@ -1005,7 +1010,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename iterate_extra_t,
-         int (*f)(dmtdata_t *, const uint32_t, iterate_extra_t *const)>
+         int (*f)(const uint32_t, dmtdata_t *, const uint32_t, iterate_extra_t *const)>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_ptr_internal(const uint32_t left, const uint32_t right,
                                                         const subtree &subtree, const uint32_t idx,
                                                         iterate_extra_t *const iterate_extra) {
@@ -1016,7 +1021,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate
             this->iterate_ptr_internal<iterate_extra_t, f>(left, right, n.left, idx, iterate_extra);
         }
         if (left <= idx_root && idx_root < right) {
-            int r = f(&n.value, idx_root, iterate_extra);
+            int r = f(n.value_length, &n.value, idx_root, iterate_extra);
             lazy_assert_zero(r);
         }
         if (idx_root + 1 < right) {
@@ -1027,18 +1032,19 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename iterate_extra_t,
-         int (*f)(dmtdata_t *, const uint32_t, iterate_extra_t *const)>
+         int (*f)(const uint32_t, dmtdata_t *, const uint32_t, iterate_extra_t *const)>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_ptr_internal_array(const uint32_t left, const uint32_t right,
                                                               iterate_extra_t *const iterate_extra) {
     for (uint32_t i = left; i < right; ++i) {
-        int r = f(&this->d.a.values[this->d.a.start_idx + i], i, iterate_extra);
+        //TODO: dynamic len
+        int r = f(sizeof(dmtdata_t), &this->d.a.values[this->d.a.start_idx + i], i, iterate_extra);
         lazy_assert_zero(r);
     }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename iterate_extra_t,
-         int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+         int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_internal(const uint32_t left, const uint32_t right,
                                                    const subtree &subtree, const uint32_t idx,
                                                    iterate_extra_t *const iterate_extra) const {
@@ -1051,7 +1057,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_
         if (r != 0) { return r; }
     }
     if (left <= idx_root && idx_root < right) {
-        r = f(n.value, idx_root, iterate_extra);
+        r = f(n.value_length, n.value, idx_root, iterate_extra);
         if (r != 0) { return r; }
     }
     if (idx_root + 1 < right) {
@@ -1062,7 +1068,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename iterate_extra_t,
-         int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+         int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_and_mark_range_internal(const uint32_t left, const uint32_t right,
                                                                                   const subtree &subtree, const uint32_t idx,
                                                                                   iterate_extra_t *const iterate_extra) {
@@ -1089,7 +1095,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename iterate_extra_t,
-         int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+         int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_over_marked_internal(const subtree &subtree, const uint32_t idx,
                                                                                iterate_extra_t *const iterate_extra) const {
     if (subtree.is_null()) { return 0; }
@@ -1111,24 +1117,20 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::iterate_
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::fetch_internal_array(const uint32_t i, dmtdataout_t *const value) const {
-    if (value != nullptr) {
-        copyout(value, &this->d.a.values[this->d.a.start_idx + i]);
-    }
+void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::fetch_internal_array(const uint32_t i, uint32_t *const value_len, dmtdataout_t *const value) const {
+    copyout(value_len, value, &this->d.a.values[this->d.a.start_idx + i]);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::fetch_internal(const subtree &subtree, const uint32_t i, dmtdataout_t *const value) const {
+void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::fetch_internal(const subtree &subtree, const uint32_t i, uint32_t *const value_len, dmtdataout_t *const value) const {
     dmt_node &n = get_node(subtree);
     const uint32_t leftweight = this->nweight(n.left);
     if (i < leftweight) {
-        this->fetch_internal(n.left, i, value);
+        this->fetch_internal(n.left, i, value_len, value);
     } else if (i == leftweight) {
-        if (value != nullptr) {
-            copyout(value, &n);
-        }
+        copyout(value_len, value, &n);
     } else {
-        this->fetch_internal(n.right, i - leftweight - 1, value);
+        this->fetch_internal(n.right, i - leftweight - 1, value_len, value);
     }
 }
 
@@ -1205,29 +1207,49 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::rebalan
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::copyout(dmtdata_t *const out, const dmt_node *const n) {
-    *out = n->value;
+void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::copyout(uint32_t *const outlen, dmtdata_t *const out, const dmt_node *const n) {
+    if (out) {
+        *out = n->value;
+    }
+    if (outlen) {
+        *outlen = n->value_length;
+    }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::copyout(dmtdata_t **const out, dmt_node *const n) {
-    *out = &n->value;
+void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::copyout(uint32_t *const outlen, dmtdata_t **const out, dmt_node *const n) {
+    if (out) {
+        *out = &n->value;
+    }
+    if (outlen) {
+        *outlen = n->value_length;
+    }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::copyout(dmtdata_t *const out, const dmtdata_t *const stored_value_ptr) {
-    *out = *stored_value_ptr;
+void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::copyout(uint32_t *const outlen, dmtdata_t *const out, const dmtdata_t *const stored_value_ptr) {
+    if (out) {
+        *out = *stored_value_ptr;
+    }
+    if (outlen) {
+        *outlen = sizeof(dmtdata_t);
+    }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::copyout(dmtdata_t **const out, dmtdata_t *const stored_value_ptr) {
-    *out = stored_value_ptr;
+void dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::copyout(uint32_t *const outlen, dmtdata_t **const out, dmtdata_t *const stored_value_ptr) {
+    if (out) {
+        *out = stored_value_ptr;
+    }
+    if (outlen) {
+        *outlen = sizeof(dmtdata_t);
+    }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename dmtcmp_t,
-         int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_zero_array(const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const {
+         int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_zero_array(const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     uint32_t min = this->d.a.start_idx;
     uint32_t limit = this->d.a.start_idx + this->d.a.num_values;
@@ -1236,7 +1258,8 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_int
 
     while (min!=limit) {
         uint32_t mid = (min + limit) / 2;
-        int hv = h(this->d.a.values[mid], extra);
+        //TODO: dynamic len
+        int hv = h(sizeof(dmtdata_t), this->d.a.values[mid], extra);
         if (hv<0) {
             min = mid+1;
         }
@@ -1251,9 +1274,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_int
     }
     if (best_zero!=subtree::NODE_NULL) {
         //Found a zero
-        if (value != nullptr) {
-            copyout(value, &this->d.a.values[best_zero]);
-        }
+        copyout(value_len, value, &this->d.a.values[best_zero]);
         *idxp = best_zero - this->d.a.start_idx;
         return 0;
     }
@@ -1264,28 +1285,26 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_int
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename dmtcmp_t,
-         int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_zero(const subtree &subtree, const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const {
+         int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_zero(const subtree &subtree, const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     if (subtree.is_null()) {
         *idxp = 0;
         return DB_NOTFOUND;
     }
     dmt_node &n = get_node(subtree);
-    int hv = h(n.value, extra);
+    int hv = h(n.value_length, n.value, extra);
     if (hv<0) {
-        int r = this->find_internal_zero<dmtcmp_t, h>(n.right, extra, value, idxp);
+        int r = this->find_internal_zero<dmtcmp_t, h>(n.right, extra, value_len, value, idxp);
         *idxp += this->nweight(n.left)+1;
         return r;
     } else if (hv>0) {
-        return this->find_internal_zero<dmtcmp_t, h>(n.left, extra, value, idxp);
+        return this->find_internal_zero<dmtcmp_t, h>(n.left, extra, value_len, value, idxp);
     } else {
-        int r = this->find_internal_zero<dmtcmp_t, h>(n.left, extra, value, idxp);
+        int r = this->find_internal_zero<dmtcmp_t, h>(n.left, extra, value_len, value, idxp);
         if (r==DB_NOTFOUND) {
             *idxp = this->nweight(n.left);
-            if (value != nullptr) {
-                copyout(value, &n);
-            }
+            copyout(value_len, value, &n);
             r = 0;
         }
         return r;
@@ -1294,8 +1313,8 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_int
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename dmtcmp_t,
-         int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_plus_array(const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const {
+         int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_plus_array(const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     uint32_t min = this->d.a.start_idx;
     uint32_t limit = this->d.a.start_idx + this->d.a.num_values;
@@ -1303,7 +1322,8 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_int
 
     while (min != limit) {
         const uint32_t mid = (min + limit) / 2;
-        const int hv = h(this->d.a.values[mid], extra);
+        //TODO: dynamic len
+        const int hv = h(sizeof(dmtdata_t), this->d.a.values[mid], extra);
         if (hv > 0) {
             best = mid;
             limit = mid;
@@ -1312,35 +1332,31 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_int
         }
     }
     if (best == subtree::NODE_NULL) { return DB_NOTFOUND; }
-    if (value != nullptr) {
-        copyout(value, &this->d.a.values[best]);
-    }
+    copyout(value_len, value, &this->d.a.values[best]);
     *idxp = best - this->d.a.start_idx;
     return 0;
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename dmtcmp_t,
-         int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_plus(const subtree &subtree, const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const {
+         int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_plus(const subtree &subtree, const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     if (subtree.is_null()) {
         return DB_NOTFOUND;
     }
     dmt_node & n = get_node(subtree);
-    int hv = h(n.value, extra);
+    int hv = h(n.value_length, n.value, extra);
     int r;
     if (hv > 0) {
-        r = this->find_internal_plus<dmtcmp_t, h>(n.left, extra, value, idxp);
+        r = this->find_internal_plus<dmtcmp_t, h>(n.left, extra, value_len, value, idxp);
         if (r == DB_NOTFOUND) {
             *idxp = this->nweight(n.left);
-            if (value != nullptr) {
-                copyout(value, &n);
-            }
+            copyout(value_len, value, &n);
             r = 0;
         }
     } else {
-        r = this->find_internal_plus<dmtcmp_t, h>(n.right, extra, value, idxp);
+        r = this->find_internal_plus<dmtcmp_t, h>(n.right, extra, value_len, value, idxp);
         if (r == 0) {
             *idxp += this->nweight(n.left) + 1;
         }
@@ -1350,8 +1366,8 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_int
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename dmtcmp_t,
-         int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_minus_array(const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const {
+         int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_minus_array(const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     uint32_t min = this->d.a.start_idx;
     uint32_t limit = this->d.a.start_idx + this->d.a.num_values;
@@ -1359,7 +1375,8 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_int
 
     while (min != limit) {
         const uint32_t mid = (min + limit) / 2;
-        const int hv = h(this->d.a.values[mid], extra);
+        //TODO: dynamic len
+        const int hv = h(sizeof(dmtdata_t), this->d.a.values[mid], extra);
         if (hv < 0) {
             best = mid;
             min = mid + 1;
@@ -1368,37 +1385,33 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_int
         }
     }
     if (best == subtree::NODE_NULL) { return DB_NOTFOUND; }
-    if (value != nullptr) {
-        copyout(value, &this->d.a.values[best]);
-    }
+    copyout(value_len, value, &this->d.a.values[best]);
     *idxp = best - this->d.a.start_idx;
     return 0;
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks, bool dynamic, typename dmtdatain_t>
 template<typename dmtcmp_t,
-         int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_minus(const subtree &subtree, const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const {
+         int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+int dmt<dmtdata_t, dmtdataout_t, supports_marks, dynamic, dmtdatain_t>::find_internal_minus(const subtree &subtree, const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
     if (subtree.is_null()) {
         return DB_NOTFOUND;
     }
     dmt_node & n = get_node(subtree);
-    int hv = h(n.value, extra);
+    int hv = h(n.value_length, n.value, extra);
     if (hv < 0) {
-        int r = this->find_internal_minus<dmtcmp_t, h>(n.right, extra, value, idxp);
+        int r = this->find_internal_minus<dmtcmp_t, h>(n.right, extra, value_len, value, idxp);
         if (r == 0) {
             *idxp += this->nweight(n.left) + 1;
         } else if (r == DB_NOTFOUND) {
             *idxp = this->nweight(n.left);
-            if (value != nullptr) {
-                copyout(value, &n);
-            }
+            copyout(value_len, value, &n);
             r = 0;
         }
         return r;
     } else {
-        return this->find_internal_minus<dmtcmp_t, h>(n.left, extra, value, idxp);
+        return this->find_internal_minus<dmtcmp_t, h>(n.left, extra, value_len, value, idxp);
     }
 }
 } // namespace toku

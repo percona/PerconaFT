@@ -247,6 +247,7 @@ public:
     uint32_t weight;
     subtree_templated<subtree_supports_marks> left;
     subtree_templated<subtree_supports_marks> right;
+    uint32_t value_length;
     dmtdata_t value;
 
     // this needs to be in both implementations because we don't have
@@ -260,6 +261,7 @@ public:
     uint32_t weight;
     subtree_templated<true> left;
     subtree_templated<true> right;
+    uint32_t value_length;
     dmtdata_t value;
     inline bool get_marked(void) const {
         return left.get_bit();
@@ -418,7 +420,7 @@ public:
      * Performance:  time=O(1)
      */
     uint32_t size(void) const;
-    
+
 
     /**
      * Effect:  Insert value into the DMT.
@@ -459,7 +461,7 @@ public:
      * On error, dmt is unchanged.
      * Performance: time=O(\log N)
      * Rationale: The FT needs to be able to replace a value with another copy of the same value (allocated in a different location)
-     * 
+     *
      */
     int set_at(const dmtdata_t &value, const uint32_t idx);
 
@@ -491,7 +493,7 @@ public:
      * Rationale: We may at some point use functors, but for now this is a smaller change from the old DMT.
      */
     template<typename iterate_extra_t,
-             int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
     int iterate(iterate_extra_t *const iterate_extra) const;
 
     /**
@@ -513,7 +515,7 @@ public:
      * Rational: Although the functional iterator requires defining another function (as opposed to C++ style iterator), it is much easier to read.
      */
     template<typename iterate_extra_t,
-             int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
     int iterate_on_range(const uint32_t left, const uint32_t right, iterate_extra_t *const iterate_extra) const;
 
     /**
@@ -526,7 +528,7 @@ public:
      *  not concurrently with any other non-const function.
      */
     template<typename iterate_extra_t,
-             int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
     int iterate_and_mark_range(const uint32_t left, const uint32_t right, iterate_extra_t *const iterate_extra);
 
     /**
@@ -536,7 +538,7 @@ public:
      * Performance: time=O(i+\log N) where i is the number of times f is called, and N is the number of elements in the dmt.
      */
     template<typename iterate_extra_t,
-             int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
     int iterate_over_marked(iterate_extra_t *const iterate_extra) const;
 
     /**
@@ -581,7 +583,7 @@ public:
      * Rationale: We assume if you are transforming the data in place, you want to do it to everything at once, so there is not yet an iterate_on_range_ptr (but there could be).
      */
     template<typename iterate_extra_t,
-             int (*f)(dmtdata_t *, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const uint32_t, dmtdata_t *, const uint32_t, iterate_extra_t *const)>
     void iterate_ptr(iterate_extra_t *const iterate_extra);
 
     /**
@@ -592,7 +594,7 @@ public:
      * On nonzero return, *value is unchanged
      * Performance: time=O(\log N)
      */
-    int fetch(const uint32_t idx, dmtdataout_t *const value) const;
+    int fetch(const uint32_t idx, uint32_t *const value_size, dmtdataout_t *const value) const;
 
     /**
      * Effect:  Find the smallest i such that h(V_i, extra)>=0
@@ -613,8 +615,8 @@ public:
      *  Slight overloading in this case seemed to provide a better API and better type checking.
      */
     template<typename dmtcmp_t,
-             int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-    int find_zero(const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const;
+             int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+    int find_zero(const dmtcmp_t &extra, uint32_t *const value_size, dmtdataout_t *const value, uint32_t *const idxp) const;
 
     /**
      *   Effect:
@@ -677,8 +679,8 @@ public:
      *        AC    B
      */
     template<typename dmtcmp_t,
-             int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-    int find(const dmtcmp_t &extra, int direction, dmtdataout_t *const value, uint32_t *const idxp) const;
+             int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+    int find(const dmtcmp_t &extra, int direction, uint32_t *const value_size, dmtdataout_t *const value, uint32_t *const idxp) const;
 
     /**
      * Effect: Return the size (in bytes) of the dmt, as it resides in main memory.  If the data stored are pointers, don't include the size of what they all point to.
@@ -690,7 +692,7 @@ private:
     typedef dmt_internal::dmt_node_templated<dmtdata_t, supports_marks> dmt_node;
 
     static_assert(sizeof(dmt_node) - sizeof(dmtdata_t) == __builtin_offsetof(dmt_node, value), "value is not last field in node");
-    static_assert(3 * sizeof(uint32_t) == __builtin_offsetof(dmt_node, value), "dmt_node is padded");
+    static_assert(4 * sizeof(uint32_t) == __builtin_offsetof(dmt_node, value), "dmt_node is padded");
     ENSURE_POD(subtree);
 
     struct dmt_array {
@@ -774,43 +776,43 @@ private:
     void delete_internal(subtree *const subtreep, const uint32_t idx, subtree *const subtree_replace, subtree **const rebalance_subtree);
 
     template<typename iterate_extra_t,
-             int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
     int iterate_internal_array(const uint32_t left, const uint32_t right,
                                       iterate_extra_t *const iterate_extra) const;
 
     template<typename iterate_extra_t,
-             int (*f)(dmtdata_t *, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const uint32_t, dmtdata_t *, const uint32_t, iterate_extra_t *const)>
     void iterate_ptr_internal(const uint32_t left, const uint32_t right,
                                      const subtree &subtree, const uint32_t idx,
                                      iterate_extra_t *const iterate_extra);
 
     template<typename iterate_extra_t,
-             int (*f)(dmtdata_t *, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const uint32_t, dmtdata_t *, const uint32_t, iterate_extra_t *const)>
     void iterate_ptr_internal_array(const uint32_t left, const uint32_t right,
                                            iterate_extra_t *const iterate_extra);
 
     template<typename iterate_extra_t,
-             int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
     int iterate_internal(const uint32_t left, const uint32_t right,
                                 const subtree &subtree, const uint32_t idx,
                                 iterate_extra_t *const iterate_extra) const;
 
     template<typename iterate_extra_t,
-             int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
     int iterate_and_mark_range_internal(const uint32_t left, const uint32_t right,
                                         const subtree &subtree, const uint32_t idx,
                                         iterate_extra_t *const iterate_extra);
 
     template<typename iterate_extra_t,
-             int (*f)(const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
+             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
     int iterate_over_marked_internal(const subtree &subtree, const uint32_t idx,
                                      iterate_extra_t *const iterate_extra) const;
 
     uint32_t verify_marks_consistent_internal(const subtree &subtree, const bool allow_marks) const;
 
-    void fetch_internal_array(const uint32_t i, dmtdataout_t *const value) const;
+    void fetch_internal_array(const uint32_t i, uint32_t *const value_len, dmtdataout_t *const value) const;
 
-    void fetch_internal(const subtree &subtree, const uint32_t i, dmtdataout_t *const value) const;
+    void fetch_internal(const subtree &subtree, const uint32_t i, uint32_t *const value_len, dmtdataout_t *const value) const;
 
     __attribute__((nonnull))
     void fill_array_with_subtree_idxs(node_idx *const array, const subtree &subtree) const;
@@ -822,40 +824,40 @@ private:
     void rebalance(subtree *const subtree);
 
     __attribute__((nonnull))
-    static void copyout(dmtdata_t *const out, const dmt_node *const n);
+    static void copyout(uint32_t *const outlen, dmtdata_t *const out, const dmt_node *const n);
 
     __attribute__((nonnull))
-    static void copyout(dmtdata_t **const out, dmt_node *const n);
+    static void copyout(uint32_t *const outlen, dmtdata_t **const out, dmt_node *const n);
 
     __attribute__((nonnull))
-    static void copyout(dmtdata_t *const out, const dmtdata_t *const stored_value_ptr);
+    static void copyout(uint32_t *const outlen, dmtdata_t *const out, const dmtdata_t *const stored_value_ptr);
 
     __attribute__((nonnull))
-    static void copyout(dmtdata_t **const out, dmtdata_t *const stored_value_ptr);
+    static void copyout(uint32_t *const outlen, dmtdata_t **const out, dmtdata_t *const stored_value_ptr);
 
     template<typename dmtcmp_t,
-             int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-    int find_internal_zero_array(const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const;
+             int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+    int find_internal_zero_array(const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const;
 
     template<typename dmtcmp_t,
-             int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-    int find_internal_zero(const subtree &subtree, const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const;
+             int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+    int find_internal_zero(const subtree &subtree, const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const;
 
     template<typename dmtcmp_t,
-             int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-    int find_internal_plus_array(const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const;
+             int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+    int find_internal_plus_array(const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const;
 
     template<typename dmtcmp_t,
-             int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-    int find_internal_plus(const subtree &subtree, const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const;
+             int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+    int find_internal_plus(const subtree &subtree, const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const;
 
     template<typename dmtcmp_t,
-             int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-    int find_internal_minus_array(const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const;
+             int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+    int find_internal_minus_array(const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const;
 
     template<typename dmtcmp_t,
-             int (*h)(const dmtdata_t &, const dmtcmp_t &)>
-    int find_internal_minus(const subtree &subtree, const dmtcmp_t &extra, dmtdataout_t *const value, uint32_t *const idxp) const;
+             int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
+    int find_internal_minus(const subtree &subtree, const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const;
 
     node_idx* alloc_temp_node_idxs(uint32_t num_idxs);
 
