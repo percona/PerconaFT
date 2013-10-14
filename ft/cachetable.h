@@ -585,7 +585,8 @@ void toku_cachetable_maybe_flush_some(CACHETABLE ct);
 uint64_t toku_cachefile_size(CACHEFILE cf);
 
 typedef enum {
-    CT_MISS = 0,
+    CT_HITS = 0,
+    CT_MISS,
     CT_MISSTIME,               // how many usec spent waiting for disk read because of cache miss
     CT_PREFETCHES,             // how many times has a block been prefetched into the cachetable?
     CT_SIZE_CURRENT,           // the sum of the sizes of the nodes represented in the cachetable
@@ -610,6 +611,9 @@ typedef struct {
     bool initialized;
     TOKU_ENGINE_STATUS_ROW_S status[CT_STATUS_NUM_ROWS];
 } CACHETABLE_STATUS_S, *CACHETABLE_STATUS;
+
+void ct_status_init(void);
+void ct_status_destroy(void);
 
 void toku_cachetable_get_status(CACHETABLE ct, CACHETABLE_STATUS s);
 
