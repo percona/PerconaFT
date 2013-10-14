@@ -1858,6 +1858,7 @@ int toku_cachetable_maybe_get_and_pin (CACHEFILE cachefile, CACHEKEY key, uint32
         if (got_lock) {
             pair_touch(p);
             *value = p->value_data;
+            STATUS_INC(CT_HITS, 1);
             r = 0;
         }
     }
@@ -1909,6 +1910,7 @@ int toku_cachetable_maybe_get_and_pin_clean (CACHEFILE cachefile, CACHEKEY key, 
         }
         if (got_lock) {
             *value = p->value_data;
+            STATUS_INC(CT_HITS, 1);
             r = 0;
         }
     } else {
@@ -2197,6 +2199,7 @@ try_again:
         }
         else {
             *value = p->value_data;
+            STATUS_INC(CT_HITS, 1);
             return 0;    
         }
     }
