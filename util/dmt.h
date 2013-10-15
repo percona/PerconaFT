@@ -241,13 +241,29 @@ public:
     }
 } __attribute__((__packed__)) ;
 
-template<typename dmtdata_t, bool subtree_supports_marks>
+template<typename T, bool store>
+class optional {
+public:
+    T value_length;
+};
+
+template<typename T>
+class optional<T, false>
+{
+private:
+    char unused[0];  //Without this field, size of class is 1 in g++.
+};
+
+static_assert(sizeof(optional<uint32_t, false>) == 0, "optional<uint32_t, false> wrong size");
+static_assert(sizeof(optional<uint32_t, true>) == sizeof(uint32_t), "optional<uint32_t, true> wrong size");
+
+template<typename dmtdata_t, bool subtree_supports_marks, bool store_value_length>
 class dmt_node_templated {
 public:
     uint32_t weight;
     subtree_templated<subtree_supports_marks> left;
     subtree_templated<subtree_supports_marks> right;
-    uint32_t value_length;
+    optional<uint32_t, store_value_length> value_length;
     dmtdata_t value;
 
     // this needs to be in both implementations because we don't have
@@ -255,13 +271,13 @@ public:
     inline void clear_stolen_bits(void) {}
 };// __attribute__((__packed__,aligned(4)));
 
-template<typename dmtdata_t>
-class dmt_node_templated<dmtdata_t, true> {
+template<typename dmtdata_t, bool store_value_length>
+class dmt_node_templated<dmtdata_t, true, store_value_length> {
 public:
     uint32_t weight;
     subtree_templated<true> left;
     subtree_templated<true> right;
-    uint32_t value_length;
+    optional<uint32_t, store_value_length> value_length;
     dmtdata_t value;
     inline bool get_marked(void) const {
         return left.get_bit();
@@ -314,9 +330,7 @@ class static_if_is_dynamic<true> : public type_is_dynamic {};
 
 template<typename dmtdata_t,
          typename dmtdataout_t=dmtdata_t,
-         bool supports_marks=false,
-         bool dynamic=false,
-         typename dmtdatain_t=typename std::conditional<dynamic, dmt_functor<dmtdata_t>, dmtdata_t>::type
+         bool supports_marks=false
         >
 class dmt {
 public:
@@ -689,31 +703,30 @@ public:
 
 private:
     typedef dmt_internal::subtree_templated<supports_marks> subtree;
-    typedef dmt_internal::dmt_node_templated<dmtdata_t, supports_marks> dmt_node;
+    typedef dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, false> dmt_cnode;
+    typedef dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, true> dmt_dnode;
+    typedef dmt_functor<dmtdata_t> dmtdatain_t;
 
-    static_assert(sizeof(dmt_node) - sizeof(dmtdata_t) == __builtin_offsetof(dmt_node, value), "value is not last field in node");
-    static_assert(4 * sizeof(uint32_t) == __builtin_offsetof(dmt_node, value), "dmt_node is padded");
+    static_assert(sizeof(dmt_cnode) - sizeof(dmtdata_t) == __builtin_offsetof(dmt_cnode, value), "value is not last field in node");
+    static_assert(sizeof(dmt_dnode) - sizeof(dmtdata_t) == __builtin_offsetof(dmt_dnode, value), "value is not last field in node");
+    static_assert(4 * sizeof(uint32_t) == __builtin_offsetof(dmt_cnode, value), "dmt_node is padded");
+    static_assert(4 * sizeof(uint32_t) == __builtin_offsetof(dmt_dnode, value), "dmt_node is padded");
     ENSURE_POD(subtree);
 
     struct dmt_array {
         uint32_t start_idx;
         uint32_t num_values;
-        dmtdata_t *values;
     };
 
     struct dmt_tree {
         subtree root;
-        uint32_t free_idx;
-        dmt_node *nodes;
     };
 
-    struct dmt_dtree {
-        subtree root;
-    };
 
-    bool is_array;
-    uint32_t capacity;
+    bool values_same_size;  //TODO: is this necessary? maybe sentinel for value_length
+    uint32_t value_length;
     struct mempool mp;
+    bool is_array;
     union {
         struct dmt_array a;
         struct dmt_tree t;
@@ -727,6 +740,8 @@ private:
     void create_internal_no_array(const uint32_t new_capacity, bool as_tree);
 
     void create_internal(const uint32_t new_capacity);
+
+    dmtdata_t * get_array_value(uint32_t idx) const;
 
     dmt_node & get_node(const subtree &subtree) const;
 
@@ -757,8 +772,7 @@ private:
 
     void convert_to_tree(void);
 
-    void maybe_resize_or_convert(std::false_type, const dmtdatain_t * value, const uint32_t);
-    void maybe_resize_or_convert(std::true_type, const dmtdatain_t *, const uint32_t n);
+    void maybe_resize_or_convert(const dmtdatain_t * value);
 
     bool will_need_rebalance(const subtree &subtree, const int leftmod, const int rightmod) const;
 
@@ -860,10 +874,7 @@ private:
     int find_internal_minus(const subtree &subtree, const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const;
 
     node_idx* alloc_temp_node_idxs(uint32_t num_idxs);
-
-    void clone_internal(const type_is_dynamic&, const dmt &src);
-
-    void clone_internal(const type_is_static&, const dmt &src);
+    uint32_t align(uint32_t x);
 };
 
 } // namespace toku
