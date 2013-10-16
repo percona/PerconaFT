@@ -171,7 +171,7 @@ class dmt_functor<klpair_struct> {
 };
 }
 
-typedef toku::dmt<KLPAIR_S, KLPAIR, false, true> klpair_dmt_t;
+typedef toku::dmt<KLPAIR_S, KLPAIR, false> klpair_dmt_t;
 // This class stores the data associated with a basement node
 class bn_data {
 public:
