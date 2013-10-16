@@ -292,53 +292,16 @@ public:
 template<typename dmtdata_t, bool subtree_supports_marks, bool store_value_length>
 class dmt_node_templated {
 public:
-    uint32_t weight;
-    subtree_templated<subtree_supports_marks> left;
-    subtree_templated<subtree_supports_marks> right;
-    typename std::conditional<store_value_length, uint32_t, char[0]>::type value_length;
+    dmt_base_node_templated<dmtdata_t, subtree_supports_marks> b;
     dmtdata_t value;
-
-    // this needs to be in both implementations because we don't have
-    // a "static if" the caller can use
-    inline void clear_stolen_bits(void) {}
 };// __attribute__((__packed__,aligned(4)));
 
-template<typename dmtdata_t, bool store_value_length>
-class dmt_node_templated<dmtdata_t, true, store_value_length> {
+template<typename dmtdata_t, bool subtree_supports_marks>
+class dmt_node_templated<dmtdata_t, subtree_supports_marks, true> {
 public:
-    uint32_t weight;
-    subtree_templated<true> left;
-    subtree_templated<true> right;
-    typename std::conditional<store_value_length, uint32_t, char[0]>::type value_length;
+    dmt_base_node_templated<dmtdata_t, subtree_supports_marks> b;
+    uint32_t value_length;
     dmtdata_t value;
-    inline bool get_marked(void) const {
-        return left.get_bit();
-    }
-    inline void set_marked_bit(void) {
-        return left.enable_bit();
-    }
-    inline void unset_marked_bit(void) {
-        return left.disable_bit();
-    }
-
-    inline bool get_marks_below(void) const {
-        return right.get_bit();
-    }
-    inline void set_marks_below_bit(void) {
-        // This function can be called by multiple threads.
-        // Checking first reduces cache invalidation.
-        if (!this->get_marks_below()) {
-            right.enable_bit();
-        }
-    }
-    inline void unset_marks_below_bit(void) {
-        right.disable_bit();
-    }
-
-    inline void clear_stolen_bits(void) {
-        this->unset_marked_bit();
-        this->unset_marks_below_bit();
-    }
 };// __attribute__((__packed__,aligned(4)));
 
 }
@@ -367,6 +330,7 @@ template<typename dmtdata_t,
 class dmt {
 private:
     typedef dmt_internal::subtree_templated<supports_marks> subtree;
+    typedef dmt_internal::dmt_base_node_templated<dmtdata_t, supports_marks> dmt_base_node;
     typedef dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, false> dmt_cnode;
     typedef dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, true> dmt_dnode;
     typedef dmt_dnode dmt_node;  //TODO: delete this.. maybe add a base class
@@ -775,7 +739,10 @@ private:
 
     void create_internal(const uint32_t new_capacity);
 
-    //TODO: maybe use template aliases?  Need two different kinds of nodes.. think about it
+    dmt_base_node & get_base_node(const subtree &subtree) const;
+
+    dmt_base_node & get_base_node(const node_idx offset) const;
+
     dmt_node & get_node(const subtree &subtree) const;
 
     dmt_node & get_node(const node_idx offset) const;
