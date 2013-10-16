@@ -333,7 +333,9 @@ private:
     typedef dmt_internal::dmt_base_node_templated<dmtdata_t, supports_marks> dmt_base_node;
     typedef dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, false> dmt_cnode;
     typedef dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, true> dmt_dnode;
-    typedef dmt_dnode dmt_node;  //TODO: delete this.. maybe add a base class
+    template<bool with_length>
+        using dmt_mnode = dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, with_length>;
+
     typedef dmt_functor<dmtdata_t> dmtdatain_t;
 
 public:
@@ -749,9 +751,8 @@ private:
 
     uint32_t nweight(const subtree &subtree) const;
 
-    node_idx node_malloc_and_set_value(const dmtdata_t &value);
-
-    node_idx node_malloc_and_set_value(const dmt_functor<dmtdata_t> &value);
+    template<bool with_sizes>
+    node_idx node_malloc_and_set_value(const dmtdatain_t &value);
 
     void node_free(const type_is_dynamic &, const subtree &st);
 
@@ -789,11 +790,14 @@ private:
 
     dmtdata_t * get_array_value(const uint32_t idx) const;
 
-    dmtdata_t * get_array_value_internal(const uint32_t real_idx) const;
+    dmtdata_t * get_array_value_internal(struct mempool *mempool, const uint32_t real_idx) const;
 
     void convert_to_ctree(void);
 
     void convert_to_dtree(void);
+
+    template<bool with_sizes>
+    void convert_from_array_to_tree(void);
 
     int insert_at_ctree(const dmtdatain_t& value_in, const uint32_t idx);
 

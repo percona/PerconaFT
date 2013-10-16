@@ -294,19 +294,19 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_at(const dmtdatain_t &v
             this->convert_to_ctree();
         }
         // Is a c-tree.
-        return this->insert_at_ctree(value, idx);
+        return this->insert_at_ctree(value, idx);  //TODO: IMPLEMENT
     }
     if (this->values_same_size) {
-        this->convert_to_dtree();
+        this->convert_to_dtree();  //TODO: IMPLEMENT
         paranoid_invariant(!this->values_same_size);
     }
     paranoid_invariant(!is_array);
     // Is a d-tree.
 
     //d tree insert (TODO LOOK OVER)
-    this->maybe_resize_or_convert(&value);
+    this->maybe_resize_or_convert(&value);  //TODO: IMPLEMENT
     subtree *rebalance_subtree = nullptr;
-    this->insert_internal(&this->d.t.root, value, idx, &rebalance_subtree);
+    this->insert_internal(&this->d.t.root, value, idx, &rebalance_subtree);  //TODO: IMPLEMENT
     if (rebalance_subtree != nullptr) {
         this->rebalance(rebalance_subtree);
     }
@@ -342,35 +342,41 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_at_array_beginning(cons
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::alloc_array_value_end(void) {
+    paranoid_invariant(this->is_array);
+    paranoid_invariant(this->values_same_size);
+
     const uint32_t real_idx = this->d.a.num_values + this->d.a.start_idx;
     this->d.a.num_values++;
 
-    return get_array_value_internal(real_idx);
+    return get_array_value_internal(&this->mp, real_idx);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::alloc_array_value_beginning(void) {
+    paranoid_invariant(this->is_array);
+    paranoid_invariant(this->values_same_size);
+
     paranoid_invariant(this->d.a.start_idx > 0);
     const uint32_t real_idx = --this->d.a.start_idx;
     this->d.a.num_values++;
 
-    return get_array_value_internal(real_idx);
+    return get_array_value_internal(&this->mp, real_idx);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::get_array_value(const uint32_t idx) const {
-    //TODO: verify initial create always set is_array and values_same_size
-    paranoid_invariant(idx < this->d.a.num_values);
-    const uint32_t real_idx = idx + this->d.a.start_idx;
-    return get_array_value(real_idx);
-}
-
-template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
-dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::get_array_value_internal(const uint32_t real_idx) const {
     paranoid_invariant(this->is_array);
     paranoid_invariant(this->values_same_size);
 
-    void* ptr = toku_mempool_get_pointer_from_base_and_offset(&this->mp, real_idx * align(this->value_length));
+    //TODO: verify initial create always set is_array and values_same_size
+    paranoid_invariant(idx < this->d.a.num_values);
+    const uint32_t real_idx = idx + this->d.a.start_idx;
+    return get_array_value_internal(&this->mp, real_idx);
+}
+
+template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
+dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::get_array_value_internal(struct mempool *mempool, const uint32_t real_idx) const {
+    void* ptr = toku_mempool_get_pointer_from_base_and_offset(mempool, real_idx * align(this->value_length));
     dmtdata_t *CAST_FROM_VOIDP(value, ptr);
     return value;
 }
@@ -402,6 +408,55 @@ uint32_t dmt<dmtdata_t, dmtdataout_t, supports_marks>::align(const uint32_t x) c
     return roundup_to_multiple(ALIGNMENT, x);
 }
 
+template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
+void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_ctree(void) {
+    convert_from_array_to_tree<false>();
+}
+
+template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
+void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_dtree(void) {
+    if (this->is_array) {
+        convert_from_array_to_tree<true>();
+    } else {
+        //TODO: implement this one.
+
+    }
+}
+
+template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
+template<bool with_sizes>
+void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_from_array_to_tree(void) {
+    paranoid_invariant(this->is_array);
+    paranoid_invariant(this->values_same_size);
+
+    
+    //save array-format information to locals
+    uint32_t num_values = this->size();
+    uint32_t offset = this->d.a.start_idx;
+
+    node_idx *tmp_array;
+    bool malloced = false;
+    tmp_array = alloc_temp_node_idxs(num_values);
+    if (!tmp_array) {
+        malloced = true;
+        XMALLOC_N(num_values, tmp_array);
+    }
+
+    struct old_mp = this->mp;
+    size_t mem_needed = num_values * align(this->value_length + __builtin_offsetof(dmt_mnode<with_sizes>, value));
+    toku_mempool_construct(&this->mp, mem_needed);
+
+    for (uint32_t i = 0; i < num_values; i++) {
+        dmtdatain_t functor(this->value_length, get_array_value_internal(&old_mp, i+offset));
+        tmp_array[i] = node_malloc_and_set_value<with_sizes>(functor);
+    }
+    this->is_array = false;
+    this->rebuild_subtree_from_idxs(&this->d.t.root, tmp_array, num_values);
+    this->values_same_size = with_sizes;
+
+    if (malloced) toku_free(tmp_array);
+    toku_mempool_destroy(&old_mp);
+}
 
 //TODO: above has at least one pass done
 // The following 3 functions implement a static if for us.
@@ -685,29 +740,29 @@ typename dmt<dmtdata_t, dmtdataout_t, supports_marks>::dmt_node & dmt<dmtdata_t,
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
-node_idx dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_malloc_and_set_value(const dmt_functor<dmtdata_t> &value) {
-    size_t val_size = value.get_dmtdatain_t_size();
-    size_t size_to_alloc = __builtin_offsetof(dmt_node, value) + val_size;
-    size_to_alloc = roundup_to_multiple(ALIGNMENT, size_to_alloc);
-    void* np = toku_mempool_malloc(&this->mp, size_to_alloc, 1);
-    paranoid_invariant(np != nullptr);
-    dmt_node *CAST_FROM_VOIDP(n, np);
-    n->value_length = val_size;
+void dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_set_value(dmt_mnode<true> * n, uint32_t value_length, const dmtdatain_t &value) {
+    n->value_length = value_length;
     value.write_dmtdata_t_to(&n->value);
-
-    n->b.clear_stolen_bits();
-    return toku_mempool_get_offset_from_pointer_and_base(&this->mp, np);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
-node_idx dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_malloc_and_set_value(const dmtdata_t &value) {
-    paranoid_invariant(this->d.t.free_idx < this->capacity);
-    dmt_node &n = get_node(this->d.t.free_idx);
-    n.clear_stolen_bits();
-    //TODO: dynamic len
-    n.value_length = sizeof(dmtdata_t);
-    n.value = value;
-    return this->d.t.free_idx++;
+void dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_set_value(dmt_mnode<false> * n, uint32_t value_length UU(), const dmtdatain_t &value) {
+    value.write_dmtdata_t_to(&n->value);
+}
+
+template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
+template<bool with_length>
+node_idx dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_malloc_and_set_value(const dmtdatain_t &value) {
+    size_t val_size = value.get_dmtdatain_t_size();
+    size_t size_to_alloc = __builtin_offsetof(dmt_mnode<with_length>, value) + val_size;
+    size_to_alloc = roundup_to_multiple(ALIGNMENT, size_to_alloc);
+    void* np = toku_mempool_malloc(&this->mp, size_to_alloc, 1);
+    paranoid_invariant(np != nullptr);
+    dmt_mnode *CAST_FROM_VOIDP(n, np);
+    node_set_value(n, val_size, value);
+
+    n->b.clear_stolen_bits();
+    return toku_mempool_get_offset_from_pointer_and_base(&this->mp, np);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
@@ -809,7 +864,7 @@ template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::maybe_resize_or_convert(const dmtdatain_t * value) {
     (void)value;
 #if 0
-    static_assert(std::is_same<dmtdatain_t, dmt_functor<dmtdata_t>>::value, "functor wrong type");
+    static_assert(std::is_same<dmtdatain_t, dmtdatain_t>::value, "functor wrong type");
     const ssize_t curr_capacity = toku_mempool_get_size(&this->mp);
     const ssize_t curr_free = toku_mempool_get_free_space(&this->mp);
     const ssize_t curr_used = toku_mempool_get_used_space(&this->mp);
