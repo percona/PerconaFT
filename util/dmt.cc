@@ -92,6 +92,7 @@ PATENT RIGHTS GRANT:
 #include <db.h>
 
 #include <toku_include/memory.h>
+#include <limits.h>
 
 namespace toku {
 
@@ -284,9 +285,9 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_at(const dmtdatain_t &v
     if (idx > this->size()) { return EINVAL; }
 
     static_assert(!supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
-    bool same_size = this->values_same_size && value.get_dmtdatain_t_size() == this->value_length;
-    if (same_size || this->size() == 0) {
-        if (this->is_array) { //(8..10]
+    bool same_size = this->values_same_size && (this->size() == 0 || value.get_dmtdatain_t_size() == this->value_length);
+    if (same_size) {
+        if (this->is_array) {
             if (idx == this->d.a.num_values) {
                 return this->insert_at_array_end(value);
             }
@@ -333,12 +334,13 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_at_array_end(const dmtd
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_at_array_beginning(const dmtdatain_t& value_in) {
+    invariant(false); //TODO: enable this later
     paranoid_invariant(this->is_array);
     paranoid_invariant(this->values_same_size);
     paranoid_invariant(this->d.a.num_values > 0);
     //TODO: when deleting last element, should set start_idx to 0
 
-    this->maybe_resize_array(-1);
+    this->maybe_resize_array(+1);  // +1 or 0?  Depends on how memory management works
     dmtdata_t *dest = this->alloc_array_value_beginning();
     value_in.write_dmtdata_t_to(dest);
     return 0;
@@ -351,6 +353,7 @@ dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::alloc_array_value_end(
     this->d.a.num_values++;
 
     void *ptr = toku_mempool_malloc(&this->mp, align(this->value_length), 1);
+    paranoid_invariant(reinterpret_cast<size_t>(ptr) % ALIGNMENT == 0);
     dmtdata_t *CAST_FROM_VOIDP(n, ptr);
     paranoid_invariant(n == get_array_value(this->d.a.num_values - 1));
     return n;
@@ -358,6 +361,7 @@ dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::alloc_array_value_end(
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::alloc_array_value_beginning(void) {
+    invariant(false); //TODO: enable this later
     paranoid_invariant(this->is_array);
     paranoid_invariant(this->values_same_size);
 
@@ -406,7 +410,9 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::maybe_resize_array(const int 
         invariant(copy_bytes + align(this->value_length) <= new_space);
         // Copy over to new mempool
         if (this->d.a.num_values > 0) {
-            memcpy(toku_mempool_malloc(&new_kvspace, copy_bytes, 1), get_array_value(0), copy_bytes);
+            void* dest = toku_mempool_malloc(&new_kvspace, copy_bytes, 1);
+            invariant(dest!=nullptr);
+            memcpy(dest, get_array_value(0), copy_bytes);
         }
         toku_mempool_destroy(&this->mp);
         this->mp = new_kvspace;
@@ -428,6 +434,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_ctree(void) {
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_dtree(void) {
     paranoid_invariant(this->is_array);  //TODO: remove this when ctree implemented
+    paranoid_invariant(this->values_same_size);
     if (this->is_array) {
         convert_from_array_to_tree<true>();
     } else {
@@ -439,15 +446,16 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_dtree(void) {
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 template<bool with_sizes>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_from_array_to_tree(void) {
-    static_assert(with_sizes, "not in prototype");
-
     paranoid_invariant(this->is_array);
     paranoid_invariant(this->values_same_size);
-
     
     //save array-format information to locals
-    uint32_t num_values = this->d.a.num_values;
-    uint32_t offset = this->d.a.start_idx;
+    const uint32_t num_values = this->d.a.num_values;
+    const uint32_t offset = this->d.a.start_idx;
+    const uint32_t orig_length = this->value_length;
+    paranoid_invariant_zero(offset); //TODO: remove this
+
+    static_assert(with_sizes, "not in prototype");
 
     node_idx *tmp_array;
     bool malloced = false;
@@ -459,15 +467,17 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_from_array_to_tree(vo
 
     struct mempool old_mp = this->mp;
     size_t mem_needed = num_values * align(this->value_length + __builtin_offsetof(dmt_mnode<with_sizes>, value));
+    toku_mempool_zero(&this->mp); //TODO: remove this
     toku_mempool_construct(&this->mp, mem_needed);
 
     for (uint32_t i = 0; i < num_values; i++) {
+        paranoid_invariant(this->value_length == orig_length);
         dmtdatain_t functor(this->value_length, get_array_value_internal(&old_mp, i+offset));
         tmp_array[i] = node_malloc_and_set_value<with_sizes>(functor);
     }
     this->is_array = false;
-    this->rebuild_subtree_from_idxs(&this->d.t.root, tmp_array, num_values);
     this->values_same_size = !with_sizes;
+    this->rebuild_subtree_from_idxs(&this->d.t.root, tmp_array, num_values);
 
     if (malloced) toku_free(tmp_array);
     toku_mempool_destroy(&old_mp);
@@ -1180,7 +1190,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::iterate_over_marked_internal(c
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::fetch_internal_array(const uint32_t i, uint32_t *const value_len, dmtdataout_t *const value) const {
-    copyout(value_len, value, get_array_value(i));
+    copyout(value_len, value, this->value_length, get_array_value(i));
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
@@ -1269,41 +1279,41 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::rebalance(subtree *const subt
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::copyout(uint32_t *const outlen, dmtdata_t *const out, const dmt_node *const n) {
-    if (out) {
-        *out = n->value;
-    }
     if (outlen) {
         *outlen = n->value_length;
+    }
+    if (out) {
+        *out = n->value;
     }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::copyout(uint32_t *const outlen, dmtdata_t **const out, dmt_node *const n) {
-    if (out) {
-        *out = &n->value;
-    }
     if (outlen) {
         *outlen = n->value_length;
     }
+    if (out) {
+        *out = &n->value;
+    }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks>::copyout(uint32_t *const outlen, dmtdata_t *const out, const dmtdata_t *const stored_value_ptr) {
+void dmt<dmtdata_t, dmtdataout_t, supports_marks>::copyout(uint32_t *const outlen, dmtdata_t *const out, const uint32_t len, const dmtdata_t *const stored_value_ptr) {
+    if (outlen) {
+        *outlen = len;
+    }
     if (out) {
         *out = *stored_value_ptr;
     }
-    if (outlen) {
-        *outlen = sizeof(dmtdata_t);
-    }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks>::copyout(uint32_t *const outlen, dmtdata_t **const out, dmtdata_t *const stored_value_ptr) {
+void dmt<dmtdata_t, dmtdataout_t, supports_marks>::copyout(uint32_t *const outlen, dmtdata_t **const out, const uint32_t len, dmtdata_t *const stored_value_ptr) {
+    if (outlen) {
+        *outlen = len;
+    }
     if (out) {
         *out = stored_value_ptr;
-    }
-    if (outlen) {
-        *outlen = sizeof(dmtdata_t);
     }
 }
 
@@ -1319,7 +1329,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_zero_array(const
 
     while (min!=limit) {
         uint32_t mid = (min + limit) / 2;
-        int hv = h(sizeof(dmtdata_t), *get_array_value(mid), extra);
+        int hv = h(this->value_length, *get_array_value(mid), extra);
         if (hv<0) {
             min = mid+1;
         }
@@ -1334,7 +1344,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_zero_array(const
     }
     if (best_zero!=subtree::NODE_NULL) {
         //Found a zero
-        copyout(value_len, value, get_array_value(best_zero));
+        copyout(value_len, value, this->value_length, get_array_value(best_zero));
         *idxp = best_zero;
         return 0;
     }
@@ -1382,7 +1392,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_plus_array(const
 
     while (min != limit) {
         const uint32_t mid = (min + limit) / 2;
-        const int hv = h(sizeof(dmtdata_t), *get_array_value(mid), extra);
+        const int hv = h(this->value_length, *get_array_value(mid), extra);
         if (hv > 0) {
             best = mid;
             limit = mid;
@@ -1391,7 +1401,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_plus_array(const
         }
     }
     if (best == subtree::NODE_NULL) { return DB_NOTFOUND; }
-    copyout(value_len, value, get_array_value(best));
+    copyout(value_len, value, this->value_length, get_array_value(best));
     *idxp = best;
     return 0;
 }
@@ -1434,7 +1444,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_minus_array(cons
 
     while (min != limit) {
         const uint32_t mid = (min + limit) / 2;
-        const int hv = h(sizeof(dmtdata_t), *get_array_value(mid), extra);
+        const int hv = h(this->value_length, *get_array_value(mid), extra);
         if (hv < 0) {
             best = mid;
             min = mid + 1;
@@ -1443,7 +1453,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_minus_array(cons
         }
     }
     if (best == subtree::NODE_NULL) { return DB_NOTFOUND; }
-    copyout(value_len, value, get_array_value(best));
+    copyout(value_len, value, this->value_length, get_array_value(best));
     *idxp = best;
     return 0;
 }
