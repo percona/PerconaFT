@@ -286,11 +286,12 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_at(const dmtdatain_t &v
     static_assert(!supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     bool same_size = this->values_same_size && value.get_dmtdatain_t_size() == this->value_length;
     if (same_size || this->size() == 0) {
-        if (this->is_array) {
+        if (this->is_array && false) {
             if (idx == this->d.a.num_values) {
                 return this->insert_at_array_end(value);
             }
             if (idx == 0 && this->d.a.start_idx > 0) {
+                paranoid_invariant(false); // Should not be possible (yet)
                 return this->insert_at_array_beginning(value);
             }
 //            this->convert_to_ctree();
