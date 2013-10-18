@@ -31,6 +31,7 @@ set(FT_SOURCES
   checkpoint
   compress
   dbufio
+  dmt
   fifo
   ft
   ft-cachetable-wrappers

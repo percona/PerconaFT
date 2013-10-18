@@ -260,12 +260,12 @@ uint32_t dmt<dmtdata_t, dmtdataout_t, supports_marks>::nweight(const subtree &su
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
-template<typename dmtcmp_t, int (*h)(const dmtdata_t &, const dmtcmp_t &)>
+template<typename dmtcmp_t, int (*h)(const uint32_t size, const dmtdata_t &, const dmtcmp_t &)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert(const dmtdatain_t &value, const dmtcmp_t &v, uint32_t *const idx) {
     int r;
     uint32_t insert_idx;
 
-    r = this->find_zero<dmtcmp_t, h>(v, nullptr, &insert_idx);
+    r = this->find_zero<dmtcmp_t, h>(v, nullptr, nullptr, &insert_idx);
     if (r==0) {
         if (idx) *idx = insert_idx;
         return DB_KEYEXIST;
@@ -286,7 +286,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_at(const dmtdatain_t &v
     static_assert(!supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     bool same_size = this->values_same_size && value.get_dmtdatain_t_size() == this->value_length;
     if (same_size || this->size() == 0) {
-        if (this->is_array && false) {
+        if (this->is_array) { //(8..10]
             if (idx == this->d.a.num_values) {
                 return this->insert_at_array_end(value);
             }
@@ -352,6 +352,7 @@ dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::alloc_array_value_end(
 
     void *ptr = toku_mempool_malloc(&this->mp, align(this->value_length), 1);
     dmtdata_t *CAST_FROM_VOIDP(n, ptr);
+    paranoid_invariant(n == get_array_value(this->d.a.num_values - 1));
     return n;
 }
 
@@ -389,6 +390,7 @@ dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::get_array_value_intern
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::maybe_resize_array(const int change) {
     paranoid_invariant(change == -1 || change == 1);
+    paranoid_invariant(change == 1); //TODO: go over change == -1.. may or may not be ok
 
     bool space_available = change < 0 || toku_mempool_get_free_space(&this->mp) >= align(this->value_length);
 
@@ -401,7 +403,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::maybe_resize_array(const int 
         struct mempool new_kvspace;
         toku_mempool_construct(&new_kvspace, new_space);
         size_t copy_bytes = this->d.a.num_values * align(this->value_length);
-        invariant(copy_bytes <= new_space);
+        invariant(copy_bytes + align(this->value_length) <= new_space);
         // Copy over to new mempool
         if (this->d.a.num_values > 0) {
             memcpy(toku_mempool_malloc(&new_kvspace, copy_bytes, 1), get_array_value(0), copy_bytes);
@@ -1333,10 +1335,10 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_zero_array(const
     if (best_zero!=subtree::NODE_NULL) {
         //Found a zero
         copyout(value_len, value, get_array_value(best_zero));
-        *idxp = best_zero - this->d.a.start_idx;
+        *idxp = best_zero;
         return 0;
     }
-    if (best_pos!=subtree::NODE_NULL) *idxp = best_pos - this->d.a.start_idx;
+    if (best_pos!=subtree::NODE_NULL) *idxp = best_pos;
     else                     *idxp = this->d.a.num_values;
     return DB_NOTFOUND;
 }
@@ -1390,7 +1392,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_plus_array(const
     }
     if (best == subtree::NODE_NULL) { return DB_NOTFOUND; }
     copyout(value_len, value, get_array_value(best));
-    *idxp = best - this->d.a.start_idx;
+    *idxp = best;
     return 0;
 }
 
@@ -1432,7 +1434,6 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_minus_array(cons
 
     while (min != limit) {
         const uint32_t mid = (min + limit) / 2;
-        //TODO: dynamic len
         const int hv = h(sizeof(dmtdata_t), *get_array_value(mid), extra);
         if (hv < 0) {
             best = mid;
@@ -1443,7 +1444,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_minus_array(cons
     }
     if (best == subtree::NODE_NULL) { return DB_NOTFOUND; }
     copyout(value_len, value, get_array_value(best));
-    *idxp = best - this->d.a.start_idx;
+    *idxp = best;
     return 0;
 }
 

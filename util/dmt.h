@@ -449,7 +449,7 @@ public:
      * Performance: time=O(\log N) amortized.
      * Rationale: Some future implementation may be O(\log N) worst-case time, but O(\log N) amortized is good enough for now.
      */
-    template<typename dmtcmp_t, int (*h)(const dmtdata_t &, const dmtcmp_t &)>
+    template<typename dmtcmp_t, int (*h)(const uint32_t size, const dmtdata_t &, const dmtcmp_t &)>
     int insert(const dmtdatain_t &value, const dmtcmp_t &v, uint32_t *const idx);
 
     /**
@@ -701,7 +701,7 @@ public:
 private:
     static_assert(sizeof(dmt_cnode) - sizeof(dmtdata_t) == __builtin_offsetof(dmt_cnode, value), "value is not last field in node");
     static_assert(sizeof(dmt_dnode) - sizeof(dmtdata_t) == __builtin_offsetof(dmt_dnode, value), "value is not last field in node");
-    static_assert(3 * sizeof(uint32_t) == __builtin_offsetof(dmt_cnode, value), "dmt_node is padded");
+    //static_assert(3 * sizeof(uint32_t) == __builtin_offsetof(dmt_cnode, value), "dmt_node is padded");
     static_assert(4 * sizeof(uint32_t) == __builtin_offsetof(dmt_dnode, value), "dmt_node is padded");
     ENSURE_POD(subtree);
 
