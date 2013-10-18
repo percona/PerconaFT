@@ -110,7 +110,7 @@ class dmt_functor<DMTVALUE> {
 
         dmt_functor(DMTVALUE _value)
             : value(_value) {}
-        dmt_functor(const uint32_t size, DMTVALUE *const src)
+        dmt_functor(const uint32_t size UU(), DMTVALUE *const src)
             : value(*src) {
             paranoid_invariant(size == sizeof(DMTVALUE));
         }

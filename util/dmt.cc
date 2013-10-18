@@ -452,7 +452,6 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_from_array_to_tree(vo
     //save array-format information to locals
     const uint32_t num_values = this->d.a.num_values;
     const uint32_t offset = this->d.a.start_idx;
-    const uint32_t orig_length = this->value_length;
     paranoid_invariant_zero(offset); //TODO: remove this
 
     static_assert(with_sizes, "not in prototype");
@@ -467,11 +466,9 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_from_array_to_tree(vo
 
     struct mempool old_mp = this->mp;
     size_t mem_needed = num_values * align(this->value_length + __builtin_offsetof(dmt_mnode<with_sizes>, value));
-    toku_mempool_zero(&this->mp); //TODO: remove this
     toku_mempool_construct(&this->mp, mem_needed);
 
     for (uint32_t i = 0; i < num_values; i++) {
-        paranoid_invariant(this->value_length == orig_length);
         dmtdatain_t functor(this->value_length, get_array_value_internal(&old_mp, i+offset));
         tmp_array[i] = node_malloc_and_set_value<with_sizes>(functor);
     }

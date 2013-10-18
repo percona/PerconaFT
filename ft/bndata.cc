@@ -359,7 +359,8 @@ void bn_data::move_leafentries_to(
     for (uint32_t i = lbi; i < ube; i++) {
         KLPAIR curr_kl = nullptr;
         uint32_t curr_kl_len;
-        m_buffer.fetch(i, &curr_kl_len, &curr_kl);
+        int r = m_buffer.fetch(i, &curr_kl_len, &curr_kl);
+        invariant_zero(r);
 
         LEAFENTRY old_le = get_le_from_klpair(curr_kl);
         size_t le_size = leafentry_memsize(old_le);
