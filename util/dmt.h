@@ -733,13 +733,11 @@ private:
 
     void create_internal(const uint32_t new_capacity);
 
-    dmt_base_node & get_base_node(const subtree &subtree) const;
+    template<typename node_type>
+    node_type & get_node(const subtree &subtree) const;
 
-    dmt_base_node & get_base_node(const node_idx offset) const;
-
-    dmt_node & get_node(const subtree &subtree) const;
-
-    dmt_node & get_node(const node_idx offset) const;
+    template<typename node_type>
+    node_type & get_node(const node_idx offset) const;
 
     uint32_t nweight(const subtree &subtree) const;
 
