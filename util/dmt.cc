@@ -98,6 +98,7 @@ namespace toku {
     //TODO: only start with this create.  Others can be delayed till after prototype
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::create(void) {
+    static_assert(!supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     this->create_internal_no_array(supports_marks);
     //TODO: maybe allocate enough space for something by default?
     //      We may be relying on not needing to allocate space the first time (due to limited time spent while a lock is held)
@@ -105,19 +106,19 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::create(void) {
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::create_no_array(void) {
+    static_assert(!supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     this->create_internal_no_array(supports_marks);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::create_internal_no_array(bool as_tree) {
     toku_mempool_zero(&this->mp);
+    this->values_same_size = true;
+    this->value_length = 0;
+    this->is_array = !as_tree;
     if (as_tree) {
-        this->is_array = false;
-        this->value_length = 0;
         this->d.t.root.set_to_null();
     } else {
-        paranoid_invariant(!supports_marks);
-        this->is_array = true;
         this->d.a.start_idx = 0;
         this->d.a.num_values = 0;
     }
@@ -125,7 +126,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::create_internal_no_array(bool
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::create_from_sorted_array(const dmtdata_t *const values, const uint32_t numvalues) {
-    static_assert(!false, "1st pass not done.  May need to change API. Not needed for prototype.");
+    static_assert(supports_marks && !supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     this->create_internal(numvalues);
     memcpy(this->d.a.values, values, numvalues * (sizeof values[0]));
     this->d.a.num_values = numvalues;
@@ -136,7 +137,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::create_from_sorted_array(cons
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::create_internal(const uint32_t mempool_size) {
-    static_assert(!false, "1st pass not done.  May need to change API. Not needed for prototype.");
+    static_assert(supports_marks && !supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
 #if 0
     this->create_internal_no_array(new_capacity, dynamic);
     if (!dynamic) {
@@ -148,7 +149,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::create_internal(const uint32_
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::create_steal_sorted_array(dmtdata_t **const values, const uint32_t numvalues, const uint32_t new_capacity) {
-    static_assert(!false, "1st pass not done.  May need to change API. Not needed for prototype.");
+    static_assert(supports_marks && !supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     paranoid_invariant_notnull(values);
     this->create_internal_no_array(new_capacity);
     this->d.a.num_values = numvalues;
@@ -161,7 +162,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::create_steal_sorted_array(dmt
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks>::split_at(dmt *const newdmt, const uint32_t idx) {
-    static_assert(!false, "1st pass not done.  May need to change API. Not needed for prototype.");
+    static_assert(supports_marks && !supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     barf_if_marked(*this);
     paranoid_invariant_notnull(newdmt);
     if (idx > this->size()) { return EINVAL; }
@@ -178,7 +179,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::split_at(dmt *const newdmt, co
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::merge(dmt *const leftdmt, dmt *const rightdmt) {
-    static_assert(!false, "1st pass not done.  May need to change API. Not needed for prototype.");
+    static_assert(supports_marks && !supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     barf_if_marked(*this);
     paranoid_invariant_notnull(leftdmt);
     paranoid_invariant_notnull(rightdmt);
@@ -282,6 +283,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_at(const dmtdatain_t &v
     barf_if_marked(*this);
     if (idx > this->size()) { return EINVAL; }
 
+    static_assert(!supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     bool same_size = this->values_same_size && value.get_dmtdatain_t_size() == this->value_length;
     if (same_size || this->size() == 0) {
         if (this->is_array) {
@@ -291,16 +293,16 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_at(const dmtdatain_t &v
             if (idx == 0 && this->d.a.start_idx > 0) {
                 return this->insert_at_array_beginning(value);
             }
-            this->convert_to_ctree();
+//            this->convert_to_ctree();
         }
         // Is a c-tree.
-        return this->insert_at_ctree(value, idx);  //TODO: IMPLEMENT
+//        return this->insert_at_ctree(value, idx);  //TODO: IMPLEMENT
     }
-    if (this->values_same_size) {
-        this->convert_to_dtree();  //TODO: IMPLEMENT
-        paranoid_invariant(!this->values_same_size);
+    if (this->is_array) {  //TODO: support ctree
+        this->convert_to_dtree();
     }
     paranoid_invariant(!is_array);
+    paranoid_invariant(!this->values_same_size);
     // Is a d-tree.
 
     //d tree insert (TODO LOOK OVER)
@@ -375,7 +377,7 @@ dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::get_array_value(const 
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
-dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::get_array_value_internal(struct mempool *mempool, const uint32_t real_idx) const {
+dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::get_array_value_internal(const struct mempool *mempool, const uint32_t real_idx) const {
     void* ptr = toku_mempool_get_pointer_from_base_and_offset(mempool, real_idx * align(this->value_length));
     dmtdata_t *CAST_FROM_VOIDP(value, ptr);
     return value;
@@ -410,11 +412,13 @@ uint32_t dmt<dmtdata_t, dmtdataout_t, supports_marks>::align(const uint32_t x) c
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_ctree(void) {
+    static_assert(supports_marks && !supports_marks, "not in prototype");
     convert_from_array_to_tree<false>();
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_dtree(void) {
+    paranoid_invariant(this->is_array);  //TODO: remove this when ctree implemented
     if (this->is_array) {
         convert_from_array_to_tree<true>();
     } else {
@@ -426,6 +430,8 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_dtree(void) {
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 template<bool with_sizes>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_from_array_to_tree(void) {
+    static_assert(with_sizes, "not in prototype");
+
     paranoid_invariant(this->is_array);
     paranoid_invariant(this->values_same_size);
 
@@ -442,7 +448,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_from_array_to_tree(vo
         XMALLOC_N(num_values, tmp_array);
     }
 
-    struct old_mp = this->mp;
+    struct mempool old_mp = this->mp;
     size_t mem_needed = num_values * align(this->value_length + __builtin_offsetof(dmt_mnode<with_sizes>, value));
     toku_mempool_construct(&this->mp, mem_needed);
 
@@ -458,7 +464,6 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_from_array_to_tree(vo
     toku_mempool_destroy(&old_mp);
 }
 
-//TODO: above has at least one pass done
 // The following 3 functions implement a static if for us.
 template<typename dmtdata_t, typename dmtdataout_t>
 static void barf_if_marked(const dmt<dmtdata_t, dmtdataout_t, false> &UU(dmt)) {
@@ -471,6 +476,7 @@ static void barf_if_marked(const dmt<dmtdata_t, dmtdataout_t, true> &dmt) {
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 bool dmt<dmtdata_t, dmtdataout_t, supports_marks>::has_marks(void) const {
+    static_assert(supports_marks && !supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     static_assert(supports_marks, "Does not support marks");
     if (this->d.t.root.is_null()) {
         return false;
@@ -481,7 +487,7 @@ bool dmt<dmtdata_t, dmtdataout_t, supports_marks>::has_marks(void) const {
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks>::set_at(const dmtdata_t &value, const uint32_t idx) {
-    static_assert(!false, "1st pass not done.  May need to change API. Not needed for prototype.");
+    static_assert(supports_marks && !supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     barf_if_marked(*this);
     if (idx >= this->size()) { return EINVAL; }
 
@@ -498,19 +504,15 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::delete_at(const uint32_t idx) 
     barf_if_marked(*this);
     if (idx >= this->size()) { return EINVAL; }
 
-#if 0
-    if (this->is_array && idx != 0 && idx != this->d.a.num_values - 1) {
-        paranoid_invariant(!dynamic && !supports_marks);
-        this->convert_to_tree();
+    //TODO: support array delete/ctree delete
+    if (this->is_array) {  //TODO: support ctree
+        this->convert_to_dtree();
     }
+    paranoid_invariant(!is_array);
+    paranoid_invariant(!this->values_same_size);
+
     if (this->is_array) {
-        paranoid_invariant(!dynamic && !supports_marks);
-        //Testing for 0 does not rule out it being the last entry.
-        //Test explicitly for num_values-1
-        if (idx != this->d.a.num_values - 1) {
-            this->d.a.start_idx++;
-        }
-        this->d.a.num_values--;
+        paranoid_invariant(false);
     } else {
         subtree *rebalance_subtree = nullptr;
         this->delete_internal(&this->d.t.root, idx, nullptr, &rebalance_subtree);
@@ -518,8 +520,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::delete_at(const uint32_t idx) 
             this->rebalance(rebalance_subtree);
         }
     }
-    this->maybe_resize_or_convert(std::is_same<dmtdatain_t, dmtdata_t>(), nullptr, this->size() -1);
-#endif
+    this->maybe_resize_or_convert(nullptr);
     return 0;
 }
 
@@ -723,7 +724,6 @@ size_t dmt<dmtdata_t, dmtdataout_t, supports_marks>::memory_size(void) {
     return (sizeof *this) + toku_mempool_get_size(&this->mp);
 }
 
-
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 typename dmt<dmtdata_t, dmtdataout_t, supports_marks>::dmt_node & dmt<dmtdata_t, dmtdataout_t, supports_marks>::get_node(const subtree &subtree) const {
     paranoid_invariant(!subtree.is_null());
@@ -740,42 +740,38 @@ typename dmt<dmtdata_t, dmtdataout_t, supports_marks>::dmt_node & dmt<dmtdata_t,
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_set_value(dmt_mnode<true> * n, uint32_t value_length, const dmtdatain_t &value) {
-    n->value_length = value_length;
+void dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_set_value(dmt_mnode<true> * n, const dmtdatain_t &value) {
+    n->value_length = value.get_dmtdatain_t_size();
     value.write_dmtdata_t_to(&n->value);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_set_value(dmt_mnode<false> * n, uint32_t value_length UU(), const dmtdatain_t &value) {
+void dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_set_value(dmt_mnode<false> * n, const dmtdatain_t &value) {
     value.write_dmtdata_t_to(&n->value);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 template<bool with_length>
 node_idx dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_malloc_and_set_value(const dmtdatain_t &value) {
+    static_assert(with_length, "not in prototype");
     size_t val_size = value.get_dmtdatain_t_size();
     size_t size_to_alloc = __builtin_offsetof(dmt_mnode<with_length>, value) + val_size;
     size_to_alloc = roundup_to_multiple(ALIGNMENT, size_to_alloc);
     void* np = toku_mempool_malloc(&this->mp, size_to_alloc, 1);
     paranoid_invariant(np != nullptr);
-    dmt_mnode *CAST_FROM_VOIDP(n, np);
-    node_set_value(n, val_size, value);
+    dmt_mnode<with_length> *CAST_FROM_VOIDP(n, np);
+    node_set_value(n, value);
 
     n->b.clear_stolen_bits();
     return toku_mempool_get_offset_from_pointer_and_base(&this->mp, np);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_free(const type_is_dynamic&, const subtree &st) {
+void dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_free(const subtree &st) {
     dmt_node &n = get_node(st);
     size_t size_to_free = __builtin_offsetof(dmt_node, value) + n.value_length;
     size_to_free = roundup_to_multiple(ALIGNMENT, size_to_free);
     toku_mempool_mfree(&this->mp, &n, size_to_free);
-}
-
-template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
-void dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_free(const type_is_static&, const subtree &st) {
-    paranoid_invariant(st.get_index() < this->capacity);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
@@ -789,6 +785,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::fill_array_with_subtree_value
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_array(void) {
+    static_assert(supports_marks && !supports_marks, "not in prototype");
     if (!this->is_array) {
         const uint32_t num_values = this->size();
         uint32_t new_size = 2*num_values;
@@ -805,6 +802,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_array(void) {
     }
 }
 
+#if 0 // Currently not used
 // Rebuilds a subtree in place
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::rebuild_inplace_from_sorted_array(subtree *const subtree_p, node_idx * const subtrees, const uint32_t numvalues) {
@@ -823,6 +821,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::rebuild_inplace_from_sorted_a
         this->rebuild_inplace_from_sorted_array(&n->right, &subtrees[halfway+1], numvalues - (halfway+1));
     }
 }
+#endif
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::rebuild_from_sorted_array(subtree *const subtree, const dmtdata_t *const values, const uint32_t numvalues) {
@@ -842,6 +841,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::rebuild_from_sorted_array(sub
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_tree(void) {
+    static_assert(supports_marks && !supports_marks, "not in prototype");
     if (this->is_array) {
         const uint32_t num_nodes = this->size();
         uint32_t new_size  = num_nodes*2;
@@ -860,10 +860,9 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_to_tree(void) {
     }
 }
 
+//TODO: rename this function, it's not what it does
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::maybe_resize_or_convert(const dmtdatain_t * value) {
-    (void)value;
-#if 0
     static_assert(std::is_same<dmtdatain_t, dmtdatain_t>::value, "functor wrong type");
     const ssize_t curr_capacity = toku_mempool_get_size(&this->mp);
     const ssize_t curr_free = toku_mempool_get_free_space(&this->mp);
@@ -918,7 +917,6 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::maybe_resize_or_convert(const
             this->mp = new_kvspace;
         }
     }
-#endif
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
@@ -938,7 +936,7 @@ template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_internal(subtree *const subtreep, const dmtdatain_t &value, const uint32_t idx, subtree **const rebalance_subtree) {
     if (subtreep->is_null()) {
         paranoid_invariant_zero(idx);
-        const node_idx newidx = this->node_malloc_and_set_value(value);
+        const node_idx newidx = this->node_malloc_and_set_value<true>(value);  //TODO: make this not <true> arbitrarily
         dmt_node &newnode = get_node(newidx);
         newnode.b.weight = 1;
         newnode.b.left.set_to_null();
@@ -962,13 +960,16 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_internal(subtree *cons
     }
 }
 
+//TODO: above has at least one pass done
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::set_at_internal_array(const dmtdata_t &value, const uint32_t idx) {
+    static_assert(supports_marks && !supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     this->d.a.values[this->d.a.start_idx + idx] = value;
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::set_at_internal(const subtree &subtree, const dmtdata_t &value, const uint32_t idx) {
+    static_assert(supports_marks && !supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     paranoid_invariant(!subtree.is_null());
     dmt_node &n = get_node(subtree);
     const uint32_t leftweight = this->nweight(n.b.left);
@@ -1005,13 +1006,13 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::delete_internal(subtree *cons
                 // Swap self with the other node.
                 to_free = *subtree_replace;
                 dmt_node &ancestor = get_node(*subtree_replace);
-                if (*rebalance_subtree == &ancestor.right) {
+                if (*rebalance_subtree == &ancestor.b.right) {
                     // Take over rebalance responsibility.
                     *rebalance_subtree = &n.b.right;
                 }
-                n.b.weight = ancestor.weight;
-                n.b.left = ancestor.left;
-                n.b.right = ancestor.right;
+                n.b.weight = ancestor.b.weight;
+                n.b.left = ancestor.b.left;
+                n.b.right = ancestor.b.right;
                 *subtree_replace = ptr_this;
             } else {
                 to_free = ptr_this;
@@ -1047,18 +1048,13 @@ template<typename iterate_extra_t,
          int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks>::iterate_internal_array(const uint32_t left, const uint32_t right,
                                                          iterate_extra_t *const iterate_extra) const {
-#if 1
-    (void)left, (void)right, (void)iterate_extra;
-#else
     int r;
     for (uint32_t i = left; i < right; ++i) {
-        //TODO: dynamic len
-        r = f(sizeof(dmtdata_t), this->d.a.values[this->d.a.start_idx + i], i, iterate_extra);
+        r = f(this->value_length, *get_array_value(i), i, iterate_extra);
         if (r != 0) {
             return r;
         }
     }
-#endif
     return 0;
 }
 
@@ -1084,19 +1080,16 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::iterate_ptr_internal(const ui
     }
 }
 
-#if 0
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 template<typename iterate_extra_t,
          int (*f)(const uint32_t, dmtdata_t *, const uint32_t, iterate_extra_t *const)>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::iterate_ptr_internal_array(const uint32_t left, const uint32_t right,
                                                               iterate_extra_t *const iterate_extra) {
     for (uint32_t i = left; i < right; ++i) {
-        //TODO: dynamic len
-        int r = f(sizeof(dmtdata_t), &this->d.a.values[this->d.a.start_idx + i], i, iterate_extra);
+        int r = f(this->value_length, get_array_value(i), i, iterate_extra);
         lazy_assert_zero(r);
     }
 }
-#endif
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 template<typename iterate_extra_t,
@@ -1128,6 +1121,7 @@ template<typename iterate_extra_t,
 int dmt<dmtdata_t, dmtdataout_t, supports_marks>::iterate_and_mark_range_internal(const uint32_t left, const uint32_t right,
                                                                                   const subtree &subtree, const uint32_t idx,
                                                                                   iterate_extra_t *const iterate_extra) {
+    static_assert(supports_marks && !supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     paranoid_invariant(!subtree.is_null());
     int r;
     dmt_node &n = get_node(subtree);
@@ -1154,6 +1148,7 @@ template<typename iterate_extra_t,
          int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks>::iterate_over_marked_internal(const subtree &subtree, const uint32_t idx,
                                                                                iterate_extra_t *const iterate_extra) const {
+    static_assert(supports_marks && !supports_marks, "1st pass not done.  May need to change API. Not needed for prototype.");
     if (subtree.is_null()) { return 0; }
     int r;
     const dmt_node &n = get_node(subtree);
@@ -1172,12 +1167,10 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::iterate_over_marked_internal(c
     return 0;
 }
 
-#if 0
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::fetch_internal_array(const uint32_t i, uint32_t *const value_len, dmtdataout_t *const value) const {
-    copyout(value_len, value, &this->d.a.values[this->d.a.start_idx + i]);
+    copyout(value_len, value, get_array_value(i));
 }
-#endif
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::fetch_internal(const subtree &subtree, const uint32_t i, uint32_t *const value_len, dmtdataout_t *const value) const {
@@ -1196,9 +1189,9 @@ template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::fill_array_with_subtree_idxs(node_idx *const array, const subtree &subtree) const {
     if (!subtree.is_null()) {
         const dmt_node &tree = get_node(subtree);
-        this->fill_array_with_subtree_idxs(&array[0], tree.left);
-        array[this->nweight(tree.left)] = subtree.get_index();
-        this->fill_array_with_subtree_idxs(&array[this->nweight(tree.left) + 1], tree.right);
+        this->fill_array_with_subtree_idxs(&array[0], tree.b.left);
+        array[this->nweight(tree.b.left)] = subtree.get_index();
+        this->fill_array_with_subtree_idxs(&array[this->nweight(tree.b.left) + 1], tree.b.right);
     }
 }
 
@@ -1210,40 +1203,32 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::rebuild_subtree_from_idxs(sub
         uint32_t halfway = numvalues/2;
         subtree->set_index(idxs[halfway]);
         dmt_node &newnode = get_node(idxs[halfway]);
-        newnode.weight = numvalues;
+        newnode.b.weight = numvalues;
         // value is already in there.
-        this->rebuild_subtree_from_idxs(&newnode.left,  &idxs[0], halfway);
-        this->rebuild_subtree_from_idxs(&newnode.right, &idxs[halfway+1], numvalues-(halfway+1));
+        this->rebuild_subtree_from_idxs(&newnode.b.left,  &idxs[0], halfway);
+        this->rebuild_subtree_from_idxs(&newnode.b.right, &idxs[halfway+1], numvalues-(halfway+1));
     }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 node_idx* dmt<dmtdata_t, dmtdataout_t, supports_marks>::alloc_temp_node_idxs(uint32_t num_idxs) {
-#if 0
     size_t mem_needed = num_idxs * sizeof(node_idx);
     size_t mem_free;
-    node_idx* tmp = nullptr;
-    paranoid_invariant(!is_array);
-    if (dynamic) {
-        mem_free = toku_mempool_get_free_space(&this->mp);
-        CAST_FROM_VOIDP(tmp, toku_mempool_get_next_free_ptr(&this->mp));
-    } else {
-        mem_free = (this->capacity - this->d.t.free_idx) * (sizeof this->d.t.nodes[0]);
-        tmp = reinterpret_cast<node_idx *>(&this->d.t.nodes[this->d.t.free_idx]);
-    }
+    mem_free = toku_mempool_get_free_space(&this->mp);
+    node_idx* CAST_FROM_VOIDP(tmp, toku_mempool_get_next_free_ptr(&this->mp));
     if (mem_free >= mem_needed) {
         return tmp;
     }
-#endif
     return nullptr;
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::rebalance(subtree *const subtree) {
     (void) subtree;
-#if 0
     paranoid_invariant(!subtree->is_null());
     node_idx idx = subtree->get_index();
+//TODO: restore optimization
+#if 0
     if (!dynamic && idx==this->d.t.root.get_index()) {
         //Try to convert to an array.
         //If this fails, (malloc) nothing will have changed.
@@ -1254,6 +1239,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::rebalance(subtree *const subt
             this->convert_to_tree();
         }
     } else {
+#endif
         const dmt_node &n = get_node(idx);
         node_idx *tmp_array;
         bool malloced = false;
@@ -1265,6 +1251,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::rebalance(subtree *const subt
         this->fill_array_with_subtree_idxs(tmp_array, *subtree);
         this->rebuild_subtree_from_idxs(subtree, tmp_array, n.b.weight);
         if (malloced) toku_free(tmp_array);
+#if 0  
     }
 #endif
 }
@@ -1309,21 +1296,19 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::copyout(uint32_t *const outle
     }
 }
 
-#if 0
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 template<typename dmtcmp_t,
          int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_zero_array(const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
-    uint32_t min = this->d.a.start_idx;
-    uint32_t limit = this->d.a.start_idx + this->d.a.num_values;
+    uint32_t min = 0;
+    uint32_t limit = this->d.a.num_values;
     uint32_t best_pos = subtree::NODE_NULL;
     uint32_t best_zero = subtree::NODE_NULL;
 
     while (min!=limit) {
         uint32_t mid = (min + limit) / 2;
-        //TODO: dynamic len
-        int hv = h(sizeof(dmtdata_t), this->d.a.values[mid], extra);
+        int hv = h(sizeof(dmtdata_t), *get_array_value(mid), extra);
         if (hv<0) {
             min = mid+1;
         }
@@ -1338,7 +1323,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_zero_array(const
     }
     if (best_zero!=subtree::NODE_NULL) {
         //Found a zero
-        copyout(value_len, value, &this->d.a.values[best_zero]);
+        copyout(value_len, value, get_array_value(best_zero));
         *idxp = best_zero - this->d.a.start_idx;
         return 0;
     }
@@ -1346,7 +1331,6 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_zero_array(const
     else                     *idxp = this->d.a.num_values;
     return DB_NOTFOUND;
 }
-#endif
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 template<typename dmtcmp_t,
@@ -1376,20 +1360,18 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_zero(const subtr
     }
 }
 
-#if 0
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 template<typename dmtcmp_t,
          int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_plus_array(const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
-    uint32_t min = this->d.a.start_idx;
-    uint32_t limit = this->d.a.start_idx + this->d.a.num_values;
+    uint32_t min = 0;
+    uint32_t limit = this->d.a.num_values;
     uint32_t best = subtree::NODE_NULL;
 
     while (min != limit) {
         const uint32_t mid = (min + limit) / 2;
-        //TODO: dynamic len
-        const int hv = h(sizeof(dmtdata_t), this->d.a.values[mid], extra);
+        const int hv = h(sizeof(dmtdata_t), *get_array_value(mid), extra);
         if (hv > 0) {
             best = mid;
             limit = mid;
@@ -1398,11 +1380,10 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_plus_array(const
         }
     }
     if (best == subtree::NODE_NULL) { return DB_NOTFOUND; }
-    copyout(value_len, value, &this->d.a.values[best]);
+    copyout(value_len, value, get_array_value(best));
     *idxp = best - this->d.a.start_idx;
     return 0;
 }
-#endif
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 template<typename dmtcmp_t,
@@ -1431,20 +1412,19 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_plus(const subtr
     return r;
 }
 
-#if 0
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 template<typename dmtcmp_t,
          int (*h)(const uint32_t, const dmtdata_t &, const dmtcmp_t &)>
 int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_minus_array(const dmtcmp_t &extra, uint32_t *const value_len, dmtdataout_t *const value, uint32_t *const idxp) const {
     paranoid_invariant_notnull(idxp);
-    uint32_t min = this->d.a.start_idx;
-    uint32_t limit = this->d.a.start_idx + this->d.a.num_values;
+    uint32_t min = 0;
+    uint32_t limit = this->d.a.num_values;
     uint32_t best = subtree::NODE_NULL;
 
     while (min != limit) {
         const uint32_t mid = (min + limit) / 2;
         //TODO: dynamic len
-        const int hv = h(sizeof(dmtdata_t), this->d.a.values[mid], extra);
+        const int hv = h(sizeof(dmtdata_t), *get_array_value(mid), extra);
         if (hv < 0) {
             best = mid;
             min = mid + 1;
@@ -1453,11 +1433,10 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::find_internal_minus_array(cons
         }
     }
     if (best == subtree::NODE_NULL) { return DB_NOTFOUND; }
-    copyout(value_len, value, &this->d.a.values[best]);
+    copyout(value_len, value, get_array_value(best));
     *idxp = best - this->d.a.start_idx;
     return 0;
 }
-#endif
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 template<typename dmtcmp_t,

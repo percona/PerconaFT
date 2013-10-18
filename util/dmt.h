@@ -314,15 +314,6 @@ class dmt_functor {
     //void write_dmtdata_t_to(dmtdata_t *const dest) {}
 };
 
-class type_is_dynamic : public std::true_type {};
-class type_is_static : public std::false_type {};
-
-template<bool is_dynamic>
-class static_if_is_dynamic : public type_is_static {};
-
-template<>
-class static_if_is_dynamic<true> : public type_is_dynamic {};
-
 template<typename dmtdata_t,
          typename dmtdataout_t=dmtdata_t,
          bool supports_marks=false
@@ -335,6 +326,7 @@ private:
     typedef dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, true> dmt_dnode;
     template<bool with_length>
         using dmt_mnode = dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, with_length>;
+    typedef dmt_mnode<true> dmt_node;
 
     typedef dmt_functor<dmtdata_t> dmtdatain_t;
 
@@ -754,9 +746,11 @@ private:
     template<bool with_sizes>
     node_idx node_malloc_and_set_value(const dmtdatain_t &value);
 
-    void node_free(const type_is_dynamic &, const subtree &st);
+    void node_set_value(dmt_mnode<true> *n, const dmtdatain_t &value);
 
-    void node_free(const type_is_static &, const subtree &st);
+    void node_set_value(dmt_mnode<false> *n, const dmtdatain_t &value);
+
+    void node_free(const subtree &st);
 
     void maybe_resize_array(const int change);
 
@@ -790,7 +784,7 @@ private:
 
     dmtdata_t * get_array_value(const uint32_t idx) const;
 
-    dmtdata_t * get_array_value_internal(struct mempool *mempool, const uint32_t real_idx) const;
+    dmtdata_t * get_array_value_internal(const struct mempool *mempool, const uint32_t real_idx) const;
 
     void convert_to_ctree(void);
 
