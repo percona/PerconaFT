@@ -322,6 +322,7 @@ int dmt<dmtdata_t, dmtdataout_t, supports_marks>::insert_at_array_end(const dmtd
     if (this->d.a.num_values == 0) {
         this->value_length = value_in.get_dmtdatain_t_size();
     }
+    paranoid_invariant(this->value_length == value_in.get_dmtdatain_t_size());
 
     this->maybe_resize_array(+1);
     dmtdata_t *dest = this->alloc_array_value_end();
@@ -346,11 +347,11 @@ template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::alloc_array_value_end(void) {
     paranoid_invariant(this->is_array);
     paranoid_invariant(this->values_same_size);
-
-    const uint32_t real_idx = this->d.a.num_values + this->d.a.start_idx;
     this->d.a.num_values++;
 
-    return get_array_value_internal(&this->mp, real_idx);
+    void *ptr = toku_mempool_malloc(&this->mp, align(this->value_length), 1);
+    dmtdata_t *CAST_FROM_VOIDP(n, ptr);
+    return n;
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
@@ -361,6 +362,7 @@ dmtdata_t * dmt<dmtdata_t, dmtdataout_t, supports_marks>::alloc_array_value_begi
     paranoid_invariant(this->d.a.start_idx > 0);
     const uint32_t real_idx = --this->d.a.start_idx;
     this->d.a.num_values++;
+    //TODO: figure out how to keep mempool correct here.. do we free during delete_at (begin)?  If so how do we re'malloc' from beginning?  Alternatively never free from beginning?
 
     return get_array_value_internal(&this->mp, real_idx);
 }
@@ -397,8 +399,12 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::maybe_resize_array(const int 
     if (!space_available || too_much_space) {
         struct mempool new_kvspace;
         toku_mempool_construct(&new_kvspace, new_space);
+        size_t copy_bytes = this->d.a.num_values * align(this->value_length);
+        invariant(copy_bytes <= new_space);
         // Copy over to new mempool
-        memcpy(toku_mempool_get_base(&new_kvspace), get_array_value(0), this->d.a.num_values * align(this->value_length));
+        if (this->d.a.num_values > 0) {
+            memcpy(toku_mempool_malloc(&new_kvspace, copy_bytes, 1), get_array_value(0), copy_bytes);
+        }
         toku_mempool_destroy(&this->mp);
         this->mp = new_kvspace;
         this->d.a.start_idx = 0;
@@ -437,7 +443,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_from_array_to_tree(vo
 
     
     //save array-format information to locals
-    uint32_t num_values = this->size();
+    uint32_t num_values = this->d.a.num_values;
     uint32_t offset = this->d.a.start_idx;
 
     node_idx *tmp_array;
@@ -458,7 +464,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::convert_from_array_to_tree(vo
     }
     this->is_array = false;
     this->rebuild_subtree_from_idxs(&this->d.t.root, tmp_array, num_values);
-    this->values_same_size = with_sizes;
+    this->values_same_size = !with_sizes;
 
     if (malloced) toku_free(tmp_array);
     toku_mempool_destroy(&old_mp);
@@ -758,7 +764,7 @@ node_idx dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_malloc_and_set_value
     static_assert(with_length, "not in prototype");
     size_t val_size = value.get_dmtdatain_t_size();
     size_t size_to_alloc = __builtin_offsetof(dmt_mnode<with_length>, value) + val_size;
-    size_to_alloc = roundup_to_multiple(ALIGNMENT, size_to_alloc);
+    size_to_alloc = align(size_to_alloc);
     void* np = toku_mempool_malloc(&this->mp, size_to_alloc, 1);
     paranoid_invariant(np != nullptr);
     dmt_mnode<with_length> *CAST_FROM_VOIDP(n, np);
@@ -772,7 +778,7 @@ template<typename dmtdata_t, typename dmtdataout_t, bool supports_marks>
 void dmt<dmtdata_t, dmtdataout_t, supports_marks>::node_free(const subtree &st) {
     dmt_node &n = get_node<dmt_node>(st);
     size_t size_to_free = __builtin_offsetof(dmt_node, value) + n.value_length;
-    size_to_free = roundup_to_multiple(ALIGNMENT, size_to_free);
+    size_to_free = align(size_to_free);
     toku_mempool_mfree(&this->mp, &n, size_to_free);
 }
 
@@ -872,7 +878,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::maybe_resize_or_convert(const
     ssize_t add_size = 0;
     if (value) {
         add_size = __builtin_offsetof(dmt_node, value) + value->get_dmtdatain_t_size();
-        add_size = roundup_to_multiple(ALIGNMENT, add_size);
+        add_size = align(add_size);
     }
 
     const ssize_t need_size = curr_used + add_size;
@@ -902,7 +908,7 @@ void dmt<dmtdata_t, dmtdataout_t, supports_marks>::maybe_resize_or_convert(const
             for (node_idx i = 0; i < n.b.weight; i++) {
                 dmt_node &node = get_node<dmt_node>(tmp_array[i]);
                 const size_t bytes_to_copy = __builtin_offsetof(dmt_node, value) + node.value_length;
-                const size_t bytes_to_alloc = roundup_to_multiple(ALIGNMENT, bytes_to_copy);
+                const size_t bytes_to_alloc = align(bytes_to_copy);
                 void* newdata = toku_mempool_malloc(&new_kvspace, bytes_to_alloc, 1);
                 memcpy(newdata, &node, bytes_to_copy);
                 tmp_array[i] = toku_mempool_get_offset_from_pointer_and_base(&new_kvspace, newdata);
