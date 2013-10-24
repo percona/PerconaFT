@@ -162,6 +162,7 @@ namespace dmt_internal {
 
 template<bool subtree_supports_marks>
 class subtree_templated {
+    static_assert(!subtree_supports_marks, "Not yet supported");
 private:
     uint32_t m_index;
 public:
@@ -184,65 +185,9 @@ public:
     }
 } __attribute__((__packed__,aligned(4)));
 
-template<>
-class subtree_templated<true> {
-private:
-    uint32_t m_bitfield;
-    static const uint32_t MASK_INDEX = ~(((uint32_t)1) << 31);
-    static const uint32_t MASK_BIT = ((uint32_t)1) << 31;
-
-    inline void set_index_internal(uint32_t new_index) {
-        m_bitfield = (m_bitfield & MASK_BIT) | new_index;
-    }
-public:
-    static const uint32_t NODE_NULL = INT32_MAX;
-    inline void set_to_null(void) {
-        this->set_index_internal(NODE_NULL);
-    }
-
-    inline bool is_null(void) const {
-        return NODE_NULL == this->get_index();
-    }
-
-    inline node_idx get_index(void) const {
-        TOKU_DRD_IGNORE_VAR(m_bitfield);
-        const uint32_t bits = m_bitfield;
-        TOKU_DRD_STOP_IGNORING_VAR(m_bitfield);
-        return bits & MASK_INDEX;
-    }
-
-    inline void set_index(node_idx index) {
-        paranoid_invariant(index < NODE_NULL);
-        this->set_index_internal(index);
-    }
-
-    inline bool get_bit(void) const {
-        TOKU_DRD_IGNORE_VAR(m_bitfield);
-        const uint32_t bits = m_bitfield;
-        TOKU_DRD_STOP_IGNORING_VAR(m_bitfield);
-        return (bits & MASK_BIT) != 0;
-    }
-
-    inline void enable_bit(void) {
-        // These bits may be set by a thread with a write lock on some
-        // leaf, and the index can be read by another thread with a (read
-        // or write) lock on another thread.  Also, the has_marks_below
-        // bit can be set by two threads simultaneously.  Neither of these
-        // are real races, so if we are using DRD we should tell it to
-        // ignore these bits just while we set this bit.  If there were a
-        // race in setting the index, that would be a real race.
-        TOKU_DRD_IGNORE_VAR(m_bitfield);
-        m_bitfield |= MASK_BIT;
-        TOKU_DRD_STOP_IGNORING_VAR(m_bitfield);
-    }
-
-    inline void disable_bit(void) {
-        m_bitfield &= MASK_INDEX;
-    }
-} __attribute__((__packed__)) ;
-
 template<typename dmtdata_t, bool subtree_supports_marks>
 class dmt_base_node_templated {
+    static_assert(!subtree_supports_marks, "Not yet supported");
 public:
     uint32_t weight;
     subtree_templated<subtree_supports_marks> left;
@@ -251,53 +196,11 @@ public:
     // this needs to be in both implementations because we don't have
     // a "static if" the caller can use
     inline void clear_stolen_bits(void) {}
-};// __attribute__((__packed__,aligned(4)));
-
-template<typename dmtdata_t>
-class dmt_base_node_templated<dmtdata_t, true> {
-public:
-    uint32_t weight;
-    subtree_templated<true> left;
-    subtree_templated<true> right;
-    inline bool get_marked(void) const {
-        return left.get_bit();
-    }
-    inline void set_marked_bit(void) {
-        return left.enable_bit();
-    }
-    inline void unset_marked_bit(void) {
-        return left.disable_bit();
-    }
-
-    inline bool get_marks_below(void) const {
-        return right.get_bit();
-    }
-    inline void set_marks_below_bit(void) {
-        // This function can be called by multiple threads.
-        // Checking first reduces cache invalidation.
-        if (!this->get_marks_below()) {
-            right.enable_bit();
-        }
-    }
-    inline void unset_marks_below_bit(void) {
-        right.disable_bit();
-    }
-
-    inline void clear_stolen_bits(void) {
-        this->unset_marked_bit();
-        this->unset_marks_below_bit();
-    }
-};// __attribute__((__packed__,aligned(4)));
+};
 
 template<typename dmtdata_t, bool subtree_supports_marks, bool store_value_length>
 class dmt_node_templated {
-public:
-    dmt_base_node_templated<dmtdata_t, subtree_supports_marks> b;
-    dmtdata_t value;
-};// __attribute__((__packed__,aligned(4)));
-
-template<typename dmtdata_t, bool subtree_supports_marks>
-class dmt_node_templated<dmtdata_t, subtree_supports_marks, true> {
+    static_assert(store_value_length, "Not yet supported");
 public:
     dmt_base_node_templated<dmtdata_t, subtree_supports_marks> b;
     uint32_t value_length;
@@ -308,6 +211,7 @@ public:
 
 template<typename dmtdata_t>
 class dmt_functor {
+    static_assert(!std::is_same<dmtdata_t, dmtdata_t>::value, "Must use partial specialization");
     // Defines the interface:
     //static size_t get_dmtdata_t_size(const dmtdata_t &) { return 0; }
     //size_t get_dmtdatain_t_size(void) { return 0; }
@@ -315,18 +219,15 @@ class dmt_functor {
 };
 
 template<typename dmtdata_t,
-         typename dmtdataout_t=dmtdata_t,
-         bool supports_marks=false
+         typename dmtdataout_t=dmtdata_t
         >
 class dmt {
 private:
-    typedef dmt_internal::subtree_templated<supports_marks> subtree;
-    typedef dmt_internal::dmt_base_node_templated<dmtdata_t, supports_marks> dmt_base_node;
-    typedef dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, false> dmt_cnode;
-    typedef dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, true> dmt_dnode;
+    typedef dmt_internal::subtree_templated<false> subtree;
+    typedef dmt_internal::dmt_base_node_templated<dmtdata_t, false> dmt_base_node;
     template<bool with_length>
-        using dmt_mnode = dmt_internal::dmt_node_templated<dmtdata_t, supports_marks, with_length>;
-    typedef dmt_mnode<true> dmt_node;
+        using dmt_mnode = dmt_internal::dmt_node_templated<dmtdata_t, false, with_length>;
+    typedef dmt_mnode<true> dmt_dnode;
 
     typedef dmt_functor<dmtdata_t> dmtdatain_t;
 
@@ -529,57 +430,7 @@ public:
              int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
     int iterate_on_range(const uint32_t left, const uint32_t right, iterate_extra_t *const iterate_extra) const;
 
-    /**
-     * Effect: Iterate over the values of the dmt, and mark the nodes that are visited.
-     *  Other than the marks, this behaves the same as iterate_on_range.
-     * Requires: supports_marks == true
-     * Performance: time=O(i+\log N) where i is the number of times f is called, and N is the number of elements in the dmt.
-     * Notes:
-     *  This function MAY be called concurrently by multiple threads, but
-     *  not concurrently with any other non-const function.
-     */
-    template<typename iterate_extra_t,
-             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
-    int iterate_and_mark_range(const uint32_t left, const uint32_t right, iterate_extra_t *const iterate_extra);
-
-    /**
-     * Effect: Iterate over the values of the dmt, from left to right, calling f on each value whose node has been marked.
-     *  Other than the marks, this behaves the same as iterate.
-     * Requires: supports_marks == true
-     * Performance: time=O(i+\log N) where i is the number of times f is called, and N is the number of elements in the dmt.
-     */
-    template<typename iterate_extra_t,
-             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
-    int iterate_over_marked(iterate_extra_t *const iterate_extra) const;
-
-    /**
-     * Effect: Delete all elements from the dmt, whose nodes have been marked.
-     * Requires: supports_marks == true
-     * Performance: time=O(N + i\log N) where i is the number of marked elements, {c,sh}ould be faster
-     */
-    void delete_all_marked(void);
-
-    /**
-     * Effect: Verify that the internal state of the marks in the tree are self-consistent.
-     *  Crashes the system if the marks are in a bad state.
-     * Requires: supports_marks == true
-     * Performance: time=O(N)
-     * Notes:
-     *  Even though this is a const function, it requires exclusive access.
-     * Rationale:
-     *  The current implementation of the marks relies on a sort of
-     *  "cache" bit representing the state of bits below it in the tree.
-     *  This allows glass-box testing that these bits are correct.
-     */
-    void verify_marks_consistent(void) const;
-
     void verify(void) const;
-
-    /**
-     * Effect: None
-     * Returns whether there are any marks in the tree.
-     */
-    bool has_marks(void) const;
 
     /**
      * Effect:  Iterate over the values of the dmt, from left to right, calling f on each value.
@@ -699,9 +550,7 @@ public:
     size_t memory_size(void);
 
 private:
-    static_assert(sizeof(dmt_cnode) - sizeof(dmtdata_t) == __builtin_offsetof(dmt_cnode, value), "value is not last field in node");
     static_assert(sizeof(dmt_dnode) - sizeof(dmtdata_t) == __builtin_offsetof(dmt_dnode, value), "value is not last field in node");
-    //static_assert(3 * sizeof(uint32_t) == __builtin_offsetof(dmt_cnode, value), "dmt_node is padded");
     static_assert(4 * sizeof(uint32_t) == __builtin_offsetof(dmt_dnode, value), "dmt_node is padded");
     ENSURE_POD(subtree);
 
@@ -724,14 +573,9 @@ private:
         struct dmt_tree t;
     } d;
 
-    __attribute__((nonnull))
-    void unmark(const subtree &subtree, const uint32_t index, GrowableArray<node_idx> *const indexes);
-
     void verify_internal(const subtree &subtree) const;
 
-    void create_internal_no_array(bool as_tree);
-
-    void create_internal(const uint32_t new_capacity);
+    void create_internal_no_alloc(bool as_tree);
 
     template<typename node_type>
     node_type & get_node(const subtree &subtree) const;
@@ -746,26 +590,13 @@ private:
 
     void node_set_value(dmt_mnode<true> *n, const dmtdatain_t &value);
 
-    void node_set_value(dmt_mnode<false> *n, const dmtdatain_t &value);
-
     void node_free(const subtree &st);
 
     void maybe_resize_array(const int change);
 
-    __attribute__((nonnull))
-    void fill_array_with_subtree_values(dmtdata_t *const array, const subtree &subtree) const;
-
-    void convert_to_array(void);
-
-    __attribute__((nonnull))
-    void rebuild_from_sorted_array(subtree *const subtree, const dmtdata_t *const values, const uint32_t numvalues);
-
-    __attribute__((nonnull))
-    void rebuild_inplace_from_sorted_array(subtree *const subtree_p, node_idx *const subtrees, const uint32_t numvalues);
-
     void convert_to_tree(void);
 
-    void maybe_resize_or_convert(const dmtdatain_t * value);
+    void maybe_resize_dtree(const dmtdatain_t * value);
 
     bool will_need_rebalance(const subtree &subtree, const int leftmod, const int rightmod) const;
 
@@ -784,18 +615,10 @@ private:
 
     dmtdata_t * get_array_value_internal(const struct mempool *mempool, const uint32_t real_idx) const;
 
-    void convert_to_ctree(void);
-
     void convert_to_dtree(void);
 
     template<bool with_sizes>
     void convert_from_array_to_tree(void);
-
-    int insert_at_ctree(const dmtdatain_t& value_in, const uint32_t idx);
-
-    void set_at_internal_array(const dmtdata_t &value, const uint32_t idx);
-
-    void set_at_internal(const subtree &subtree, const dmtdata_t &value, const uint32_t idx);
 
     __attribute__((nonnull(2,5)))
     void delete_internal(subtree *const subtreep, const uint32_t idx, subtree *const subtree_replace, subtree **const rebalance_subtree);
@@ -822,19 +645,6 @@ private:
                                 const subtree &subtree, const uint32_t idx,
                                 iterate_extra_t *const iterate_extra) const;
 
-    template<typename iterate_extra_t,
-             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
-    int iterate_and_mark_range_internal(const uint32_t left, const uint32_t right,
-                                        const subtree &subtree, const uint32_t idx,
-                                        iterate_extra_t *const iterate_extra);
-
-    template<typename iterate_extra_t,
-             int (*f)(const uint32_t, const dmtdata_t &, const uint32_t, iterate_extra_t *const)>
-    int iterate_over_marked_internal(const subtree &subtree, const uint32_t idx,
-                                     iterate_extra_t *const iterate_extra) const;
-
-    uint32_t verify_marks_consistent_internal(const subtree &subtree, const bool allow_marks) const;
-
     void fetch_internal_array(const uint32_t i, uint32_t *const value_len, dmtdataout_t *const value) const;
 
     void fetch_internal(const subtree &subtree, const uint32_t i, uint32_t *const value_len, dmtdataout_t *const value) const;
@@ -849,10 +659,10 @@ private:
     void rebalance(subtree *const subtree);
 
     __attribute__((nonnull))
-    static void copyout(uint32_t *const outlen, dmtdata_t *const out, const dmt_node *const n);
+    static void copyout(uint32_t *const outlen, dmtdata_t *const out, const dmt_dnode *const n);
 
     __attribute__((nonnull))
-    static void copyout(uint32_t *const outlen, dmtdata_t **const out, dmt_node *const n);
+    static void copyout(uint32_t *const outlen, dmtdata_t **const out, dmt_dnode *const n);
 
     __attribute__((nonnull))
     static void copyout(uint32_t *const outlen, dmtdata_t *const out, const uint32_t len, const dmtdata_t *const stored_value_ptr);

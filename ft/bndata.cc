@@ -189,8 +189,10 @@ void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uin
     }
     uint32_t num_bytes_read UU() = (uint32_t)(curr_src_pos - buf);
     paranoid_invariant( num_bytes_read == data_size);
+#if TOKU_DEBUG_PARANOID
     uint32_t num_bytes_written = curr_dest_pos - newmem + m_disksize_of_keys;
     paranoid_invariant( num_bytes_written == data_size);
+#endif
     toku_mempool_init(&m_buffer_mempool, newmem, (size_t)(curr_dest_pos - newmem), allocated_bytes);
     paranoid_invariant(get_disk_size() == data_size);  //TODO: This may not stay correct after a disk format change.
 }
