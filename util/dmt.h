@@ -238,6 +238,7 @@ public:
     public:
         void insert_sorted(const dmtdatain_t &value);
         void create(uint32_t n_values, uint32_t n_value_bytes);
+        bool is_value_length_fixed(void);
         void build_and_destroy(dmt<dmtdata_t, dmtdataout_t> *dest);
     private:
         uint32_t max_values;

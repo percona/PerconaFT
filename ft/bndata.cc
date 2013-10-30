@@ -90,6 +90,7 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 #include <bndata.h>
+#include <ft-ops.h>
 
 using namespace toku;
 uint32_t bn_data::klpair_disksize(const uint32_t klpair_len, const klpair_struct *klpair) const {
@@ -183,6 +184,7 @@ void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uin
             curr_src_pos += num_rest_bytes;
         }
     }
+    toku_note_deserialized_basement_node(dmt_builder.is_value_length_fixed());
     dmt_builder.build_and_destroy(&this->m_buffer);
     uint32_t num_bytes_read UU() = (uint32_t)(curr_src_pos - buf);
     paranoid_invariant( num_bytes_read == data_size);
@@ -192,6 +194,7 @@ void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uin
 #endif
     toku_mempool_init(&m_buffer_mempool, newmem, (size_t)(curr_dest_pos - newmem), allocated_bytes);
     paranoid_invariant(get_disk_size() == data_size);  //TODO: This may not stay correct after a disk format change.
+
 }
 
 uint64_t bn_data::get_memory_size() {

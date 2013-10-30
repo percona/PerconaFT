@@ -361,6 +361,8 @@ status_init(void)
     STATUS_INIT(FT_PRO_NUM_STOP_LOCK_CHILD,                PROMOTION_STOPPED_CHILD_LOCKED_OR_NOT_IN_MEMORY, PARCOUNT, "promotion: stopped because the child was locked or not at all in memory", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(FT_PRO_NUM_STOP_CHILD_INMEM,               PROMOTION_STOPPED_CHILD_NOT_FULLY_IN_MEMORY, PARCOUNT, "promotion: stopped because the child was not fully in memory", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(FT_PRO_NUM_DIDNT_WANT_PROMOTE,             PROMOTION_STOPPED_AFTER_LOCKING_CHILD, PARCOUNT, "promotion: stopped anyway, after locking the child", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
+    STATUS_INIT(FT_BASEMENT_DESERIALIZE_FIXED_KEYSIZE,     BASEMENT_DESERIALIZATION_FIXED_KEY, PARCOUNT, "basement nodes deserialized with fixed-keysize", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
+    STATUS_INIT(FT_BASEMENT_DESERIALIZE_VARIABLE_KEYSIZE,  BASEMENT_DESERIALIZATION_VARIABLE_KEY, PARCOUNT, "basement nodes deserialized with variable-keysize", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
 
     ft_status.initialized = true;
 }
@@ -386,6 +388,14 @@ toku_ft_get_status(FT_STATUS s) {
             toku_sync_fetch_and_add(&ft_status.status[x].value.num, d);             \
         }                                                                           \
     } while (0)
+
+void toku_note_deserialized_basement_node(bool fixed_key_size) {
+    if (fixed_key_size) {
+        STATUS_INC(FT_BASEMENT_DESERIALIZE_FIXED_KEYSIZE, 1);
+    } else {
+        STATUS_INC(FT_BASEMENT_DESERIALIZE_VARIABLE_KEYSIZE, 1);
+    }
+}
 
 bool is_entire_node_in_memory(FTNODE node) {
     for (int i = 0; i < node->n_children; i++) {

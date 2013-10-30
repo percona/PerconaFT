@@ -1128,6 +1128,12 @@ void dmt<dmtdata_t, dmtdataout_t>::builder::insert_sorted(const dmtdatain_t &val
 }
 
 template<typename dmtdata_t, typename dmtdataout_t>
+bool dmt<dmtdata_t, dmtdataout_t>::builder::is_value_length_fixed(void) {
+    paranoid_invariant(this->temp_valid);
+    return this->temp.values_same_size;
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
 void dmt<dmtdata_t, dmtdataout_t>::builder::build_and_destroy(dmt<dmtdata_t, dmtdataout_t> *dest) {
     invariant(this->temp_valid);
     //NOTE: Always use d.a.num_values for size because we have not yet created root.
