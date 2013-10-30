@@ -345,7 +345,7 @@ void bn_data::move_leafentries_to(
      )
 //Effect: move leafentries in the range [lbi, ube) from this to src_omt to newly created dest_omt
 {
-    //TODO: improve speed.
+    //TODO: improve speed: maybe use dmt_builder for one or both, or implement some version of optimized split_at?
     paranoid_invariant(lbi < ube);
     paranoid_invariant(ube <= omt_size());
 
