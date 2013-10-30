@@ -234,6 +234,19 @@ private:
 public:
     static const uint32_t ALIGNMENT = 4;
 
+    class builder {
+    public:
+        void insert_sorted(const dmtdatain_t &value);
+        void create(uint32_t n_values, uint32_t n_value_bytes);
+        void build_and_destroy(dmt<dmtdata_t, dmtdataout_t> *dest);
+    private:
+        uint32_t max_values;
+        uint32_t max_value_bytes;
+        node_idx *sorted_nodes;
+        bool temp_valid;
+        dmt<dmtdata_t, dmtdataout_t> temp;
+    };
+
     /**
      * Effect: Create an empty DMT.
      * Performance: constant time.
@@ -603,6 +616,7 @@ private:
     __attribute__((nonnull))
     void insert_internal(subtree *const subtreep, const dmtdatain_t &value, const uint32_t idx, subtree **const rebalance_subtree);
 
+    template<bool with_resize>
     int insert_at_array_end(const dmtdatain_t& value_in);
 
     int insert_at_array_beginning(const dmtdatain_t& value_in);

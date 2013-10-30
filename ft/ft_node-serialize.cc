@@ -578,8 +578,13 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
     // Create an array that will store the size of each basement.
     // This is the sum of the leaf sizes of all the leaves in that basement.
     // We don't know how many basements there will be, so we use num_le as the upper bound.
-    size_t *XMALLOC_N(num_alloc, bn_sizes);
-    bn_sizes[0] = 0;
+
+    // Sum of all le sizes in a single basement
+    size_t *XMALLOC_N(num_alloc, bn_le_sizes);
+    bn_le_sizes[0] = 0;
+    // Sum of all key sizes in a single basement
+    size_t *XMALLOC_N(num_alloc, bn_key_sizes);
+    bn_key_sizes[0] = 0;
 
     // TODO 4050: All these arrays should be combined into a single array of some bn_info struct (pivot, msize, num_les).
     // Each entry is the number of leafentries in this basement.  (Again, num_le is overkill upper baound.)
@@ -595,17 +600,20 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
     for (uint32_t i = 0; i < num_le; i++) {
         uint32_t curr_le_size = leafentry_disksize((LEAFENTRY) leafpointers[i]); 
         le_sizes[i] = curr_le_size;
-        if ((bn_size_so_far + curr_le_size > basementnodesize) && (num_le_in_curr_bn != 0)) {
+        if ((bn_size_so_far + curr_le_size + sizeof(uint32_t) + key_sizes[i] > basementnodesize) && (num_le_in_curr_bn != 0)) {
             // cap off the current basement node to end with the element before i
             new_pivots[curr_pivot] = i-1;
             curr_pivot++;
             num_le_in_curr_bn = 0;
             bn_size_so_far = 0;
+            bn_le_sizes[curr_pivot] = 0;
+            bn_key_sizes[curr_pivot] = 0;
         }
         num_le_in_curr_bn++;
         num_les_this_bn[curr_pivot] = num_le_in_curr_bn;
+        bn_le_sizes[curr_pivot] += curr_le_size;
+        bn_key_sizes[curr_pivot] += sizeof(uint32_t) + key_sizes[i];  // uint32_t le_offset
         bn_size_so_far += curr_le_size + sizeof(uint32_t) + key_sizes[i];
-        bn_sizes[curr_pivot] = bn_size_so_far;
     }
     // curr_pivot is now the total number of pivot keys in the leaf node
     int num_pivots   = curr_pivot;
@@ -672,9 +680,6 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
         uint32_t num_les_to_copy = num_les_this_bn[i];
         invariant(num_les_to_copy == num_in_bn); 
 
-        // construct mempool for this basement
-        size_t size_this_bn = bn_sizes[i];
-
         BN_DATA bd = BLB_DATA(node, i);
         bd->replace_contents_with_clone_of_sorted_array(
             num_les_to_copy,
@@ -682,7 +687,8 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
             &key_sizes[baseindex_this_bn],
             &leafpointers[baseindex_this_bn],
             &le_sizes[baseindex_this_bn],
-            size_this_bn
+            bn_key_sizes[i],  // Total key sizes
+            bn_le_sizes[i]  // total le sizes
             );
 
         BP_STATE(node,i) = PT_AVAIL;
@@ -702,7 +708,8 @@ rebalance_ftnode_leaf(FTNODE node, unsigned int basementnodesize)
     toku_free(old_bns);
     toku_free(new_pivots);
     toku_free(le_sizes);
-    toku_free(bn_sizes);
+    toku_free(bn_key_sizes);
+    toku_free(bn_le_sizes);
     toku_free(num_les_this_bn);
 }  // end of rebalance_ftnode_leaf()
 

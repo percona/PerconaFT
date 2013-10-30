@@ -96,12 +96,16 @@ PATENT RIGHTS GRANT:
 
 namespace toku {
 
-    //TODO: only start with this create.  Others can be delayed till after prototype
 template<typename dmtdata_t, typename dmtdataout_t>
 void dmt<dmtdata_t, dmtdataout_t>::create(void) {
     this->create_internal_no_alloc(false);
     //TODO: maybe allocate enough space for something by default?
     //      We may be relying on not needing to allocate space the first time (due to limited time spent while a lock is held)
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
+void dmt<dmtdata_t, dmtdataout_t>::create_no_array(void) {
+    this->create_internal_no_alloc(false);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t>
@@ -184,7 +188,7 @@ int dmt<dmtdata_t, dmtdataout_t>::insert_at(const dmtdatain_t &value, const uint
     if (same_size) {
         if (this->is_array) {
             if (idx == this->d.a.num_values) {
-                return this->insert_at_array_end(value);
+                return this->insert_at_array_end<true>(value);
             }
 #if 0
             //TODO: enable if we support delete_at with array
@@ -212,6 +216,7 @@ int dmt<dmtdata_t, dmtdataout_t>::insert_at(const dmtdatain_t &value, const uint
 }
 
 template<typename dmtdata_t, typename dmtdataout_t>
+template<bool with_resize>
 int dmt<dmtdata_t, dmtdataout_t>::insert_at_array_end(const dmtdatain_t& value_in) {
     paranoid_invariant(this->is_array);
     paranoid_invariant(this->values_same_size);
@@ -220,7 +225,9 @@ int dmt<dmtdata_t, dmtdataout_t>::insert_at_array_end(const dmtdatain_t& value_i
     }
     paranoid_invariant(this->value_length == value_in.get_dmtdatain_t_size());
 
-    this->maybe_resize_array(+1);
+    if (with_resize) {
+        this->maybe_resize_array(+1);
+    }
     dmtdata_t *dest = this->alloc_array_value_end();
     value_in.write_dmtdata_t_to(dest);
     return 0;
@@ -247,6 +254,7 @@ dmtdata_t * dmt<dmtdata_t, dmtdataout_t>::alloc_array_value_end(void) {
     this->d.a.num_values++;
 
     void *ptr = toku_mempool_malloc(&this->mp, align(this->value_length), 1);
+    paranoid_invariant_notnull(ptr);
     paranoid_invariant(reinterpret_cast<size_t>(ptr) % ALIGNMENT == 0);
     dmtdata_t *CAST_FROM_VOIDP(n, ptr);
     paranoid_invariant(n == get_array_value(this->d.a.num_values - 1));
@@ -529,7 +537,7 @@ node_idx dmt<dmtdata_t, dmtdataout_t>::node_malloc_and_set_value(const dmtdatain
     size_t size_to_alloc = __builtin_offsetof(dmt_mnode<with_length>, value) + val_size;
     size_to_alloc = align(size_to_alloc);
     void* np = toku_mempool_malloc(&this->mp, size_to_alloc, 1);
-    paranoid_invariant(np != nullptr);
+    paranoid_invariant_notnull(np);
     dmt_mnode<with_length> *CAST_FROM_VOIDP(n, np);
     node_set_value(n, value);
 
@@ -1070,5 +1078,70 @@ int dmt<dmtdata_t, dmtdataout_t>::find_internal_minus(const subtree &subtree, co
     } else {
         return this->find_internal_minus<dmtcmp_t, h>(n.b.left, extra, value_len, value, idxp);
     }
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
+void dmt<dmtdata_t, dmtdataout_t>::builder::create(uint32_t _max_values, uint32_t _max_value_bytes) {
+    this->max_values = _max_values;
+    this->max_value_bytes = _max_value_bytes;
+    this->temp.create_no_array();
+    this->temp_valid = true;
+    this->sorted_nodes = nullptr;
+    // Include enough space for alignment padding
+    size_t initial_space = (ALIGNMENT - 1) * _max_values + _max_value_bytes;
+
+    toku_mempool_construct(&this->temp.mp, initial_space);  // Adds 25%
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
+void dmt<dmtdata_t, dmtdataout_t>::builder::insert_sorted(const dmtdatain_t &value) {
+    paranoid_invariant(this->temp_valid);
+    if (this->temp.values_same_size && (this->temp.size() == 0 || value.get_dmtdatain_t_size() == this->temp.value_length)) {
+        this->temp.insert_at_array_end<false>(value);
+        return;
+    }
+    if (this->temp.is_array) {
+        // Convert to dtree format (even if ctree exists, it should not be used).
+        XMALLOC_N(this->max_values, this->sorted_nodes);
+
+        // Include enough space for alignment padding
+        size_t mem_needed = (ALIGNMENT - 1 + __builtin_offsetof(dmt_mnode<true>, value)) * max_values + max_value_bytes;
+        struct mempool old_mp = this->temp.mp;
+
+        const uint32_t num_values = this->temp.d.a.num_values;
+        toku_mempool_construct(&this->temp.mp, mem_needed);
+
+        // Copy over and get node_idxs
+        for (uint32_t i = 0; i < num_values; i++) {
+            dmtdatain_t functor(this->temp.value_length, this->temp.get_array_value_internal(&old_mp, i));
+            this->sorted_nodes[i] = this->temp.node_malloc_and_set_value<true>(functor);
+        }
+        this->temp.is_array = false;
+        this->temp.values_same_size = false;
+        toku_mempool_destroy(&old_mp);
+    }
+    paranoid_invariant(!this->temp.is_array);
+    paranoid_invariant(!this->temp.values_same_size);
+    // Insert dynamic.
+    this->sorted_nodes[this->temp.size()] = this->temp.node_malloc_and_set_value<true>(value);
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
+void dmt<dmtdata_t, dmtdataout_t>::builder::build_and_destroy(dmt<dmtdata_t, dmtdataout_t> *dest) {
+    invariant(this->temp_valid);
+    invariant(this->temp.size() == this->max_values); // Optionally make it <=
+    // Memory invariant is taken care of incrementally
+
+    if (!this->temp.is_array) {
+        invariant_notnull(this->sorted_nodes);
+        if (this->temp.size()) {
+            this->temp.rebuild_subtree_from_idxs(&this->temp.d.t.root, this->sorted_nodes, this->temp.size());
+        }
+        toku_free(this->sorted_nodes);
+        this->sorted_nodes = nullptr;
+    }
+    paranoid_invariant_null(this->sorted_nodes);
+    *dest = this->temp;
+    this->temp_valid = false;
 }
 } // namespace toku

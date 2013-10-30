@@ -118,20 +118,16 @@ void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uin
     if (data_size == 0) {
         invariant_zero(num_entries);
     }
-    initialize_empty();
+    init_zero();
+    klpair_dmt_t::builder dmt_builder;
+    dmt_builder.create(num_entries, data_size);
+
     unsigned char *newmem = NULL;
     // add same wiggle room that toku_mempool_construct would, 25% extra
     uint32_t allocated_bytes = data_size + data_size/4;
     CAST_FROM_VOIDP(newmem, toku_xmalloc(allocated_bytes));
     unsigned char* curr_src_pos = buf;
     unsigned char* curr_dest_pos = newmem;
-    //TODO: make this faster
-    //TODO: (maybe)Create a 'sorted builder' class in dmt.
-    //First deserialize values (including make an array of pointers to them
-    //Then, deserialize all the keys, 'adding to builder' for each one.
-    //
-    //Builder would keep mempool (fully preallocated), and array of pointers to each NODE (not key) in sorted order.
-    //then add create_from_builder function (which would steal the mempool's memory and just finish up setting left/right/root pointers
     for (uint32_t i = 0; i < num_entries; i++) {
         uint8_t curr_type = curr_src_pos[0];
         curr_src_pos++;
@@ -161,7 +157,7 @@ void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uin
             curr_src_pos += keylen;
         }
         uint32_t le_offset = curr_dest_pos - newmem;
-        m_buffer.insert_at(toku::dmt_functor<klpair_struct>(keylen, le_offset, keyp), i);
+        dmt_builder.insert_sorted(toku::dmt_functor<klpair_struct>(keylen, le_offset, keyp));
         add_key(keylen);
 
         // now curr_dest_pos is pointing to where the leafentry should be packed
@@ -187,6 +183,7 @@ void bn_data::initialize_from_data(uint32_t num_entries, unsigned char *buf, uin
             curr_src_pos += num_rest_bytes;
         }
     }
+    dmt_builder.build_and_destroy(&this->m_buffer);
     uint32_t num_bytes_read UU() = (uint32_t)(curr_src_pos - buf);
     paranoid_invariant( num_bytes_read == data_size);
 #if TOKU_DEBUG_PARANOID
@@ -411,22 +408,26 @@ void bn_data::replace_contents_with_clone_of_sorted_array(
     uint32_t* old_keylens,
     LEAFENTRY* old_les, 
     size_t *le_sizes, 
-    size_t mempool_size
+    size_t total_key_size,
+    size_t total_le_size
     ) 
 {
-    toku_mempool_construct(&m_buffer_mempool, mempool_size);
+    toku_mempool_construct(&m_buffer_mempool, total_le_size);
     m_buffer.destroy();
-    m_buffer.create();
     m_disksize_of_keys = 0;
+
+    klpair_dmt_t::builder dmt_builder;
+    dmt_builder.create(num_les, total_key_size);
 
     //TODO: speed this up with some form of mass create dmt
     for (uint32_t idx = 0; idx < num_les; idx++) {
         void* new_le = toku_mempool_malloc(&m_buffer_mempool, le_sizes[idx], 1);
         memcpy(new_le, old_les[idx], le_sizes[idx]);
         size_t le_offset = toku_mempool_get_offset_from_pointer_and_base(&m_buffer_mempool, new_le);
-        m_buffer.insert_at(dmt_functor<klpair_struct>(old_keylens[idx], le_offset, old_key_ptrs[idx]), idx);
+        dmt_builder.insert_sorted(dmt_functor<klpair_struct>(old_keylens[idx], le_offset, old_key_ptrs[idx]));
         add_key(old_keylens[idx]);
     }
+    dmt_builder.build_and_destroy(&this->m_buffer);
 }
 
 LEAFENTRY bn_data::get_le_from_klpair(const klpair_struct *klpair) const {

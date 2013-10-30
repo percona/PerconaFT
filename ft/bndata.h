@@ -265,7 +265,8 @@ public:
         uint32_t* old_keylens,
         LEAFENTRY* old_les,
         size_t *le_sizes,
-        size_t mempool_size
+        size_t total_key_size,
+        size_t total_le_size
         );
 
     void clone(bn_data* orig_bn_data);
