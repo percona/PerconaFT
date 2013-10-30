@@ -479,7 +479,7 @@ test_serialize_leaf_with_large_pivots(enum ftnode_verify_type bft, bool do_clone
     {
         // Man, this is way too ugly.  This entire test suite needs to be refactored.
         // Create a dummy mempool and put the leaves there.  Ugh.
-        test_key_le_pair les[nrows];
+        test_key_le_pair *les = new test_key_le_pair[nrows];
         {
             char key[keylens], val[vallens];
             key[keylens-1] = '\0';
@@ -514,6 +514,7 @@ test_serialize_leaf_with_large_pivots(enum ftnode_verify_type bft, bool do_clone
             }
         }
         assert(last_i == nrows);
+        delete[] les;
     }
 
     toku_ftnode_free(&dn);
@@ -554,8 +555,8 @@ test_serialize_leaf_with_many_rows(enum ftnode_verify_type bft, bool do_clone) {
     sn.dirty = 1;
     sn.oldest_referenced_xid_known = TXNID_NONE;
 
-    MALLOC_N(sn.n_children, sn.bp);
-    MALLOC_N(sn.n_children-1, sn.childkeys);
+    XMALLOC_N(sn.n_children, sn.bp);
+    XMALLOC_N(sn.n_children-1, sn.childkeys);
     sn.totalchildkeylens = (sn.n_children-1)*sizeof(int);
     for (int i = 0; i < sn.n_children; ++i) {
         BP_STATE(&sn,i) = PT_AVAIL;
@@ -612,7 +613,7 @@ test_serialize_leaf_with_many_rows(enum ftnode_verify_type bft, bool do_clone) {
     {
         // Man, this is way too ugly.  This entire test suite needs to be refactored.
         // Create a dummy mempool and put the leaves there.  Ugh.
-        test_key_le_pair les[nrows];
+        test_key_le_pair *les = new test_key_le_pair[nrows];
         {
             int key = 0, val = 0;
             for (uint32_t i = 0; i < nrows; ++i, key++, val++) {
@@ -649,6 +650,7 @@ test_serialize_leaf_with_many_rows(enum ftnode_verify_type bft, bool do_clone) {
             assert(BLB_DATA(dn, bn)->get_disk_size() < 128*1024);  // BN_MAX_SIZE, apt to change
         }
         assert(last_i == nrows);
+        delete[] les;
     }
 
     toku_ftnode_free(&dn);
@@ -754,7 +756,7 @@ test_serialize_leaf_with_large_rows(enum ftnode_verify_type bft, bool do_clone) 
     {
         // Man, this is way too ugly.  This entire test suite needs to be refactored.
         // Create a dummy mempool and put the leaves there.  Ugh.
-        test_key_le_pair les[nrows];
+        test_key_le_pair *les = new test_key_le_pair[nrows];
         {
             char key[key_size], val[val_size];
             key[key_size-1] = '\0';
@@ -793,6 +795,7 @@ test_serialize_leaf_with_large_rows(enum ftnode_verify_type bft, bool do_clone) 
             // don't check soft_copy_is_up_to_date or seqinsert
         }
         assert(last_i == 7);
+        delete[] les;
     }
 
     toku_ftnode_free(&dn);
