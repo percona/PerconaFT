@@ -1096,7 +1096,8 @@ void dmt<dmtdata_t, dmtdataout_t>::builder::create(uint32_t _max_values, uint32_
 template<typename dmtdata_t, typename dmtdataout_t>
 void dmt<dmtdata_t, dmtdataout_t>::builder::insert_sorted(const dmtdatain_t &value) {
     paranoid_invariant(this->temp_valid);
-    if (this->temp.values_same_size && (this->temp.size() == 0 || value.get_dmtdatain_t_size() == this->temp.value_length)) {
+    //NOTE: Always use d.a.num_values for size because we have not yet created root.
+    if (this->temp.values_same_size && (this->temp.d.a.num_values == 0 || value.get_dmtdatain_t_size() == this->temp.value_length)) {
         this->temp.insert_at_array_end<false>(value);
         return;
     }
@@ -1123,19 +1124,20 @@ void dmt<dmtdata_t, dmtdataout_t>::builder::insert_sorted(const dmtdatain_t &val
     paranoid_invariant(!this->temp.is_array);
     paranoid_invariant(!this->temp.values_same_size);
     // Insert dynamic.
-    this->sorted_nodes[this->temp.size()] = this->temp.node_malloc_and_set_value<true>(value);
+    this->sorted_nodes[this->temp.d.a.num_values++] = this->temp.node_malloc_and_set_value<true>(value);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t>
 void dmt<dmtdata_t, dmtdataout_t>::builder::build_and_destroy(dmt<dmtdata_t, dmtdataout_t> *dest) {
     invariant(this->temp_valid);
-    invariant(this->temp.size() == this->max_values); // Optionally make it <=
+    //NOTE: Always use d.a.num_values for size because we have not yet created root.
+    invariant(this->temp.d.a.num_values == this->max_values); // Optionally make it <=
     // Memory invariant is taken care of incrementally
 
     if (!this->temp.is_array) {
         invariant_notnull(this->sorted_nodes);
-        if (this->temp.size()) {
-            this->temp.rebuild_subtree_from_idxs(&this->temp.d.t.root, this->sorted_nodes, this->temp.size());
+        if (this->temp.d.a.num_values) {
+            this->temp.rebuild_subtree_from_idxs(&this->temp.d.t.root, this->sorted_nodes, this->temp.d.a.num_values);
         }
         toku_free(this->sorted_nodes);
         this->sorted_nodes = nullptr;
