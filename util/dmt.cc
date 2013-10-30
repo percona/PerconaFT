@@ -1136,9 +1136,7 @@ void dmt<dmtdata_t, dmtdataout_t>::builder::build_and_destroy(dmt<dmtdata_t, dmt
 
     if (!this->temp.is_array) {
         invariant_notnull(this->sorted_nodes);
-        if (this->temp.d.a.num_values) {
-            this->temp.rebuild_subtree_from_idxs(&this->temp.d.t.root, this->sorted_nodes, this->temp.d.a.num_values);
-        }
+        this->temp.rebuild_subtree_from_idxs(&this->temp.d.t.root, this->sorted_nodes, this->temp.d.a.num_values);
         toku_free(this->sorted_nodes);
         this->sorted_nodes = nullptr;
     }
