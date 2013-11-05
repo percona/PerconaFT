@@ -104,7 +104,7 @@ void manager_unit_test::test_params(void) {
     invariant(mgr.get_max_lock_memory() == new_max_lock_memory);
 
     uint64_t new_lock_wait_time = 62345234;
-    mgr.set_lock_wait_time(new_lock_wait_time);
+    mgr.set_lock_wait_time(new_lock_wait_time, nullptr);
     invariant(mgr.get_lock_wait_time() == new_lock_wait_time);
 
     mgr.m_current_lock_memory = 100000;

@@ -153,11 +153,16 @@ int locktree::manager::set_max_lock_memory(size_t max_lock_memory) {
 }
 
 uint64_t locktree::manager::get_lock_wait_time(void) {
-    return m_lock_wait_time_ms;
+    uint64_t wait_time = m_lock_wait_time_ms;
+    if (m_get_lock_wait_time_cb) {
+        wait_time = m_get_lock_wait_time_cb(wait_time);
+    }
+    return wait_time;
 }
 
-void locktree::manager::set_lock_wait_time(uint64_t lock_wait_time_ms) {
+void locktree::manager::set_lock_wait_time(uint64_t lock_wait_time_ms, uint64_t (*get_lock_wait_time_cb)(uint64_t)) {
     m_lock_wait_time_ms = lock_wait_time_ms;
+    m_get_lock_wait_time_cb = get_lock_wait_time_cb;
 }
 
 int locktree::manager::find_by_dict_id(locktree *const &lt, const DICTIONARY_ID &dict_id) {
@@ -318,27 +323,22 @@ void locktree::manager::run_escalation_for_test(void) {
 
 void locktree::manager::run_escalation(void) {
     uint64_t t0 = toku_current_time_microsec();
-    if (1) {
-        // run escalation on the background thread
-        int r;
-        toku_mutex_lock(&m_escalator_mutex);
-        toku_cond_broadcast(&m_escalator_work);
-        struct timeval tv;
-        r = gettimeofday(&tv, 0);
-        assert_zero(r);
-        uint64_t t = tv.tv_sec * 1000000 + tv.tv_usec;
-        t += 100000; // 100 milliseconds
-        toku_timespec_t wakeup_time;
-        wakeup_time.tv_sec = t / 1000000;
-        wakeup_time.tv_nsec = (t % 1000000) * 1000;
-        r = toku_cond_timedwait(&m_escalator_done, &m_escalator_mutex, &wakeup_time);
-        toku_mutex_unlock(&m_escalator_mutex);
-    } else {
-        // run escalation on this thread
-        mutex_lock();
-        escalate_all_locktrees();
-        mutex_unlock();
-    }
+    // run escalation on the background thread
+    int r;
+    toku_mutex_lock(&m_escalator_mutex);
+    toku_cond_broadcast(&m_escalator_work);
+    struct timeval tv;
+    r = gettimeofday(&tv, 0);
+    assert_zero(r);
+    uint64_t t = tv.tv_sec * 1000000 + tv.tv_usec;
+    t += 100000; // 100 milliseconds
+    toku_timespec_t wakeup_time;
+    wakeup_time.tv_sec = t / 1000000;
+    wakeup_time.tv_nsec = (t % 1000000) * 1000;
+    r = toku_cond_timedwait(&m_escalator_done, &m_escalator_mutex, &wakeup_time);
+    toku_mutex_unlock(&m_escalator_mutex);
+    // else run escalation on this thread
+    // mutex_lock(); escalate_all_locktrees(); mutex_unlock();
     uint64_t t1 = toku_current_time_microsec();
     add_escalator_wait_time(t1 - t0);
 }

@@ -449,7 +449,7 @@ static void print_db_env_struct (void) {
                              "int (*set_lk_max_memory)                    (DB_ENV *env, uint64_t max)",
                              "int (*get_lk_max_memory)                    (DB_ENV *env, uint64_t *max)",
                              "void (*set_update)                          (DB_ENV *env, int (*update_function)(DB *, const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra))",
-                             "int (*set_lock_timeout)                     (DB_ENV *env, uint64_t lock_wait_time_msec)",
+                             "int (*set_lock_timeout)                     (DB_ENV *env, uint64_t lock_wait_time_msec, uint64_t (*get_lock_wait_time_cb)(uint64_t default_lock_wait_time))",
                              "int (*get_lock_timeout)                     (DB_ENV *env, uint64_t *lock_wait_time_msec)",
                              "int (*set_lock_timeout_callback)            (DB_ENV *env, lock_timeout_callback callback)",
                              "int (*txn_xa_recover)                       (DB_ENV*, TOKU_XA_XID list[/*count*/], long count, /*out*/ long *retp, uint32_t flags)",
@@ -459,7 +459,7 @@ static void print_db_env_struct (void) {
                              "void (*change_fsync_log_period)             (DB_ENV*, uint32_t)",
                              "int (*iterate_live_transactions)            (DB_ENV *env, iterate_transactions_callback callback, void *extra)",
                              "int (*iterate_pending_lock_requests)        (DB_ENV *env, iterate_requests_callback callback, void *extra)",
-                             "void (*set_loader_memory_size)(DB_ENV *env, uint64_t loader_memory_size)",
+                             "void (*set_loader_memory_size)(DB_ENV *env, uint64_t (*get_loader_memory_size_callback)(void))",
                              "uint64_t (*get_loader_memory_size)(DB_ENV *env)",
                              NULL};
 
@@ -529,7 +529,7 @@ static void print_db_struct (void) {
 			 "int (*change_descriptor) (DB*, DB_TXN*, const DBT* descriptor, uint32_t) /* change row/dictionary descriptor for a db.  Available only while db is open */",
 			 "int (*getf_set)(DB*, DB_TXN*, uint32_t, DBT*, YDB_CALLBACK_FUNCTION, void*) /* same as DBC->c_getf_set without a persistent cursor) */",
 			 "int (*optimize)(DB*) /* Run garbage collecion and promote all transactions older than oldest. Amortized (happens during flattening) */",
-			 "int (*hot_optimize)(DB*, DBT*, DBT*, int (*progress_callback)(void *progress_extra, float progress), void *progress_extra)",
+			 "int (*hot_optimize)(DB*, DBT*, DBT*, int (*progress_callback)(void *progress_extra, float progress), void *progress_extra, uint64_t* loops_run)",
 			 "int (*get_fragmentation)(DB*,TOKU_DB_FRAGMENTATION)",
 			 "int (*change_pagesize)(DB*,uint32_t)",
 			 "int (*change_readpagesize)(DB*,uint32_t)",

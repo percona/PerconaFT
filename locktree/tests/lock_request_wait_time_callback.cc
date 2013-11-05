@@ -1,8 +1,5 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
-#ifndef TOKU_ROLLBACK_LOG_NODE_CACHE_H
-#define TOKU_ROLLBACK_LOG_NODE_CACHE_H
-
 #ident "$Id$"
 /*
 COPYING CONDITIONS NOTICE:
@@ -92,28 +89,71 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
-#include "rollback.h"
+#include "lock_request_unit_test.h"
 
-class rollback_log_node_cache {
-public:
-    void init (uint32_t max_num_avail_nodes);
-    void destroy();
-    // returns true if rollback log node was successfully added,
-    // false otherwise
-    bool give_rollback_log_node(TOKUTXN txn, ROLLBACK_LOG_NODE log);
-    // if a rollback log node is available, will set log to it,
-    // otherwise, will set log to NULL and caller is on his own
-    // for getting a rollback log node
-    void get_rollback_log_node(TOKUTXN txn, ROLLBACK_LOG_NODE* log);
+namespace toku {
 
-private:
-    BLOCKNUM* m_avail_blocknums;
-    uint32_t m_first;
-    uint32_t m_num_avail;
-    uint32_t m_max_num_avail;
-    toku_mutex_t m_mutex;
-};
+static int my_calls = 0;
 
-ENSURE_POD(rollback_log_node_cache);
+static uint64_t my_lock_wait_time_callback(uint64_t default_lock_wait_time UU()) {
+    my_calls++;
+    return 1000;
+}
 
-#endif // TOKU_ROLLBACK_LOG_NODE_CACHE_H
+// make sure deadlocks are detected when a lock request starts
+void lock_request_unit_test::test_wait_time_callback(void) {
+    int r;
+    locktree::manager mgr;
+    locktree *lt;
+
+    mgr.create(nullptr, nullptr, nullptr, nullptr);
+    mgr.set_lock_wait_time(10*1000, my_lock_wait_time_callback);
+    DICTIONARY_ID dict_id = { 1 };
+    lt = mgr.get_lt(dict_id, nullptr, compare_dbts, nullptr);
+
+    TXNID txnid_a = 1001;
+    lock_request request_a;
+    request_a.create();
+
+    TXNID txnid_b = 2001;
+    lock_request request_b;
+    request_b.create();
+
+    const DBT *one = get_dbt(1);
+    const DBT *two = get_dbt(2);
+
+    // a locks 'one'
+    request_a.set(lt, txnid_a, one, one, lock_request::type::WRITE);
+    r = request_a.start();
+    assert_zero(r);
+
+    // b tries to lock 'one'
+    request_b.set(lt, txnid_b, one, two, lock_request::type::WRITE);
+    r = request_b.start();
+    assert(r == DB_LOCK_NOTGRANTED);
+    assert(my_calls == 0);
+    uint64_t t_start = toku_current_time_microsec();
+    r = request_b.wait(mgr.get_lock_wait_time());
+    uint64_t t_end = toku_current_time_microsec();
+    assert(r == DB_LOCK_NOTGRANTED);
+    assert(my_calls == 1);
+    assert(t_end > t_start);
+    uint64_t t_delta = t_end - t_start;
+    assert(1000000 <= t_delta && t_delta < 10000000);
+    request_b.destroy();
+
+    release_lock_and_retry_requests(lt, txnid_a, one, one);
+    request_a.destroy();
+
+    mgr.release_lt(lt);
+    mgr.destroy();
+}
+
+} /* namespace toku */
+
+int main(void) {
+    toku::lock_request_unit_test test;
+    test.test_wait_time_callback();
+    return 0;
+}
+

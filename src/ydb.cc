@@ -1715,8 +1715,8 @@ env_get_lock_timeout(DB_ENV *env, uint64_t *lock_timeout_msec) {
 }
 
 static int
-env_set_lock_timeout(DB_ENV *env, uint64_t lock_timeout_msec) {
-    env->i->ltm.set_lock_wait_time(lock_timeout_msec);
+env_set_lock_timeout(DB_ENV *env, uint64_t lock_timeout_msec, uint64_t (*get_lock_timeout_callback)(uint64_t default_lock_timeout_msec)) {
+    env->i->ltm.set_lock_wait_time(lock_timeout_msec, get_lock_timeout_callback);
     return 0;
 }
 
@@ -2416,12 +2416,15 @@ env_iterate_live_transactions(DB_ENV *env,
     return toku_txn_manager_iter_over_live_root_txns(txn_manager, iter_txns_callback, &e);
 }
 
-static void env_set_loader_memory_size(DB_ENV *env, uint64_t loader_memory_size) {
-    env->i->loader_memory_size = loader_memory_size;
+static void env_set_loader_memory_size(DB_ENV *env, uint64_t (*get_loader_memory_size_callback)(void)) {
+    env->i->get_loader_memory_size_callback = get_loader_memory_size_callback;
 }
 
 static uint64_t env_get_loader_memory_size(DB_ENV *env) {
-    return env->i->loader_memory_size;
+    uint64_t memory_size = 0;
+    if (env->i->get_loader_memory_size_callback)
+        memory_size = env->i->get_loader_memory_size_callback();
+    return memory_size;
 }
 
 static int 
