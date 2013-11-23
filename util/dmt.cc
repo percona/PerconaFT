@@ -104,6 +104,39 @@ void dmt<dmtdata_t, dmtdataout_t>::create(void) {
 }
 
 template<typename dmtdata_t, typename dmtdataout_t>
+void dmt<dmtdata_t, dmtdataout_t>::create_from_sorted_memory_of_fixed_size_elements(
+        const void *mem,
+        const uint32_t numvalues,
+        const uint32_t mem_length,
+        const uint32_t fixed_value_length) {
+    this->values_same_size = true;
+    this->value_length = fixed_value_length;
+    this->is_array = true;
+    this->d.a.start_idx = 0;
+    this->d.a.num_values = numvalues;
+    const uint8_t pad_bytes = get_fixed_length_alignment_overhead();
+    uint32_t aligned_memsize = mem_length + numvalues * pad_bytes;
+    toku_mempool_construct(&this->mp, aligned_memsize);
+    if (aligned_memsize > 0) {
+        void *ptr = toku_mempool_malloc(&this->mp, aligned_memsize, 1);
+        paranoid_invariant_notnull(ptr);
+        uint8_t *CAST_FROM_VOIDP(dest, ptr);
+        const uint8_t *CAST_FROM_VOIDP(src, mem);
+        if (pad_bytes == 0) {
+            paranoid_invariant(aligned_memsize == mem_length);
+            memcpy(dest, src, aligned_memsize);
+        } else {
+            const uint32_t fixed_len = this->value_length;
+            const uint32_t fixed_aligned_len = align(this->value_length);
+            paranoid_invariant(this->d.a.num_values*fixed_len == mem_length);
+            for (uint32_t i = 0; i < this->d.a.num_values; i++) {
+                memcpy(&dest[i*fixed_aligned_len], &src[i*fixed_len], fixed_len);
+            }
+        }
+    }
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
 void dmt<dmtdata_t, dmtdataout_t>::create_no_array(void) {
     this->create_internal_no_alloc(false);
 }
@@ -337,6 +370,51 @@ void dmt<dmtdata_t, dmtdataout_t>::convert_to_dtree(void) {
         //TODO: implement this one.
 
     }
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
+void dmt<dmtdata_t, dmtdataout_t>::prepare_for_serialize(void) {
+    if (!this->is_array) {
+        this->convert_from_tree_to_array<true>();
+    }
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
+template<bool with_sizes>
+void dmt<dmtdata_t, dmtdataout_t>::convert_from_tree_to_array(void) {
+    static_assert(with_sizes, "not in prototype");
+    paranoid_invariant(!this->is_array);
+    paranoid_invariant(this->values_same_size);
+    
+    const uint32_t num_values = this->size();
+
+    node_idx *tmp_array;
+    bool malloced = false;
+    tmp_array = alloc_temp_node_idxs(num_values);
+    if (!tmp_array) {
+        malloced = true;
+        XMALLOC_N(num_values, tmp_array);
+    }
+    this->fill_array_with_subtree_idxs(tmp_array, this->d.t.root);
+
+    struct mempool new_mp = this->mp;
+    const uint32_t fixed_len = this->value_length;
+    const uint32_t fixed_aligned_len = align(this->value_length);
+    size_t mem_needed = num_values * fixed_aligned_len;
+    toku_mempool_construct(&new_mp, mem_needed);
+    uint8_t* CAST_FROM_VOIDP(dest, toku_mempool_malloc(&new_mp, mem_needed, 1));
+    paranoid_invariant_notnull(dest);
+    for (uint32_t i = 0; i < num_values; i++) {
+        const dmt_dnode &n = get_node<dmt_dnode>(tmp_array[i]);
+        memcpy(&dest[i*fixed_aligned_len], &n.value, fixed_len);
+    }
+    toku_mempool_destroy(&this->mp);
+    this->mp = new_mp;
+    this->is_array = true;
+    this->d.a.start_idx = 0;
+    this->d.a.num_values = num_values;
+
+    if (malloced) toku_free(tmp_array);
 }
 
 template<typename dmtdata_t, typename dmtdataout_t>
@@ -1081,6 +1159,48 @@ int dmt<dmtdata_t, dmtdataout_t>::find_internal_minus(const subtree &subtree, co
 }
 
 template<typename dmtdata_t, typename dmtdataout_t>
+uint32_t dmt<dmtdata_t, dmtdataout_t>::get_fixed_length(void) const {
+    return this->values_same_size ? this->value_length : 0;
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
+uint32_t dmt<dmtdata_t, dmtdataout_t>::get_fixed_length_alignment_overhead(void) const {
+    return this->values_same_size ? align(this->value_length) - this->value_length : 0;
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
+bool dmt<dmtdata_t, dmtdataout_t>::is_value_length_fixed(void) const {
+    return this->values_same_size;
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
+const struct mempool * dmt<dmtdata_t, dmtdataout_t>::serialize_values(uint32_t expected_unpadded_memory, struct wbuf *wb) const {
+    invariant(this->is_array);
+    const uint8_t pad_bytes = get_fixed_length_alignment_overhead();
+    const uint32_t fixed_len = this->value_length;
+    const uint32_t fixed_aligned_len = align(this->value_length);
+    paranoid_invariant(expected_unpadded_memory == this->d.a.num_values * this->value_length);
+    paranoid_invariant(toku_mempool_get_used_space(&this->mp) >=
+                       expected_unpadded_memory + pad_bytes * this->d.a.num_values +
+                       this->d.a.start_idx * fixed_aligned_len);
+    if (this->d.a.num_values == 0) {
+        // Nothing to serialize
+    } else if (pad_bytes == 0) {
+        // Basically a memcpy
+        wbuf_nocrc_literal_bytes(wb, get_array_value(0), expected_unpadded_memory);
+    } else {
+        uint8_t* dest = wbuf_nocrc_reserve_literal_bytes(wb, expected_unpadded_memory);
+        uint8_t* src = reinterpret_cast<uint8_t*>(get_array_value(0));
+        paranoid_invariant(this->d.a.num_values*fixed_len == expected_unpadded_memory);
+        for (uint32_t i = 0; i < this->d.a.num_values; i++) {
+            memcpy(&dest[i*fixed_len], &src[i*fixed_aligned_len], fixed_len);
+        }
+    }
+
+    return &this->mp;
+}
+
+template<typename dmtdata_t, typename dmtdataout_t>
 void dmt<dmtdata_t, dmtdataout_t>::builder::create(uint32_t _max_values, uint32_t _max_value_bytes) {
     this->max_values = _max_values;
     this->max_value_bytes = _max_value_bytes;
@@ -1148,9 +1268,9 @@ void dmt<dmtdata_t, dmtdataout_t>::builder::build_and_destroy(dmt<dmtdata_t, dmt
     }
     paranoid_invariant_null(this->sorted_nodes);
 
-    size_t max_allowed = toku_mempool_get_used_space(&this->temp.mp);
-    max_allowed += max_allowed / 4;
+    size_t used = toku_mempool_get_used_space(&this->temp.mp);
     size_t allocated = toku_mempool_get_size(&this->temp.mp);
+    size_t max_allowed = used + used / 4;
     size_t footprint = toku_mempool_footprint(&this->temp.mp);
     if (allocated > max_allowed && footprint > max_allowed) {
         // Reallocate smaller mempool to save memory

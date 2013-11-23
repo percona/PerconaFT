@@ -134,7 +134,7 @@ void toku_mempool_construct(struct mempool *mp, size_t data_size);
 void toku_mempool_destroy(struct mempool *mp);
 
 /* get the base address of the memory pool */
-void *toku_mempool_get_base(struct mempool *mp);
+void *toku_mempool_get_base(const struct mempool *mp);
 
 /* get the a pointer that is offset bytes in front of base of the memory pool */
 void *toku_mempool_get_pointer_from_base_and_offset(const struct mempool *mp, size_t offset);
@@ -146,19 +146,19 @@ size_t toku_mempool_get_offset_from_pointer_and_base(const struct mempool *mp, v
 void* toku_mempool_get_next_free_ptr(const struct mempool *mp);
 
 /* get the size of the memory pool */
-size_t toku_mempool_get_size(struct mempool *mp);
+size_t toku_mempool_get_size(const struct mempool *mp);
 
 /* get the amount of fragmented (wasted) space in the memory pool */
-size_t toku_mempool_get_frag_size(struct mempool *mp);
+size_t toku_mempool_get_frag_size(const struct mempool *mp);
 
 /* get the amount of space that is holding useful data */
-size_t toku_mempool_get_used_space(struct mempool *mp);
+size_t toku_mempool_get_used_space(const struct mempool *mp);
 
 /* get the amount of space that is available for new data */
-size_t toku_mempool_get_free_space(struct mempool *mp);
+size_t toku_mempool_get_free_space(const struct mempool *mp);
 
 /* get the amount of space that has been allocated for use (wasted or not) */
-size_t toku_mempool_get_allocated_space(struct mempool *mp);
+size_t toku_mempool_get_allocated_space(const struct mempool *mp);
 
 /* allocate a chunk of memory from the memory pool suitably aligned */
 void *toku_mempool_malloc(struct mempool *mp, size_t size, int alignment);

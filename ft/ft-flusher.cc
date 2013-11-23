@@ -669,6 +669,7 @@ ftleaf_disk_size(FTNODE node)
     for (int i = 0; i < node->n_children; i++) {
         retval += BLB_DATA(node, i)->get_disk_size();
     }
+    retval += bn_data::HEADER_LENGTH * node->n_children;
     return retval;
 }
 

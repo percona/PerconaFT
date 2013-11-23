@@ -167,7 +167,7 @@ void toku_mempool_destroy(struct mempool *mp) {
     toku_mempool_zero(mp);
 }
 
-void *toku_mempool_get_base(struct mempool *mp) {
+void *toku_mempool_get_base(const struct mempool *mp) {
     return mp->base;
 }
 
@@ -180,15 +180,15 @@ size_t toku_mempool_get_offset_from_pointer_and_base(const struct mempool *mp, v
     return reinterpret_cast<char*>(p) - reinterpret_cast<char*>(mp->base);
 }
 
-size_t toku_mempool_get_size(struct mempool *mp) {
+size_t toku_mempool_get_size(const struct mempool *mp) {
     return mp->size;
 }
 
-size_t toku_mempool_get_frag_size(struct mempool *mp) {
+size_t toku_mempool_get_frag_size(const struct mempool *mp) {
     return mp->frag_size;
 }
 
-size_t toku_mempool_get_used_space(struct mempool *mp) {
+size_t toku_mempool_get_used_space(const struct mempool *mp) {
     return mp->free_offset - mp->frag_size;
 }
 
@@ -196,11 +196,11 @@ void* toku_mempool_get_next_free_ptr(const struct mempool *mp) {
     return toku_mempool_get_pointer_from_base_and_offset(mp, mp->free_offset);
 }
 
-size_t toku_mempool_get_free_space(struct mempool *mp) {
+size_t toku_mempool_get_free_space(const struct mempool *mp) {
     return mp->size - mp->free_offset;
 }
 
-size_t toku_mempool_get_allocated_space(struct mempool *mp) {
+size_t toku_mempool_get_allocated_space(const struct mempool *mp) {
     return mp->free_offset;
 }
 

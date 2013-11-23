@@ -92,6 +92,7 @@ PATENT RIGHTS GRANT:
 #pragma once
 
 #include <util/mempool.h>
+#include "wbuf.h"
 #include <util/dmt.h>
 #include "leafentry.h"
 
@@ -177,7 +178,7 @@ class bn_data {
 public:
     void init_zero(void);
     void initialize_empty(void);
-    void initialize_from_data(uint32_t num_entries, unsigned char *buf, uint32_t data_size);
+    void initialize_from_data(uint32_t num_entries, struct rbuf *rb, uint32_t data_size, uint32_t version);
     // globals
     uint64_t get_memory_size(void);
     uint64_t get_disk_size(void);
@@ -279,11 +280,26 @@ public:
     void get_space_for_insert(uint32_t idx, const void* keyp, uint32_t keylen, size_t size, LEAFENTRY* new_le_space);
 
     LEAFENTRY get_le_from_klpair(const klpair_struct *klpair) const;
+
+    void prepare_to_serialize(void);
+    void serialize_header(struct wbuf *wb) const;
+    void serialize_rest(struct wbuf *wb) const;
+    bool need_to_serialize_each_leafentry_with_key(void) const;
+
+    static const uint32_t HEADER_LENGTH = 0
+        + sizeof(uint32_t) // key_data_size
+        + sizeof(uint32_t) // val_data_size
+        + sizeof(uint32_t) // fixed_key_length
+        + sizeof(uint8_t) // all_keys_same_length
+        + sizeof(uint8_t) // keys_vals_separate
+        + 0;
 private:
+
     // Private functions
     LEAFENTRY mempool_malloc_and_update_omt(size_t size, void **maybe_free);
     void omt_compress_kvspace(size_t added_size, void **maybe_free);
     void add_key(uint32_t keylen);
+    void add_keys(uint32_t n_keys, uint32_t combined_keylen);
     void remove_key(uint32_t keylen);
 
     klpair_dmt_t m_buffer;                     // pointers to individual leaf entries
@@ -291,5 +307,9 @@ private:
 
     uint32_t klpair_disksize(const uint32_t klpair_len, const klpair_struct *klpair) const;
     size_t m_disksize_of_keys;
+
+    void initialize_from_separate_keys_and_vals(uint32_t num_entries, struct rbuf *rb, uint32_t data_size, uint32_t version,
+                                                uint32_t key_data_size, uint32_t val_data_size, bool all_keys_same_length,
+                                                uint32_t fixed_key_length);
 };
 
