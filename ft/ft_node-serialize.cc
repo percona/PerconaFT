@@ -319,8 +319,8 @@ serialize_ftnode_partition_size (FTNODE node, int i)
         result += toku_bnc_nbytesinbuf(BNC(node, i));
     }
     else {
-        result += 4; // n_entries in buffer table
-        result += bn_data::HEADER_LENGTH + BLB_NBYTESINDATA(node, i);
+        result += 4 + bn_data::HEADER_LENGTH; // n_entries in buffer table + basement header
+        result += BLB_NBYTESINDATA(node, i);
     }
     result += 4; // checksum
     return result;
