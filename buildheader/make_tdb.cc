@@ -603,7 +603,7 @@ static void print_dbc_struct (void) {
 	"int (*c_getf_set_range_reverse)(DBC *, uint32_t, DBT *, YDB_CALLBACK_FUNCTION, void *)",
 	"int (*c_set_bounds)(DBC*, const DBT*, const DBT*, bool pre_acquire, int out_of_range_error)",
 	"void (*c_remove_restriction)(DBC*)",
-	"void (*c_get_recent_key_read)(DBC*, DBT*)",
+	"int (*c_get_recent_key_read)(DBC*, DBT*)",
 	NULL};
     sort_and_dump_fields("dbc", false, extra);
 }
