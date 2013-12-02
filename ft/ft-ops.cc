@@ -4039,6 +4039,17 @@ void toku_ft_cursor_remove_restriction(FT_CURSOR ftcursor) {
     ftcursor->direction = 0;
 }
 
+void toku_ft_cursor_get_recent_key_read(FT_CURSOR ftcursor, DBT* dbt) {
+    uint32_t keysize = ftcursor->key.size;
+    assert(dbt->flags == DB_DBT_REALLOC);
+    if (keysize > dbt->ulen) {
+        dbt->data = toku_xrealloc(dbt->data, keysize);
+        dbt->ulen = keysize;
+    }
+    memcpy(dbt->data, ftcursor->key.data, keysize);
+    dbt->size = keysize;
+}
+
 void
 toku_ft_cursor_set_temporary(FT_CURSOR ftcursor) {
     ftcursor->is_temporary = true;

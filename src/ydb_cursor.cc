@@ -739,6 +739,27 @@ c_remove_restriction(DBC *dbc) {
     toku_ft_cursor_remove_restriction(dbc_struct_i(dbc)->c);
 }
 
+//
+// copy the contents of the last key the cursor read
+// into dbt. Is the responsibility of the caller to free
+// the memory used in dbt.
+//
+static int
+c_get_recent_key_read(DBC* dbc, DBT* dbt) {
+    // forcing the dbt's flags to be DB_DBT_REALLOC
+    // out of laziness. There is not reason we cannot support
+    // DB_DBT_USERMEM or DB_DBT_MALLOC. At the moment,
+    // the only caller of this API, TokuMX, needs DB_DBT_REALLOC
+    // so to reduce the need for other tests, simply forcing
+    // flag of DB_DBT_REALLOC
+    if (dbt->flags != DB_DBT_REALLOC) {
+        return EINVAL;
+    }
+    toku_ft_cursor_get_recent_key_read(dbc_struct_i(dbc)->c, dbt);
+    return 0;
+}
+
+
 int
 toku_c_get(DBC* c, DBT* key, DBT* val, uint32_t flag) {
     //This function exists for legacy (test compatibility) purposes/parity with bdb.
@@ -832,6 +853,7 @@ toku_db_cursor_internal(DB * db, DB_TXN * txn, DBC ** c, uint32_t flags, int is_
     SCRS(c_getf_set_range_reverse);
     SCRS(c_set_bounds);
     SCRS(c_remove_restriction);
+    SCRS(c_get_recent_key_read);
 #undef SCRS
 
     result->c_get = toku_c_get;
