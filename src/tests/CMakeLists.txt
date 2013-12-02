@@ -258,6 +258,7 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
       test_compression_methods
       test_cmp_descriptor
       test_cursor_with_read_txn
+      test_cursor_recent_key_read
       test_db_change_pagesize
       test_db_change_xxx
       test_cursor_delete_2119

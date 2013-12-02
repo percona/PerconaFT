@@ -149,7 +149,7 @@ test_cursor_recent_key_read (void) {
 
     r = cursor->c_get_recent_key_read(cursor, &foo);
     CKERR2(r, EINVAL);
-    foo->flags = DB_DBT_REALLOC;
+    foo.flags = DB_DBT_REALLOC;
     r = cursor->c_get_recent_key_read(cursor, &foo);
     CKERR(r);
     assert(foo.ulen == 0);
@@ -184,7 +184,7 @@ test_cursor_recent_key_read (void) {
     CKERR(r);
     assert(foo.size == sizeof second_key);
     memcpy(&second_key, foo.data, sizeof second_key);
-    assert(second_key == k);
+    assert(second_key == kk);
     // now delete the key, and check that the API still works
     r = db->del(db, null_txn, &key, DB_DELETE_ANY);
 
@@ -193,8 +193,9 @@ test_cursor_recent_key_read (void) {
     CKERR(r);
     assert(foo.size == sizeof second_key);
     memcpy(&second_key, foo.data, sizeof second_key);
-    assert(second_key == k);
+    assert(second_key == kk);
     toku_free(key.data); toku_free(data.data);
+    toku_free(foo.data);
     
     r = cursor->c_close(cursor); CKERR(r);
 
