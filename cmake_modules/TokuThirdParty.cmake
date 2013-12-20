@@ -32,6 +32,7 @@ if (NOT DEFINED MYSQL_PROJECT_NAME_DOCSTRING)
   install(
     DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/jemalloc/lib"
     DESTINATION .
+    COMPONENT tokukv_libs_extra
     )
 endif ()
 
