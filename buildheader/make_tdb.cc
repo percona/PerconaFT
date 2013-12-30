@@ -687,6 +687,7 @@ int main (int argc, char *const argv[] __attribute__((__unused__))) {
     printf("    TOKU_LZMA_METHOD    = 10,\n");  // We use 10 for LZMA.  (Note the compression level is stored in the high-order nibble).
     printf("    TOKU_ZLIB_WITHOUT_CHECKSUM_METHOD = 11,\n"); // We wrap a zlib without checksumming compression technique in our own checksummed metadata.
     printf("    TOKU_LZ4_METHOD     = 12,\n"); // We use 12 for LZ4.  LZ4 does not provide compression levels.
+    printf("    TOKU_SNAPPY_METHOD  = 13,\n"); // We use 13 for snappy.  snappy does not provide compression levels.
     printf("    TOKU_DEFAULT_COMPRESSION_METHOD = 1,\n");  // default is actually quicklz
     printf("    TOKU_FAST_COMPRESSION_METHOD = 2,\n");  // friendlier names
     printf("    TOKU_SMALL_COMPRESSION_METHOD = 3,\n");

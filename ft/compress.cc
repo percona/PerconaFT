@@ -92,6 +92,7 @@ PATENT RIGHTS GRANT:
 #include <zlib.h>
 #include <lzma.h>
 #include <lz4.h>
+#include <snappy.h>
 
 #include "compress.h"
 #include "memory.h"
@@ -122,6 +123,8 @@ size_t toku_compress_bound (enum toku_compression_method a, size_t size)
         return size + 1;
     case TOKU_LZ4_METHOD:
         return 1+LZ4_compressBound((int) size);
+    case TOKU_SNAPPY_METHOD:
+        return 1+snappy::MaxCompressedLength(size);
     case TOKU_LZMA_METHOD:
 	return 1+lzma_stream_buffer_bound(size); // We need one extra for the rfc1950-style header byte (bits -03 are TOKU_LZMA_METHOD (1), bits 4-7 are the compression level)
     case TOKU_QUICKLZ_METHOD:
@@ -227,6 +230,12 @@ void toku_compress (enum toku_compression_method a,
         *destLen = 1 + r;
         return;
     }
+    case TOKU_SNAPPY_METHOD: {
+        snappy::RawCompress(source, sourceLen, dest + 1, destLen);
+        dest[0] = TOKU_SNAPPY_METHOD;
+        *destLen += 1;
+        return;
+    }
     default:
         break;
     }
@@ -301,6 +310,11 @@ void toku_decompress (Bytef       *dest,   uLongf destLen,
         int r = LZ4_decompress_safe((const char *) source + 1, (char *) dest, sourceLen - 1, destLen);
         lazy_assert(r >= 0);
         lazy_assert(r <= (int) destLen);
+        return;
+    }
+    case TOKU_SNAPPY_METHOD: {
+        bool ok = snappy::RawUncompress(source + 1, sourceLen - 1, dest);
+        lazy_assert(ok);
         return;
     }
     }
