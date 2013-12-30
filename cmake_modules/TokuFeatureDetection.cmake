@@ -48,6 +48,20 @@ check_include_files(sys/syslimits.h HAVE_SYS_SYSLIMITS_H)
 check_include_files(sys/time.h HAVE_SYS_TIME_H)
 check_include_files(unistd.h HAVE_UNISTD_H)
 
+## for snappy
+check_include_files(dlfcn.h HAVE_DLFCN_H)
+check_include_files(float.h HAVE_FLOAT_H)
+check_include_files(memory.h HAVE_MEMORY_H)
+check_include_files(stdarg.h HAVE_STDARG_H)
+check_include_files(stddef.h HAVE_STDDEF_H)
+check_include_files(strings.h HAVE_STRINGS_H)
+check_include_files(sys/byteswap.h HAVE_SYS_BYTESWAP_H)
+check_include_files(sys/mman.h HAVE_SYS_MMAN_H)
+check_include_files(sys/stat.h HAVE_SYS_STAT_H)
+check_include_files(sys/types.h HAVE_SYS_TYPES_H)
+check_include_files(sys/uio.h HAVE_SYS_UIO_H)
+check_include_files(windows.h HAVE_WINDOWS_H)
+
 include(CheckSymbolExists)
 
 ## check whether we can set the mmap threshold like we can in gnu libc's malloc

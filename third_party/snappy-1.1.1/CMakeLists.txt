@@ -1,23 +1,6 @@
-include(CheckIncludeFiles)
-
-check_include_files(stdint.h ac_cv_header_stdint_h)
-check_include_files(stddef.h ac_cv_header_stddef_h)
-check_include_files(sys/mman.h ac_cv_header_sys_mman_h)
-check_include_files(sys/resource.h ac_cv_header_sys_resource_h)
-check_include_files(windows.h ac_cv_header_windows_h)
-check_include_files(byteswap.h ac_cv_header_byteswap_h)
-check_include_files(sys/byteswap.h ac_cv_header_sys_byteswap_h)
-check_include_files(sys/endian.h ac_cv_header_sys_endian_h)
-check_include_files(sys/time.h ac_cv_header_sys_time_h)
-
-set(ac_cv_have_stdint_h ${ac_cv_header_stdint_h})
-set(ac_cv_have_stddef_h ${ac_cv_header_stddef_h})
-set(ac_cv_have_sys_uio_h ${ac_cv_header_sys_uio_h})
-
-check_include_files(stdlib.h HAVE_STDLIB_H)
-check_include_files(stdarg.h HAVE_STDARG_H)
-check_include_files(string.h HAVE_STRING_H)
-check_include_files(float.h HAVE_FLOAT_H)
+set(ac_cv_have_stdint_h ${HAVE_STDINT_H})
+set(ac_cv_have_stddef_h ${HAVE_STDDEF_H})
+set(ac_cv_have_sys_uio_h ${HAVE_SYS_UIO_H})
 
 if (HAVE_STDLIB_H AND HAVE_STDARG_H AND HAVE_STRING_H AND HAVE_FLOAT_H)
   set(STDC_HEADERS 1)
@@ -53,3 +36,5 @@ add_library(snappy STATIC
   snappy-stubs-internal
   snappy-c
   )
+
+set(CMAKE_CXX_FLAGS "-Wall -Wno-unused-parameter -Wno-unused-function")

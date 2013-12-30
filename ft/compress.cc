@@ -231,7 +231,7 @@ void toku_compress (enum toku_compression_method a,
         return;
     }
     case TOKU_SNAPPY_METHOD: {
-        snappy::RawCompress(source, sourceLen, dest + 1, destLen);
+        snappy::RawCompress((const char *) source, sourceLen, (char *) dest + 1, destLen);
         dest[0] = TOKU_SNAPPY_METHOD;
         *destLen += 1;
         return;
@@ -313,7 +313,7 @@ void toku_decompress (Bytef       *dest,   uLongf destLen,
         return;
     }
     case TOKU_SNAPPY_METHOD: {
-        bool ok = snappy::RawUncompress(source + 1, sourceLen - 1, dest);
+        bool ok = snappy::RawUncompress((const char *) source + 1, sourceLen - 1, (char *) dest);
         lazy_assert(ok);
         return;
     }
