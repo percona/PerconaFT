@@ -1,0 +1,30 @@
+r109 :
+lz4.c : corrected issue 98 (LZ4_compress_limitedOutput())
+Makefile : can specify version number from makefile
+
+r108 :
+lz4.c : corrected compression efficiency issue 97 in 64-bits chained mode (-BD) for streams > 4 GB (thanks Roman Strashkin for reporting)
+
+r107 :
+Makefile : support DESTDIR for staged installs. Thanks Jorge Aparicio.
+Makefile : make install installs both lz4 and lz4c (Jorge Aparicio)
+Makefile : removed -Wno-implicit-declaration compilation switch
+lz4cli.c : include <stduni.h> for isatty() (Luca Barbato)
+lz4.h : introduced LZ4_MAX_INPUT_SIZE constant (Shay Green)
+lz4.h : LZ4_compressBound() : unified macro and inline definitions (Shay Green)
+lz4.h : LZ4_decompressSafe_partial() : clarify comments (Shay Green)
+lz4.c : LZ4_compress() verify input size condition (Shay Green)
+bench.c : corrected a bug in free memory size evaluation
+cmake : install into bin/ directory (Richard Yao)
+cmake : check for just C compiler (Elan Ruusamae)
+
+r106 :
+Makefile : make dist modify text files in the package to respect Unix EoL convention
+lz4cli.c : corrected small display bug in HC mode
+
+r105 :
+Makefile : New install script and man page, contributed by Prasad Pandit
+lz4cli.c : Minor modifications, for easier extensibility
+COPYING  : added license file
+LZ4_Streaming_Format.odt : modified file name to remove white space characters
+Makefile : .exe suffix now properly added only for Windows target
