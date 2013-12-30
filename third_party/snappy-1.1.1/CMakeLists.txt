@@ -38,3 +38,4 @@ add_library(snappy STATIC
   )
 
 set(CMAKE_CXX_FLAGS "-Wall -Wno-unused-parameter -Wno-unused-function")
+set_target_properties(snappy PROPERTIES POSITION_INDEPENDENT_CODE ON)
