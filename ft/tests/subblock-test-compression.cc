@@ -187,6 +187,8 @@ test_main (int argc, const char *argv[]) {
             run_test(size, n_cores, TOKU_QUICKLZ_METHOD);
             run_test(size, n_cores, TOKU_LZMA_METHOD);
             run_test(size, n_cores, TOKU_LZ4_METHOD);
+            run_test(size, n_cores, TOKU_LZ4HC_METHOD);
+            run_test(size, n_cores, TOKU_SNAPPY_METHOD);
         }
     }
 

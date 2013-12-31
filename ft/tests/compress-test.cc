@@ -111,6 +111,8 @@ static void test_compress_buf (unsigned char *buf, int i) {
     test_compress_buf_method(buf, i, TOKU_QUICKLZ_METHOD);
     test_compress_buf_method(buf, i, TOKU_LZMA_METHOD);
     test_compress_buf_method(buf, i, TOKU_LZ4_METHOD);
+    test_compress_buf_method(buf, i, TOKU_LZ4HC_METHOD);
+    test_compress_buf_method(buf, i, TOKU_SNAPPY_METHOD);
 }
 
 static void test_compress_i (int i) {
