@@ -92,6 +92,7 @@ PATENT RIGHTS GRANT:
 #include <zlib.h>
 #include <lzma.h>
 #include <lz4.h>
+#include <lz4hc.h>
 #include <snappy.h>
 
 #include "compress.h"
@@ -122,6 +123,7 @@ size_t toku_compress_bound (enum toku_compression_method a, size_t size)
     case TOKU_NO_COMPRESSION:
         return size + 1;
     case TOKU_LZ4_METHOD:
+    case TOKU_LZ4HC_METHOD:
         return 1+LZ4_compressBound((int) size);
     case TOKU_SNAPPY_METHOD:
         return 1+snappy::MaxCompressedLength(size);
@@ -230,6 +232,14 @@ void toku_compress (enum toku_compression_method a,
         *destLen = 1 + r;
         return;
     }
+    case TOKU_LZ4HC_METHOD: {
+        int r = LZ4_compressHC((const char *) source, (char *) dest + 1, sourceLen);
+        lazy_assert(r >= 0);
+        lazy_assert(r < (int) *destLen);
+        dest[0] = TOKU_LZ4HC_METHOD;
+        *destLen = 1 + r;
+        return;
+    }
     case TOKU_SNAPPY_METHOD: {
         snappy::RawCompress((const char *) source, sourceLen, (char *) dest + 1, destLen);
         dest[0] = TOKU_SNAPPY_METHOD;
@@ -306,7 +316,8 @@ void toku_decompress (Bytef       *dest,   uLongf destLen,
         lazy_assert(r == Z_OK);
         return;
     }
-    case TOKU_LZ4_METHOD: {
+    case TOKU_LZ4_METHOD:
+    case TOKU_LZ4HC_METHOD: {
         int r = LZ4_decompress_safe((const char *) source + 1, (char *) dest, sourceLen - 1, destLen);
         lazy_assert(r >= 0);
         lazy_assert(r <= (int) destLen);
