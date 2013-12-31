@@ -2073,9 +2073,7 @@ maybe_pin_pair(
     if (retval == TOKUDB_TRY_AGAIN) {
         unpin_pair(p, (lock_type == PL_READ));
     }    
-    else {
-        pair_touch(p);
-    }
+    pair_touch(p);
     pair_unlock(p);
     return retval;
 }
