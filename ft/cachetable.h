@@ -424,7 +424,7 @@ int toku_cachetable_maybe_get_and_pin (CACHEFILE, CACHEKEY, uint32_t /*fullhash*
 int toku_cachetable_maybe_get_and_pin_clean (CACHEFILE, CACHEKEY, uint32_t /*fullhash*/, pair_lock_type, void**);
 // Effect: Like maybe get and pin, but may pin a clean pair.
 
-int toku_cachetable_unpin(CACHEFILE, PAIR, enum cachetable_dirty dirty, PAIR_ATTR size);
+int toku_cachetable_unpin(CACHEFILE, PAIR, enum cachetable_dirty dirty, PAIR_ATTR size, bool write_me);
 // Effect: Unpin a memory object
 // Modifies: If the memory object is in the cachetable, then OR the dirty flag,
 // update the size, and release the read lock on the memory object.

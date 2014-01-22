@@ -1093,8 +1093,11 @@ ft_split_child(
         toku_ft_flush_some_child(h, nodeb, fa);
     }
     else {
-        toku_unpin_ftnode(h, nodea);
-        toku_unpin_ftnode(h, nodeb);
+        // If we did an uneven split, write out the heavier child immediately.
+        // - For rightmost serial insertions, 'nodea' has data and nodeb is about to receive more inserts, so write out a.
+        // - For leftmot serial insertions, 'nodeb' has data and nodea is about to receive more inserts, so write out b.
+        toku_unpin_ftnode(h, nodea, split_mode == SPLIT_LEFT_HEAVY ? true : false);
+        toku_unpin_ftnode(h, nodeb, split_mode == SPLIT_RIGHT_HEAVY ? true : false);
     }
 }
 
@@ -1679,7 +1682,7 @@ void toku_ft_flush_some_child(FT ft, FTNODE parent, struct flusher_advice *fa)
             toku_ft_flush_some_child(ft, child, fa);
         }
         else {
-            toku_unpin_ftnode(ft, child);
+            toku_unpin_ftnode(ft, child, child->height == 0);
         }
     }
     else if (child_re == RE_FISSIBLE) {
@@ -1835,7 +1838,7 @@ toku_ftnode_cleaner_callback(
         ct_flusher_advice_init(&fa, &fste, h->h->nodesize);
         toku_ft_flush_some_child(h, node, &fa);
     } else {
-        toku_unpin_ftnode(h, node);
+        toku_unpin_ftnode(h, node, node->height == 0);
     }
     return 0;
 }
@@ -1895,7 +1898,7 @@ static void flush_node_fun(void *fe_v)
             toku_ft_flush_some_child(fe->h, fe->node, &fa);
         }
         else {
-            toku_unpin_ftnode(fe->h,fe->node);
+            toku_unpin_ftnode(fe->h, fe->node, fe->node->height == 0);
         }
     }
     else {

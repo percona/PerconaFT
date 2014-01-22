@@ -187,7 +187,7 @@ int toku_maybe_pin_ftnode_clean(FT ft, BLOCKNUM blocknum, uint32_t fullhash, pai
 /**
  * Effect: Unpin an ftnode.
  */
-void toku_unpin_ftnode(FT h, FTNODE node);
+void toku_unpin_ftnode(FT h, FTNODE node, bool write_me = false);
 void toku_unpin_ftnode_read_only(FT ft, FTNODE node);
 
 #endif

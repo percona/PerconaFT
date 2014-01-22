@@ -234,7 +234,8 @@ void toku_rollback_log_unpin(TOKUTXN txn, ROLLBACK_LOG_NODE log) {
         cf, 
         log->ct_pair,
         (enum cachetable_dirty)log->dirty, 
-        rollback_memory_size(log)
+        rollback_memory_size(log),
+        false
         );
     assert(r == 0);
 }

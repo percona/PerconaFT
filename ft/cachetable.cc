@@ -918,7 +918,7 @@ static void cachetable_put_internal(
 // for performance or corrrectness
 // Pair is pinned on entry
 static void
-clone_pair(evictor* ev, PAIR p) {
+clone_pair(evictor* ev, PAIR p, bool checkpoint_pending) {
     PAIR_ATTR old_attr = p->attr;
     PAIR_ATTR new_attr;
     long clone_size = 0;
@@ -932,7 +932,7 @@ clone_pair(evictor* ev, PAIR p) {
         &p->cloned_value_data,
         &clone_size,
         &new_attr,
-        true,
+        checkpoint_pending,
         p->write_extraargs
         );
     
@@ -1000,7 +1000,7 @@ write_locked_pair_for_checkpoint(CACHETABLE ct, PAIR p, bool checkpoint_pending)
             nb_mutex_lock(&p->disk_nb_mutex, p->mutex);
             pair_unlock(p);
             assert(!p->cloned_value_data);
-            clone_pair(&ct->ev, p);
+            clone_pair(&ct->ev, p, true);
             assert(p->cloned_value_data);
             // place it on the background thread and continue
             // responsibility of writer thread to release disk_nb_mutex
@@ -1038,7 +1038,7 @@ write_pair_for_checkpoint_thread (evictor* ev, PAIR p)
         if (p->clone_callback) {
             nb_mutex_lock(&p->disk_nb_mutex, p->mutex);
             assert(!p->cloned_value_data);
-            clone_pair(ev, p);
+            clone_pair(ev, p, true);
             assert(p->cloned_value_data);
         }
         else {
@@ -1482,8 +1482,6 @@ static bool try_pin_pair(
     bool partial_fetch_required = pf_req_callback(p->value_data,read_extraargs);
     
     if (partial_fetch_required) {    
-        toku::context pf_ctx(CTX_PARTIAL_FETCH);
-
         if (ct->ev.should_client_thread_sleep() && !already_slept) {
             pair_lock(p);
             unpin_pair(p, (lock_type == PL_READ));
@@ -1873,6 +1871,37 @@ int toku_cachetable_maybe_get_and_pin_clean (CACHEFILE cachefile, CACHEKEY key, 
     return r;
 }
 
+// on entry:
+// - pair is cloned
+// - disk_nb_mutex is held
+// - background job has been registered with the pair's cachefile
+// on exit:
+// - disk_nb_mutex is released
+// - background job is finished
+static void write_cloned_pair(void* extra) {
+    PAIR p = reinterpret_cast<PAIR>(extra);
+    CACHEFILE cf = p->cachefile;
+    invariant(p->cloned_value_data != NULL);
+
+    // write out the pair 
+    PAIR_ATTR attr;
+    cachetable_only_write_locked_data(
+        p->ev,
+        p,
+        false, // for_checkpoint
+        &attr,
+        true //is_clone
+        );
+
+    // unlock the disk mutex
+    pair_lock(p);
+    nb_mutex_unlock(&p->disk_nb_mutex);
+    pair_unlock(p);
+
+    bjm_remove_background_job(cf->bjm);
+}
+
+//
 //
 // internal function to unpin a PAIR.
 // As of Clayface, this is may be called in two ways:
@@ -1889,7 +1918,8 @@ cachetable_unpin_internal(
     PAIR p,
     enum cachetable_dirty dirty, 
     PAIR_ATTR attr,
-    bool flush
+    bool flush,
+    bool write_me
     )
 {
     invariant_notnull(p);
@@ -1907,9 +1937,51 @@ cachetable_unpin_internal(
     if (attr.is_valid) {
         p->attr = attr;
     }
+
+    // Clone and write out dirty leaf nodes immediately if we can do it without waiting.
     bool read_lock_grabbed = p->value_rwlock.readers() != 0;
-    unpin_pair(p, read_lock_grabbed);
-    pair_unlock(p);
+    if (write_me && nb_mutex_writers(&p->disk_nb_mutex) == 0) {
+        // Should only be writing out dirty nodes with a write lock held
+        invariant(!read_lock_grabbed);
+        invariant(p->dirty == CACHETABLE_DIRTY);
+
+        // Take the disk mutex, which we can do immediately because there are no users.
+        nb_mutex_lock(&p->disk_nb_mutex, p->mutex);
+        bool checkpoint_pending = get_checkpoint_pending(p, &ct->list);
+        pair_unlock(p);
+        if (checkpoint_pending) {
+            ct->cp.add_background_job();
+            clone_pair(p->ev, p, checkpoint_pending);
+
+            pair_lock(p);
+            unpin_pair(p, read_lock_grabbed);
+            pair_unlock(p);
+
+            // Will eventually release the disk mutex
+            checkpoint_cloned_pair_on_writer_thread(ct, p);
+        } else {
+            int r = bjm_add_background_job(p->cachefile->bjm);
+            if (r == 0) {
+                clone_pair(p->ev, p, checkpoint_pending);
+
+                pair_lock(p);
+                unpin_pair(p, read_lock_grabbed);
+                pair_unlock(p);
+
+                // Will eventually release the disk mutex and complete the background job
+                toku_kibbutz_enq(ct->ct_kibbutz, write_cloned_pair, p);
+            } else {
+                // The cachefile is currently closing. Drop the disk mutex and do nothing.
+                pair_lock(p);
+                unpin_pair(p, read_lock_grabbed);
+                nb_mutex_unlock(&p->disk_nb_mutex);
+                pair_unlock(p);
+            }
+        }
+    } else {
+        unpin_pair(p, read_lock_grabbed);
+        pair_unlock(p);
+    }
     
     if (attr.is_valid) {
         if (new_attr.size > old_attr.size) {
@@ -1930,11 +2002,11 @@ cachetable_unpin_internal(
     return 0;
 }
 
-int toku_cachetable_unpin(CACHEFILE cachefile, PAIR p, enum cachetable_dirty dirty, PAIR_ATTR attr) {
-    return cachetable_unpin_internal(cachefile, p, dirty, attr, true);
+int toku_cachetable_unpin(CACHEFILE cachefile, PAIR p, enum cachetable_dirty dirty, PAIR_ATTR attr, bool write_me) {
+    return cachetable_unpin_internal(cachefile, p, dirty, attr, true, write_me);
 }
 int toku_cachetable_unpin_ct_prelocked_no_flush(CACHEFILE cachefile, PAIR p, enum cachetable_dirty dirty, PAIR_ATTR attr) {
-    return cachetable_unpin_internal(cachefile, p, dirty, attr, false);
+    return cachetable_unpin_internal(cachefile, p, dirty, attr, false, false);
 }
 
 static void
@@ -2550,7 +2622,7 @@ static PAIR test_get_pair(CACHEFILE cachefile, CACHEKEY key, uint32_t fullhash, 
 int toku_test_cachetable_unpin(CACHEFILE cachefile, CACHEKEY key, uint32_t fullhash, enum cachetable_dirty dirty, PAIR_ATTR attr) {
     // By default we don't have the lock
     PAIR p = test_get_pair(cachefile, key, fullhash, false);
-    return toku_cachetable_unpin(cachefile, p, dirty, attr); // assume read lock is not grabbed, and that it is a write lock
+    return toku_cachetable_unpin(cachefile, p, dirty, attr, false); // assume read lock is not grabbed, and that it is a write lock
 }
 
 //test-only wrapper

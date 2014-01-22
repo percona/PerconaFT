@@ -357,6 +357,7 @@ extern bool garbage_collection_debug;
 // This is a poor place to put global options like these.
 void toku_ft_set_direct_io(bool direct_io_on);
 void toku_ft_set_compress_buffers_before_eviction(bool compress_buffers);
+void toku_ft_set_write_leaf_on_flush(bool write_on_flush);
 
 void toku_note_deserialized_basement_node(bool fixed_key_size);
 

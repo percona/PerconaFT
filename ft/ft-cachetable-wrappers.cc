@@ -384,11 +384,19 @@ cleanup:
     return r;
 }
 
-void toku_unpin_ftnode(FT ft, FTNODE node) {
+static bool ft_write_leaf_on_flush = false;
+
+void toku_ft_set_write_leaf_on_flush(bool write_on_flush) {
+    ft_write_leaf_on_flush = write_on_flush;
+}
+
+void toku_unpin_ftnode(FT ft, FTNODE node, bool write_me) {
     int r = toku_cachetable_unpin(ft->cf,
                                   node->ct_pair,
                                   static_cast<enum cachetable_dirty>(node->dirty),
-                                  make_ftnode_pair_attr(node));
+                                  make_ftnode_pair_attr(node),
+                                  // Writing out dirty leaf nodes on unpin may be explicitly disabled here.
+                                  ft_write_leaf_on_flush ? write_me : false);
     invariant_zero(r);
 }
 
@@ -399,7 +407,8 @@ toku_unpin_ftnode_read_only(FT ft, FTNODE node)
         ft->cf,
         node->ct_pair,
         (enum cachetable_dirty) node->dirty,
-        make_invalid_pair_attr()
+        make_invalid_pair_attr(),
+        false
         );
     assert(r==0);
 }

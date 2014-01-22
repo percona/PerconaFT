@@ -6,6 +6,7 @@
    db_version;
    db_env_set_direct_io;
    db_env_set_compress_buffers_before_eviction;
+   db_env_set_write_leaf_on_flush;
    db_env_set_func_fsync;
    db_env_set_func_malloc;
    db_env_set_func_realloc;
