@@ -326,7 +326,7 @@ static const int max_cpu=128;
 struct per_cpu_count_s per_cpu_count[max_cpu];
 static void* do_per_cpu_increments(void *v) {
     for (unsigned long i=0; i<N; i++) {
-        int cpu = sched_getcpu();
+        int cpu = sched_getcpu()%max_cpu;
         assert(cpu>=0 && cpu<max_cpu);
         toku_sync_fetch_and_add(&per_cpu_count[cpu].per_cpu_count, 1);
     }
@@ -334,11 +334,11 @@ static void* do_per_cpu_increments(void *v) {
 }
 
 static void* do_per_cpu_increments_with_fewer_getcpu_calls(void *v) {
-    int cpu = sched_getcpu();
+    int cpu = sched_getcpu()%max_cpu;
     assert(cpu>=0 && cpu<max_cpu);
     for (unsigned long i=0; i<N; i++) {
         if (i%1024==0) {
-            cpu = sched_getcpu();
+            cpu = sched_getcpu()%max_cpu;
             assert(cpu>=0 && cpu<max_cpu);
         }
         toku_sync_fetch_and_add(&per_cpu_count[cpu].per_cpu_count, 1);

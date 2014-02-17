@@ -482,10 +482,10 @@ void destroy_partitioned_counter(PARTITIONED_COUNTER counter) {
 void increment_partitioned_counter(PARTITIONED_COUNTER counter, uint64_t delta) {
     struct partitioned_counter_thread_state *ts = &pc_thread_state;
     if ((ts->call_number_on_this_thread++)%32 == 0) {
-        ts->cpunum = sched_getcpu();
+        ts->cpunum = sched_getcpu()%max_cpu;
         //printf("c=%lu cpu=%d\n", call_number_on_this_thread, cpunum);
     }
-    (void) toku_sync_fetch_and_add(&counter->counts[ts->cpunum].c, delta);
+    toku_sync_fetch_and_add(&counter->counts[ts->cpunum].c, delta);
 }
 uint64_t read_partitioned_counter(PARTITIONED_COUNTER counter) {
     uint64_t sum=0;
