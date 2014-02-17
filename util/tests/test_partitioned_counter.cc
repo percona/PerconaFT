@@ -251,7 +251,7 @@ static void* new_doit (void* v) {
 
 static int oldcounter=0;
 
-static void* old_doit (void* v) {
+static void* increment_global_n_times_with_atomic_plusplus (void* v) {
     for (int i=0; i<N; i++) {
 	(void)toku_sync_fetch_and_add(&oldcounter, 1);
 	//if (i%0x1000 == 0) sched_yield();
@@ -261,7 +261,7 @@ static void* old_doit (void* v) {
 
 static volatile int oldcounter_nonatomic=0;
 
-static void* old_doit_nonatomic (void* v) {
+static void* increment_global_n_times_no_locks (void* v) {
     for (int i=0; i<N; i++) {
 	oldcounter_nonatomic++;
 	//if (i%0x1000 == 0) sched_yield();
@@ -304,7 +304,7 @@ static void timeit (const char *description, void* (*f)(void*)) {
 	pt_join(threads[i], NULL);
     }
     gettimeofday(&end, 0);
-    printf("%-10s Time=%.6fs (%7.3fns per increment)\n", description, tdiff(&start, &end), (1e9*tdiff(&start, &end)/T)/N);
+    printf("%-24s Time=%.6fs (%7.3fns per increment)\n", description, tdiff(&start, &end), (1e9*tdiff(&start, &end)/T)/N);
 }
 
 // Do a measurement where it really is only a pointer dereference to increment the variable, which is thread local.
@@ -315,6 +315,23 @@ static void* tl_doit_ptr (void *v) {
     }
     return v;
 }
+
+
+// A per-cpu structure for memory.
+struct per_cpu_count_s {
+  unsigned long per_cpu_count __attribute__((aligned(64)));
+};
+static const int max_cpu=128;
+struct per_cpu_count_s per_cpu_count[max_cpu];
+static void* do_per_cpu_increments(void *v) {
+  for (unsigned long i=0; i<N; i++) {
+      int cpu = sched_getcpu();
+      assert(cpu>=0 && cpu<max_cpu);
+      toku_sync_fetch_and_add(&per_cpu_count[cpu].per_cpu_count, 1);
+  }
+  return v;
+}
+
 
 
 static void timeit_with_thread_local_pointer (const char *description, void* (*f)(void*)) {
@@ -330,7 +347,7 @@ static void timeit_with_thread_local_pointer (const char *description, void* (*f
 	pt_join(threads[i], &values[i].values[0]);
     }
     gettimeofday(&end, 0);
-    printf("%-10s Time=%.6fs (%7.3fns per increment)\n", description, tdiff(&start, &end), (1e9*tdiff(&start, &end)/T)/N);
+    printf("%-24s Time=%.6fs (%7.3fns per increment)\n", description, tdiff(&start, &end), (1e9*tdiff(&start, &end)/T)/N);
 }
 
 static int verboseness_cmdarg=0;
@@ -353,14 +370,15 @@ static void parse_args (int argc, const char *argv[]) {
 static void do_timeit (void) {
     { int r = pthread_key_create(&counter_key, destroy_counter); assert(r==0); } 
     printf("%d threads\n%d increments per thread\n", T, N);
-    timeit("++",         old_doit_nonatomic);
-    timeit("atomic++",   old_doit);
-    timeit("fast",       new_doit);
-    timeit("puretl",     tl_doit);
+    timeit("global++ nolocks",    increment_global_n_times_no_locks);
+    timeit("global atomic++",     increment_global_n_times_with_atomic_plusplus);
+    timeit("fast",         new_doit);
+    timeit("puretl",       tl_doit);
     timeit_with_thread_local_pointer("puretl-ptr", tl_doit_ptr);
     pc = create_partitioned_counter();
-    timeit("pc",       pc_doit);
+    timeit("pc",               pc_doit);
     destroy_partitioned_counter(pc);
+    timeit("per-cpu",          do_per_cpu_increments);
 }
 
 struct test_arguments {
