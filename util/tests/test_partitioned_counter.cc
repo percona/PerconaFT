@@ -240,6 +240,7 @@ static void *pc_doit (void *v) {
     return v;
 }
 
+// This uses the fastest version that Bradley could make, statically allocating the counter (so there's only one).
 static void* new_doit (void* v) {
     for (int i=0; i<N; i++) {
 	increment();
@@ -324,11 +325,24 @@ struct per_cpu_count_s {
 static const int max_cpu=128;
 struct per_cpu_count_s per_cpu_count[max_cpu];
 static void* do_per_cpu_increments(void *v) {
-  for (unsigned long i=0; i<N; i++) {
-      int cpu = sched_getcpu();
-      assert(cpu>=0 && cpu<max_cpu);
-      toku_sync_fetch_and_add(&per_cpu_count[cpu].per_cpu_count, 1);
-  }
+    for (unsigned long i=0; i<N; i++) {
+        int cpu = sched_getcpu();
+        assert(cpu>=0 && cpu<max_cpu);
+        toku_sync_fetch_and_add(&per_cpu_count[cpu].per_cpu_count, 1);
+    }
+    return v;
+}
+
+static void* do_per_cpu_increments_with_fewer_getcpu_calls(void *v) {
+    int cpu = sched_getcpu();
+    assert(cpu>=0 && cpu<max_cpu);
+    for (unsigned long i=0; i<N; i++) {
+        if (i%1024==0) {
+            cpu = sched_getcpu();
+            assert(cpu>=0 && cpu<max_cpu);
+        }
+        toku_sync_fetch_and_add(&per_cpu_count[cpu].per_cpu_count, 1);
+    }
   return v;
 }
 
@@ -370,15 +384,16 @@ static void parse_args (int argc, const char *argv[]) {
 static void do_timeit (void) {
     { int r = pthread_key_create(&counter_key, destroy_counter); assert(r==0); } 
     printf("%d threads\n%d increments per thread\n", T, N);
-    timeit("global++ nolocks",    increment_global_n_times_no_locks);
-    timeit("global atomic++",     increment_global_n_times_with_atomic_plusplus);
-    timeit("fast",         new_doit);
-    timeit("puretl",       tl_doit);
+    timeit("global++ nolocks",      increment_global_n_times_no_locks);
+    timeit("global atomic++",       increment_global_n_times_with_atomic_plusplus);
+    timeit("fast",                  new_doit);
+    timeit("puretl",                tl_doit);
     timeit_with_thread_local_pointer("puretl-ptr", tl_doit_ptr);
     pc = create_partitioned_counter();
-    timeit("pc",               pc_doit);
+    timeit("pc",                    pc_doit);
     destroy_partitioned_counter(pc);
-    timeit("per-cpu",          do_per_cpu_increments);
+    timeit("per-cpu",               do_per_cpu_increments);
+    timeit("per-cpu fewer-getcpus", do_per_cpu_increments_with_fewer_getcpu_calls);
 }
 
 struct test_arguments {
