@@ -88,12 +88,17 @@ PATENT RIGHTS GRANT:
 
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
+
+#include "memory.h"
+#include "partitioned_counter.h"
+
+#define USE_PER_CPU_COUNTER
+#ifndef USE_PER_CPU_COUNTER
+
 #include <toku_race_tools.h>
 #include <sys/types.h>
 #include <pthread.h>
 
-#include "memory.h"
-#include "partitioned_counter.h"
 #include "doubly_linked_list.h"
 #include "growable_array.h"
 #include <portability/toku_atomic.h>
@@ -453,3 +458,43 @@ void partitioned_counters_destroy(void)
 }
 
 #endif // __APPLE__
+#else // user per_cpu counter
+
+#include <sched.h>
+
+static const int max_cpu = 128;
+struct partitioned_counter {
+    struct c {
+        uint64_t c __attribute((aligned(64))); // need to pad to avoid false sharing.
+    } counts[max_cpu];
+};
+static __thread struct partitioned_counter_thread_state {
+    int cpunum __attribute((aligned(64)));
+    uint64_t call_number_on_this_thread;
+} pc_thread_state = {0,0};
+PARTITIONED_COUNTER create_partitioned_counter(void) {
+    PARTITIONED_COUNTER XCALLOC(counter);
+    return counter;
+}
+void destroy_partitioned_counter(PARTITIONED_COUNTER counter) {
+    toku_free(counter);
+}
+void increment_partitioned_counter(PARTITIONED_COUNTER counter, uint64_t delta) {
+    struct partitioned_counter_thread_state *ts = &pc_thread_state;
+    if ((ts->call_number_on_this_thread++)%32 == 0) {
+        ts->cpunum = sched_getcpu();
+        //printf("c=%lu cpu=%d\n", call_number_on_this_thread, cpunum);
+    }
+    (void) toku_sync_fetch_and_add(&counter->counts[ts->cpunum].c, delta);
+}
+uint64_t read_partitioned_counter(PARTITIONED_COUNTER counter) {
+    uint64_t sum=0;
+    for (int i=0; i<max_cpu; i++) {
+        sum+=counter->counts[i].c;
+    }
+    return sum;
+}
+void partitioned_counters_init(void) {}
+void partitioned_counters_destroy(void) {}
+
+#endif
