@@ -482,7 +482,14 @@ void destroy_partitioned_counter(PARTITIONED_COUNTER counter) {
 void increment_partitioned_counter(PARTITIONED_COUNTER counter, uint64_t delta) {
     struct partitioned_counter_thread_state *ts = &pc_thread_state;
     if ((ts->call_number_on_this_thread++)%32 == 0) {
-        ts->cpunum = sched_getcpu()%max_cpu;
+        int cpunum = sched_getcpu();
+        if (cpunum>=0) {
+            ts->cpunum = cpunum%max_cpu;
+        } else {
+            // If cpunum doesn't work, at least choose something somewhat random.
+            // Tests indicating that it's better than hitting on the same global address.
+            ts->cpunum = ts->call_number_on_this_thread%max_cpu;
+        }
         //printf("c=%lu cpu=%d\n", call_number_on_this_thread, cpunum);
     }
     toku_sync_fetch_and_add(&counter->counts[ts->cpunum].c, delta);
