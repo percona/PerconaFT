@@ -1720,6 +1720,18 @@ env_set_generate_row_callback_for_del(DB_ENV *env, generate_row_for_del_func gen
     }
     return r;
 }
+
+static int
+env_set_generate_row_callback_for_update(DB_ENV *env, generate_row_for_update_func generate_row_for_update) {
+    HANDLE_PANICKED_ENV(env);
+    int r = 0;
+    if (env_opened(env)) r = EINVAL;
+    else {
+        env->i->generate_row_for_update= generate_row_for_update;
+    }
+    return r;
+}
+
 static int
 env_set_redzone(DB_ENV *env, int redzone) {
     HANDLE_PANICKED_ENV(env);
@@ -2489,6 +2501,7 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     USENV(put_multiple);
     USENV(del_multiple);
     USENV(update_multiple);
+    USENV(update_multiple_with_message);
     // unlocked methods
     USENV(open);
     USENV(close);
@@ -2496,6 +2509,7 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     USENV(set_update);
     USENV(set_generate_row_callback_for_put);
     USENV(set_generate_row_callback_for_del);
+    USENV(set_generate_row_callback_for_update);
     USENV(set_lg_bsize);
     USENV(set_lg_dir);
     USENV(set_lg_max);

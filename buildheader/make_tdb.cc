@@ -446,6 +446,13 @@ static void print_db_env_struct (void) {
                              "                                               uint32_t num_dbs, DB **db_array, uint32_t *flags_array,\n"
                              "                                               uint32_t num_keys, DBT_ARRAY *keys,\n"
                              "                                               uint32_t num_vals, DBT_ARRAY *vals) /* update multiple DBs */",
+                             "int (*set_generate_row_callback_for_update) (DB_ENV *env, generate_row_for_update_func generate_row_for_update)",
+                             "int (*update_multiple_with_message)         (DB_ENV *env, DB *src_db, DB_TXN *txn,\n"
+                             "                                               DBT *src_key, DBT *old_src_val,\n"
+                             "                                               DBT *new_src_val, DBT *update_dbt,\n"
+                             "                                               uint32_t num_dbs, DB **db_array, uint32_t *flags_array,\n"
+                             "                                               uint32_t num_keys, DBT_ARRAY *keys,\n"
+                             "                                               uint32_t num_vals, DBT_ARRAY *vals) /* update multiple DBs using an update message */",
                              "int (*get_redzone)                          (DB_ENV *env, int *redzone) /* get the redzone limit */",
                              "int (*set_redzone)                          (DB_ENV *env, int redzone) /* set the redzone limit in percent of total space */",
                              "int (*set_lk_max_memory)                    (DB_ENV *env, uint64_t max)",
@@ -769,8 +776,9 @@ int main (int argc, char *const argv[] __attribute__((__unused__))) {
     printf("    uint32_t size;\n");
     printf("    DBT *dbts;\n");
     printf("} DBT_ARRAY;\n\n");
-    printf("typedef int (*generate_row_for_put_func)(DB *dest_db, DB *src_db, DBT_ARRAY * dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_val);\n");
-    printf("typedef int (*generate_row_for_del_func)(DB *dest_db, DB *src_db, DBT_ARRAY * dest_keys, const DBT *src_key, const DBT *src_val);\n");
+    printf("typedef int (*generate_row_for_put_func)(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_val);\n");
+    printf("typedef int (*generate_row_for_del_func)(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, const DBT *src_key, const DBT *src_val);\n");
+    printf("typedef int (*generate_row_for_update_func)(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_update);\n");
     printf("DBT_ARRAY * toku_dbt_array_init(DBT_ARRAY *dbts, uint32_t size) %s;\n", VISIBLE);
     printf("void toku_dbt_array_destroy(DBT_ARRAY *dbts) %s;\n", VISIBLE);
     printf("void toku_dbt_array_destroy_shallow(DBT_ARRAY *dbts) %s;\n", VISIBLE);

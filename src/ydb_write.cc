@@ -812,15 +812,55 @@ static void swap_dbts(DBT *a, DBT *b) {
     *b = c;
 }
 
+static int
+do_update_multiple(DB_TXN *txn, uint32_t num_dbs, DB *db_array[], DBT_ARRAY keys[], const DBT *update_dbt, DB *src_db, const DBT *src_key, bool indexer_shortcut, bool do_log) {
+    TOKUTXN ttxn = db_txn_struct_i(txn)->tokutxn;
+    for (uint32_t which_db = 0; which_db < num_dbs; which_db++) {
+        DB *db = db_array[which_db];
+
+        paranoid_invariant(keys[which_db].size <= keys[which_db].capacity);
+
+        if (keys[which_db].size > 0) {
+            bool do_update = true;
+            DB_INDEXER *indexer = toku_db_get_indexer(db);
+            if (indexer && !indexer_shortcut) { // if this db is the index under construction
+                DB *indexer_src_db = toku_indexer_get_src_db(indexer);
+                invariant(indexer_src_db != NULL);
+                const DBT *indexer_src_key;
+                if (src_db == indexer_src_db)
+                    indexer_src_key = src_key;
+                else {
+                    uint32_t which_src_db = lookup_src_db(num_dbs, db_array, indexer_src_db);
+                    invariant(which_src_db < num_dbs);
+                    // The indexer src db must have exactly one item or we don't know how to continue.
+                    invariant(keys[which_src_db].size == 1);
+                    indexer_src_key = &keys[which_src_db].dbts[0];
+                }
+                do_update = toku_indexer_should_insert_key(indexer, indexer_src_key);
+                toku_indexer_update_estimate(indexer);
+            }
+            if (do_update) {
+                for (uint32_t i = 0; i < keys[which_db].size; i++) {
+                    toku_ft_maybe_update(db->i->ft_handle,
+                                         &keys[which_db].dbts[i], update_dbt,
+                                         ttxn, false, ZERO_LSN, do_log);
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 //TODO: 26 Add comment in API description about.. new val.size being generated as '0' REQUIRES old_val.size == 0
 //
-int
-env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
-                    DBT *old_src_key, DBT *old_src_data,
-                    DBT *new_src_key, DBT *new_src_data,
-                    uint32_t num_dbs, DB **db_array, uint32_t* flags_array,
-                    uint32_t num_keys, DBT_ARRAY keys[],
-                    uint32_t num_vals, DBT_ARRAY vals[]) {
+static int
+env_update_multiple_internal(DB_ENV *env, DB *src_db, DB_TXN *txn,
+                             DBT *old_src_key, DBT *old_src_data,
+                             DBT *new_src_key, DBT *new_src_data,
+                             DBT *update_dbt, // if non-null, use as an update message to the src_key
+                             uint32_t num_dbs, DB **db_array, uint32_t* flags_array,
+                             uint32_t num_keys, DBT_ARRAY keys[],
+                             uint32_t num_vals, DBT_ARRAY vals[]) {
     int r = 0;
 
     HANDLE_PANICKED_ENV(env);
@@ -828,16 +868,25 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
     bool indexer_shortcut = false;
     bool indexer_lock_taken = false;
     bool src_same = false;
+    bool logged_put_multiple = false;
     HANDLE_READ_ONLY_TXN(txn);
     DBT_ARRAY old_key_arrays[num_dbs];
     DBT_ARRAY new_key_arrays[num_dbs];
     DBT_ARRAY new_val_arrays[num_dbs];
+
+    // if an update dbt is provided and it's smaller than the new val, send an update
+    // message (which is less expensive) instead of an overwrite insert.
+    bool use_update_dbt = update_dbt != nullptr && update_dbt->size < new_src_data->size;
 
     if (!txn) {
         r = EINVAL;
         goto cleanup;
     }
     if (!env->i->generate_row_for_put) {
+        r = EINVAL;
+        goto cleanup;
+    } 
+    if (use_update_dbt && !env->i->generate_row_for_update) {
         r = EINVAL;
         goto cleanup;
     }
@@ -863,6 +912,10 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
         FT_HANDLE put_fts[num_dbs];
         DBT_ARRAY put_key_arrays[num_dbs];
         DBT_ARRAY put_val_arrays[num_dbs];
+
+        uint32_t n_update_dbs = 0;
+        DB *update_dbs[num_dbs];
+        DBT_ARRAY update_key_arrays[num_dbs];
 
         uint32_t lock_flags[num_dbs];
         uint32_t remaining_flags[num_dbs];
@@ -914,6 +967,7 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
             uint32_t num_skip = 0;
             uint32_t num_del = 0;
             uint32_t num_put = 0;
+            uint32_t num_update = 0;
             // Next index in old_keys to look at
             uint32_t idx_old = 0;
             // Next index in new_keys/new_vals to look at
@@ -940,6 +994,8 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
                 bool do_del = false;
                 bool do_put = false;
                 bool do_skip = false;
+                bool do_update = false;
+
                 if (cmp > 0) { // New key does not exist in old array
                     //Check overwrite constraints only in the case where the keys are not equal
                     //(new key is alone/not equal to old key)
@@ -967,10 +1023,20 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
                     }
                     do_del = true;
                 } else {
-                    do_put = curr_new_val->size > 0 ||
-                                curr_old_key->size != curr_new_key->size ||
-                                memcmp(curr_old_key->data, curr_new_key->data, curr_old_key->size);
-                    do_skip = !do_put;
+                    // the key did not change, according to the comparison function
+                    //
+                    // we may need to update the val. we assume that if a new val is provided, it is
+                    // different than the existing value, so we need to update it.
+                    bool val_needs_update = curr_new_val->size > 0 ||
+                                                curr_old_key->size != curr_new_key->size ||
+                                                memcmp(curr_old_key->data, curr_new_key->data, curr_old_key->size);
+                    if (!val_needs_update) {
+                        do_skip = true;
+                    } else if (use_update_dbt) {
+                        do_update = true;
+                    } else {
+                        do_put = true;
+                    }
                 }
                 // Check put size constraints and insert new key only if keys are unequal (byte for byte) or there is a val
                 // We assume any val.size > 0 as unequal (saves on generating old val)
@@ -994,6 +1060,7 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
                     paranoid_invariant(cmp == 0);
                     paranoid_invariant(!do_put);
                     paranoid_invariant(!do_del);
+                    paranoid_invariant(!do_update);
 
                     num_skip++;
                     idx_old++;
@@ -1002,6 +1069,7 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
                     paranoid_invariant(cmp >= 0);
                     paranoid_invariant(!do_skip);
                     paranoid_invariant(!do_del);
+                    paranoid_invariant(!do_update);
 
                     num_put++;
                     if (idx_new != idx_new_used) {
@@ -1013,11 +1081,11 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
                     if (cmp == 0) {
                         idx_old++;
                     }
-                } else {
-                    invariant(do_del);
+                } else if (do_del) {
                     paranoid_invariant(cmp < 0);
                     paranoid_invariant(!do_skip);
                     paranoid_invariant(!do_put);
+                    paranoid_invariant(!do_update);
 
                     num_del++;
                     if (idx_old != idx_old_used) {
@@ -1025,6 +1093,22 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
                     }
                     idx_old++;
                     idx_old_used++;
+                } else {
+                    paranoid_invariant(cmp == 0);
+                    paranoid_invariant(do_update);
+
+                    num_update++;
+                    if (idx_old != idx_old_used) {
+                        swap_dbts(&old_keys.dbts[idx_old_used], &old_keys.dbts[idx_old]);
+                    }
+                    idx_old++;
+                    idx_old_used++;
+                    if (idx_new != idx_new_used) {
+                        swap_dbts(&new_keys.dbts[idx_new_used], &new_keys.dbts[idx_new]);
+                        swap_dbts(&new_vals.dbts[idx_new_used], &new_vals.dbts[idx_new]);
+                    }
+                    idx_new++;
+                    idx_new_used++;
                 }
             }
             old_keys.size = idx_old_used;
@@ -1046,6 +1130,11 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
                 put_key_arrays[n_put_dbs] = new_keys;
                 put_val_arrays[n_put_dbs] = new_vals;
                 n_put_dbs++;
+            }
+            if (num_update > 0) {
+                update_dbs[n_update_dbs] = db;
+                update_key_arrays[n_update_dbs] = new_keys;
+                n_update_dbs++;
             }
         }
         if (indexer) {
@@ -1075,7 +1164,16 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
             // recovery so we don't end up losing data.
             // So unlike env->put_multiple, we ONLY log a 'put_multiple' log entry.
             log_put_multiple(txn, src_db, new_src_key, new_src_data, n_put_dbs, put_fts);
+            logged_put_multiple = true;
             r = do_put_multiple(txn, n_put_dbs, put_dbs, put_key_arrays, put_val_arrays, src_db, new_src_key, indexer_shortcut);
+        }
+
+        if (r == 0 && n_update_dbs > 0) {
+            // If we logged put multiple, then that is sufficient for recovery, since it includes
+            // the full pre-image and can restore all of the keys. Otherwise, we'll log the
+            // individual update operations.
+            bool do_log = !logged_put_multiple;
+            r = do_update_multiple(txn, n_update_dbs, update_dbs, update_key_arrays, update_dbt, src_db, new_src_key, indexer_shortcut, do_log);
         }
         toku_multi_operation_client_unlock();
         if (indexer_lock_taken) {
@@ -1089,6 +1187,43 @@ cleanup:
     else
         STATUS_VALUE(YDB_LAYER_NUM_MULTI_UPDATES_FAIL) += num_dbs;  // accountability 
     return r;
+}
+
+int
+env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
+                    DBT *old_src_key, DBT *old_src_data,
+                    DBT *new_src_key, DBT *new_src_data,
+                    uint32_t num_dbs, DB **db_array, uint32_t* flags_array,
+                    uint32_t num_keys, DBT_ARRAY *keys,
+                    uint32_t num_vals, DBT_ARRAY *vals) {
+    return env_update_multiple_internal(env, src_db, txn,
+                                        old_src_key, old_src_data,
+                                        new_src_key, new_src_data,
+                                        // legacy:
+                                        //   - do not send an update message to the src_key
+                                        //   - overwrite with src_val instead
+                                        nullptr,
+                                        num_dbs, db_array, flags_array,
+                                        num_keys, keys, num_vals, vals);
+}
+
+int
+env_update_multiple_with_message(DB_ENV *env, DB *src_db, DB_TXN *txn,
+                                 DBT *src_key, DBT *old_src_val,
+                                 DBT *new_src_val, DBT *update_dbt,
+                                 uint32_t num_dbs, DB **db_array, uint32_t *flags_array,
+                                 uint32_t num_keys, DBT_ARRAY *keys,
+                                 uint32_t num_vals, DBT_ARRAY *vals) {
+    return env_update_multiple_internal(env, src_db, txn,
+                                        src_key, old_src_val,
+                                        // src_key does not change through this API, so we pass it for new_src_key
+                                        src_key, new_src_val,
+                                        // use this update object to modify the src_key's val,
+                                        // - usually smaller than overwriting old_src_val with new_src_val
+                                        // - should still use new_src_val for generating secondary keys
+                                        update_dbt,
+                                        num_dbs, db_array, flags_array,
+                                        num_keys, keys, num_vals, vals);
 }
 
 int 

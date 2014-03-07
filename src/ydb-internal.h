@@ -146,6 +146,7 @@ struct __toku_db_env_internal {
     int (*update_function)(DB *, const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra);
     generate_row_for_put_func generate_row_for_put;
     generate_row_for_del_func generate_row_for_del;
+    generate_row_for_update_func generate_row_for_update;
 
     unsigned long cachetable_size;
     CACHETABLE cachetable;

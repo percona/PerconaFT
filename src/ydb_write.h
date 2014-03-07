@@ -159,8 +159,16 @@ int env_update_multiple(
     uint32_t num_keys, DBT_ARRAY keys[],
     uint32_t num_vals, DBT_ARRAY vals[]
     );
-
-
-
+int
+env_update_multiple_with_message(
+    DB_ENV *env,
+    DB *src_db,
+    DB_TXN *txn,
+    DBT *src_key, DBT *old_src_val,
+    DBT *new_src_val, DBT *update_dbt,
+    uint32_t num_dbs, DB **db_array, uint32_t *flags_array,
+    uint32_t num_keys, DBT_ARRAY *keys,
+    uint32_t num_vals, DBT_ARRAY *vals
+    );
 
 #endif
