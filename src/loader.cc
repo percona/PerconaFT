@@ -367,9 +367,11 @@ toku_loader_create_loader(DB_ENV *env,
             rval = 0;
         }
 
-        rval = loader_txn->commit(loader_txn, 0);
-        assert_zero(rval);
-        loader_txn = nullptr;
+        if (loader_txn) {
+            rval = loader_txn->commit(loader_txn, 0);
+            assert_zero(rval);
+            loader_txn = nullptr;
+        }
 
         rval = 0;
     }

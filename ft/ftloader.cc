@@ -2912,8 +2912,9 @@ int toku_ft_loader_abort(FTLOADER bl, bool is_error)
         invariant(!bl->extractor_live);
     }
 
-    for (int i = 0; i < bl->N; i++)
+    for (int i = 0; i < bl->N; i++) {
         invariant(!bl->fractal_threads_live[i]);
+    }
 
     toku_ft_loader_internal_destroy(bl, is_error);
     return result;
