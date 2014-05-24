@@ -104,6 +104,7 @@ PATENT RIGHTS GRANT:
 #include <portability/toku_atomic.h>
 #include <portability/toku_pthread.h>
 #include <portability/toku_time.h>
+#include <util/partitioned_counter.h>
 #include <util/rwlock.h>
 #include <util/status.h>
 #include <util/context.h>
@@ -129,11 +130,11 @@ static CACHETABLE_STATUS_S ct_status;
 
 #define STATUS_INIT(k,c,t,l,inc) TOKUDB_STATUS_INIT(ct_status, k, c, t, "cachetable: " l, inc)
 
-static void
-status_init(void) {
+void ct_status_init(void) {
     // Note, this function initializes the keyname, type, and legend fields.
     // Value fields are initialized to zero by compiler.
 
+    STATUS_INIT(CT_HITS,                   CACHETABLE_HITS, PARCOUNT, "hits", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(CT_MISS,                   CACHETABLE_MISS, UINT64, "miss", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(CT_MISSTIME,               CACHETABLE_MISS_TIME, UINT64, "miss time", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(CT_PREFETCHES,             CACHETABLE_PREFETCHES, UINT64, "prefetches", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
@@ -155,9 +156,19 @@ status_init(void) {
     STATUS_INIT(CT_LONG_WAIT_PRESSURE_TIME,    CACHETABLE_LONG_WAIT_PRESSURE_TIME, UINT64, "long time waiting on cache pressure", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     ct_status.initialized = true;
 }
+
+void ct_status_destroy(void) {
+    for (int i = 0; i < CT_STATUS_NUM_ROWS; ++i) {
+        if (ct_status.status[i].type == PARCOUNT) {
+            destroy_partitioned_counter(ct_status.status[i].value.parcount);
+        }
+    }
+}
+
 #undef STATUS_INIT
 
 #define STATUS_VALUE(x) ct_status.status[x].value.num
+#define STATUS_INC(x, d) increment_partitioned_counter(txn_status.status[x].value.parcount, d)
 
 static void * const zero_value = nullptr;
 static PAIR_ATTR const zero_attr = {
@@ -216,9 +227,6 @@ bool toku_ctpair_is_write_locked(PAIR pair) {
 
 void
 toku_cachetable_get_status(CACHETABLE ct, CACHETABLE_STATUS statp) {
-    if (!ct_status.initialized) {
-        status_init();
-    }
     STATUS_VALUE(CT_MISS)                   = cachetable_miss;
     STATUS_VALUE(CT_MISSTIME)               = cachetable_misstime;
     STATUS_VALUE(CT_PREFETCHES)             = cachetable_prefetches;
@@ -1544,6 +1552,8 @@ static bool try_pin_pair(
         // followed by a relock, so we do it again.
         bool pf_required = pf_req_callback(p->value_data,read_extraargs);
         assert(!pf_required);
+    } else {
+        STATUS_INC(CT_HITS, 1);
     }
 
     if (lock_type != PL_READ) {
@@ -1814,6 +1824,7 @@ int toku_cachetable_maybe_get_and_pin (CACHEFILE cachefile, CACHEKEY key, uint32
         if (got_lock) {
             pair_touch(p);
             *value = p->value_data;
+            STATUS_INC(CT_HITS, 1);
             r = 0;
         }
     }
@@ -1865,6 +1876,7 @@ int toku_cachetable_maybe_get_and_pin_clean (CACHEFILE cachefile, CACHEKEY key, 
         }
         if (got_lock) {
             *value = p->value_data;
+            STATUS_INC(CT_HITS, 1);
             r = 0;
         }
     } else {
@@ -2154,6 +2166,7 @@ try_again:
         }
         else {
             *value = p->value_data;
+            STATUS_INC(CT_HITS, 1);
             return 0;    
         }
     }

@@ -6512,6 +6512,7 @@ int toku_ft_layer_init(void) {
 
     partitioned_counters_init();
     status_init();
+    ct_status_init();
     txn_status_init();
     toku_ule_status_init();
     toku_checkpoint_init();
@@ -6527,6 +6528,7 @@ void toku_ft_layer_destroy(void) {
     toku_ft_serialize_layer_destroy();
     toku_checkpoint_destroy();
     status_destroy();
+    ct_status_destroy();
     txn_status_destroy();
     toku_ule_status_destroy();
     toku_context_status_destroy();
