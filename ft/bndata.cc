@@ -271,6 +271,7 @@ void bn_data::get_space_for_overwrite(
     uint32_t idx,
     const void* keyp,
     uint32_t keylen,
+    uint32_t old_keylen,
     uint32_t old_le_size,
     uint32_t new_size,
     LEAFENTRY* new_le_space
@@ -282,7 +283,8 @@ void bn_data::get_space_for_overwrite(
         size_alloc,
         &maybe_free
         );
-    uint32_t size_freed = old_le_size + keylen + sizeof(keylen);
+    // must use the old le size and keylen, since that's what is actually stored in the mempool
+    uint32_t size_freed = old_le_size + old_keylen + sizeof(keylen);
     toku_mempool_mfree(&m_buffer_mempool, nullptr, size_freed);  // Must pass nullptr, since le is no good any more.
     new_kl->keylen = keylen;
     memcpy(new_kl->key_le, keyp, keylen);
