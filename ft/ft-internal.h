@@ -1200,6 +1200,7 @@ toku_ft_bn_apply_cmd_once (
     BASEMENTNODE bn,
     const FT_MSG cmd,
     uint32_t idx,
+    uint32_t le_keylen,
     LEAFENTRY le,
     txn_gc_info *gc_info,
     uint64_t *workdonep,
