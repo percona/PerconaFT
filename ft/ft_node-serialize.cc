@@ -804,6 +804,21 @@ int toku_serialize_ftnode_to_memory(FTNODE node,
     return 0;
 }
 
+// - Leaf nodes are compressed with the FT's default compression method
+// - Height 1 nodes are compressed with quicklz (for speed), if any compression is set.
+// - Height > 1 nodes are not compressed at all, since they
+//   are dirtied often and only represent 1% of the tree.
+static enum toku_compression_method
+determine_appropriate_compression_method(FT ft, FTNODE node) {
+    if (node->height == 0) {
+        return ft->h->compression_method;
+    } else if (node->height == 1 && ft->h->compression_method != TOKU_NO_COMPRESSION) {
+        return TOKU_QUICKLZ_METHOD;
+    } else {
+        return TOKU_NO_COMPRESSION;
+    }
+}
+
 int
 toku_serialize_ftnode_to (int fd, BLOCKNUM blocknum, FTNODE node, FTNODE_DISK_DATA* ndd, bool do_rebalancing, FT ft, bool for_checkpoint) {
 
@@ -828,7 +843,7 @@ toku_serialize_ftnode_to (int fd, BLOCKNUM blocknum, FTNODE node, FTNODE_DISK_DA
         node,
         ndd,
         ft->h->basementnodesize,
-        ft->h->compression_method,
+        determine_appropriate_compression_method(ft, node),
         do_rebalancing,
         false, // in_parallel
         &n_to_write,

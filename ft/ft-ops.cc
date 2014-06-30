@@ -330,6 +330,7 @@ status_init(void)
     STATUS_INIT(FT_DISK_FLUSH_NONLEAF_BYTES,                                NONLEAF_NODES_FLUSHED_TO_DISK_NOT_CHECKPOINT_BYTES, PARCOUNT, "nonleaf nodes flushed to disk (not for checkpoint) (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES,                   NONLEAF_NODES_FLUSHED_TO_DISK_NOT_CHECKPOINT_UNCOMPRESSED_BYTES, PARCOUNT, "nonleaf nodes flushed to disk (not for checkpoint) (uncompressed bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(FT_DISK_FLUSH_NONLEAF_TOKUTIME,                             NONLEAF_NODES_FLUSHED_TO_DISK_NOT_CHECKPOINT_SECONDS, TOKUTIME, "nonleaf nodes flushed to disk (not for checkpoint) (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
+    STATUS_INIT(FT_DISK_FLUSH_NONLEAF_HGT1,                                 NONLEAF_NODES_FLUSHED_TO_DISK_HGT1_NOT_CHECKPOINT, PARCOUNT, "nonleaf nodes at height > 1 flushed to disk (not for checkpoint)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     // Leaf/Nonleaf: For checkpoint
     STATUS_INIT(FT_DISK_FLUSH_LEAF_FOR_CHECKPOINT,                          LEAF_NODES_FLUSHED_CHECKPOINT, PARCOUNT, "leaf nodes flushed to disk (for checkpoint)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(FT_DISK_FLUSH_LEAF_BYTES_FOR_CHECKPOINT,                    LEAF_NODES_FLUSHED_CHECKPOINT_BYTES, PARCOUNT, "leaf nodes flushed to disk (for checkpoint) (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
@@ -339,6 +340,7 @@ status_init(void)
     STATUS_INIT(FT_DISK_FLUSH_NONLEAF_BYTES_FOR_CHECKPOINT,                 NONLEAF_NODES_FLUSHED_TO_DISK_CHECKPOINT_BYTES, PARCOUNT, "nonleaf nodes flushed to disk (for checkpoint) (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT,    NONLEAF_NODES_FLUSHED_TO_DISK_CHECKPOINT_UNCOMPRESSED_BYTES, PARCOUNT, "nonleaf nodes flushed to disk (for checkpoint) (uncompressed bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(FT_DISK_FLUSH_NONLEAF_TOKUTIME_FOR_CHECKPOINT,              NONLEAF_NODES_FLUSHED_TO_DISK_CHECKPOINT_SECONDS, TOKUTIME, "nonleaf nodes flushed to disk (for checkpoint) (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
+    STATUS_INIT(FT_DISK_FLUSH_NONLEAF_HGT1_FOR_CHECKPOINT,                  NONLEAF_NODES_FLUSHED_TO_DISK_HGT1_CHECKPOINT, PARCOUNT, "nonleaf nodes at height > 1 flushed to disk (for checkpoint)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(FT_DISK_FLUSH_LEAF_COMPRESSION_RATIO,                       LEAF_NODE_COMPRESSION_RATIO, DOUBLE, "uncompressed / compressed bytes written (leaf)", TOKU_GLOBAL_STATUS|TOKU_ENGINE_STATUS);
     STATUS_INIT(FT_DISK_FLUSH_NONLEAF_COMPRESSION_RATIO,                    NONLEAF_NODE_COMPRESSION_RATIO, DOUBLE, "uncompressed / compressed bytes written (nonleaf)", TOKU_GLOBAL_STATUS|TOKU_ENGINE_STATUS);
     STATUS_INIT(FT_DISK_FLUSH_OVERALL_COMPRESSION_RATIO,                    OVERALL_NODE_COMPRESSION_RATIO, DOUBLE, "uncompressed / compressed bytes written (overall)", TOKU_GLOBAL_STATUS|TOKU_ENGINE_STATUS);
@@ -694,12 +696,18 @@ void toku_ft_status_update_flush_reason(FTNODE node,
             STATUS_INC(FT_DISK_FLUSH_NONLEAF_BYTES_FOR_CHECKPOINT, bytes_written);
             STATUS_INC(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT, uncompressed_bytes_flushed);
             STATUS_INC(FT_DISK_FLUSH_NONLEAF_TOKUTIME_FOR_CHECKPOINT, write_time);
+            if (node->height > 1) {
+                STATUS_INC(FT_DISK_FLUSH_NONLEAF_HGT1_FOR_CHECKPOINT, write_time);
+            }
         }
         else {
             STATUS_INC(FT_DISK_FLUSH_NONLEAF, 1);
             STATUS_INC(FT_DISK_FLUSH_NONLEAF_BYTES, bytes_written);
             STATUS_INC(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES, uncompressed_bytes_flushed);
             STATUS_INC(FT_DISK_FLUSH_NONLEAF_TOKUTIME, write_time);
+            if (node->height > 1) {
+                STATUS_INC(FT_DISK_FLUSH_NONLEAF_HGT1, write_time);
+            }
         }
     }
 }
