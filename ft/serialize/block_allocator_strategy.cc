@@ -168,7 +168,7 @@ block_allocator_strategy::padded_fit(struct block_allocator::blockpair *blocks_a
                                      uint64_t n_blocks, uint64_t size, uint64_t alignment) {
     static const uint64_t absolute_max_padding = 128 * 1024;
     static const uint64_t desired_fragmentation_divisor = 10;
-    uint64_t desired_padding = _align(size / desired_fragmentation_divisor, alignment);
+    uint64_t desired_padding = size / desired_fragmentation_divisor;
     desired_padding = std::min(_next_power_of_two(desired_padding), absolute_max_padding);
     return _first_fit(blocks_array, n_blocks, size, alignment, true, desired_padding);
 }
