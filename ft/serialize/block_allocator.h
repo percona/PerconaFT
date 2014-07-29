@@ -184,6 +184,10 @@ public:
     //                Heat values are lexiographically ordered (like integers), but their specific values are arbitrary
     void alloc_block(uint64_t size, uint64_t heat, uint64_t *offset);
 
+    // Effect: Allocates a set of blocks with the given sizes using a buddy allocation strategy.
+    // Parameters: Array form of arguments, see alloc_block()
+    void alloc_blocks_bulk(uint64_t *sizes, uint64_t n_blocks, uint64_t heat, uint64_t **offsets);
+
     // Effect: Free the block at offset.
     // Requires: There must be a block currently allocated at that offset.
     // Parameters:
@@ -236,10 +240,16 @@ public:
 
 private:
     void _create_internal(uint64_t reserve_at_beginning, uint64_t alignment);
-    void grow_blocks_array_by(uint64_t n_to_add);
-    void grow_blocks_array();
-    int64_t find_block(uint64_t offset);
-    struct blockpair *choose_block_to_alloc_after(size_t size, uint64_t heat);
+    void _grow_blocks_array_by(uint64_t n_to_add);
+    int64_t _find_block(uint64_t offset);
+    uint64_t _align(uint64_t value);
+
+    void _alloc_block_after(struct blockpair *bp, uint64_t size, uint64_t heat, uint64_t *offset);
+    void _alloc_block_at(struct blockpair *bp, uint64_t offset, uint64_t size, uint64_t heat);
+    void _alloc_blocks_buddy(uint64_t *sizes, uint64_t n_blocks, uint64_t heat, uint64_t **offsets);
+    struct blockpair *_choose_block_to_alloc_after(uint64_t size, uint64_t heat);
+
+    void _trace_alloc(uint64_t size, uint64_t heat, uint64_t offset);
 
     // How much to reserve at the beginning
     uint64_t _reserve_at_beginning;

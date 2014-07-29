@@ -972,8 +972,8 @@ void block_table::get_fragmentation_unlocked(TOKU_DB_FRAGMENTATION report) {
         if (pair->size > 0 && !(i < current->length_of_array &&
                                 current->block_translation[i].size > 0 &&
                                 current->block_translation[i].u.diskoff == pair->u.diskoff)) {
-                report->checkpoint_bytes_additional += pair->size;
-                report->checkpoint_blocks_additional++;
+            report->checkpoint_bytes_additional += pair->size;
+            report->checkpoint_blocks_additional++;
         }
     }
 
