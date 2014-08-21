@@ -3312,7 +3312,7 @@ static bool search_continue(ft_search *search, void *key, uint32_t key_len) {
 }
 
 static int heaviside_from_search_t(const DBT &kdbt, ft_search &search) {
-    int cmp = search.compare(search,
+    int cmp = search.compare(
                               search.k ? &kdbt : 0);
     // The search->compare function returns only 0 or 1
     switch (search.direction) {
@@ -3645,7 +3645,7 @@ toku_ft_search_which_child(const toku::comparator &cmp, FTNODE node, ft_search *
         // so if we're searching from the left and search->compare says
         // "1", we want to go left from here, if it says "0" we want to go
         // right.  searching from the right does the opposite.
-        bool c = search->compare(*search, &pivotkey);
+        bool c = search->compare(&pivotkey);
         if (((search->direction == FT_SEARCH_LEFT) && c) ||
             ((search->direction == FT_SEARCH_RIGHT) && !c)) {
             hi = mi;
@@ -4369,7 +4369,7 @@ int toku_ft_get_key_after_bytes(FT_HANDLE ft_h, const DBT *start_key, uint64_t s
         struct unlock_ftnode_extra unlock_extra = {ft_h, root, false};
         struct unlockers unlockers = {true, unlock_ftnode_fun, (void*)&unlock_extra, (UNLOCKERS) nullptr};
         ft_search search;
-        ft_search_init(&search, (start_key == nullptr ? toku_ft_cursor_compare_one : toku_ft_cursor_compare_set_range), FT_SEARCH_LEFT, start_key, nullptr, ft_h);
+        ft_search_init(&search, (start_key == nullptr ? toku_ft_cursor_compare_one : nullptr), FT_SEARCH_LEFT, start_key, nullptr, ft_h);
         
         int r;
         // We can't do this because of #5768, there may be dictionaries in the wild that have negative stats.  This won't affect mongo so it's ok:

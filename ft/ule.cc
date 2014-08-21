@@ -2153,7 +2153,7 @@ cleanup:
 //
 int le_val_is_del(LEAFENTRY le, bool is_snapshot_read, TOKUTXN txn) {
     int rval;
-    if (is_snapshot_read) {
+    if (__builtin_expect(is_snapshot_read, 1)) {
         bool is_del = false;
         le_iterate_is_del(
             le,

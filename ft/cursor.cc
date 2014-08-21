@@ -417,7 +417,7 @@ int toku_ft_cursor_compare_set_range(const ft_search &search, const DBT *x) {
 int toku_ft_cursor_set(FT_CURSOR cursor, DBT *key, FT_GET_CALLBACK_FUNCTION getf, void *getf_v) {
     cursor->direction = 0;
     ft_search search; 
-    ft_search_init(&search, toku_ft_cursor_compare_set_range, FT_SEARCH_LEFT, key, nullptr, cursor->ft_handle);
+    ft_search_init(&search, nullptr, FT_SEARCH_LEFT, key, nullptr, cursor->ft_handle);
     int r = ft_cursor_search_eq_k_x(cursor, &search, getf, getf_v);
     ft_search_finish(&search);
     return r;
@@ -426,7 +426,7 @@ int toku_ft_cursor_set(FT_CURSOR cursor, DBT *key, FT_GET_CALLBACK_FUNCTION getf
 int toku_ft_cursor_set_range(FT_CURSOR cursor, DBT *key, DBT *key_bound, FT_GET_CALLBACK_FUNCTION getf, void *getf_v) {
     cursor->direction = 0;
     ft_search search; 
-    ft_search_init(&search, toku_ft_cursor_compare_set_range, FT_SEARCH_LEFT, key, key_bound, cursor->ft_handle);
+    ft_search_init(&search, nullptr, FT_SEARCH_LEFT, key, key_bound, cursor->ft_handle);
     int r = ft_cursor_search(cursor, &search, getf, getf_v, false);
     ft_search_finish(&search);
     return r;

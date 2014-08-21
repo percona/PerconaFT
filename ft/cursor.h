@@ -118,6 +118,8 @@ enum ft_search_direction_e {
 
 struct ft_search;
 
+int toku_ft_cursor_compare_set_range(const ft_search &search, const DBT *x);
+
 /* the search compare function should return 0 for all xy < kv and 1 for all xy >= kv
    the compare function should be a step function from 0 to 1 for a left to right search
    and 1 to 0 for a right to left search */
@@ -128,7 +130,16 @@ typedef int (*ft_search_compare_func_t)(const struct ft_search &, const DBT *);
    is used in the compare function.  the context is the user's private data */
 
 struct ft_search {
-    ft_search_compare_func_t compare;
+    ft_search_compare_func_t _cmp;
+    bool is_compare_set_range;
+    inline int compare(const DBT *x) {
+        if (__builtin_expect(is_compare_set_range, 1)) {
+            return toku_ft_cursor_compare_set_range(*this, x);
+        } else {
+            return _cmp(*this, x);
+        }
+    }
+
     enum ft_search_direction_e direction;
     const DBT *k;
     void *context;
@@ -158,10 +169,11 @@ struct ft_search {
 };
 
 /* initialize the search compare object */
-static inline ft_search *ft_search_init(ft_search *search, ft_search_compare_func_t compare,
+static inline ft_search *ft_search_init(ft_search *search, ft_search_compare_func_t cmp,
                                         enum ft_search_direction_e direction, 
                                         const DBT *k, const DBT *k_bound, void *context) {
-    search->compare = compare;
+    search->_cmp = cmp;
+    search->is_compare_set_range = cmp == nullptr;
     search->direction = direction;
     search->k = k;
     search->context = context;
