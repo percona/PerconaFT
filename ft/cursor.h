@@ -133,7 +133,7 @@ struct ft_search {
     ft_search_compare_func_t _cmp;
     bool is_compare_set_range;
     inline int compare(const DBT *x) {
-        if (__builtin_expect(is_compare_set_range, 1)) {
+        if (is_compare_set_range) {
             return toku_ft_cursor_compare_set_range(*this, x);
         } else {
             return _cmp(*this, x);
