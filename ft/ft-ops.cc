@@ -3312,8 +3312,7 @@ static bool search_continue(ft_search *search, void *key, uint32_t key_len) {
 }
 
 static int heaviside_from_search_t(const DBT &kdbt, ft_search &search) {
-    int cmp = search.compare(
-                              search.k ? &kdbt : 0);
+    int cmp = search.compare(search.k ? &kdbt : 0);
     // The search->compare function returns only 0 or 1
     switch (search.direction) {
     case FT_SEARCH_LEFT:   return cmp==0 ? -1 : +1;

@@ -298,17 +298,15 @@ int toku_dbt_set(uint32_t len, const void *val, DBT *d, struct simple_dbt *sdbt)
     return r;
 }
 
-//static const DBT _positive_infinity_dbt = {};
-//static const DBT _negative_infinity_dbt = {};
+static const DBT _positive_infinity_dbt = {};
+static const DBT _negative_infinity_dbt = {};
 
 const DBT *toku_dbt_positive_infinity(void) {
-    //return &_positive_infinity_dbt;
-    return reinterpret_cast<DBT *>(1);
+    return &_positive_infinity_dbt;
 }
 
 const DBT *toku_dbt_negative_infinity(void) {
-    //return &_negative_infinity_dbt;
-    return reinterpret_cast<DBT *>(2);
+    return &_negative_infinity_dbt;
 }
 
 bool toku_dbt_is_infinite(const DBT *dbt) {
