@@ -177,6 +177,7 @@ void block_allocator::grow_blocks_array_by(uint64_t n_to_add) {
         }
         _blocks_array_size = new_size;
         XREALLOC_N(_blocks_array_size, _blocks_array);
+        memset(_blocks_array + _n_blocks, 0, sizeof(*_blocks_array) * (_blocks_array_size - _n_blocks));
     }
 }
 
