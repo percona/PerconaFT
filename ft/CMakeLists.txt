@@ -89,5 +89,6 @@ add_dependencies(ft_static install_tdb_h generate_log_code build_lzma)
 target_link_libraries(ft LINK_PRIVATE util_static lzma ${LIBTOKUPORTABILITY})
 target_link_libraries(ft LINK_PUBLIC z)
 target_link_libraries(ft_static LINK_PRIVATE lzma)
+target_link_libraries(ft snappy)
 
 add_subdirectory(tests)

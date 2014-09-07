@@ -52,6 +52,7 @@ if (USE_VALGRIND AND NOT VALGRIND_INCLUDE_DIR MATCHES NOTFOUND)
     )
 endif()
 include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/snappy
   ${CMAKE_CURRENT_SOURCE_DIR}/portability
   ${CMAKE_CURRENT_SOURCE_DIR}  ## so you can include <ft/ft-ops.h> from inside src/
   ${CMAKE_CURRENT_BINARY_DIR}  ## for logging code
@@ -76,6 +77,7 @@ add_subdirectory(ft)
 add_subdirectory(locktree)
 add_subdirectory(src)
 add_subdirectory(tools)
+add_subdirectory(third_party/snappy)
 
 install(
   FILES README.md README-TOKUDB
