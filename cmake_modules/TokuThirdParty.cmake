@@ -104,3 +104,26 @@ add_library(lzma STATIC IMPORTED)
 set_target_properties(lzma PROPERTIES IMPORTED_LOCATION
   "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/xz/lib/liblzma.a")
 add_dependencies(lzma build_lzma)
+
+# google snappy
+set(snappy_configure_opts --with-pic --enable-static)
+list(APPEND snappy_configure_opts CC=${CMAKE_C_COMPILER})
+if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL drd)
+  list(APPEND snappy_configure_opts --enable-debug)
+endif ()
+set(SNAPPY_SOURCE_DIR "${TokuDB_SOURCE_DIR}/third_party/snappy" CACHE FILEPATH "Where to find snappy sources.")
+ExternalProject_Add(build_snappy
+    PREFIX snappy
+    SOURCE_DIR
+        ${SNAPPY_SOURCE_DIR}
+    CONFIGURE_COMMAND
+         ${SNAPPY_SOURCE_DIR}/autogen.sh && ${SNAPPY_SOURCE_DIR}/configure ${snappy_configure_opts}
+         --prefix=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/snappy
+    BUILD_COMMAND
+        ${SUBMAKE_COMMAND}
+    BUILD_IN_SOURCE 1
+)
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/snappy/include")
+add_library(snappy STATIC IMPORTED)
+set_target_properties(snappy PROPERTIES IMPORTED_LOCATION
+  "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/snappy/lib/libsnappy.a")
