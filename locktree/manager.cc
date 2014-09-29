@@ -602,10 +602,12 @@ void locktree::manager::get_status(LTM_STATUS statp) {
     uint64_t sto_num_eligible = 0;
     uint64_t sto_end_early_count = 0;
     tokutime_t sto_end_early_time = 0;
+
     size_t num_locktrees = 0;
-    struct lt_counters lt_counters = m_lt_counters;
+    struct lt_counters lt_counters = {};
 
     if (toku_mutex_trylock(&m_mutex) == 0) {
+        lt_counters = m_lt_counters;
         num_locktrees = m_locktree_map.size();
         for (size_t i = 0; i < num_locktrees; i++) {
             locktree *lt;
