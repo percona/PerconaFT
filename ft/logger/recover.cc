@@ -1440,8 +1440,10 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
         if (tokuft_recovery_trace) 
             recover_trace_le(__FUNCTION__, __LINE__, r, le);
         if (r != 0) {
-            if (r == DB_NOTFOUND)
+            if (r == DB_NOTFOUND) {
+                renv->ss.ss = FORWARD_NEWER_CHECKPOINT_END;
                 break;
+            }
             rr = DB_RUNRECOVERY; 
             goto errorexit;
         }
@@ -1477,8 +1479,7 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
         recover_callback_fx(recover_callback_args);
 
     // scan forwards
-    assert(le);
-    thislsn = toku_log_entry_get_lsn(le);
+    thislsn = le != NULL ? toku_log_entry_get_lsn(le) : ZERO_LSN;
     tnow = time(NULL);
     fprintf(stderr, "%.24s TokuFT recovery starts scanning forward to %" PRIu64 " from %" PRIu64 " left %" PRIu64 " (%s)\n", ctime(&tnow), lastlsn.lsn, thislsn.lsn, lastlsn.lsn - thislsn.lsn, recover_state(renv));
 
@@ -1488,23 +1489,25 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
         if ((i % 1000) == 0) {
             tnow = time(NULL);
             if (tnow - tlast >= TOKUDB_RECOVERY_PROGRESS_TIME) {
-                thislsn = toku_log_entry_get_lsn(le);
+                thislsn = le != NULL ? toku_log_entry_get_lsn(le) : ZERO_LSN;
                 fprintf(stderr, "%.24s TokuFT recovery scanning forward to %" PRIu64 " at %" PRIu64 " left %" PRIu64 " (%s)\n", ctime(&tnow), lastlsn.lsn, thislsn.lsn, lastlsn.lsn - thislsn.lsn, recover_state(renv));
                 tlast = tnow;
             }
         }
 
-        // dispatch the log entry handler (first time calls the forward handler for the log entry at the turnaround
-        assert(renv->ss.ss == FORWARD_BETWEEN_CHECKPOINT_BEGIN_END ||
-               renv->ss.ss == FORWARD_NEWER_CHECKPOINT_END);
-        logtype_dispatch_assign(le, toku_recover_, r, renv);
-        if (tokuft_recovery_trace) 
-            recover_trace_le(__FUNCTION__, __LINE__, r, le);
-        if (r != 0) {
+        if (le) {
+            // dispatch the log entry handler (first time calls the forward handler for the log entry at the turnaround
+            assert(renv->ss.ss == FORWARD_BETWEEN_CHECKPOINT_BEGIN_END ||
+                   renv->ss.ss == FORWARD_NEWER_CHECKPOINT_END);
+            logtype_dispatch_assign(le, toku_recover_, r, renv);
             if (tokuft_recovery_trace) 
-                fprintf(stderr, "DB_RUNRECOVERY: %s:%d r=%d\n", __FUNCTION__, __LINE__, r);
-            rr = DB_RUNRECOVERY; 
-            goto errorexit;
+                recover_trace_le(__FUNCTION__, __LINE__, r, le);
+            if (r != 0) {
+                if (tokuft_recovery_trace)
+                    fprintf(stderr, "DB_RUNRECOVERY: %s:%d r=%d\n", __FUNCTION__, __LINE__, r);
+                rr = DB_RUNRECOVERY;
+                goto errorexit;
+            }
         }
 
         // get the next log entry
