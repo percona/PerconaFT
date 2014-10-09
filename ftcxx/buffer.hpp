@@ -1,7 +1,8 @@
+/* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
+
 #pragma once
 
-#include <algorithm>
-#include <assert.h>
+#include <cstdlib>
 #include <memory>
 
 namespace ftcxx {
@@ -36,14 +37,18 @@ namespace ftcxx {
             : _cur(0),
               _end(0),
               _capacity(INITIAL_CAPACITY),
-              _buf(new char[_capacity])
-        {}
+              _buf(nullptr, &std::free)
+        {
+            init();
+        }
 
         Buffer(size_t capacity)
             : _end(0),
               _capacity(capacity),
-              _buf(new char[_capacity])
-        {}
+              _buf(nullptr, &std::free)
+        {
+            init();
+        }
 
         // Producer API:
 
@@ -54,7 +59,7 @@ namespace ftcxx {
          */
         char *alloc(size_t sz) {
             grow(sz);
-            char *p = &_buf[_end];
+            char *p = raw(_end);
             _end += sz;
             return p;
         }
@@ -81,7 +86,7 @@ namespace ftcxx {
          * Returns a pointer to the next unconsumed byte in the buffer.
          */
         char *current() const {
-            return &_buf[_cur];
+            return raw(_cur);
         }
 
         /**
@@ -104,29 +109,21 @@ namespace ftcxx {
         size_t _cur;
         size_t _end;
         size_t _capacity;
-        std::unique_ptr<char[]> _buf;
+        std::unique_ptr<char, void (*)(void*)> _buf;
 
         static const size_t INITIAL_CAPACITY;
         static const size_t MAXIMUM_CAPACITY;
         static const double FULLNESS_RATIO;
 
-        void grow(size_t sz) {
-            size_t new_capacity = _capacity;
-            while (new_capacity < _end + sz) {
-                new_capacity *= 2;
-            }
-            assert(new_capacity >= _capacity);  // overflow
-            if (new_capacity > _capacity) {
-                std::unique_ptr<char[]> new_buf(new char[new_capacity]);
-                std::copy(&buf[0], &buf[_end], new_buf);
-                std::swap(_buf, new_buf);
-                _capacity = new_capacity;
-            }
+        void init();
+
+        static size_t next_alloc_size(size_t sz);
+
+        void grow(size_t sz);
+
+        char *raw(size_t i=0) const {
+            return &(_buf.get()[i]);
         }
     };
-
-    const size_t Buffer::INITIAL_CAPACITY = 1<<10;
-    const size_t Buffer::MAXIMUM_CAPACITY = 1<<18;
-    const double Buffer::FULLNESS_RATIO = 0.9;
 
 } // namespace ftcxx
