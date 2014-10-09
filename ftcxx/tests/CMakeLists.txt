@@ -1,4 +1,6 @@
 include_directories(..)
+include_directories(../../src)
+include_directories(../../src/tests)
 
 ## reference implementation with simple size-doubling buffer without
 ## jemalloc size tricks
@@ -7,7 +9,6 @@ add_library(doubling_buffer_ftcxx STATIC
   ../cursor
   )
 add_dependencies(doubling_buffer_ftcxx install_tdb_h)
-
 
 foreach (impl
     ftcxx
@@ -19,6 +20,7 @@ foreach (impl
       )
     foreach (test
         buffer_test
+        cursor_test
         )
       set(_testname ${impl}_${test})
       if (with_jemalloc)
@@ -29,7 +31,7 @@ foreach (impl
         target_link_libraries(${_testname} -Wl,--whole-archive jemalloc -Wl,--no-whole-archive)
       endif ()
       target_link_libraries(${_testname} ${impl})
-      target_link_libraries(${_testname} ${LIBTOKUFRACTALTREE} ${LIBTOKUPORTABILITY})
+      target_link_libraries(${_testname} ${LIBTOKUDB} ${LIBTOKUPORTABILITY})
 
       add_test(${_testname} ${_testname})
     endforeach ()
