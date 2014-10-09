@@ -33,22 +33,9 @@ namespace ftcxx {
     class Buffer {
     public:
 
-        Buffer()
-            : _cur(0),
-              _end(0),
-              _capacity(INITIAL_CAPACITY),
-              _buf(nullptr, &std::free)
-        {
-            init();
-        }
+        Buffer();
 
-        Buffer(size_t capacity)
-            : _end(0),
-              _capacity(capacity),
-              _buf(nullptr, &std::free)
-        {
-            init();
-        }
+        Buffer(size_t capacity);
 
         // Producer API:
 
@@ -57,52 +44,36 @@ namespace ftcxx {
          * pointer to the allocated space.  This causes at most one
          * realloc and memcpy of existing data.
          */
-        char *alloc(size_t sz) {
-            grow(sz);
-            char *p = raw(_end);
-            _end += sz;
-            return p;
-        }
+        char *alloc(size_t sz);
 
         /**
          * Returns true if we're close to our maximum capacity.  If so,
          * the producer should stop and allow the consumer to clear the
          * buffer.
          */
-        bool full() const {
-            return _end > MAXIMUM_CAPACITY * FULLNESS_RATIO;
-        }
+        bool full() const;
 
         // Consumer API:
 
         /**
          * Returns true if there are more unconsumed bytes in the buffer.
          */
-        bool more() const {
-            return _cur < _end;
-        }
+        bool more() const;
 
         /**
          * Returns a pointer to the next unconsumed byte in the buffer.
          */
-        char *current() const {
-            return raw(_cur);
-        }
+        char *current() const;
 
         /**
          * Advances the unconsumed position pointer by sz bytes.
          */
-        void advance(size_t sz) const {
-            _cur += sz;
-        }
+        void advance(size_t sz);
 
         /**
          * Free all allocated space.
          */
-        void clear() {
-            _cur = 0;
-            _end = 0;
-        }
+        void clear();
 
     private:
 

@@ -16,8 +16,53 @@ namespace ftcxx {
     const size_t Buffer::MAXIMUM_CAPACITY = 1<<18;
     const double Buffer::FULLNESS_RATIO = 0.9;
 
+    Buffer::Buffer()
+        : _cur(0),
+          _end(0),
+          _capacity(INITIAL_CAPACITY),
+          _buf(nullptr, &std::free)
+    {
+        init();
+    }
+
+    Buffer::Buffer(size_t capacity)
+        : _end(0),
+          _capacity(capacity),
+          _buf(nullptr, &std::free)
+    {
+        init();
+    }
+
+    char *Buffer::alloc(size_t sz) {
+        grow(sz);
+        char *p = raw(_end);
+        _end += sz;
+        return p;
+    }
+
+    bool Buffer::full() const {
+        return _end > MAXIMUM_CAPACITY * FULLNESS_RATIO;
+    }
+
+    bool Buffer::more() const {
+        return _cur < _end;
+    }
+
+    char *Buffer::current() const {
+        return raw(_cur);
+    }
+
+    void Buffer::advance(size_t sz) {
+        _cur += sz;
+    }
+
+    void Buffer::clear() {
+        _cur = 0;
+        _end = 0;
+    }
+
     void Buffer::init() {
-        _buf.reset(mu::checkedMalloc(_capacity));
+        _buf.reset(static_cast<char *>(mu::checkedMalloc(_capacity)));
     }
 
     /**
@@ -54,7 +99,7 @@ namespace ftcxx {
             // isn't.  The only thing we can throw in here is
             // std::bad_alloc, in which case we're kind of screwed anyway.
             new_capacity = mu::goodMallocSize(new_capacity);
-            _buf.reset(mu::smartRealloc(_buf.release(), new_capacity, 0, 0, _capacity));
+            _buf.reset(static_cast<char *>(mu::smartRealloc(_buf.release(), _end, _capacity, new_capacity, _capacity)));
         }
     }
 
