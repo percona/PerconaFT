@@ -46,12 +46,12 @@ namespace ftcxx {
         while (new_capacity < _end + sz) {
             new_capacity = next_alloc_size(new_capacity);
         }
-        new_capacity = malloc_utils::goodMallocSize(new_capacity);
         assert(new_capacity >= _capacity);  // overflow?
         if (new_capacity > _capacity) {
             // This section isn't exception-safe, but smartRealloc already
             // isn't.  The only thing we can throw in here is
             // std::bad_alloc, in which case we're kind of screwed anyway.
+            new_capacity = malloc_utils::goodMallocSize(new_capacity);
             _buf.reset(malloc_utils::smartRealloc(_buf.release(), new_capacity, 0, 0, _capacity));
         }
     }
