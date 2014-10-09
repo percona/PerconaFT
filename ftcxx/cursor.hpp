@@ -80,7 +80,7 @@ namespace ftcxx {
         };
 
         struct ConstantTrue {
-            bool operator()(const DBT *key, const DBT *val) const { return true; }
+            bool operator()(const DBT *, const DBT *) const { return true; }
         };
 
         /**
@@ -88,13 +88,13 @@ namespace ftcxx {
          * left to right (or right to left if !forward).
          */
         template<class Comparator, class Predicate>
-        Iterator iterator(const DBT *left, const DBT *right,
-                          Comparator cmp, Predicate filter=ConstantTrue(),
-                          bool forward=true, bool end_exclusive=false, bool prelock=true) {
-            return Iterator(cur, left, right, filter, forward, end_exclusive, prelock);
+        Iterator<Comparator, Predicate>&& iterator(const DBT *left, const DBT *right,
+                                                   Comparator cmp, Predicate filter=ConstantTrue(),
+                                                   bool forward=true, bool end_exclusive=false, bool prelock=true) {
+            return std::move(Iterator<Comparator, Predicate>(*this, left, right, filter, forward, end_exclusive, prelock));
         }
 
-    private:
+    protected:
 
         DBC *_dbc;
     };

@@ -8,6 +8,8 @@
  * https://github.com/facebook/folly/blob/master/folly/Malloc.h
  */
 
+#include <algorithm>
+#include <bits/functexcept.h>
 #include <cassert>
 #include <cstdlib>
 
@@ -147,8 +149,9 @@ namespace malloc_utils {
                 return p;
             }
             // Cannot expand; must move
-            auto const result = checkedMalloc(newCapacity);
-            std::copy(p, p + currentSize, result);
+            char * const result = static_cast<char *>(checkedMalloc(newCapacity));
+            char *cp = static_cast<char *>(p);
+            std::copy(cp, cp + currentSize, result);
             free(p);
             realNewCapacity = newCapacity;
             return result;
@@ -158,8 +161,9 @@ namespace malloc_utils {
         auto const slack = currentCapacity - currentSize;
         if (slack * 2 > currentSize) {
             // Too much slack, malloc-copy-free cycle:
-            auto const result = checkedMalloc(newCapacity);
-            std::copy(p, p + currentSize, result);
+            char * const result = static_cast<char *>(checkedMalloc(newCapacity));
+            char *cp = static_cast<char *>(p);
+            std::copy(cp, cp + currentSize, result);
             free(p);
             realNewCapacity = newCapacity;
             return result;

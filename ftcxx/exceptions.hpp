@@ -76,13 +76,13 @@ namespace ftcxx {
         }
 
     public:
-        ft_exception(int code) : _code(code) {}
+        ft_exception(int c) : _code(c) {}
 
-        int code() const {
+        int code() const noexcept {
             return _code;
         }
 
-        virtual const char *what() const {
+        virtual const char *what() const noexcept {
             return ft_strerror(_code);
         }
     };
@@ -91,13 +91,13 @@ namespace ftcxx {
         int _code;
 
     public:
-        system_exception(int code) : _code(code) {}
+        system_exception(int c) : _code(c) {}
 
-        int code() const {
+        int code() const noexcept {
             return _code;
         }
 
-        virtual const char *what() const {
+        virtual const char *what() const noexcept {
             return strerror(_code);
         }
     };

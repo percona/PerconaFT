@@ -77,10 +77,16 @@ namespace ftcxx {
         uint32_t *vallen = static_cast<uint32_t *>(&dest[sizeof *keylen]);
         *keylen = key->size;
         *vallen = val->size;
+
         char *p = &dest[(sizeof *keylen) + (sizeof *vallen)];
-        std::copy(&key->data[0], &key->data[key->size], p);
+
+        const char *kp = key->data;
+        std::copy(kp, kp + key->size, p);
+
         p += key->size;
-        std::copy(&val->data[0], &val->data[val->size], p);
+
+        const char *vp = val->data;
+        std::copy(vp, vp + val->size, p);
     }
 
     template<class Comparator, class Predicate>
@@ -98,9 +104,9 @@ namespace ftcxx {
     int Cursor::Iterator<Comparator, Predicate>::getf(const DBT *key, const DBT *val) {
         int c;
         if (_forward) {
-            r = _cmp(key, _right);
+            c = _cmp(key, _right);
         } else {
-            r = _cmp(_left, key);
+            c = _cmp(_left, key);
         }
         if (c > 0 || (c == 0 && _end_exclusive)) {
             return -1;
