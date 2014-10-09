@@ -30,7 +30,7 @@ namespace ftcxx {
              * Constructs an iterator.  Better to use Cursor::iterator
              * instead (below) to avoid template parameters.
              */
-            Iterator(Cursor &cur, const DBT *left, const DBT *right,
+            Iterator(Cursor &cur, DBT *left, DBT *right,
                      Comparator cmp, Predicate filter,
                      bool forward, bool end_exclusive, bool prelock);
 
@@ -44,14 +44,15 @@ namespace ftcxx {
         private:
 
             Cursor &_cur;
-            const DBT *_left;
-            const DBT *_right;
+            DBT *_left;
+            DBT *_right;
             Comparator &_cmp;
             Predicate &_filter;
 
             const bool _forward;
             const bool _end_exclusive;
             const bool _prelock;
+            bool _finished;
 
             Buffer _buf;
 
@@ -76,10 +77,10 @@ namespace ftcxx {
 
             static void marshall(char *dest, const DBT *key, const DBT *val);
 
-            static void unmarshall(const char *src, DBT *key, DBT *val);
+            static void unmarshall(char *src, DBT *key, DBT *val);
         };
 
-        struct ConstantTrue {
+        struct NoFilter {
             bool operator()(const DBT *, const DBT *) const { return true; }
         };
 
@@ -88,10 +89,10 @@ namespace ftcxx {
          * left to right (or right to left if !forward).
          */
         template<class Comparator, class Predicate>
-        Iterator<Comparator, Predicate>&& iterator(const DBT *left, const DBT *right,
-                                                   Comparator cmp, Predicate filter=ConstantTrue(),
-                                                   bool forward=true, bool end_exclusive=false, bool prelock=true) {
-            return std::move(Iterator<Comparator, Predicate>(*this, left, right, filter, forward, end_exclusive, prelock));
+        Iterator<Comparator, Predicate> iterator(DBT *left, DBT *right,
+                                                 Comparator cmp, Predicate filter,
+                                                 bool forward=true, bool end_exclusive=false, bool prelock=true) {
+            return Iterator<Comparator, Predicate>(*this, left, right, cmp, filter, forward, end_exclusive, prelock);
         }
 
     protected:
@@ -105,3 +106,5 @@ namespace ftcxx {
     };
 
 } // namespace ftcxx
+
+#include "cursor-inl.hpp"
