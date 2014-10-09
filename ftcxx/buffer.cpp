@@ -8,6 +8,8 @@
 #include "buffer.hpp"
 #include "malloc_utils.hpp"
 
+namespace mu = malloc_utils;
+
 namespace ftcxx {
 
     const size_t Buffer::INITIAL_CAPACITY = 1<<10;
@@ -15,7 +17,7 @@ namespace ftcxx {
     const double Buffer::FULLNESS_RATIO = 0.9;
 
     void Buffer::init() {
-        _buf.reset(std::malloc(_capacity));
+        _buf.reset(mu::checkedMalloc(_capacity));
     }
 
     /**
@@ -28,7 +30,7 @@ namespace ftcxx {
      * actually want to because that's about when we want to stop growing.
      */
     size_t Buffer::next_alloc_size(size_t sz) {
-        if (sz < malloc_utils::jemallocMinInPlaceExpandable) {
+        if (sz < mu::jemallocMinInPlaceExpandable) {
             return sz * 2;
         }
 #if 0
@@ -51,8 +53,8 @@ namespace ftcxx {
             // This section isn't exception-safe, but smartRealloc already
             // isn't.  The only thing we can throw in here is
             // std::bad_alloc, in which case we're kind of screwed anyway.
-            new_capacity = malloc_utils::goodMallocSize(new_capacity);
-            _buf.reset(malloc_utils::smartRealloc(_buf.release(), new_capacity, 0, 0, _capacity));
+            new_capacity = mu::goodMallocSize(new_capacity);
+            _buf.reset(mu::smartRealloc(_buf.release(), new_capacity, 0, 0, _capacity));
         }
     }
 
