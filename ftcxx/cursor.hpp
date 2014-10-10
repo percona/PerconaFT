@@ -5,6 +5,8 @@
 #include <db.h>
 
 #include "buffer.hpp"
+#include "db_env.hpp"
+#include "db_txn.hpp"
 
 namespace ftcxx {
 
@@ -13,7 +15,7 @@ namespace ftcxx {
      */
     class Cursor {
     public:
-        Cursor(DB *db, DB_TXN *txn = nullptr, int flags = 0);
+        Cursor(DB *db, const DBTxn &txn=DBTxn(), int flags = 0);
         ~Cursor();
 
         DBC *dbc() const { return _dbc; }
@@ -102,7 +104,7 @@ namespace ftcxx {
 
     class DirectoryCursor : public Cursor {
     public:
-        DirectoryCursor(DB_ENV *env, DB_TXN *txn);
+        DirectoryCursor(const DBEnv &env, const DBTxn &txn=DBTxn());
     };
 
 } // namespace ftcxx

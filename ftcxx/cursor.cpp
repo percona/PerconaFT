@@ -3,19 +3,19 @@
 #include <db.h>
 
 #include "cursor.hpp"
+#include "db_env.hpp"
+#include "db_txn.hpp"
 #include "exceptions.hpp"
 
 namespace ftcxx {
 
-    Cursor::Cursor(DB *db, DB_TXN *txn, int flags)
+    Cursor::Cursor(DB *db, const DBTxn &txn, int flags)
         : _dbc(nullptr)
     {
         if (db != nullptr) {
             DBC *c;
-            int r = db->cursor(db, txn, &c, flags);
-            if (r != 0) {
-                throw ft_exception(r);
-            }
+            int r = db->cursor(db, txn.txn(), &c, flags);
+            handle_ft_retval(r);
             _dbc = c;
         }
     }
@@ -23,20 +23,16 @@ namespace ftcxx {
     Cursor::~Cursor() {
         if (_dbc != nullptr) {
             int r = _dbc->c_close(_dbc);
-            if (r != 0) {
-                throw ft_exception(r);
-            }
+            handle_ft_retval(r);
         }
     }
 
-    DirectoryCursor::DirectoryCursor(DB_ENV *env, DB_TXN *txn)
+    DirectoryCursor::DirectoryCursor(const DBEnv &env, const DBTxn &txn)
         : Cursor(nullptr)
     {
         DBC *c;
-        int r = env->get_cursor_for_directory(env, txn, &c);
-        if (r != 0) {
-            throw ft_exception(r);
-        }
+        int r = env.env()->get_cursor_for_directory(env.env(), txn.txn(), &c);
+        handle_ft_retval(r);
         _dbc = c;
     }
 

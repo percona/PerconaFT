@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdlib>
 #include <memory>
 
@@ -35,7 +36,30 @@ namespace ftcxx {
 
         Buffer();
 
-        Buffer(size_t capacity);
+        explicit Buffer(size_t capacity);
+
+        Buffer(const Buffer &) = delete;
+        Buffer& operator=(const Buffer &) = delete;
+
+        Buffer(Buffer&& other)
+            : _cur(0),
+              _end(0),
+              _capacity(0),
+              _buf(nullptr, &std::free)
+        {
+            std::swap(_cur, other._cur);
+            std::swap(_end, other._end);
+            std::swap(_capacity, other._capacity);
+            std::swap(_buf, other._buf);
+        }
+
+        Buffer& operator=(Buffer&& other) {
+            std::swap(_cur, other._cur);
+            std::swap(_end, other._end);
+            std::swap(_capacity, other._capacity);
+            std::swap(_buf, other._buf);
+            return *this;
+        }
 
         // Producer API:
 

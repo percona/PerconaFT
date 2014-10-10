@@ -5,8 +5,6 @@
 #include <algorithm>
 #include <cstdint>
 
-#include <iostream>
-
 #include <db.h>
 
 #include "buffer.hpp"
@@ -29,9 +27,7 @@ namespace ftcxx {
           _finished(false)
     {
         int r = _cur.dbc()->c_set_bounds(_cur.dbc(), left, right, _prelock, 0);
-        if (r != 0) {
-            throw ft_exception(r);
-        }
+        handle_ft_retval(r);
 
         if (_forward) {
             r = _cur.dbc()->c_getf_set_range(_cur.dbc(), getf_flags(), left, getf_callback, this);
@@ -39,7 +35,7 @@ namespace ftcxx {
             r = _cur.dbc()->c_getf_set_range_reverse(_cur.dbc(), getf_flags(), right, getf_callback, this);
         }
         if (r != 0 && r != DB_NOTFOUND && r != -1) {
-            throw ft_exception(r);
+            handle_ft_retval(r);
         }
     }
 
@@ -50,46 +46,26 @@ namespace ftcxx {
         *keylen = key->size;
         *vallen = val->size;
 
-        std::cout << "wrote keylen " << key->size << " to " << keylen << ": " << *keylen << std::endl;
-        std::cout.flush();
-
-        std::cout << "wrote vallen " << val->size << " to " << vallen << ": " << *vallen << std::endl;
-        std::cout.flush();
-
         char *p = &dest[(sizeof *keylen) + (sizeof *vallen)];
 
         const char *kp = static_cast<char *>(key->data);
         std::copy(kp, kp + key->size, p);
 
-        std::cout << "wrote key to " << (void*) p << std::endl;
-        std::cout.flush();
-
         p += key->size;
 
         const char *vp = static_cast<char *>(val->data);
         std::copy(vp, vp + val->size, p);
-
-        std::cout << "wrote val to " << (void*) p << std::endl;
-        std::cout.flush();
     }
 
     template<class Comparator, class Predicate>
     void Cursor::Iterator<Comparator, Predicate>::unmarshall(char *src, DBT *key, DBT *val) {
         const uint32_t *keylen = reinterpret_cast<uint32_t *>(&src[0]);
         const uint32_t *vallen = reinterpret_cast<uint32_t *>(&src[sizeof *keylen]);
-        std::cout << "reading keylen from " << keylen << ": " << *keylen << std::endl;
-        std::cout.flush();
         key->size = *keylen;
-        std::cout << "reading vallen from " << vallen << ": " << *vallen << std::endl;
-        std::cout.flush();
         val->size = *vallen;
         char *p = &src[(sizeof *keylen) + (sizeof *vallen)];
         key->data = p;
         val->data = p + key->size;
-        std::cout << "reading key at " << key->data << std::endl;
-        std::cout.flush();
-        std::cout << "reading val at " << val->data << std::endl;
-        std::cout.flush();
     }
 
     template <class Comparator, class Predicate>
@@ -129,7 +105,7 @@ namespace ftcxx {
                 r = _cur.dbc()->c_getf_prev(_cur.dbc(), getf_flags(), getf_callback, this);
             }
             if (r != 0 && r != DB_NOTFOUND && r != -1) {
-                throw ft_exception(r);
+                handle_ft_retval(r);
             }
         }
 

@@ -102,4 +102,16 @@ namespace ftcxx {
         }
     };
 
+    inline void handle_ft_retval(int r) {
+        if (r == 0) {
+            return;
+        }
+        if (r < 0) {
+            throw ft_exception(r);
+        }
+        if (r > 0) {
+            throw system_exception(r);
+        }
+    }
+
 } // namespace ftcxx
