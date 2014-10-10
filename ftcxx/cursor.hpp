@@ -53,6 +53,8 @@ namespace ftcxx {
 
             bool finished() const { return _finished; }
 
+            bool ok() const { return !finished(); }
+
         private:
 
             Cursor &_cur;
@@ -108,6 +110,10 @@ namespace ftcxx {
              */
             bool next(DBT *key, DBT *val);
             bool next(Slice &key, Slice &val);
+
+            bool ok() const {
+                return _iter.ok() || _buf.more();
+            }
 
         private:
 
