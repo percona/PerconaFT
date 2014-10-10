@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cassert>
+#include <iterator>
 #include <memory>
 
 #include <db.h>
@@ -68,7 +69,7 @@ namespace ftcxx {
         template<typename T>
         T as() const {
             assert(size() == sizeof(T));
-            const T *p = reinterpret_cast<const T *>(_data);
+            const T *p = reinterpret_cast<const T *>(data());
             return *p;
         }
 
@@ -81,9 +82,29 @@ namespace ftcxx {
 
         size_t size() const { return _size; }
 
+        bool empty() const { return size() == 0; }
+
+        char operator[](size_t n) const {
+            assert(n < size());
+            return _data[n];
+        }
+
+        char *begin() { return mutable_data(); }
+        char *end() { return mutable_data() + size(); }
+        char *rbegin() { return end(); }
+        char *rend() { return begin(); }
+        const char *begin() const { return data(); }
+        const char *end() const { return data() + size(); }
+        const char *rbegin() const { return end(); }
+        const char *rend() const { return begin(); }
+        const char *cbegin() const { return data(); }
+        const char *cend() const { return data() + size(); }
+        const char *crbegin() const { return end(); }
+        const char *crend() const { return begin(); }
+
         Slice copy() const {
-            Slice s(_size);
-            std::copy(_data, _data + _size, s.mutable_data());
+            Slice s(size());
+            std::copy(begin(), end(), s.begin());
             return s;
         }
 
@@ -97,9 +118,9 @@ namespace ftcxx {
 
         DBT dbt() const {
             DBT d;
-            d.data = const_cast<void *>(static_cast<const void *>(_data));
-            d.size = _size;
-            d.ulen = _size;
+            d.data = const_cast<void *>(static_cast<const void *>(data()));
+            d.size = size();
+            d.ulen = size();
             d.flags = 0;
             return d;
         }
@@ -111,3 +132,16 @@ namespace ftcxx {
     };
 
 } // namespace ftcxx
+
+namespace std {
+
+    template<>
+    class iterator_traits<ftcxx::Slice> {
+        typedef typename std::iterator_traits<const char *>::difference_type difference_type;
+        typedef typename std::iterator_traits<const char *>::value_type value_type;
+        typedef typename std::iterator_traits<const char *>::pointer pointer;
+        typedef typename std::iterator_traits<const char *>::reference reference;
+        typedef typename std::iterator_traits<const char *>::iterator_category iterator_category;
+    };
+
+} // namespace std
