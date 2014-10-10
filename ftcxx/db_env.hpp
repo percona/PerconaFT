@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <map>
 #include <string>
 
 #include <db.h>
@@ -43,6 +44,9 @@ namespace ftcxx {
             handle_ft_retval(r);
             _env = nullptr;
         }
+
+        typedef std::map<std::string, TOKU_ENGINE_STATUS_ROW_S> Status;
+        void get_status(Status &status, fs_redzone_state &redzone_state, uint64_t &env_panic, std::string &panic_string) const;
 
     private:
         DB_ENV *_env;
