@@ -5,6 +5,7 @@
 #include <db.h>
 
 #include "buffer.hpp"
+#include "db.hpp"
 #include "db_env.hpp"
 #include "db_txn.hpp"
 
@@ -15,10 +16,12 @@ namespace ftcxx {
      */
     class Cursor {
     public:
-        Cursor(DB *db, const DBTxn &txn=DBTxn(), int flags = 0);
+        Cursor(const DB &db, const DBTxn &txn=DBTxn(), int flags = 0);
         ~Cursor();
 
         DBC *dbc() const { return _dbc; }
+
+        void close();
 
         /**
          * Cursor::Iterator supports iterating a cursor over a key range,

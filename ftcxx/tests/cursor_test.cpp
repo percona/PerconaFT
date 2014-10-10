@@ -10,12 +10,13 @@
 #include "test.h"  // hax
 
 #include "cursor.hpp"
+#include "db.hpp"
 #include "db_env.hpp"
 #include "db_txn.hpp"
 
 const uint32_t N = 100000;
 
-static void fill(const ftcxx::DBEnv &env, DB *db) {
+static void fill(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
     ftcxx::DBTxn txn(env);
 
     uint32_t k;
@@ -26,7 +27,7 @@ static void fill(const ftcxx::DBEnv &env, DB *db) {
     dbt_init(&val, vbuf, sizeof vbuf);
     for (uint32_t i = 0; i < N; ++i) {
         k = i;
-        int r = db->put(db, txn.txn(), &key, &val, 0);
+        int r = db.put(txn, &key, &val);
         assert_zero(r);
     }
 
@@ -39,7 +40,7 @@ struct UIntComparator {
     }
 };
 
-static void run_test(const ftcxx::DBEnv &env, DB *db) {
+static void run_test(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
     fill(env, db);
 
     ftcxx::DBTxn txn(env);
@@ -94,21 +95,12 @@ int test_main(int argc, char *const argv[]) {
         .set_default_bt_compare(uint_dbt_cmp)
         .open(env_dir, env_open_flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-    // create the db
-    DB *db = NULL;
-    r = db_create(&db, env.env(), 0);
-    assert_zero(r);
-    {
-        ftcxx::DBTxn create_txn(env);
-        r = db->open(db, create_txn.txn(), db_filename, NULL, DB_BTREE, DB_CREATE, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-        assert_zero(r);
-        create_txn.commit();
-    }
+    ftcxx::DBTxn create_txn(env);
+    ftcxx::DB db = ftcxx::DBBuilder()
+        .open(env, create_txn, db_filename, NULL, DB_BTREE, DB_CREATE, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    create_txn.commit();
 
     run_test(env, db);
-
-    r = db->close(db, 0);
-    assert_zero(r);
 
     return 0;
 }

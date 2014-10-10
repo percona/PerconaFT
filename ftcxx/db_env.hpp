@@ -18,8 +18,7 @@ namespace ftcxx {
 
         ~DBEnv() {
             if (_env) {
-                int r = _env->close(_env, 0);
-                handle_ft_retval(r);
+                close();
             }
         }
 
@@ -38,6 +37,12 @@ namespace ftcxx {
         }
 
         DB_ENV *env() const { return _env; }
+
+        void close() {
+            int r = _env->close(_env, 0);
+            handle_ft_retval(r);
+            _env = nullptr;
+        }
 
     private:
         DB_ENV *_env;
