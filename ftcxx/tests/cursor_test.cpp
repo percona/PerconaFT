@@ -13,21 +13,17 @@
 #include "db.hpp"
 #include "db_env.hpp"
 #include "db_txn.hpp"
+#include "slice.hpp"
 
 const uint32_t N = 100000;
 
 static void fill(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
     ftcxx::DBTxn txn(env);
 
-    uint32_t k;
-    char vbuf[1<<10];
-    memset(vbuf, 'x', sizeof vbuf);
-    DBT key, val;
-    dbt_init(&key, &k, sizeof k);
-    dbt_init(&val, vbuf, sizeof vbuf);
+    ftcxx::Slice val(1<<10);
+    memset(val.mutable_data(), 'x', val.size());
     for (uint32_t i = 0; i < N; ++i) {
-        k = i;
-        int r = db.put(txn, &key, &val);
+        int r = db.put(txn, ftcxx::Slice::slice_of(i), val);
         assert_zero(r);
     }
 
@@ -51,21 +47,19 @@ static void run_test(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
         uint32_t lk;
         uint32_t rk;
 
-        DBT left;
-        DBT right;
-        dbt_init(&left, &lk, sizeof lk);
-        dbt_init(&right, &rk, sizeof rk);
         for (uint32_t i = 0; i < N; i += 1000) {
             lk = i;
             rk = i + 499;
 
-            DBT key;
-            DBT val;
+            ftcxx::Slice key;
+            ftcxx::Slice val;
             uint32_t expect = i;
             uint32_t last = 0;
-            for (auto it(cur.iterator(&left, &right, UIntComparator(), ftcxx::Cursor::NoFilter())); it.next(&key, &val); ) {
-                assert(sizeof(uint32_t) == key.size);
-                last = *reinterpret_cast<const uint32_t *>(key.data);
+            for (auto it(cur.buffered_iterator(ftcxx::Slice::slice_of(lk), ftcxx::Slice::slice_of(rk),
+                                               UIntComparator(), ftcxx::Cursor::NoFilter()));
+                 it.next(key, val);
+                 ) {
+                last = key.as<uint32_t>();
                 assert(expect == last);
                 expect++;
             }

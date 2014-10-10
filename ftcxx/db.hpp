@@ -9,6 +9,7 @@
 #include "db_env.hpp"
 #include "db_txn.hpp"
 #include "exceptions.hpp"
+#include "slice.hpp"
 
 namespace ftcxx {
 
@@ -48,12 +49,19 @@ namespace ftcxx {
             return _db->put(_db, txn.txn(), key, val, flags);
         }
 
+        int put(const DBTxn &txn, const Slice &key, const Slice &val, int flags=0) const {
+            DBT kdbt = key.dbt();
+            DBT vdbt = val.dbt();
+            return put(txn, &kdbt, &vdbt, flags);
+        }
+
         int del(const DBTxn &txn, DBT *key, int flags=0) const {
             return _db->del(_db, txn.txn(), key, flags);
         }
 
-        int get(const DBTxn &txn, DBT *key, DBT *val, int flags=0) const {
-            return _db->get(_db, txn.txn(), key, val, flags);
+        int del(const DBTxn &txn, const Slice &key, int flags=0) const {
+            DBT kdbt = key.dbt();
+            return _db->del(_db, txn.txn(), &kdbt, flags);
         }
 
         void close() {

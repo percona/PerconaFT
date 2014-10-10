@@ -9,38 +9,122 @@
 
 #include "buffer.hpp"
 #include "exceptions.hpp"
+#include "slice.hpp"
 
 namespace ftcxx {
 
-    template<class Comparator, class Predicate>
-    Cursor::Iterator<Comparator, Predicate>::Iterator(Cursor &cur, DBT *left, DBT *right,
-                                                      Comparator cmp, Predicate filter,
-                                                      bool forward, bool end_exclusive, bool prelock)
+    template<class Comparator, class Predicate, class Handler>
+    Cursor::Iterator<Comparator, Predicate, Handler>::Iterator(Cursor &cur, DBT *left, DBT *right,
+                                                               Comparator cmp, Predicate filter, Handler handler,
+                                                               bool forward, bool end_exclusive, bool prelock)
         : _cur(cur),
-          _left(left),
-          _right(right),
+          _left({left->data, left->size, left->size, 0}),
+          _right({right->data, right->size, right->size, 0}),
           _cmp(cmp),
           _filter(filter),
+          _handler(handler),
           _forward(forward),
           _end_exclusive(end_exclusive),
           _prelock(prelock),
           _finished(false)
     {
-        int r = _cur.dbc()->c_set_bounds(_cur.dbc(), left, right, _prelock, 0);
+        init();
+    }
+
+    template<class Comparator, class Predicate, class Handler>
+    Cursor::Iterator<Comparator, Predicate, Handler>::Iterator(Cursor &cur, const Slice &left, const Slice &right,
+                                                               Comparator cmp, Predicate filter, Handler handler,
+                                                               bool forward, bool end_exclusive, bool prelock)
+        : _cur(cur),
+          _left(left.dbt()),
+          _right(right.dbt()),
+          _cmp(cmp),
+          _filter(filter),
+          _handler(handler),
+          _forward(forward),
+          _end_exclusive(end_exclusive),
+          _prelock(prelock),
+          _finished(false)
+    {
+        init();
+    }
+
+    template<class Comparator, class Predicate, class Handler>
+    void Cursor::Iterator<Comparator, Predicate, Handler>::init() {
+        int r = _cur.dbc()->c_set_bounds(_cur.dbc(), &_left, &_right, _prelock, 0);
         handle_ft_retval(r);
 
         if (_forward) {
-            r = _cur.dbc()->c_getf_set_range(_cur.dbc(), getf_flags(), left, getf_callback, this);
+            r = _cur.dbc()->c_getf_set_range(_cur.dbc(), getf_flags(), &_left, getf_callback, this);
         } else {
-            r = _cur.dbc()->c_getf_set_range_reverse(_cur.dbc(), getf_flags(), right, getf_callback, this);
+            r = _cur.dbc()->c_getf_set_range_reverse(_cur.dbc(), getf_flags(), &_right, getf_callback, this);
         }
         if (r != 0 && r != DB_NOTFOUND && r != -1) {
             handle_ft_retval(r);
         }
     }
 
+    template <class Comparator, class Predicate, class Handler>
+    int Cursor::Iterator<Comparator, Predicate, Handler>::getf(const DBT *key, const DBT *val) {
+        int c;
+        if (_forward) {
+            c = _cmp(key, &_right);
+        } else {
+            c = _cmp(&_left, key);
+        }
+        if (c > 0 || (c == 0 && _end_exclusive)) {
+            _finished = true;
+            return -1;
+        }
+
+        if (_filter(key, val)) {
+            if (!_handler(key, val)) {
+                return 0;
+            }
+        }
+
+        return TOKUDB_CURSOR_CONTINUE;
+    }
+
+    template <class Comparator, class Predicate, class Handler>
+    bool Cursor::Iterator<Comparator, Predicate, Handler>::consume_batch() {
+        int r;
+        if (_forward) {
+            r = _cur.dbc()->c_getf_next(_cur.dbc(), getf_flags(), getf_callback, this);
+        } else {
+            r = _cur.dbc()->c_getf_prev(_cur.dbc(), getf_flags(), getf_callback, this);
+        }
+        if (r != 0 && r != DB_NOTFOUND && r != -1) {
+            handle_ft_retval(r);
+        }
+
+        return !_finished;
+    }
+
     template<class Comparator, class Predicate>
-    void Cursor::Iterator<Comparator, Predicate>::marshall(char *dest, const DBT *key, const DBT *val) {
+    Cursor::BufferedIterator<Comparator, Predicate>::BufferedIterator(Cursor &cur, DBT *left, DBT *right,
+                                                                      Comparator cmp, Predicate filter,
+                                                                      bool forward, bool end_exclusive, bool prelock)
+        : _buf(),
+          _appender(_buf),
+          _iter(cur, left, right,
+                cmp, filter, _appender,
+                forward, end_exclusive, prelock)
+    {}
+
+    template<class Comparator, class Predicate>
+    Cursor::BufferedIterator<Comparator, Predicate>::BufferedIterator(Cursor &cur, const Slice &left, const Slice &right,
+                                                                      Comparator cmp, Predicate filter,
+                                                                      bool forward, bool end_exclusive, bool prelock)
+        : _buf(),
+          _appender(_buf),
+          _iter(cur, left, right,
+                cmp, filter, _appender,
+                forward, end_exclusive, prelock)
+    {}
+
+    template<class Comparator, class Predicate>
+    void Cursor::BufferedIterator<Comparator, Predicate>::BufferAppender::marshall(char *dest, const DBT *key, const DBT *val) {
         uint32_t *keylen = reinterpret_cast<uint32_t *>(&dest[0]);
         uint32_t *vallen = reinterpret_cast<uint32_t *>(&dest[sizeof *keylen]);
         *keylen = key->size;
@@ -58,7 +142,7 @@ namespace ftcxx {
     }
 
     template<class Comparator, class Predicate>
-    void Cursor::Iterator<Comparator, Predicate>::unmarshall(char *src, DBT *key, DBT *val) {
+    void Cursor::BufferedIterator<Comparator, Predicate>::BufferAppender::unmarshall(char *src, DBT *key, DBT *val) {
         const uint32_t *keylen = reinterpret_cast<uint32_t *>(&src[0]);
         const uint32_t *vallen = reinterpret_cast<uint32_t *>(&src[sizeof *keylen]);
         key->size = *keylen;
@@ -68,45 +152,28 @@ namespace ftcxx {
         val->data = p + key->size;
     }
 
-    template <class Comparator, class Predicate>
-    int Cursor::Iterator<Comparator, Predicate>::getf(const DBT *key, const DBT *val) {
-        int c;
-        if (_forward) {
-            c = _cmp(key, _right);
-        } else {
-            c = _cmp(_left, key);
-        }
-        if (c > 0 || (c == 0 && _end_exclusive)) {
-            _finished = true;
-            return -1;
-        }
-
-        if (_filter(key, val)) {
-            size_t needed = marshalled_size(key, val);
-            char *dest = _buf.alloc(needed);
-            marshall(dest, key, val);
-            if (_buf.full()) {
-                return 0;
-            }
-        }
-
-        return TOKUDB_CURSOR_CONTINUE;
+    template<class Comparator, class Predicate>
+    void Cursor::BufferedIterator<Comparator, Predicate>::BufferAppender::unmarshall(char *src, Slice &key, Slice &val) {
+        const uint32_t *keylen = reinterpret_cast<uint32_t *>(&src[0]);
+        const uint32_t *vallen = reinterpret_cast<uint32_t *>(&src[sizeof *keylen]);
+        char *p = &src[(sizeof *keylen) + (sizeof *vallen)];
+        key = Slice(p, *keylen);
+        val = Slice(p + *keylen, *vallen);
     }
 
-    template <class Comparator, class Predicate>
-    bool Cursor::Iterator<Comparator, Predicate>::next(DBT *key, DBT *val) {
-        if (!_buf.more() && !_finished) {
-            _buf.clear();
+    template<class Comparator, class Predicate>
+    bool Cursor::BufferedIterator<Comparator, Predicate>::BufferAppender::operator()(const DBT *key, const DBT *val) {
+        size_t needed = marshalled_size(key->size, val->size);
+        char *dest = _buf.alloc(needed);
+        marshall(dest, key, val);
+        return !_buf.full();
+    }
 
-            int r;
-            if (_forward) {
-                r = _cur.dbc()->c_getf_next(_cur.dbc(), getf_flags(), getf_callback, this);
-            } else {
-                r = _cur.dbc()->c_getf_prev(_cur.dbc(), getf_flags(), getf_callback, this);
-            }
-            if (r != 0 && r != DB_NOTFOUND && r != -1) {
-                handle_ft_retval(r);
-            }
+    template<class Comparator, class Predicate>
+    bool Cursor::BufferedIterator<Comparator, Predicate>::next(DBT *key, DBT *val) {
+        if (!_buf.more() && !_iter.finished()) {
+            _buf.clear();
+            _iter.consume_batch();
         }
 
         if (!_buf.more()) {
@@ -114,8 +181,25 @@ namespace ftcxx {
         }
 
         char *src = _buf.current();
-        unmarshall(src, key, val);
-        _buf.advance(marshalled_size(key, val));
+        BufferAppender::unmarshall(src, key, val);
+        _buf.advance(BufferAppender::marshalled_size(key->size, val->size));
+        return true;
+    }
+
+    template<class Comparator, class Predicate>
+    bool Cursor::BufferedIterator<Comparator, Predicate>::next(Slice &key, Slice &val) {
+        if (!_buf.more() && !_iter.finished()) {
+            _buf.clear();
+            _iter.consume_batch();
+        }
+
+        if (!_buf.more()) {
+            return false;
+        }
+
+        char *src = _buf.current();
+        BufferAppender::unmarshall(src, key, val);
+        _buf.advance(BufferAppender::marshalled_size(key.size(), val.size()));
         return true;
     }
 

@@ -8,6 +8,7 @@
 #include "db.hpp"
 #include "db_env.hpp"
 #include "db_txn.hpp"
+#include "slice.hpp"
 
 namespace ftcxx {
 
@@ -27,7 +28,7 @@ namespace ftcxx {
          * Cursor::Iterator supports iterating a cursor over a key range,
          * with bulk fetch buffering, and optional filtering.
          */
-        template<class Comparator, class Predicate>
+        template<class Comparator, class Predicate, class Handler>
         class Iterator {
         public:
 
@@ -36,7 +37,11 @@ namespace ftcxx {
              * instead (below) to avoid template parameters.
              */
             Iterator(Cursor &cur, DBT *left, DBT *right,
-                     Comparator cmp, Predicate filter,
+                     Comparator cmp, Predicate filter, Handler handler,
+                     bool forward, bool end_exclusive, bool prelock);
+
+            Iterator(Cursor &cur, const Slice &left, const Slice &right,
+                     Comparator cmp, Predicate filter, Handler handler,
                      bool forward, bool end_exclusive, bool prelock);
 
             /**
@@ -44,22 +49,25 @@ namespace ftcxx {
              * if there is more data, and fills in key and val.  If the
              * range is exhausted, returns false.
              */
-            bool next(DBT *key, DBT *val);
+            bool consume_batch();
+
+            bool finished() const { return _finished; }
 
         private:
 
             Cursor &_cur;
-            DBT *_left;
-            DBT *_right;
+            DBT _left;
+            DBT _right;
             Comparator &_cmp;
             Predicate &_filter;
+            Handler &_handler;
 
             const bool _forward;
             const bool _end_exclusive;
             const bool _prelock;
             bool _finished;
 
-            Buffer _buf;
+            void init();
 
             static int getf_callback(const DBT *key, const DBT *val, void *extra) {
                 Iterator *i = static_cast<Iterator *>(extra);
@@ -75,14 +83,57 @@ namespace ftcxx {
             }
 
             int getf(const DBT *key, const DBT *val);
+        };
 
-            static size_t marshalled_size(const DBT *key, const DBT *val) {
-                return (sizeof key->size) + (sizeof val->size) + key->size + val->size;
-            }
+        template<class Comparator, class Predicate>
+        class BufferedIterator {
+        public:
 
-            static void marshall(char *dest, const DBT *key, const DBT *val);
+            /**
+             * Constructs an iterator.  Better to use Cursor::iterator
+             * instead (below) to avoid template parameters.
+             */
+            BufferedIterator(Cursor &cur, DBT *left, DBT *right,
+                             Comparator cmp, Predicate filter,
+                             bool forward, bool end_exclusive, bool prelock);
 
-            static void unmarshall(char *src, DBT *key, DBT *val);
+            BufferedIterator(Cursor &cur, const Slice &left, const Slice &right,
+                             Comparator cmp, Predicate filter,
+                             bool forward, bool end_exclusive, bool prelock);
+
+            /**
+             * Gets the next key/val pair in the iteration.  Returns true
+             * if there is more data, and fills in key and val.  If the
+             * range is exhausted, returns false.
+             */
+            bool next(DBT *key, DBT *val);
+            bool next(Slice &key, Slice &val);
+
+        private:
+
+            class BufferAppender {
+                Buffer &_buf;
+
+            public:
+                BufferAppender(Buffer &buf)
+                    : _buf(buf)
+                {}
+
+                bool operator()(const DBT *key, const DBT *val);
+
+                static size_t marshalled_size(size_t keylen, size_t vallen) {
+                    return (sizeof(((DBT *)0)->size)) + (sizeof(((DBT *)0)->size)) + keylen + vallen;
+                }
+
+                static void marshall(char *dest, const DBT *key, const DBT *val);
+
+                static void unmarshall(char *src, DBT *key, DBT *val);
+                static void unmarshall(char *src, Slice &key, Slice &val);
+            };
+
+            Buffer _buf;
+            BufferAppender _appender;
+            Iterator<Comparator, Predicate, BufferAppender> _iter;
         };
 
         struct NoFilter {
@@ -93,11 +144,32 @@ namespace ftcxx {
          * Constructs an Iterator with this Cursor, over the range from
          * left to right (or right to left if !forward).
          */
+        template<class Comparator, class Predicate, class Handler>
+        Iterator<Comparator, Predicate, Handler> iterator(DBT *left, DBT *right,
+                                                          Comparator cmp, Predicate filter, Handler handler,
+                                                          bool forward=true, bool end_exclusive=false, bool prelock=true) {
+            return Iterator<Comparator, Predicate, Handler>(*this, left, right, cmp, filter, handler, forward, end_exclusive, prelock);
+        }
+
+        template<class Comparator, class Predicate, class Handler>
+        Iterator<Comparator, Predicate, Handler> iterator(const Slice &left, const Slice &right,
+                                                          Comparator cmp, Predicate filter, Handler handler,
+                                                          bool forward=true, bool end_exclusive=false, bool prelock=true) {
+            return Iterator<Comparator, Predicate, Handler>(*this, left, right, cmp, filter, handler, forward, end_exclusive, prelock);
+        }
+
         template<class Comparator, class Predicate>
-        Iterator<Comparator, Predicate> iterator(DBT *left, DBT *right,
-                                                 Comparator cmp, Predicate filter,
-                                                 bool forward=true, bool end_exclusive=false, bool prelock=true) {
-            return Iterator<Comparator, Predicate>(*this, left, right, cmp, filter, forward, end_exclusive, prelock);
+        BufferedIterator<Comparator, Predicate> buffered_iterator(DBT *left, DBT *right,
+                                                                  Comparator cmp, Predicate filter,
+                                                                  bool forward=true, bool end_exclusive=false, bool prelock=true) {
+            return BufferedIterator<Comparator, Predicate>(*this, left, right, cmp, filter, forward, end_exclusive, prelock);
+        }
+
+        template<class Comparator, class Predicate>
+        BufferedIterator<Comparator, Predicate> buffered_iterator(const Slice &left, const Slice &right,
+                                                                  Comparator cmp, Predicate filter,
+                                                                  bool forward=true, bool end_exclusive=false, bool prelock=true) {
+            return BufferedIterator<Comparator, Predicate>(*this, left, right, cmp, filter, forward, end_exclusive, prelock);
         }
 
     protected:
