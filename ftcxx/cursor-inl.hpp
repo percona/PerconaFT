@@ -18,8 +18,8 @@ namespace ftcxx {
                                                                Comparator cmp, Predicate filter, Handler handler,
                                                                bool forward, bool end_exclusive, bool prelock)
         : _cur(cur),
-          _left({left->data, left->size, left->size, 0}),
-          _right({right->data, right->size, right->size, 0}),
+          _left(Slice(*left).owned()),
+          _right(Slice(*right).owned()),
           _cmp(cmp),
           _filter(filter),
           _handler(handler),
@@ -36,8 +36,8 @@ namespace ftcxx {
                                                                Comparator cmp, Predicate filter, Handler handler,
                                                                bool forward, bool end_exclusive, bool prelock)
         : _cur(cur),
-          _left(left.dbt()),
-          _right(right.dbt()),
+          _left(left.owned()),
+          _right(right.owned()),
           _cmp(cmp),
           _filter(filter),
           _handler(handler),
@@ -51,13 +51,15 @@ namespace ftcxx {
 
     template<class Comparator, class Predicate, class Handler>
     void Cursor::Iterator<Comparator, Predicate, Handler>::init() {
-        int r = _cur.dbc()->c_set_bounds(_cur.dbc(), &_left, &_right, _prelock, 0);
+        DBT left_dbt = _left.dbt();
+        DBT right_dbt = _right.dbt();
+        int r = _cur.dbc()->c_set_bounds(_cur.dbc(), &left_dbt, &right_dbt, _prelock, 0);
         handle_ft_retval(r);
 
         if (_forward) {
-            r = _cur.dbc()->c_getf_set_range(_cur.dbc(), getf_flags(), &_left, getf_callback, this);
+            r = _cur.dbc()->c_getf_set_range(_cur.dbc(), getf_flags(), &left_dbt, getf_callback, this);
         } else {
-            r = _cur.dbc()->c_getf_set_range_reverse(_cur.dbc(), getf_flags(), &_right, getf_callback, this);
+            r = _cur.dbc()->c_getf_set_range_reverse(_cur.dbc(), getf_flags(), &right_dbt, getf_callback, this);
         }
         if (r != 0 && r != DB_NOTFOUND && r != -1) {
             handle_ft_retval(r);
@@ -68,9 +70,9 @@ namespace ftcxx {
     int Cursor::Iterator<Comparator, Predicate, Handler>::getf(const DBT *key, const DBT *val) {
         int c;
         if (_forward) {
-            c = _cmp(key, &_right);
+            c = _cmp(Slice(*key), _right);
         } else {
-            c = _cmp(&_left, key);
+            c = _cmp(_left, Slice(*key));
         }
         if (c > 0 || (c == 0 && _end_exclusive)) {
             _finished = true;

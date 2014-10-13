@@ -27,7 +27,11 @@ namespace ftcxx {
             : _data(p),
               _size(sz)
         {}
-              
+
+        explicit Slice(const DBT &d)
+            : _data(reinterpret_cast<char *>(d.data)),
+              _size(d.size)
+        {}
 
         explicit Slice(const std::string &str)
             : _data(str.c_str()),

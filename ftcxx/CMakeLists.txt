@@ -8,4 +8,19 @@ add_library(ftcxx STATIC
   )
 add_dependencies(ftcxx install_tdb_h)
 
+if (NOT DEFINED MYSQL_PROJECT_NAME_DOCSTRING)
+  install(
+    TARGETS ftcxx
+    DESTINATION ${INSTALL_LIBDIR}
+    COMPONENT tokukv_libs_static
+    )
+
+  file(GLOB ftcxx_headers "*.hpp")
+  install(
+    FILES ${ftcxx_headers}
+    DESTINATION include/ftcxx
+    COMPONENT tokukv_headers
+    )
+endif ()
+
 add_subdirectory(tests)

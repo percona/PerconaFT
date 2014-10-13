@@ -58,8 +58,8 @@ namespace ftcxx {
         private:
 
             Cursor &_cur;
-            DBT _left;
-            DBT _right;
+            Slice _left;
+            Slice _right;
             Comparator &_cmp;
             Predicate &_filter;
             Handler &_handler;

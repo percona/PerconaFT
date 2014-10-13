@@ -45,6 +45,10 @@ namespace ftcxx {
 
         ::DB *db() const { return _db; }
 
+        Slice descriptor() const {
+            return Slice(_db->cmp_descriptor->dbt);
+        }
+
         int put(const DBTxn &txn, DBT *key, DBT *val, int flags=0) const {
             return _db->put(_db, txn.txn(), key, val, flags);
         }
@@ -80,6 +84,7 @@ namespace ftcxx {
         uint32_t _fanout;
         uint8_t _memcmp_magic;
         uint32_t _pagesize;
+        Slice _descriptor;
 
     public:
         DBBuilder()
@@ -87,7 +92,8 @@ namespace ftcxx {
               _compression_method(TOKU_COMPRESSION_METHOD(0)),
               _fanout(0),
               _memcmp_magic(0),
-              _pagesize(0)
+              _pagesize(0),
+              _descriptor()
         {}
 
         DB open(const DBEnv &env, const DBTxn &txn, const char *fname, const char *dbname, DBTYPE dbtype, uint32_t flags, int mode) const {
@@ -123,6 +129,12 @@ namespace ftcxx {
             r = db->open(db, txn.txn(), fname, dbname, dbtype, flags, mode);
             handle_ft_retval(r);
 
+            if (!_descriptor.empty()) {
+                DBT desc = _descriptor.dbt();
+                r = db->change_descriptor(db, txn.txn(), &desc, DB_UPDATE_CMP_DESCRIPTOR);
+                handle_ft_retval(r);
+            }
+
             return DB(db);
         }
 
@@ -148,6 +160,11 @@ namespace ftcxx {
 
         DBBuilder& set_pagesize(uint32_t pagesize) {
             _pagesize = pagesize;
+            return *this;
+        }
+
+        DBBuilder& set_descriptor(const Slice &desc) {
+            _descriptor = desc;
             return *this;
         }
     };

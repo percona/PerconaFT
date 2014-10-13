@@ -31,8 +31,10 @@ static void fill(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
 }
 
 struct UIntComparator {
-    int operator()(const DBT *a, const DBT *b) {
-        return uint_dbt_cmp((DB *) this /*lol*/, a, b);
+    int operator()(const ftcxx::Slice &a, const ftcxx::Slice &b) {
+        DBT adbt = a.dbt();
+        DBT bdbt = b.dbt();
+        return uint_dbt_cmp((DB *) this /*lol*/, &adbt, &bdbt);
     }
 };
 
