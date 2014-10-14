@@ -44,8 +44,6 @@ static void run_test(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
     ftcxx::DBTxn txn(env);
 
     {
-        ftcxx::Cursor cur(db, txn);
-
         uint32_t lk;
         uint32_t rk;
 
@@ -57,9 +55,9 @@ static void run_test(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
             ftcxx::Slice val;
             uint32_t expect = i;
             uint32_t last = 0;
-            for (auto it(cur.buffered_iterator(ftcxx::Slice::slice_of(lk), ftcxx::Slice::slice_of(rk),
-                                               UIntComparator(), ftcxx::Cursor::NoFilter()));
-                 it.next(key, val);
+            for (auto cur(db.buffered_cursor(txn, ftcxx::Slice::slice_of(lk), ftcxx::Slice::slice_of(rk),
+                                             UIntComparator(), ftcxx::NoFilter()));
+                 cur.next(key, val);
                  ) {
                 last = key.as<uint32_t>();
                 assert(expect == last);
@@ -70,6 +68,23 @@ static void run_test(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
     }
 
     txn.commit();
+
+    ftcxx::DBTxn extxn(env);
+
+    {
+        ftcxx::Slice key;
+        ftcxx::Slice val;
+        uint32_t expect = 0;
+        uint32_t last = 0;
+        for (auto it(db.buffered_cursor(txn, ftcxx::NoFilter())); it.next(key, val); ) {
+            last = key.as<uint32_t>();
+            assert(expect == last);
+            expect++;
+        }
+        assert(last == N - 1);
+    }
+
+    extxn.commit();
 }
 
 int test_main(int argc, char *const argv[]) {
