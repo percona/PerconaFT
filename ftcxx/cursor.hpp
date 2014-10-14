@@ -29,27 +29,36 @@ namespace ftcxx {
         ::DBC *_dbc;
     };
 
+    class Cursor {
+    public:
+        virtual ~Cursor() {}
+
+        virtual bool consume_batch() = 0;
+        virtual bool finished() const = 0;
+        virtual bool ok() const = 0;
+    };
+
     /**
      * Cursor supports iterating a cursor over a key range,
      * with bulk fetch buffering, and optional filtering.
      */
     template<class Comparator, class Predicate, class Handler>
-    class Cursor {
+    class RangeCursor : public Cursor {
     public:
 
         /**
          * Constructs an cursor.  Better to use DB::cursor instead to
          * avoid template parameters.
          */
-        Cursor(const DB &db, const DBTxn &txn, int flags,
-               DBT *left, DBT *right,
-               Comparator cmp, Predicate filter, Handler handler,
-               bool forward, bool end_exclusive, bool prelock);
+        RangeCursor(const DB &db, const DBTxn &txn, int flags,
+                    DBT *left, DBT *right,
+                    Comparator cmp, Predicate filter, Handler handler,
+                    bool forward, bool end_exclusive, bool prelock);
 
-        Cursor(const DB &db, const DBTxn &txn, int flags,
-               const Slice &left, const Slice &right,
-               Comparator cmp, Predicate filter, Handler handler,
-               bool forward, bool end_exclusive, bool prelock);
+        RangeCursor(const DB &db, const DBTxn &txn, int flags,
+                    const Slice &left, const Slice &right,
+                    Comparator cmp, Predicate filter, Handler handler,
+                    bool forward, bool end_exclusive, bool prelock);
 
         /**
          * Gets the next key/val pair in the iteration.  Returns true
@@ -81,7 +90,7 @@ namespace ftcxx {
         void init();
 
         static int getf_callback(const DBT *key, const DBT *val, void *extra) {
-            Cursor *i = static_cast<Cursor *>(extra);
+            RangeCursor *i = static_cast<RangeCursor *>(extra);
             return i->getf(key, val);
         }
 
@@ -101,7 +110,7 @@ namespace ftcxx {
      * with bulk fetch buffering, and optional filtering.
      */
     template<class Predicate, class Handler>
-    class ScanCursor {
+    class ScanCursor : public Cursor {
     public:
 
         /**
@@ -171,45 +180,54 @@ namespace ftcxx {
         static void unmarshall(char *src, Slice &key, Slice &val);
     };
 
-    template<class Comparator, class Predicate>
     class BufferedCursor {
+    public:
+        virtual ~BufferedCursor() {}
+
+        virtual bool next(DBT *key, DBT *val) = 0;
+        virtual bool next(Slice &key, Slice &val) = 0;
+        virtual bool ok() const = 0;
+    };
+
+    template<class Comparator, class Predicate>
+    class BufferedRangeCursor : public BufferedCursor {
     public:
 
         /**
          * Constructs an buffered cursor.  Better to use
          * DB::buffered_cursor instead to avoid template parameters.
          */
-        BufferedCursor(const DB &db, const DBTxn &txn, int flags,
-                       DBT *left, DBT *right,
-                       Comparator cmp, Predicate filter,
-                       bool forward, bool end_exclusive, bool prelock);
+        BufferedRangeCursor(const DB &db, const DBTxn &txn, int flags,
+                            DBT *left, DBT *right,
+                            Comparator cmp, Predicate filter,
+                            bool forward, bool end_exclusive, bool prelock);
 
-        BufferedCursor(const DB &db, const DBTxn &txn, int flags,
-                       const Slice &left, const Slice &right,
-                       Comparator cmp, Predicate filter,
-                       bool forward, bool end_exclusive, bool prelock);
+        BufferedRangeCursor(const DB &db, const DBTxn &txn, int flags,
+                            const Slice &left, const Slice &right,
+                            Comparator cmp, Predicate filter,
+                            bool forward, bool end_exclusive, bool prelock);
 
         /**
          * Gets the next key/val pair in the iteration.  Returns true
          * if there is more data, and fills in key and val.  If the
          * range is exhausted, returns false.
          */
-        bool next(DBT *key, DBT *val);
-        bool next(Slice &key, Slice &val);
+        virtual bool next(DBT *key, DBT *val);
+        virtual bool next(Slice &key, Slice &val);
 
-        bool ok() const {
-            return _cur.ok() || _buf.more();
+        virtual bool ok() const {
+            return _cur->ok() || _buf.more();
         }
 
     private:
 
         Buffer _buf;
         BufferAppender _appender;
-        Cursor<Comparator, Predicate, BufferAppender> _cur;
+        std::unique_ptr<Cursor> _cur;
     };
 
     template<class Predicate>
-    class BufferedScanCursor {
+    class BufferedScanCursor : public BufferedCursor {
     public:
 
         /**
@@ -224,18 +242,18 @@ namespace ftcxx {
          * if there is more data, and fills in key and val.  If the
          * range is exhausted, returns false.
          */
-        bool next(DBT *key, DBT *val);
-        bool next(Slice &key, Slice &val);
+        virtual bool next(DBT *key, DBT *val);
+        virtual bool next(Slice &key, Slice &val);
 
-        bool ok() const {
-            return _cur.ok() || _buf.more();
+        virtual bool ok() const {
+            return _cur->ok() || _buf.more();
         }
 
     private:
 
         Buffer _buf;
         BufferAppender _appender;
-        ScanCursor<Predicate, BufferAppender> _cur;
+        std::unique_ptr<Cursor> _cur;
     };
 
     struct NoFilter {

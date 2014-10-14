@@ -55,9 +55,9 @@ static void run_test(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
             ftcxx::Slice val;
             uint32_t expect = i;
             uint32_t last = 0;
-            for (auto cur(db.buffered_cursor(txn, ftcxx::Slice::slice_of(lk), ftcxx::Slice::slice_of(rk),
-                                             UIntComparator(), ftcxx::NoFilter()));
-                 cur.next(key, val);
+            for (std::unique_ptr<ftcxx::BufferedCursor> cur(db.buffered_cursor(txn, ftcxx::Slice::slice_of(lk), ftcxx::Slice::slice_of(rk),
+                                                                               UIntComparator(), ftcxx::NoFilter()));
+                 cur->next(key, val);
                  ) {
                 last = key.as<uint32_t>();
                 assert(expect == last);
@@ -76,7 +76,7 @@ static void run_test(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
         ftcxx::Slice val;
         uint32_t expect = 0;
         uint32_t last = 0;
-        for (auto it(db.buffered_cursor(txn, ftcxx::NoFilter())); it.next(key, val); ) {
+        for (std::unique_ptr<ftcxx::BufferedCursor> it(db.buffered_cursor(extxn, ftcxx::NoFilter())); it->next(key, val); ) {
             last = key.as<uint32_t>();
             assert(expect == last);
             expect++;

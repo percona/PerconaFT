@@ -16,10 +16,10 @@
 namespace ftcxx {
 
     template<class Comparator, class Predicate, class Handler>
-    Cursor<Comparator, Predicate, Handler>::Cursor(const DB &db, const DBTxn &txn, int flags,
-                                                   DBT *left, DBT *right,
-                                                   Comparator cmp, Predicate filter, Handler handler,
-                                                   bool forward, bool end_exclusive, bool prelock)
+    RangeCursor<Comparator, Predicate, Handler>::RangeCursor(const DB &db, const DBTxn &txn, int flags,
+                                                             DBT *left, DBT *right,
+                                                             Comparator cmp, Predicate filter, Handler handler,
+                                                             bool forward, bool end_exclusive, bool prelock)
         : _dbc(db, txn, flags),
           _left(Slice(*left).owned()),
           _right(Slice(*right).owned()),
@@ -35,10 +35,10 @@ namespace ftcxx {
     }
 
     template<class Comparator, class Predicate, class Handler>
-    Cursor<Comparator, Predicate, Handler>::Cursor(const DB &db, const DBTxn &txn, int flags,
-                                                   const Slice &left, const Slice &right,
-                                                   Comparator cmp, Predicate filter, Handler handler,
-                                                   bool forward, bool end_exclusive, bool prelock)
+    RangeCursor<Comparator, Predicate, Handler>::RangeCursor(const DB &db, const DBTxn &txn, int flags,
+                                                             const Slice &left, const Slice &right,
+                                                             Comparator cmp, Predicate filter, Handler handler,
+                                                             bool forward, bool end_exclusive, bool prelock)
         : _dbc(db, txn, flags),
           _left(left.owned()),
           _right(right.owned()),
@@ -54,7 +54,7 @@ namespace ftcxx {
     }
 
     template<class Comparator, class Predicate, class Handler>
-    void Cursor<Comparator, Predicate, Handler>::init() {
+    void RangeCursor<Comparator, Predicate, Handler>::init() {
         DBT left_dbt = _left.dbt();
         DBT right_dbt = _right.dbt();
         int r = _dbc.dbc()->c_set_bounds(_dbc.dbc(), &left_dbt, &right_dbt, _prelock, 0);
@@ -71,7 +71,7 @@ namespace ftcxx {
     }
 
     template <class Comparator, class Predicate, class Handler>
-    int Cursor<Comparator, Predicate, Handler>::getf(const DBT *key, const DBT *val) {
+    int RangeCursor<Comparator, Predicate, Handler>::getf(const DBT *key, const DBT *val) {
         int c;
         if (_forward) {
             c = _cmp(Slice(*key), _right);
@@ -93,7 +93,7 @@ namespace ftcxx {
     }
 
     template <class Comparator, class Predicate, class Handler>
-    bool Cursor<Comparator, Predicate, Handler>::consume_batch() {
+    bool RangeCursor<Comparator, Predicate, Handler>::consume_batch() {
         int r;
         if (_forward) {
             r = _dbc.dbc()->c_getf_next(_dbc.dbc(), getf_flags(), getf_callback, this);
@@ -212,36 +212,36 @@ namespace ftcxx {
     }
 
     template<class Comparator, class Predicate>
-    BufferedCursor<Comparator, Predicate>::BufferedCursor(const DB &db, const DBTxn &txn, int flags,
-                                                          DBT *left, DBT *right,
-                                                          Comparator cmp, Predicate filter,
-                                                          bool forward, bool end_exclusive, bool prelock)
+    BufferedRangeCursor<Comparator, Predicate>::BufferedRangeCursor(const DB &db, const DBTxn &txn, int flags,
+                                                                    DBT *left, DBT *right,
+                                                                    Comparator cmp, Predicate filter,
+                                                                    bool forward, bool end_exclusive, bool prelock)
         : _buf(),
           _appender(_buf),
-          _cur(db, txn, flags,
-               left, right,
-               cmp, filter, _appender,
-               forward, end_exclusive, prelock)
+          _cur(new RangeCursor<Comparator, Predicate, BufferAppender>(db, txn, flags,
+                                                                      left, right,
+                                                                      cmp, filter, _appender,
+                                                                      forward, end_exclusive, prelock))
     {}
 
     template<class Comparator, class Predicate>
-    BufferedCursor<Comparator, Predicate>::BufferedCursor(const DB &db, const DBTxn &txn, int flags,
-                                                          const Slice &left, const Slice &right,
-                                                          Comparator cmp, Predicate filter,
-                                                          bool forward, bool end_exclusive, bool prelock)
+    BufferedRangeCursor<Comparator, Predicate>::BufferedRangeCursor(const DB &db, const DBTxn &txn, int flags,
+                                                                    const Slice &left, const Slice &right,
+                                                                    Comparator cmp, Predicate filter,
+                                                                    bool forward, bool end_exclusive, bool prelock)
         : _buf(),
           _appender(_buf),
-          _cur(db, txn, flags,
-               left, right,
-               cmp, filter, _appender,
-               forward, end_exclusive, prelock)
+          _cur(new RangeCursor<Comparator, Predicate, BufferAppender>(db, txn, flags,
+                                                                      left, right,
+                                                                      cmp, filter, _appender,
+                                                                      forward, end_exclusive, prelock))
     {}
 
     template<class Comparator, class Predicate>
-    bool BufferedCursor<Comparator, Predicate>::next(DBT *key, DBT *val) {
-        if (!_buf.more() && !_cur.finished()) {
+    bool BufferedRangeCursor<Comparator, Predicate>::next(DBT *key, DBT *val) {
+        if (!_buf.more() && !_cur->finished()) {
             _buf.clear();
-            _cur.consume_batch();
+            _cur->consume_batch();
         }
 
         if (!_buf.more()) {
@@ -255,10 +255,10 @@ namespace ftcxx {
     }
 
     template<class Comparator, class Predicate>
-    bool BufferedCursor<Comparator, Predicate>::next(Slice &key, Slice &val) {
-        if (!_buf.more() && !_cur.finished()) {
+    bool BufferedRangeCursor<Comparator, Predicate>::next(Slice &key, Slice &val) {
+        if (!_buf.more() && !_cur->finished()) {
             _buf.clear();
-            _cur.consume_batch();
+            _cur->consume_batch();
         }
 
         if (!_buf.more()) {
@@ -276,16 +276,16 @@ namespace ftcxx {
                                                       Predicate filter, bool forward, bool prelock)
         : _buf(),
           _appender(_buf),
-          _cur(db, txn, flags,
-               filter, _appender,
-               forward, prelock)
+          _cur(new ScanCursor<Predicate, BufferAppender>(db, txn, flags,
+                                                         filter, _appender,
+                                                         forward, prelock))
     {}
 
     template<class Predicate>
     bool BufferedScanCursor<Predicate>::next(DBT *key, DBT *val) {
-        if (!_buf.more() && !_cur.finished()) {
+        if (!_buf.more() && !_cur->finished()) {
             _buf.clear();
-            _cur.consume_batch();
+            _cur->consume_batch();
         }
 
         if (!_buf.more()) {
@@ -300,9 +300,9 @@ namespace ftcxx {
 
     template<class Predicate>
     bool BufferedScanCursor<Predicate>::next(Slice &key, Slice &val) {
-        if (!_buf.more() && !_cur.finished()) {
+        if (!_buf.more() && !_cur->finished()) {
             _buf.clear();
-            _cur.consume_batch();
+            _cur->consume_batch();
         }
 
         if (!_buf.more()) {
