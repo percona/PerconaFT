@@ -52,9 +52,9 @@ namespace ftcxx {
         template<typename Callback>
         int getf_set(const DBTxn &txn, const Slice &key, int flags, Callback cb) const {
             class WrappedCallback {
-                Callback &&_cb;
+                Callback &_cb;
             public:
-                WrappedCallback(Callback &&cb)
+                WrappedCallback(Callback &cb)
                     : _cb(cb)
                 {}
 
