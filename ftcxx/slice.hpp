@@ -39,29 +39,32 @@ namespace ftcxx {
         {}
 
         Slice(const Slice &other)
-            : _data(other._data),
+            : _buf(other._buf),
+              _data(other._data),
               _size(other._size)
         {}
 
         Slice& operator=(const Slice &other) {
+            _buf = other._buf;
             _data = other._data;
             _size = other._size;
             return *this;
         }
 
         Slice(Slice&& other)
-            : _data(nullptr),
+            : _buf(),
+              _data(nullptr),
               _size(0)
         {
+            std::swap(_buf, other._buf);
             std::swap(_data, other._data);
             std::swap(_size, other._size);
-            std::swap(_buf, other._buf);
         }
 
         Slice& operator=(Slice&& other) {
+            std::swap(_buf, other._buf);
             std::swap(_data, other._data);
             std::swap(_size, other._size);
-            std::swap(_buf, other._buf);
             return *this;
         }
 

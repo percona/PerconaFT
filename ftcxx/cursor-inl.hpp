@@ -4,79 +4,64 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <utility>
 
 #include <db.h>
 
 #include "buffer.hpp"
-#include "db.hpp"
 #include "db_txn.hpp"
 #include "exceptions.hpp"
 #include "slice.hpp"
 
 namespace ftcxx {
 
-    template<class Comparator, class Handler>
-    RangeCursor<Comparator, Handler>::RangeCursor(const DB &db, const DBTxn &txn, int flags,
-                                                  DBT *left, DBT *right,
-                                                  Comparator cmp, Handler handler,
-                                                  bool forward, bool end_exclusive, bool prelock)
-        : _dbc(db, txn, flags),
-          _left(Slice(*left).owned()),
-          _right(Slice(*right).owned()),
-          _cmp(cmp),
-          _handler(handler),
-          _forward(forward),
-          _end_exclusive(end_exclusive),
-          _prelock(prelock),
-          _finished(false)
-    {
-        init();
-    }
+    class DB;
 
-    template<class Comparator, class Handler>
-    RangeCursor<Comparator, Handler>::RangeCursor(const DB &db, const DBTxn &txn, int flags,
-                                                  const Slice &left, const Slice &right,
-                                                  Comparator cmp, Handler handler,
-                                                  bool forward, bool end_exclusive, bool prelock)
-        : _dbc(db, txn, flags),
-          _left(left.owned()),
-          _right(right.owned()),
-          _cmp(cmp),
-          _handler(handler),
-          _forward(forward),
-          _end_exclusive(end_exclusive),
-          _prelock(prelock),
-          _finished(false)
-    {
-        init();
-    }
-
-    template<class Comparator, class Handler>
-    void RangeCursor<Comparator, Handler>::init() {
-        DBT left_dbt = _left.dbt();
-        DBT right_dbt = _right.dbt();
-        int r = _dbc.dbc()->c_set_bounds(_dbc.dbc(), &left_dbt, &right_dbt, _prelock, 0);
-        handle_ft_retval(r);
-
-        if (_forward) {
-            r = _dbc.dbc()->c_getf_set_range(_dbc.dbc(), getf_flags(), &left_dbt, getf_callback, this);
-        } else {
-            r = _dbc.dbc()->c_getf_set_range_reverse(_dbc.dbc(), getf_flags(), &right_dbt, getf_callback, this);
-        }
-        if (r != 0 && r != DB_NOTFOUND && r != -1) {
-            handle_ft_retval(r);
-        }
-    }
-
-    template<class Comparator, class Handler>
-    int RangeCursor<Comparator, Handler>::getf(const DBT *key, const DBT *val) {
+    template<class Comparator>
+    bool Bounds::check(Comparator &cmp, const IterationStrategy &strategy, const Slice &key) const {
         int c;
-        if (_forward) {
-            c = _cmp(Slice(*key), _right);
+        if (strategy.forward) {
+            if (_right_infinite) {
+                return true;
+            }
+            c = cmp(key, _right);
         } else {
-            c = _cmp(_left, Slice(*key));
+            if (_left_infinite) {
+                return true;
+            }
+            c = cmp(_left, key);
         }
         if (c > 0 || (c == 0 && _end_exclusive)) {
+            return false;
+        }
+        return true;
+    }
+
+    template<class Comparator, class Handler>
+    Cursor<Comparator, Handler>::Cursor(const DB &db, const DBTxn &txn, int flags,
+                                        IterationStrategy iteration_strategy,
+                                        Bounds bounds,
+                                        Comparator &&cmp, Handler &&handler)
+        : _dbc(db, txn, flags),
+          _iteration_strategy(iteration_strategy),
+          _bounds(std::move(bounds)),
+          _cmp(std::forward<Comparator>(cmp)),
+          _handler(std::forward<Handler>(handler)),
+          _finished(false)
+    {
+        init();
+    }
+
+    template<class Comparator, class Handler>
+    void Cursor<Comparator, Handler>::init() {
+        if (!_dbc.set_range(_iteration_strategy, _bounds, getf_callback, this)) {
+            _finished = true;
+        }
+    }
+
+    template<class Comparator, class Handler>
+    int Cursor<Comparator, Handler>::getf(const DBT *key, const DBT *val) {
+        if (!_bounds.check(_cmp, _iteration_strategy, Slice(*key))) {
             _finished = true;
             return -1;
         }
@@ -89,75 +74,10 @@ namespace ftcxx {
     }
 
     template<class Comparator, class Handler>
-    bool RangeCursor<Comparator, Handler>::consume_batch() {
-        int r;
-        if (_forward) {
-            r = _dbc.dbc()->c_getf_next(_dbc.dbc(), getf_flags(), getf_callback, this);
-        } else {
-            r = _dbc.dbc()->c_getf_prev(_dbc.dbc(), getf_flags(), getf_callback, this);
-        }
-        if (r == DB_NOTFOUND) {
+    bool Cursor<Comparator, Handler>::consume_batch() {
+        if (!_dbc.advance(_iteration_strategy, getf_callback, this)) {
             _finished = true;
-        } else if (r != 0 && r != -1) {
-            handle_ft_retval(r);
         }
-
-        return !_finished;
-    }
-
-    template<class Handler>
-    ScanCursor<Handler>::ScanCursor(const DB &db, const DBTxn &txn, int flags,
-                                    Handler handler, bool forward, bool prelock)
-        : _dbc(db, txn, flags),
-          _handler(handler),
-          _forward(forward),
-          _prelock(prelock),
-          _finished(false)
-    {
-        init();
-    }
-
-    template<class Handler>
-    void ScanCursor<Handler>::init() {
-        int r = _dbc.dbc()->c_set_bounds(_dbc.dbc(),
-                                         _dbc.dbc()->dbp->dbt_neg_infty(),
-                                         _dbc.dbc()->dbp->dbt_pos_infty(),
-                                         _prelock, 0);
-        handle_ft_retval(r);
-
-        if (_forward) {
-            r = _dbc.dbc()->c_getf_first(_dbc.dbc(), getf_flags(), getf_callback, this);
-        } else {
-            r = _dbc.dbc()->c_getf_last(_dbc.dbc(), getf_flags(), getf_callback, this);
-        }
-        if (r != 0 && r != DB_NOTFOUND && r != -1) {
-            handle_ft_retval(r);
-        }
-    }
-
-    template<class Handler>
-    int ScanCursor<Handler>::getf(const DBT *key, const DBT *val) {
-        if (!_handler(key, val)) {
-            return 0;
-        }
-
-        return TOKUDB_CURSOR_CONTINUE;
-    }
-
-    template<class Handler>
-    bool ScanCursor<Handler>::consume_batch() {
-        int r;
-        if (_forward) {
-            r = _dbc.dbc()->c_getf_next(_dbc.dbc(), getf_flags(), getf_callback, this);
-        } else {
-            r = _dbc.dbc()->c_getf_prev(_dbc.dbc(), getf_flags(), getf_callback, this);
-        }
-        if (r == DB_NOTFOUND) {
-            _finished = true;
-        } else if (r != 0 && r != -1) {
-            handle_ft_retval(r);
-        }
-
         return !_finished;
     }
 
@@ -210,36 +130,23 @@ namespace ftcxx {
     }
 
     template<class Comparator, class Predicate>
-    BufferedRangeCursor<Comparator, Predicate>::BufferedRangeCursor(const DB &db, const DBTxn &txn, int flags,
-                                                                    DBT *left, DBT *right,
-                                                                    Comparator cmp, Predicate filter,
-                                                                    bool forward, bool end_exclusive, bool prelock)
+    BufferedCursor<Comparator, Predicate>::BufferedCursor(const DB &db, const DBTxn &txn, int flags,
+                                                          IterationStrategy iteration_strategy,
+                                                          Bounds bounds,
+                                                          Comparator &&cmp, Predicate &&filter)
         : _buf(),
-          _appender(_buf),
-          _cur(new RangeCursor<Comparator, BufferAppender<Predicate> >(db, txn, flags,
-                                                                       left, right,
-                                                                       cmp, _appender,
-                                                                       forward, end_exclusive, prelock))
+          _appender(_buf, std::forward<Predicate>(filter)),
+          _cur(db, txn, flags,
+               iteration_strategy,
+               std::move(bounds),
+               std::forward<Comparator>(cmp), std::forward<Appender>(_appender))
     {}
 
     template<class Comparator, class Predicate>
-    BufferedRangeCursor<Comparator, Predicate>::BufferedRangeCursor(const DB &db, const DBTxn &txn, int flags,
-                                                                    const Slice &left, const Slice &right,
-                                                                    Comparator cmp, Predicate filter,
-                                                                    bool forward, bool end_exclusive, bool prelock)
-        : _buf(),
-          _appender(_buf, filter),
-          _cur(new RangeCursor<Comparator, BufferAppender<Predicate> >(db, txn, flags,
-                                                                       left, right,
-                                                                       cmp, _appender,
-                                                                       forward, end_exclusive, prelock))
-    {}
-
-    template<class Comparator, class Predicate>
-    bool BufferedRangeCursor<Comparator, Predicate>::next(DBT *key, DBT *val) {
-        if (!_buf.more() && !_cur->finished()) {
+    bool BufferedCursor<Comparator, Predicate>::next(DBT *key, DBT *val) {
+        if (!_buf.more() && !_cur.finished()) {
             _buf.clear();
-            _cur->consume_batch();
+            _cur.consume_batch();
         }
 
         if (!_buf.more()) {
@@ -247,16 +154,16 @@ namespace ftcxx {
         }
 
         char *src = _buf.current();
-        BufferAppender<Predicate>::unmarshall(src, key, val);
-        _buf.advance(BufferAppender<Predicate>::marshalled_size(key->size, val->size));
+        Appender::unmarshall(src, key, val);
+        _buf.advance(Appender::marshalled_size(key->size, val->size));
         return true;
     }
 
     template<class Comparator, class Predicate>
-    bool BufferedRangeCursor<Comparator, Predicate>::next(Slice &key, Slice &val) {
-        if (!_buf.more() && !_cur->finished()) {
+    bool BufferedCursor<Comparator, Predicate>::next(Slice &key, Slice &val) {
+        if (!_buf.more() && !_cur.finished()) {
             _buf.clear();
-            _cur->consume_batch();
+            _cur.consume_batch();
         }
 
         if (!_buf.more()) {
@@ -264,53 +171,67 @@ namespace ftcxx {
         }
 
         char *src = _buf.current();
-        BufferAppender<Predicate>::unmarshall(src, key, val);
-        _buf.advance(BufferAppender<Predicate>::marshalled_size(key.size(), val.size()));
+        Appender::unmarshall(src, key, val);
+        _buf.advance(Appender::marshalled_size(key.size(), val.size()));
         return true;
     }
 
-    template<class Predicate>
-    BufferedScanCursor<Predicate>::BufferedScanCursor(const DB &db, const DBTxn &txn, int flags,
-                                                      Predicate filter, bool forward, bool prelock)
-        : _buf(),
-          _appender(_buf, filter),
-          _cur(new ScanCursor<BufferAppender<Predicate>>(db, txn, flags,
-                                                         _appender,
-                                                         forward, prelock))
-    {}
+    template<class Comparator, class Handler>
+    Cursor<Comparator, Handler> DB::cursor(const DBTxn &txn, DBT *left, DBT *right,
+                                           Comparator &&cmp, Handler &&handler, int flags,
+                                           bool forward, bool end_exclusive, bool prelock) const {
+        IterationStrategy strategy(forward, prelock);
+        return Cursor<Comparator, Handler>(*this, txn, flags, strategy,
+                                           Bounds(this, Slice(*left), Slice(*right), end_exclusive),
+                                           std::forward<Comparator>(cmp), std::forward<Handler>(handler));
+    }
 
-    template<class Predicate>
-    bool BufferedScanCursor<Predicate>::next(DBT *key, DBT *val) {
-        if (!_buf.more() && !_cur->finished()) {
-            _buf.clear();
-            _cur->consume_batch();
-        }
+    template<class Comparator, class Handler>
+    Cursor<Comparator, Handler> DB::cursor(const DBTxn &txn, const Slice &left, const Slice &right,
+                                           Comparator &&cmp, Handler &&handler, int flags,
+                                           bool forward, bool end_exclusive, bool prelock) const {
+        IterationStrategy strategy(forward, prelock);
+        return Cursor<Comparator, Handler>(*this, txn, flags, strategy,
+                                           Bounds(this, left, right, end_exclusive),
+                                           std::forward<Comparator>(cmp), std::forward<Handler>(handler));
+    }
 
-        if (!_buf.more()) {
-            return false;
-        }
+    template<class Handler>
+    Cursor<DB::NullComparator, Handler> DB::cursor(const DBTxn &txn, Handler &&handler,
+                                               int flags, bool forward, bool prelock) const {
+        IterationStrategy strategy(forward, prelock);
+        return Cursor<DB::NullComparator, Handler>(*this, txn, flags, strategy,
+                                                   Bounds(this, Bounds::Infinite(), Bounds::Infinite(), false),
+                                                   DB::NullComparator(), std::forward<Handler>(handler));
+    }
 
-        char *src = _buf.current();
-        BufferAppender<Predicate>::unmarshall(src, key, val);
-        _buf.advance(BufferAppender<Predicate>::marshalled_size(key->size, val->size));
-        return true;
+    template<class Comparator, class Predicate>
+    BufferedCursor<Comparator, Predicate> DB::buffered_cursor(const DBTxn &txn, DBT *left, DBT *right,
+                                                              Comparator &&cmp, Predicate &&filter, int flags,
+                                                              bool forward, bool end_exclusive, bool prelock) const {
+        IterationStrategy strategy(forward, prelock);
+        return BufferedCursor<Comparator, Predicate>(*this, txn, flags, strategy,
+                                                     Bounds(this, Slice(*left), Slice(*right), end_exclusive),
+                                                     std::forward<Comparator>(cmp), std::forward<Predicate>(filter));
+    }
+
+    template<class Comparator, class Predicate>
+    BufferedCursor<Comparator, Predicate> DB::buffered_cursor(const DBTxn &txn, const Slice &left, const Slice &right,
+                                                              Comparator &&cmp, Predicate &&filter, int flags,
+                                                              bool forward, bool end_exclusive, bool prelock) const {
+        IterationStrategy strategy(forward, prelock);
+        return BufferedCursor<Comparator, Predicate>(*this, txn, flags, strategy,
+                                                     Bounds(this, left, right, end_exclusive),
+                                                     std::forward<Comparator>(cmp), std::forward<Predicate>(filter));
     }
 
     template<class Predicate>
-    bool BufferedScanCursor<Predicate>::next(Slice &key, Slice &val) {
-        if (!_buf.more() && !_cur->finished()) {
-            _buf.clear();
-            _cur->consume_batch();
-        }
-
-        if (!_buf.more()) {
-            return false;
-        }
-
-        char *src = _buf.current();
-        BufferAppender<Predicate>::unmarshall(src, key, val);
-        _buf.advance(BufferAppender<Predicate>::marshalled_size(key.size(), val.size()));
-        return true;
+    BufferedCursor<DB::NullComparator, Predicate> DB::buffered_cursor(const DBTxn &txn, Predicate &&filter,
+                                                                      int flags, bool forward, bool prelock) const {
+        IterationStrategy strategy(forward, prelock);
+        return BufferedCursor<DB::NullComparator, Predicate>(*this, txn, flags, strategy,
+                                                             Bounds(this, Bounds::Infinite(), Bounds::Infinite(), false),
+                                                             DB::NullComparator(), std::forward<Predicate>(filter));
     }
 
 } // namespace ftcxx

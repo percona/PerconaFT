@@ -33,4 +33,44 @@ namespace ftcxx {
         _dbc = nullptr;
     }
 
+    bool DBC::set_range(const IterationStrategy &strategy, const Bounds &bounds, YDB_CALLBACK_FUNCTION callback, void *extra) const {
+        int r = dbc()->c_set_bounds(dbc(), bounds.left_dbt(), bounds.right_dbt(), strategy.prelock, 0);
+        handle_ft_retval(r);
+
+        if (strategy.forward) {
+            if (bounds.left_infinite()) {
+                r = dbc()->c_getf_first(dbc(), strategy.getf_flags(), callback, extra);
+            } else {
+                r = dbc()->c_getf_set_range(dbc(), strategy.getf_flags(), const_cast<DBT *>(bounds.left_dbt()), callback, extra);
+            }
+        } else {
+            if (bounds.right_infinite()) {
+                r = dbc()->c_getf_last(dbc(), strategy.getf_flags(), callback, extra);
+            } else {
+                r = dbc()->c_getf_set_range_reverse(dbc(), strategy.getf_flags(), const_cast<DBT *>(bounds.right_dbt()), callback, extra);
+            }
+        }
+        if (r == DB_NOTFOUND) {
+            return false;
+        } else if (r != 0 && r != -1) {
+            handle_ft_retval(r);
+        }
+        return true;
+    }
+
+    bool DBC::advance(const IterationStrategy &strategy, YDB_CALLBACK_FUNCTION callback, void *extra) const {
+        int r;
+        if (strategy.forward) {
+            r = dbc()->c_getf_next(dbc(), strategy.getf_flags(), callback, extra);
+        } else {
+            r = dbc()->c_getf_prev(dbc(), strategy.getf_flags(), callback, extra);
+        }
+        if (r == DB_NOTFOUND) {
+            return false;
+        } else if (r != 0 && r != -1) {
+            handle_ft_retval(r);
+        }
+        return true;
+    }
+
 } // namespace ftcxx
