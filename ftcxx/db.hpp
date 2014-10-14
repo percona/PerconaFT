@@ -49,6 +49,29 @@ namespace ftcxx {
             return Slice(_db->cmp_descriptor->dbt);
         }
 
+        template<typename Callback>
+        int getf_set(const DBTxn &txn, const Slice &key, int flags, Callback cb) const {
+            class WrappedCallback {
+                Callback &&_cb;
+            public:
+                WrappedCallback(Callback &&cb)
+                    : _cb(cb)
+                {}
+
+                static int call(const DBT *key, const DBT *val, void *extra) {
+                    WrappedCallback *wc = static_cast<WrappedCallback *>(extra);
+                    return wc->call(key, val);
+                }
+
+                int call(const DBT *key, const DBT *val) {
+                    return _cb(Slice(*key), Slice(*val));
+                }
+            } wc(cb);
+
+            DBT kdbt = key.dbt();
+            return _db->getf_set(_db, txn.txn(), flags, &kdbt, &WrappedCallback::call, &wc);
+        }
+
         int put(const DBTxn &txn, DBT *key, DBT *val, int flags=0) const {
             return _db->put(_db, txn.txn(), key, val, flags);
         }
