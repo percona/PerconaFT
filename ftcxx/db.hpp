@@ -17,9 +17,9 @@ namespace ftcxx {
     class Cursor;
     class BufferedCursor;
 
-    template<class Comparator, class Predicate, class Handler>
+    template<class Comparator, class Handler>
     class RangeCursor;
-    template<class Predicate, class Handler>
+    template<class Handler>
     class ScanCursor;
     template<class Comparator, class Predicate>
     class BufferedRangeCursor;
@@ -108,24 +108,24 @@ namespace ftcxx {
          * Constructs a Cursor over this DB, over the range from left to
          * right (or right to left if !forward).
          */
-        template<class Comparator, class Predicate, class Handler>
+        template<class Comparator, class Handler>
         Cursor *cursor(const DBTxn &txn, DBT *left, DBT *right,
-                       Comparator cmp, Predicate filter, Handler handler, int flags=0,
+                       Comparator cmp, Handler handler, int flags=0,
                        bool forward=true, bool end_exclusive=false, bool prelock=true) const {
-            return new RangeCursor<Comparator, Predicate, Handler>(*this, txn, flags, left, right, cmp, filter, handler, forward, end_exclusive, prelock);
+            return new RangeCursor<Comparator, Handler>(*this, txn, flags, left, right, cmp, handler, forward, end_exclusive, prelock);
         }
 
-        template<class Comparator, class Predicate, class Handler>
+        template<class Comparator, class Handler>
         Cursor *cursor(const DBTxn &txn, const Slice &left, const Slice &right,
-                       Comparator cmp, Predicate filter, Handler handler, int flags=0,
+                       Comparator cmp, Handler handler, int flags=0,
                        bool forward=true, bool end_exclusive=false, bool prelock=true) const {
-            return new RangeCursor<Comparator, Predicate, Handler>(*this, txn, flags, left, right, cmp, filter, handler, forward, end_exclusive, prelock);
+            return new RangeCursor<Comparator, Handler>(*this, txn, flags, left, right, cmp, handler, forward, end_exclusive, prelock);
         }
 
-        template<class Predicate, class Handler>
-        Cursor *cursor(const DBTxn &txn, Predicate filter, Handler handler,
+        template<class Handler>
+        Cursor *cursor(const DBTxn &txn, Handler handler,
                        int flags=0, bool forward=true, bool prelock=true) const {
-            return new ScanCursor<Predicate, Handler>(*this, txn, flags, filter, handler, forward, prelock);
+            return new ScanCursor<Handler>(*this, txn, flags, handler, forward, prelock);
         }
 
         template<class Comparator, class Predicate>

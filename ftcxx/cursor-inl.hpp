@@ -15,16 +15,15 @@
 
 namespace ftcxx {
 
-    template<class Comparator, class Predicate, class Handler>
-    RangeCursor<Comparator, Predicate, Handler>::RangeCursor(const DB &db, const DBTxn &txn, int flags,
-                                                             DBT *left, DBT *right,
-                                                             Comparator cmp, Predicate filter, Handler handler,
-                                                             bool forward, bool end_exclusive, bool prelock)
+    template<class Comparator, class Handler>
+    RangeCursor<Comparator, Handler>::RangeCursor(const DB &db, const DBTxn &txn, int flags,
+                                                  DBT *left, DBT *right,
+                                                  Comparator cmp, Handler handler,
+                                                  bool forward, bool end_exclusive, bool prelock)
         : _dbc(db, txn, flags),
           _left(Slice(*left).owned()),
           _right(Slice(*right).owned()),
           _cmp(cmp),
-          _filter(filter),
           _handler(handler),
           _forward(forward),
           _end_exclusive(end_exclusive),
@@ -34,16 +33,15 @@ namespace ftcxx {
         init();
     }
 
-    template<class Comparator, class Predicate, class Handler>
-    RangeCursor<Comparator, Predicate, Handler>::RangeCursor(const DB &db, const DBTxn &txn, int flags,
-                                                             const Slice &left, const Slice &right,
-                                                             Comparator cmp, Predicate filter, Handler handler,
-                                                             bool forward, bool end_exclusive, bool prelock)
+    template<class Comparator, class Handler>
+    RangeCursor<Comparator, Handler>::RangeCursor(const DB &db, const DBTxn &txn, int flags,
+                                                  const Slice &left, const Slice &right,
+                                                  Comparator cmp, Handler handler,
+                                                  bool forward, bool end_exclusive, bool prelock)
         : _dbc(db, txn, flags),
           _left(left.owned()),
           _right(right.owned()),
           _cmp(cmp),
-          _filter(filter),
           _handler(handler),
           _forward(forward),
           _end_exclusive(end_exclusive),
@@ -53,8 +51,8 @@ namespace ftcxx {
         init();
     }
 
-    template<class Comparator, class Predicate, class Handler>
-    void RangeCursor<Comparator, Predicate, Handler>::init() {
+    template<class Comparator, class Handler>
+    void RangeCursor<Comparator, Handler>::init() {
         DBT left_dbt = _left.dbt();
         DBT right_dbt = _right.dbt();
         int r = _dbc.dbc()->c_set_bounds(_dbc.dbc(), &left_dbt, &right_dbt, _prelock, 0);
@@ -70,8 +68,8 @@ namespace ftcxx {
         }
     }
 
-    template <class Comparator, class Predicate, class Handler>
-    int RangeCursor<Comparator, Predicate, Handler>::getf(const DBT *key, const DBT *val) {
+    template<class Comparator, class Handler>
+    int RangeCursor<Comparator, Handler>::getf(const DBT *key, const DBT *val) {
         int c;
         if (_forward) {
             c = _cmp(Slice(*key), _right);
@@ -83,17 +81,15 @@ namespace ftcxx {
             return -1;
         }
 
-        if (_filter(key, val)) {
-            if (!_handler(key, val)) {
-                return 0;
-            }
+        if (!_handler(key, val)) {
+            return 0;
         }
 
         return TOKUDB_CURSOR_CONTINUE;
     }
 
-    template <class Comparator, class Predicate, class Handler>
-    bool RangeCursor<Comparator, Predicate, Handler>::consume_batch() {
+    template<class Comparator, class Handler>
+    bool RangeCursor<Comparator, Handler>::consume_batch() {
         int r;
         if (_forward) {
             r = _dbc.dbc()->c_getf_next(_dbc.dbc(), getf_flags(), getf_callback, this);
@@ -109,12 +105,10 @@ namespace ftcxx {
         return !_finished;
     }
 
-    template<class Predicate, class Handler>
-    ScanCursor<Predicate, Handler>::ScanCursor(const DB &db, const DBTxn &txn, int flags,
-                                               Predicate filter, Handler handler,
-                                               bool forward, bool prelock)
+    template<class Handler>
+    ScanCursor<Handler>::ScanCursor(const DB &db, const DBTxn &txn, int flags,
+                                    Handler handler, bool forward, bool prelock)
         : _dbc(db, txn, flags),
-          _filter(filter),
           _handler(handler),
           _forward(forward),
           _prelock(prelock),
@@ -123,8 +117,8 @@ namespace ftcxx {
         init();
     }
 
-    template<class Predicate, class Handler>
-    void ScanCursor<Predicate, Handler>::init() {
+    template<class Handler>
+    void ScanCursor<Handler>::init() {
         int r = _dbc.dbc()->c_set_bounds(_dbc.dbc(),
                                          _dbc.dbc()->dbp->dbt_neg_infty(),
                                          _dbc.dbc()->dbp->dbt_pos_infty(),
@@ -141,19 +135,17 @@ namespace ftcxx {
         }
     }
 
-    template <class Predicate, class Handler>
-    int ScanCursor<Predicate, Handler>::getf(const DBT *key, const DBT *val) {
-        if (_filter(key, val)) {
-            if (!_handler(key, val)) {
-                return 0;
-            }
+    template<class Handler>
+    int ScanCursor<Handler>::getf(const DBT *key, const DBT *val) {
+        if (!_handler(key, val)) {
+            return 0;
         }
 
         return TOKUDB_CURSOR_CONTINUE;
     }
 
-    template <class Predicate, class Handler>
-    bool ScanCursor<Predicate, Handler>::consume_batch() {
+    template<class Handler>
+    bool ScanCursor<Handler>::consume_batch() {
         int r;
         if (_forward) {
             r = _dbc.dbc()->c_getf_next(_dbc.dbc(), getf_flags(), getf_callback, this);
@@ -169,7 +161,8 @@ namespace ftcxx {
         return !_finished;
     }
 
-    inline void BufferAppender::marshall(char *dest, const DBT *key, const DBT *val) {
+    template<class Predicate>
+    inline void BufferAppender<Predicate>::marshall(char *dest, const DBT *key, const DBT *val) {
         uint32_t *keylen = reinterpret_cast<uint32_t *>(&dest[0]);
         uint32_t *vallen = reinterpret_cast<uint32_t *>(&dest[sizeof *keylen]);
         *keylen = key->size;
@@ -186,7 +179,8 @@ namespace ftcxx {
         std::copy(vp, vp + val->size, p);
     }
 
-    inline void BufferAppender::unmarshall(char *src, DBT *key, DBT *val) {
+    template<class Predicate>
+    inline void BufferAppender<Predicate>::unmarshall(char *src, DBT *key, DBT *val) {
         const uint32_t *keylen = reinterpret_cast<uint32_t *>(&src[0]);
         const uint32_t *vallen = reinterpret_cast<uint32_t *>(&src[sizeof *keylen]);
         key->size = *keylen;
@@ -196,7 +190,8 @@ namespace ftcxx {
         val->data = p + key->size;
     }
 
-    inline void BufferAppender::unmarshall(char *src, Slice &key, Slice &val) {
+    template<class Predicate>
+    inline void BufferAppender<Predicate>::unmarshall(char *src, Slice &key, Slice &val) {
         const uint32_t *keylen = reinterpret_cast<uint32_t *>(&src[0]);
         const uint32_t *vallen = reinterpret_cast<uint32_t *>(&src[sizeof *keylen]);
         char *p = &src[(sizeof *keylen) + (sizeof *vallen)];
@@ -204,10 +199,13 @@ namespace ftcxx {
         val = Slice(p + *keylen, *vallen);
     }
 
-    inline bool BufferAppender::operator()(const DBT *key, const DBT *val) {
-        size_t needed = marshalled_size(key->size, val->size);
-        char *dest = _buf.alloc(needed);
-        marshall(dest, key, val);
+    template<class Predicate>
+    inline bool BufferAppender<Predicate>::operator()(const DBT *key, const DBT *val) {
+        if (_filter(Slice(*key), Slice(*val))) {
+            size_t needed = marshalled_size(key->size, val->size);
+            char *dest = _buf.alloc(needed);
+            marshall(dest, key, val);
+        }
         return !_buf.full();
     }
 
@@ -218,10 +216,10 @@ namespace ftcxx {
                                                                     bool forward, bool end_exclusive, bool prelock)
         : _buf(),
           _appender(_buf),
-          _cur(new RangeCursor<Comparator, Predicate, BufferAppender>(db, txn, flags,
-                                                                      left, right,
-                                                                      cmp, filter, _appender,
-                                                                      forward, end_exclusive, prelock))
+          _cur(new RangeCursor<Comparator, BufferAppender<Predicate> >(db, txn, flags,
+                                                                       left, right,
+                                                                       cmp, _appender,
+                                                                       forward, end_exclusive, prelock))
     {}
 
     template<class Comparator, class Predicate>
@@ -230,11 +228,11 @@ namespace ftcxx {
                                                                     Comparator cmp, Predicate filter,
                                                                     bool forward, bool end_exclusive, bool prelock)
         : _buf(),
-          _appender(_buf),
-          _cur(new RangeCursor<Comparator, Predicate, BufferAppender>(db, txn, flags,
-                                                                      left, right,
-                                                                      cmp, filter, _appender,
-                                                                      forward, end_exclusive, prelock))
+          _appender(_buf, filter),
+          _cur(new RangeCursor<Comparator, BufferAppender<Predicate> >(db, txn, flags,
+                                                                       left, right,
+                                                                       cmp, _appender,
+                                                                       forward, end_exclusive, prelock))
     {}
 
     template<class Comparator, class Predicate>
@@ -249,8 +247,8 @@ namespace ftcxx {
         }
 
         char *src = _buf.current();
-        BufferAppender::unmarshall(src, key, val);
-        _buf.advance(BufferAppender::marshalled_size(key->size, val->size));
+        BufferAppender<Predicate>::unmarshall(src, key, val);
+        _buf.advance(BufferAppender<Predicate>::marshalled_size(key->size, val->size));
         return true;
     }
 
@@ -266,8 +264,8 @@ namespace ftcxx {
         }
 
         char *src = _buf.current();
-        BufferAppender::unmarshall(src, key, val);
-        _buf.advance(BufferAppender::marshalled_size(key.size(), val.size()));
+        BufferAppender<Predicate>::unmarshall(src, key, val);
+        _buf.advance(BufferAppender<Predicate>::marshalled_size(key.size(), val.size()));
         return true;
     }
 
@@ -275,9 +273,9 @@ namespace ftcxx {
     BufferedScanCursor<Predicate>::BufferedScanCursor(const DB &db, const DBTxn &txn, int flags,
                                                       Predicate filter, bool forward, bool prelock)
         : _buf(),
-          _appender(_buf),
-          _cur(new ScanCursor<Predicate, BufferAppender>(db, txn, flags,
-                                                         filter, _appender,
+          _appender(_buf, filter),
+          _cur(new ScanCursor<BufferAppender<Predicate>>(db, txn, flags,
+                                                         _appender,
                                                          forward, prelock))
     {}
 
@@ -293,8 +291,8 @@ namespace ftcxx {
         }
 
         char *src = _buf.current();
-        BufferAppender::unmarshall(src, key, val);
-        _buf.advance(BufferAppender::marshalled_size(key->size, val->size));
+        BufferAppender<Predicate>::unmarshall(src, key, val);
+        _buf.advance(BufferAppender<Predicate>::marshalled_size(key->size, val->size));
         return true;
     }
 
@@ -310,8 +308,8 @@ namespace ftcxx {
         }
 
         char *src = _buf.current();
-        BufferAppender::unmarshall(src, key, val);
-        _buf.advance(BufferAppender::marshalled_size(key.size(), val.size()));
+        BufferAppender<Predicate>::unmarshall(src, key, val);
+        _buf.advance(BufferAppender<Predicate>::marshalled_size(key.size(), val.size()));
         return true;
     }
 

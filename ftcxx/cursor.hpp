@@ -42,7 +42,7 @@ namespace ftcxx {
      * Cursor supports iterating a cursor over a key range,
      * with bulk fetch buffering, and optional filtering.
      */
-    template<class Comparator, class Predicate, class Handler>
+    template<class Comparator, class Handler>
     class RangeCursor : public Cursor {
     public:
 
@@ -52,12 +52,12 @@ namespace ftcxx {
          */
         RangeCursor(const DB &db, const DBTxn &txn, int flags,
                     DBT *left, DBT *right,
-                    Comparator cmp, Predicate filter, Handler handler,
+                    Comparator cmp, Handler handler,
                     bool forward, bool end_exclusive, bool prelock);
 
         RangeCursor(const DB &db, const DBTxn &txn, int flags,
                     const Slice &left, const Slice &right,
-                    Comparator cmp, Predicate filter, Handler handler,
+                    Comparator cmp, Handler handler,
                     bool forward, bool end_exclusive, bool prelock);
 
         /**
@@ -79,7 +79,6 @@ namespace ftcxx {
         bool _left_is_infinity;
         bool _right_is_infinity;
         Comparator &_cmp;
-        Predicate &_filter;
         Handler &_handler;
 
         const bool _forward;
@@ -109,7 +108,7 @@ namespace ftcxx {
      * Cursor supports iterating a cursor over a key range,
      * with bulk fetch buffering, and optional filtering.
      */
-    template<class Predicate, class Handler>
+    template<class Handler>
     class ScanCursor : public Cursor {
     public:
 
@@ -118,8 +117,7 @@ namespace ftcxx {
          * avoid template parameters.
          */
         ScanCursor(const DB &db, const DBTxn &txn, int flags,
-                   Predicate filter, Handler handler,
-                   bool forward, bool prelock);
+                   Handler handler, bool forward, bool prelock);
 
         /**
          * Gets the next key/val pair in the iteration.  Returns true
@@ -135,7 +133,6 @@ namespace ftcxx {
     private:
 
         DBC _dbc;
-        Predicate &_filter;
         Handler &_handler;
 
         const bool _forward;
@@ -160,12 +157,15 @@ namespace ftcxx {
         int getf(const DBT *key, const DBT *val);
     };
 
+    template<class Predicate>
     class BufferAppender {
         Buffer &_buf;
+        Predicate &_filter;
 
     public:
-        BufferAppender(Buffer &buf)
-            : _buf(buf)
+        BufferAppender(Buffer &buf, Predicate &filter)
+            : _buf(buf),
+              _filter(filter)
         {}
 
         bool operator()(const DBT *key, const DBT *val);
@@ -222,7 +222,7 @@ namespace ftcxx {
     private:
 
         Buffer _buf;
-        BufferAppender _appender;
+        BufferAppender<Predicate> _appender;
         std::unique_ptr<Cursor> _cur;
     };
 
@@ -252,12 +252,12 @@ namespace ftcxx {
     private:
 
         Buffer _buf;
-        BufferAppender _appender;
+        BufferAppender<Predicate> _appender;
         std::unique_ptr<Cursor> _cur;
     };
 
     struct NoFilter {
-        bool operator()(const DBT *, const DBT *) const { return true; }
+        bool operator()(const Slice &, const Slice &) const { return true; }
     };
 
 } // namespace ftcxx
