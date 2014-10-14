@@ -262,7 +262,6 @@ namespace ftcxx {
         typedef BufferAppender<Predicate> Appender;
 
         Buffer _buf;
-        Appender _appender;
         Cursor<Comparator, Appender> _cur;
     };
 

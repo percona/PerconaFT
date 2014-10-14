@@ -135,11 +135,10 @@ namespace ftcxx {
                                                           Bounds bounds,
                                                           Comparator &&cmp, Predicate &&filter)
         : _buf(),
-          _appender(_buf, std::forward<Predicate>(filter)),
           _cur(db, txn, flags,
                iteration_strategy,
                std::move(bounds),
-               std::forward<Comparator>(cmp), std::forward<Appender>(_appender))
+               std::forward<Comparator>(cmp), Appender(_buf, std::forward<Predicate>(filter)))
     {}
 
     template<class Comparator, class Predicate>
