@@ -76,8 +76,6 @@ namespace ftcxx {
         DBC _dbc;
         Slice _left;
         Slice _right;
-        bool _left_is_infinity;
-        bool _right_is_infinity;
         Comparator &_cmp;
         Handler &_handler;
 
