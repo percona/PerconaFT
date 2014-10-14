@@ -196,13 +196,13 @@ namespace ftcxx {
                                            std::forward<Comparator>(cmp), std::forward<Handler>(handler));
     }
 
-    template<class Handler>
-    Cursor<DB::NullComparator, Handler> DB::cursor(const DBTxn &txn, Handler &&handler,
-                                               int flags, bool forward, bool prelock) const {
+    template<class Comparator, class Handler>
+    Cursor<Comparator, Handler> DB::cursor(const DBTxn &txn, Comparator &&cmp, Handler &&handler,
+                                           int flags, bool forward, bool prelock) const {
         IterationStrategy strategy(forward, prelock);
-        return Cursor<DB::NullComparator, Handler>(*this, txn, flags, strategy,
-                                                   Bounds(this, Bounds::Infinite(), Bounds::Infinite(), false),
-                                                   DB::NullComparator(), std::forward<Handler>(handler));
+        return Cursor<Comparator, Handler>(*this, txn, flags, strategy,
+                                           Bounds(this, Bounds::Infinite(), Bounds::Infinite(), false),
+                                           std::forward<Comparator>(cmp), std::forward<Handler>(handler));
     }
 
     template<class Comparator, class Predicate>
@@ -225,13 +225,13 @@ namespace ftcxx {
                                                      std::forward<Comparator>(cmp), std::forward<Predicate>(filter));
     }
 
-    template<class Predicate>
-    BufferedCursor<DB::NullComparator, Predicate> DB::buffered_cursor(const DBTxn &txn, Predicate &&filter,
-                                                                      int flags, bool forward, bool prelock) const {
+    template<class Comparator, class Predicate>
+    BufferedCursor<Comparator, Predicate> DB::buffered_cursor(const DBTxn &txn, Comparator &&cmp, Predicate &&filter,
+                                                              int flags, bool forward, bool prelock) const {
         IterationStrategy strategy(forward, prelock);
-        return BufferedCursor<DB::NullComparator, Predicate>(*this, txn, flags, strategy,
-                                                             Bounds(this, Bounds::Infinite(), Bounds::Infinite(), false),
-                                                             DB::NullComparator(), std::forward<Predicate>(filter));
+        return BufferedCursor<Comparator, Predicate>(*this, txn, flags, strategy,
+                                                     Bounds(this, Bounds::Infinite(), Bounds::Infinite(), false),
+                                                     std::forward<Comparator>(cmp), std::forward<Predicate>(filter));
     }
 
 } // namespace ftcxx
