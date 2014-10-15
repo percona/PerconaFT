@@ -11,11 +11,18 @@
 namespace ftcxx {
 
     DBC::DBC(const DB &db, const DBTxn &txn, int flags)
-        : _dbc(nullptr)
+        : _txn(),
+          _dbc(nullptr)
     {
         if (db.db() != nullptr) {
+            DB_TXN *txnp = txn.txn();
+            if (txnp == nullptr) {
+                _txn = DBTxn(DBEnv(db.db()->dbenv));
+                txnp = _txn.txn();
+            }
+
             ::DBC *c;
-            int r = db.db()->cursor(db.db(), txn.txn(), &c, flags);
+            int r = db.db()->cursor(db.db(), txnp, &c, flags);
             handle_ft_retval(r);
             _dbc = c;
         }

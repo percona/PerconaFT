@@ -13,12 +13,13 @@ namespace ftcxx {
 
     class DBEnv {
     public:
-        explicit DBEnv(DB_ENV *e)
-            : _env(e)
+        explicit DBEnv(DB_ENV *e, bool close_on_destroy=false)
+            : _env(e),
+              _close_on_destroy(close_on_destroy)
         {}
 
         ~DBEnv() {
-            if (_env) {
+            if (_env && _close_on_destroy) {
                 close();
             }
         }
@@ -26,14 +27,17 @@ namespace ftcxx {
         DBEnv(const DBEnv &) = delete;
         DBEnv& operator=(const DBEnv &) = delete;
 
-        DBEnv(DBEnv&& other)
-            : _env(nullptr)
+        DBEnv(DBEnv &&o)
+            : _env(nullptr),
+              _close_on_destroy(false)
         {
-            std::swap(_env, other._env);
+            std::swap(_env, o._env);
+            std::swap(_close_on_destroy, o._close_on_destroy);
         }
 
-        DBEnv& operator=(DBEnv&& other) {
-            std::swap(_env, other._env);
+        DBEnv& operator=(DBEnv &&o) {
+            std::swap(_env, o._env);
+            std::swap(_close_on_destroy, o._close_on_destroy);
             return *this;
         }
 
@@ -50,6 +54,7 @@ namespace ftcxx {
 
     private:
         DB_ENV *_env;
+        bool _close_on_destroy;
     };
 
     class DBEnvBuilder {

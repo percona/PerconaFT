@@ -148,6 +148,23 @@ namespace ftcxx {
         DBC(const DB &db, const DBTxn &txn=DBTxn(), int flags=0);
         ~DBC();
 
+        DBC(const DBC &) = delete;
+        DBC& operator=(const DBC &) = delete;
+
+        DBC(DBC &&o)
+            : _txn(),
+              _dbc(nullptr)
+        {
+            std::swap(_txn, o._txn);
+            std::swap(_dbc, o._dbc);
+        }
+
+        DBC& operator=(DBC &&o) {
+            std::swap(_txn, o._txn);
+            std::swap(_dbc, o._dbc);
+            return *this;
+        }
+
         ::DBC *dbc() const { return _dbc; }
 
         void close();
@@ -158,6 +175,8 @@ namespace ftcxx {
 
     protected:
 
+        // the ordering here matters, for destructors
+        DBTxn _txn;
         ::DBC *_dbc;
     };
 
