@@ -94,19 +94,23 @@ namespace ftcxx {
         Bounds(const Bounds &other) = delete;
         Bounds& operator=(const Bounds &) = delete;
 
-        Bounds(Bounds&& other)
-            : _db(other._db),
-              _left(std::move(other._left)),
-              _right(std::move(other._right)),
-              _left_dbt(_left.dbt()),
-              _right_dbt(_right.dbt()),
-              _left_infinite(other._left_infinite),
-              _right_infinite(other._right_infinite),
-              _end_exclusive(other._end_exclusive)
-        {}
+        Bounds(Bounds &&o)
+            : _db(nullptr),
+              _left(),
+              _right(),
+              _left_infinite(o._left_infinite),
+              _right_infinite(o._right_infinite),
+              _end_exclusive(o._end_exclusive)
+        {
+            std::swap(_db, o._db);
+            std::swap(_left, o._left);
+            std::swap(_right, o._right);
+            _left_dbt = _left.dbt();
+            _right_dbt = _right.dbt();
+        }
 
         Bounds& operator=(Bounds&& other) {
-            _db = other._db;
+            std::swap(_db, other._db);
             std::swap(_left, other._left);
             std::swap(_right, other._right);
             _left_dbt = _left.dbt();

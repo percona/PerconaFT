@@ -38,14 +38,14 @@ namespace ftcxx {
         DB(const DB &) = delete;
         DB& operator=(const DB &) = delete;
 
-        DB(DB&& other)
+        DB(DB &&o)
             : _db(nullptr)
         {
-            std::swap(_db, other._db);
+            std::swap(_db, o._db);
         }
 
-        DB& operator=(DB&& other) {
-            std::swap(_db, other._db);
+        DB& operator=(DB &&o) {
+            std::swap(_db, o._db);
             return *this;
         }
 

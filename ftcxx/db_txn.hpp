@@ -42,14 +42,14 @@ namespace ftcxx {
         DBTxn(const DBTxn &) = delete;
         DBTxn& operator=(const DBTxn &) = delete;
 
-        DBTxn(DBTxn&& other)
+        DBTxn(DBTxn &&o)
             : _txn(nullptr)
         {
-            std::swap(_txn, other._txn);
+            std::swap(_txn, o._txn);
         }
 
-        DBTxn& operator=(DBTxn&& other) {
-            std::swap(_txn, other._txn);
+        DBTxn& operator=(DBTxn &&o) {
+            std::swap(_txn, o._txn);
             return *this;
         }
 
