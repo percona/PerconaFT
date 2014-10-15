@@ -80,6 +80,9 @@ namespace ftcxx {
         std::string _lg_dir;
         std::string _tmp_dir;
 
+        bool _direct_io;
+        bool _compress_buffers;
+
     public:
         DBEnvBuilder()
             : _bt_compare(nullptr),
@@ -97,10 +100,15 @@ namespace ftcxx {
               _cachesize_gbytes(0),
               _cachesize_bytes(0),
               _lg_dir(""),
-              _tmp_dir("")
+              _tmp_dir(""),
+              _direct_io(false),
+              _compress_buffers(true)
         {}
 
         DBEnv open(const char *env_dir, uint32_t flags, int mode) const {
+            db_env_set_direct_io(_direct_io);
+            db_env_set_compress_buffers_before_eviction(_compress_buffers);
+
             DB_ENV *env;
             int r = db_env_create(&env, 0);
             handle_ft_retval(r);
@@ -181,7 +189,17 @@ namespace ftcxx {
             r = env->open(env, env_dir, flags, mode);
             handle_ft_retval(r);
 
-            return DBEnv(env);
+            return DBEnv(env, true);
+        }
+
+        DBEnvBuilder& set_direct_io(bool direct_io) {
+            _direct_io = direct_io;
+            return *this;
+        }
+
+        DBEnvBuilder& set_compress_buffers_before_eviction(bool compress_buffers) {
+            _compress_buffers = compress_buffers;
+            return *this;
         }
 
         DBEnvBuilder& set_default_bt_compare(bt_compare_func bt_compare) {
