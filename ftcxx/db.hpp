@@ -11,7 +11,7 @@
 #include "db_txn.hpp"
 #include "exceptions.hpp"
 #include "slice.hpp"
-#include "statistics.hpp"
+#include "stats.hpp"
 
 namespace ftcxx {
 
@@ -98,20 +98,15 @@ namespace ftcxx {
             return _db->del(_db, txn.txn(), &kdbt, flags);
         }
 
-        void get_statistics(Statistics &stats) const {
-            DB_BTREE_STAT64 s;
-            // =CER= Is there a better place to initialize this struct?
-            s.bt_dsize = 0;
-            s.bt_fsize = 0;
-            s.bt_nkeys = 0;
+        Stats get_stats() const {
+            Stats stats;
+            DB_BTREE_STAT64 s = {0, 0, 0};
             int r = _db->stat64(_db, NULL, &s);
-            if (r != 0) {
-                // TODO: Throw exception if there is an error.
-            }
-
+            handle_ft_retval(r);
             stats.dataSize = s.bt_dsize;
             stats.fileSize = s.bt_fsize;
             stats.numberOfKeys = s.bt_nkeys;
+            return stats;
         }
 
         struct NullFilter {
