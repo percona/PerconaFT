@@ -99,7 +99,8 @@ struct ft_cursor {
     DBT range_lock_left_key, range_lock_right_key;
     bool prefetching;
     bool left_is_neg_infty, right_is_pos_infty;
-    bool is_snapshot_read; // true if query is read_committed, false otherwise
+    bool is_snapshot_read; // true if query is snapshot, false otherwise
+    bool is_read_committed_always; // true if query is read committed always, false otherwise
     bool is_leaf_mode;
     bool disable_prefetching;
     bool is_temporary;
@@ -177,6 +178,7 @@ static inline void ft_search_finish(ft_search *search) {
 
 int toku_ft_cursor_create(FT_HANDLE ft_handle, FT_CURSOR cursor, TOKUTXN txn,
                           bool is_snapshot_read,
+                          bool is_read_committed_always,
                           bool disable_prefetching,
                           bool is_temporary);
 
@@ -231,7 +233,7 @@ int toku_ft_cursor_compare_one(const ft_search &search, const DBT *x);
 int toku_ft_cursor_compare_set_range(const ft_search &search, const DBT *x);
 
 // deprecated, should only be used by tests, and eventually removed
-int toku_ft_cursor(FT_HANDLE ft_handle, FT_CURSOR *ftcursor_p, TOKUTXN txn, bool, bool) __attribute__ ((warn_unused_result));
+int toku_ft_cursor(FT_HANDLE ft_handle, FT_CURSOR *ftcursor_p, TOKUTXN txn, bool, bool, bool) __attribute__ ((warn_unused_result));
 void toku_ft_cursor_close(FT_CURSOR cursor);
 int toku_ft_cursor_get(FT_CURSOR cursor, DBT *key, FT_GET_CALLBACK_FUNCTION getf, void *getf_v, int get_flags);
 int toku_ft_cursor_delete(FT_CURSOR cursor, int flags, TOKUTXN txn);

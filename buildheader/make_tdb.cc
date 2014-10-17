@@ -339,6 +339,7 @@ static void print_defines (void) {
         dodefine_from_track(txn_flags, DB_INHERIT_ISOLATION);
         dodefine_from_track(txn_flags, DB_SERIALIZABLE);
         dodefine_from_track(txn_flags, DB_TXN_READ_ONLY);
+        dodefine_from_track(txn_flags, DB_READ_COMMITTED_ALWAYS);
     }
     
     /* TokuFT specific error codes*/

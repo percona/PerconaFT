@@ -95,6 +95,7 @@ PATENT RIGHTS GRANT:
 
 int toku_ft_cursor_create(FT_HANDLE ft_handle, FT_CURSOR cursor, TOKUTXN ttxn,
                           bool is_snapshot_read,
+                          bool is_read_committed_always,
                           bool disable_prefetching,
                           bool is_temporary) {
     if (is_snapshot_read) {
@@ -110,6 +111,7 @@ int toku_ft_cursor_create(FT_HANDLE ft_handle, FT_CURSOR cursor, TOKUTXN ttxn,
     cursor->ft_handle = ft_handle;
     cursor->ttxn = ttxn;
     cursor->is_snapshot_read = is_snapshot_read;
+    cursor->is_read_committed_always = is_read_committed_always;
     cursor->disable_prefetching = disable_prefetching;
     cursor->is_temporary = is_temporary;
     return 0;
@@ -124,9 +126,11 @@ void toku_ft_cursor_destroy(FT_CURSOR cursor) {
 
 // deprecated, should only be used by tests
 int toku_ft_cursor(FT_HANDLE ft_handle, FT_CURSOR *cursorptr, TOKUTXN ttxn,
-                   bool is_snapshot_read, bool disable_prefetching) {
+                   bool is_snapshot_read, bool is_read_committed_always, bool disable_prefetching) {
     FT_CURSOR XCALLOC(cursor);
-    int r = toku_ft_cursor_create(ft_handle, cursor, ttxn, is_snapshot_read, disable_prefetching, false);
+    int r = toku_ft_cursor_create(ft_handle, cursor, ttxn,
+                                  is_snapshot_read, is_read_committed_always,
+                                  disable_prefetching, false);
     if (r == 0) {
         *cursorptr = cursor;
     } else {
@@ -321,11 +325,12 @@ int toku_ft_cursor_shortcut(FT_CURSOR cursor, int direction, uint32_t index, bn_
         r = bd->fetch_klpair(index, &le, &foundkeylen, &foundkey);
         invariant_zero(r);
 
-        if (toku_ft_cursor_is_leaf_mode(cursor) || !le_val_is_del(le, cursor->is_snapshot_read, cursor->ttxn)) {
+        if (toku_ft_cursor_is_leaf_mode(cursor) || !le_val_is_del(le, cursor->is_snapshot_read, cursor->is_read_committed_always, cursor->ttxn)) {
             le_extract_val(
                 le,
                 toku_ft_cursor_is_leaf_mode(cursor),
                 cursor->is_snapshot_read,
+                cursor->is_read_committed_always,
                 cursor->ttxn,
                 vallen,
                 val
@@ -493,7 +498,7 @@ bool toku_ft_cursor_uninitialized(FT_CURSOR c) {
 
 int toku_ft_lookup(FT_HANDLE ft_handle, DBT *k, FT_GET_CALLBACK_FUNCTION getf, void *getf_v) {
     FT_CURSOR cursor;
-    int r = toku_ft_cursor(ft_handle, &cursor, NULL, false, false);
+    int r = toku_ft_cursor(ft_handle, &cursor, NULL, false, false, false);
     if (r != 0) {
         return r;
     }

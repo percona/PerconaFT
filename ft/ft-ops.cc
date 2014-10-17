@@ -3373,7 +3373,7 @@ ok: ;
 
     if (toku_ft_cursor_is_leaf_mode(ftcursor))
         goto got_a_good_value;        // leaf mode cursors see all leaf entries
-    if (le_val_is_del(le, ftcursor->is_snapshot_read, ftcursor->ttxn)) {
+    if (le_val_is_del(le, ftcursor->is_snapshot_read, ftcursor->is_read_committed_always, ftcursor->ttxn)) {
         // Provisionally deleted stuff is gone.
         // So we need to scan in the direction to see if we can find something.
         // Every 100 deleted leaf entries check if the leaf's key is within the search bounds.
@@ -3403,7 +3403,7 @@ ok: ;
             }
             r = bn->data_buffer.fetch_klpair(idx, &le, &keylen, &key);
             assert_zero(r); // we just validated the index
-            if (!le_val_is_del(le, ftcursor->is_snapshot_read, ftcursor->ttxn)) {
+            if (!le_val_is_del(le, ftcursor->is_snapshot_read, ftcursor->is_read_committed_always, ftcursor->ttxn)) {
                 goto got_a_good_value;
             }
         }
@@ -3414,7 +3414,7 @@ got_a_good_value:
         void *val;
 
         le_extract_val(le, toku_ft_cursor_is_leaf_mode(ftcursor),
-                       ftcursor->is_snapshot_read, ftcursor->ttxn,
+                       ftcursor->is_snapshot_read, ftcursor->is_read_committed_always, ftcursor->ttxn,
                        &vallen, &val);
         r = toku_ft_cursor_check_restricted_range(ftcursor, key, keylen);
         if (r == 0) {

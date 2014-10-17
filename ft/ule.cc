@@ -2061,11 +2061,13 @@ ule_verify_xids(ULE ule, uint32_t interesting, TXNID *xids) {
 // Parameters:
 //    le - leafentry to iterate over
 //    f - callback function that checks if a TXNID in le is accepted, and its associated value should be examined.
+//    accept_outermost_committed - ignore f and simply return the value associated with the outermost committed XR
 //    is_delp - output parameter that returns answer
 //    context - parameter for f
 //
 static int
-le_iterate_is_del(LEAFENTRY le, LE_ITERATE_CALLBACK f, bool *is_delp, TOKUTXN context) {
+le_iterate_is_del(LEAFENTRY le, LE_ITERATE_CALLBACK f, bool accept_outermost_committed,
+                  bool *is_delp, TOKUTXN context) {
 #if ULE_DEBUG
     ULE_S ule;
     le_unpack(&ule, le);
@@ -2100,7 +2102,15 @@ le_iterate_is_del(LEAFENTRY le, LE_ITERATE_CALLBACK f, bool *is_delp, TOKUTXN co
 #if ULE_DEBUG
             ule_verify_xids(&ule, num_interesting, xids);
 #endif
-            r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context);
+            if (accept_outermost_committed) {
+                // there are `num_puxrs' provisional entries on the stack, so
+                // if we go that deep, we hit the first committed entry.
+                index = num_puxrs;
+                r = 0;
+            } else {
+                // snapshot - get an acceptable index via the callback
+                r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context);
+            }
             if (r!=0) goto cleanup;
             invariant(index < num_interesting);
 
@@ -2135,13 +2145,14 @@ cleanup:
 //
 // Returns true if the value that is to be read is empty.
 //
-int le_val_is_del(LEAFENTRY le, bool is_snapshot_read, TOKUTXN txn) {
+int le_val_is_del(LEAFENTRY le, bool is_snapshot_read, bool is_read_committed_always, TOKUTXN txn) {
     int rval;
-    if (is_snapshot_read) {
+    if (is_snapshot_read || is_read_committed_always) {
         bool is_del = false;
         le_iterate_is_del(
             le,
             toku_txn_reads_txnid,
+            is_read_committed_always,
             &is_del,
             txn
             );
@@ -2164,12 +2175,14 @@ int le_val_is_del(LEAFENTRY le, bool is_snapshot_read, TOKUTXN txn) {
 // Parameters:
 //    le - leafentry to iterate over
 //    f - callback function that checks if a TXNID in le is accepted, and its associated value should be examined.
+//    accept_outermost_committed - ignore f and simply return the value associated with the outermost committed XR
 //    valpp - output parameter that returns pointer to value
 //    vallenp - output parameter that returns length of value
 //    context - parameter for f
 //
 int
-le_iterate_val(LEAFENTRY le, LE_ITERATE_CALLBACK f, void** valpp, uint32_t *vallenp, TOKUTXN context) {
+le_iterate_val(LEAFENTRY le, LE_ITERATE_CALLBACK f, bool accept_outermost_committed,
+               void** valpp, uint32_t *vallenp, TOKUTXN context) {
 #if ULE_DEBUG
     ULE_S ule;
     le_unpack(&ule, le);
@@ -2209,7 +2222,15 @@ le_iterate_val(LEAFENTRY le, LE_ITERATE_CALLBACK f, void** valpp, uint32_t *vall
 #if ULE_DEBUG
             ule_verify_xids(&ule, num_interesting, xids);
 #endif
-            r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context);
+            if (accept_outermost_committed) {
+                // there are `num_puxrs' provisional entries on the stack, so
+                // if we go that deep, we hit the first committed entry.
+                index = num_puxrs;
+                r = 0;
+            } else {
+                // snapshot - get an acceptable index via the callback
+                r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context);
+            }
             if (r!=0) goto cleanup;
             invariant(index < num_interesting);
 
@@ -2275,15 +2296,16 @@ cleanup:
 
 void le_extract_val(LEAFENTRY le,
                     // should we return the entire leafentry as the val?
-                    bool is_leaf_mode, bool is_snapshot_read,
+                    bool is_leaf_mode, bool is_snapshot_read, bool is_read_committed_always,
                     TOKUTXN ttxn, uint32_t *vallen, void **val) {
     if (is_leaf_mode) {
         *val = le;
         *vallen = leafentry_memsize(le);
-    } else if (is_snapshot_read) {
+    } else if (is_snapshot_read || is_read_committed_always) {
         int r = le_iterate_val(
             le,
             toku_txn_reads_txnid,
+            is_read_committed_always,
             val,
             vallen,
             ttxn
