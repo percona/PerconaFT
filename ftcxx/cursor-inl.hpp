@@ -81,6 +81,18 @@ namespace ftcxx {
         return !_finished;
     }
 
+    template<class Comparator, class Handler>
+    void Cursor<Comparator, Handler>::seek(const Slice &key) {
+        if (_iteration_strategy.forward) {
+            _bounds.set_left(key);
+        } else {
+            _bounds.set_right(key);
+        }
+        if (!_dbc.set_range(_iteration_strategy, _bounds, getf_callback, this)) {
+            _finished = true;
+        }
+    }
+
     template<class Predicate>
     inline void BufferAppender<Predicate>::marshall(char *dest, const DBT *key, const DBT *val) {
         uint32_t *keylen = reinterpret_cast<uint32_t *>(&dest[0]);
@@ -173,6 +185,12 @@ namespace ftcxx {
         Appender::unmarshall(src, key, val);
         _buf.advance(Appender::marshalled_size(key.size(), val.size()));
         return true;
+    }
+
+    template<class Comparator, class Predicate>
+    void BufferedCursor<Comparator, Predicate>::seek(const Slice &key) {
+        _buf.clear();
+        _cur.seek(key);
     }
 
     template<class Comparator, class Handler>

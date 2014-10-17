@@ -137,6 +137,18 @@ namespace ftcxx {
             }
         }
 
+        void set_left(const Slice &left) {
+            _left = left.owned();
+            _left_dbt = _left.dbt();
+            _left_infinite = false;
+        }
+
+        void set_right(const Slice &right) {
+            _right = right.owned();
+            _right_dbt = _right.dbt();
+            _right_infinite = false;
+        }
+
         bool left_infinite() const { return _left_infinite; }
         bool right_infinite() const { return _right_infinite; }
 
@@ -208,6 +220,8 @@ namespace ftcxx {
          */
         bool consume_batch();
 
+        void seek(const Slice &key);
+
         bool finished() const { return _finished; }
 
         bool ok() const { return !finished(); }
@@ -275,6 +289,8 @@ namespace ftcxx {
          */
         bool next(DBT *key, DBT *val);
         bool next(Slice &key, Slice &val);
+
+        void seek(const Slice &key);
 
         bool ok() const {
             return _cur.ok() || _buf.more();
