@@ -61,17 +61,17 @@ namespace ftcxx {
             class WrappedCallback {
                 Callback &_cb;
             public:
-                WrappedCallback(Callback &cb)
-                    : _cb(cb)
+                WrappedCallback(Callback &cb_)
+                    : _cb(cb_)
                 {}
 
-                static int call(const DBT *key, const DBT *val, void *extra) {
+                static int call(const DBT *key_, const DBT *val_, void *extra) {
                     WrappedCallback *wc = static_cast<WrappedCallback *>(extra);
-                    return wc->call(key, val);
+                    return wc->call(key_, val_);
                 }
 
-                int call(const DBT *key, const DBT *val) {
-                    return _cb(Slice(*key), Slice(*val));
+                int call(const DBT *key_, const DBT *val_) {
+                    return _cb(Slice(*key_), Slice(*val_));
                 }
             } wc(cb);
 

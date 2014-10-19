@@ -139,16 +139,16 @@ void test(Generator gen) {
 
     if (expected.size() != received.size()) {
         std::cout << "fail" << std::endl;
-        std::cerr << "expected.size() != received.size()" << std::cerr;
-        std::cerr << expected.size() << " != " << received.size() << std::cerr;
+        std::cerr << "expected.size() != received.size()" << std::endl;
+        std::cerr << expected.size() << " != " << received.size() << std::endl;
         return;
     }
 
     for (size_t i = 0; i < expected.size(); ++i) {
         if (expected[i] != received[i]) {
             std::cout << "fail" << std::endl;
-            std::cerr << "expected[" << i << "] != received[" << i << "]" << std::cerr;
-            std::cerr << std::string(expected[i]) << " != " << std::string(received[i]) << std::cerr;
+            std::cerr << "expected[" << i << "] != received[" << i << "]" << std::endl;
+            std::cerr << std::string(expected[i]) << " != " << std::string(received[i]) << std::endl;
             return;
         }
     }
