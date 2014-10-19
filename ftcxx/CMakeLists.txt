@@ -1,5 +1,10 @@
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -Wno-deprecated-declarations")
 
+if (APPLE)
+  ## osx is weird about weak symbols
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-flat_namespace,-undefined,dynamic_lookup")
+endif (APPLE)
+
 add_library(ftcxx STATIC
   buffer
   cursor
