@@ -9,9 +9,24 @@
  */
 
 #include <algorithm>
-#include <bits/functexcept.h>
 #include <cassert>
 #include <cstdlib>
+
+#if HAVE_BITS_FUNCTEXCEPT_H
+
+# include <bits/functexcept.h>
+
+#else
+
+# include <stdexcept>
+
+namespace std {
+
+    void __throw_bad_alloc();
+
+}
+
+#endif
 
 /**
  * Declare *allocx() and mallctl() as weak symbols. These will be provided by

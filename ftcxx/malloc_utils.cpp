@@ -4,6 +4,18 @@
 
 #include "malloc_utils.hpp"
 
+#if !HAVE_BITS_FUNCTEXCEPT_H
+
+namespace std {
+
+    void __throw_bad_alloc() {
+        throw bad_alloc();
+    }
+
+} // namespace std
+
+#endif
+
 namespace malloc_utils {
 
     // How do we determine that we're using jemalloc?
