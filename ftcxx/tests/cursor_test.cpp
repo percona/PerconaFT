@@ -84,6 +84,23 @@ static void run_test(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
         assert(last == N - 1);
     }
 
+    {
+        ftcxx::Slice key;
+        ftcxx::Slice val;
+        uint32_t expect = 0;
+        uint32_t last = 0;
+        for (auto cur(db.simple_cursor(extxn, UIntComparator(), key, val)); ; ) {
+            std::cout << key.as<uint32_t>() << std::endl;
+            last = key.as<uint32_t>();
+            assert(expect == last);
+            expect++;
+            if (!cur.next()) {
+                break;
+            }
+        }
+        assert(last == N - 1);
+    }
+
     extxn.commit();
 }
 

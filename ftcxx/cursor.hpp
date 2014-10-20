@@ -201,17 +201,17 @@ namespace ftcxx {
      * with bulk fetch buffering, and optional filtering.
      */
     template<class Comparator, class Handler>
-    class Cursor {
+    class CallbackCursor {
     public:
 
         /**
          * Constructs an cursor.  Better to use DB::cursor instead to
          * avoid template parameters.
          */
-        Cursor(const DB &db, const DBTxn &txn, int flags,
-               IterationStrategy iteration_strategy,
-               Bounds bounds,
-               Comparator &&cmp, Handler &&handler);
+        CallbackCursor(const DB &db, const DBTxn &txn, int flags,
+                       IterationStrategy iteration_strategy,
+                       Bounds bounds,
+                       Comparator &&cmp, Handler &&handler);
 
         /**
          * Gets the next key/val pair in the iteration.  Returns true
@@ -239,7 +239,7 @@ namespace ftcxx {
         void init();
 
         static int getf_callback(const DBT *key, const DBT *val, void *extra) {
-            Cursor *i = static_cast<Cursor *>(extra);
+            CallbackCursor *i = static_cast<CallbackCursor *>(extra);
             return i->getf(key, val);
         }
 
@@ -301,7 +301,52 @@ namespace ftcxx {
         typedef BufferAppender<Predicate> Appender;
 
         Buffer _buf;
-        Cursor<Comparator, Appender> _cur;
+        CallbackCursor<Comparator, Appender> _cur;
+    };
+
+    template<class Comparator>
+    class SimpleCursor {
+    public:
+        SimpleCursor(const DB &db, const DBTxn &txn, int flags,
+                     IterationStrategy iteration_strategy,
+                     Bounds bounds, Comparator &&cmp,
+                     Slice &key, Slice &val);
+
+        /**
+         * Gets the next key/val pair in the iteration.  Copies data
+         * directly into key and val, which will own their buffers.
+         */
+        bool next();
+
+        void seek(const Slice &key);
+
+        bool ok() const {
+            return _cur.ok();
+        }
+
+        class SliceCopier {
+            Slice &_key;
+            Slice &_val;
+
+        public:
+            SliceCopier(Slice &key, Slice &val)
+                : _key(key),
+                  _val(val)
+            {}
+
+            bool operator()(const DBT *key, const DBT *val) {
+                _key = std::move(Slice(*key).owned());
+                _val = std::move(Slice(*val).owned());
+
+                // Don't bulk fetch.
+                return false;
+            }
+        };
+
+    private:
+
+        SliceCopier _copier;
+        CallbackCursor<Comparator, SliceCopier&> _cur;
     };
 
 } // namespace ftcxx

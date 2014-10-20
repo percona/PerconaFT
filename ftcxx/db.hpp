@@ -16,9 +16,11 @@
 namespace ftcxx {
 
     template<class Comparator, class Handler>
-    class Cursor;
+    class CallbackCursor;
     template<class Comparator, class Predicate>
     class BufferedCursor;
+    template<class Comparator>
+    class SimpleCursor;
 
     class DB {
     public:
@@ -120,18 +122,18 @@ namespace ftcxx {
          * right (or right to left if !forward).
          */
         template<class Comparator, class Handler>
-        Cursor<Comparator, Handler> cursor(const DBTxn &txn, DBT *left, DBT *right,
-                                           Comparator &&cmp, Handler &&handler, int flags=0,
-                                           bool forward=true, bool end_exclusive=false, bool prelock=true) const;
+        CallbackCursor<Comparator, Handler> cursor(const DBTxn &txn, DBT *left, DBT *right,
+                                                   Comparator &&cmp, Handler &&handler, int flags=0,
+                                                   bool forward=true, bool end_exclusive=false, bool prelock=true) const;
 
         template<class Comparator, class Handler>
-        Cursor<Comparator, Handler> cursor(const DBTxn &txn, const Slice &left, const Slice &right,
-                                           Comparator &&cmp, Handler &&handler, int flags=0,
-                                           bool forward=true, bool end_exclusive=false, bool prelock=true) const;
+        CallbackCursor<Comparator, Handler> cursor(const DBTxn &txn, const Slice &left, const Slice &right,
+                                                   Comparator &&cmp, Handler &&handler, int flags=0,
+                                                   bool forward=true, bool end_exclusive=false, bool prelock=true) const;
 
         template<class Comparator, class Handler>
-        Cursor<Comparator, Handler> cursor(const DBTxn &txn, Comparator &&cmp, Handler &&handler,
-                                           int flags=0, bool forward=true, bool prelock=true) const;
+        CallbackCursor<Comparator, Handler> cursor(const DBTxn &txn, Comparator &&cmp, Handler &&handler,
+                                                   int flags=0, bool forward=true, bool prelock=true) const;
 
         template<class Comparator, class Predicate>
         BufferedCursor<Comparator, Predicate> buffered_cursor(const DBTxn &txn, DBT *left, DBT *right,
@@ -146,6 +148,20 @@ namespace ftcxx {
         template<class Comparator, class Predicate>
         BufferedCursor<Comparator, Predicate> buffered_cursor(const DBTxn &txn, Comparator &&cmp, Predicate &&filter,
                                                               int flags=0, bool forward=true, bool prelock=true) const;
+
+        template<class Comparator>
+        SimpleCursor<Comparator> simple_cursor(const DBTxn &txn, DBT *left, DBT *right,
+                                               Comparator &&cmp, Slice &key, Slice &val, int flags=0,
+                                               bool forward=true, bool end_exclusive=false, bool prelock=true) const;
+
+        template<class Comparator>
+        SimpleCursor<Comparator> simple_cursor(const DBTxn &txn, const Slice &left, const Slice &right,
+                                               Comparator &&cmp, Slice &key, Slice &val, int flags=0,
+                                               bool forward=true, bool end_exclusive=false, bool prelock=true) const;
+
+        template<class Comparator>
+        SimpleCursor<Comparator> simple_cursor(const DBTxn &txn, Comparator &&cmp, Slice &key, Slice &val,
+                                               int flags=0, bool forward=true, bool prelock=true) const;
 
         void close() {
             int r = _db->close(_db, 0);
