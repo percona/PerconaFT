@@ -2018,11 +2018,16 @@ uxr_get_txnid(UXR uxr) {
 }
 
 static int
-le_iterate_get_accepted_index(TXNID *xids, uint32_t *index, uint32_t num_xids, LE_ITERATE_CALLBACK f, TOKUTXN context) {
+le_iterate_get_accepted_index(TXNID *xids, uint32_t *index, uint32_t num_xids, uint32_t num_puxrs, bool accept_outermost_committed, LE_ITERATE_CALLBACK f, TOKUTXN context) {
     uint32_t i;
     int r = 0;
     // if this for loop does not return anything, we return num_xids-1, which should map to T_0
     for (i = 0; i < num_xids - 1; i++) {
+        if (accept_outermost_committed && i >= num_puxrs) {
+            invariant(i == 0 || i == 1);
+            r = 0;
+            break;
+        }
         TXNID xid = toku_dtoh64(xids[i]);
         r = f(xid, context);
         if (r==TOKUDB_ACCEPT) {
@@ -2102,15 +2107,7 @@ le_iterate_is_del(LEAFENTRY le, LE_ITERATE_CALLBACK f, bool accept_outermost_com
 #if ULE_DEBUG
             ule_verify_xids(&ule, num_interesting, xids);
 #endif
-            if (accept_outermost_committed) {
-                // there are `num_puxrs' provisional entries on the stack, so
-                // if we go that deep, we hit the first committed entry.
-                index = num_puxrs;
-                r = 0;
-            } else {
-                // snapshot - get an acceptable index via the callback
-                r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context);
-            }
+            r = le_iterate_get_accepted_index(xids, &index, num_interesting, num_puxrs, accept_outermost_committed, f, context);
             if (r!=0) goto cleanup;
             invariant(index < num_interesting);
 
@@ -2147,7 +2144,7 @@ cleanup:
 //
 int le_val_is_del(LEAFENTRY le, bool is_snapshot_read, bool is_read_committed_always, TOKUTXN txn) {
     int rval;
-    if (is_snapshot_read || is_read_committed_always) {
+    if (is_snapshot_read) {
         bool is_del = false;
         le_iterate_is_del(
             le,
@@ -2222,15 +2219,7 @@ le_iterate_val(LEAFENTRY le, LE_ITERATE_CALLBACK f, bool accept_outermost_commit
 #if ULE_DEBUG
             ule_verify_xids(&ule, num_interesting, xids);
 #endif
-            if (accept_outermost_committed) {
-                // there are `num_puxrs' provisional entries on the stack, so
-                // if we go that deep, we hit the first committed entry.
-                index = num_puxrs;
-                r = 0;
-            } else {
-                // snapshot - get an acceptable index via the callback
-                r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context);
-            }
+            r = le_iterate_get_accepted_index(xids, &index, num_interesting, num_puxrs, accept_outermost_committed, f, context);
             if (r!=0) goto cleanup;
             invariant(index < num_interesting);
 

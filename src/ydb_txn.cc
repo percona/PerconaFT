@@ -496,6 +496,7 @@ int toku_txn_begin(DB_ENV *env, DB_TXN * stxn, DB_TXN ** txn, uint32_t flags) {
     if (!(iso_flags == 0 || 
           iso_flags == DB_TXN_SNAPSHOT || 
           iso_flags == DB_READ_COMMITTED || 
+          iso_flags == DB_READ_COMMITTED_ALWAYS || 
           iso_flags == DB_READ_UNCOMMITTED || 
           iso_flags == DB_SERIALIZABLE || 
           iso_flags == DB_INHERIT_ISOLATION)

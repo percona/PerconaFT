@@ -136,6 +136,7 @@ typedef enum __TXN_SNAPSHOT_TYPE {
     TXN_SNAPSHOT_NONE=0,
     TXN_SNAPSHOT_ROOT=1,
     TXN_SNAPSHOT_CHILD=2
+    TXN_SNAPSHOT_READ_COMMITTED_ALWAYS=2
 } TXN_SNAPSHOT_TYPE;
 
 typedef toku::omt<struct tokutxn *> txn_omt_t;

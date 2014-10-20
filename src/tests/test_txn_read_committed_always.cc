@@ -110,29 +110,29 @@ static void test_simple_committed_read(DB_ENV *env) {
     dbt_init(&val, valbuf, sizeof(valbuf));
 
     // start with just john
-    r = db->put(db, NULL, &john, &john, DB_NOOVERWRITE); CKERR(r);
+    r = db->put(db, NULL, &john, &john, 0); CKERR(r);
 
     // begin an outer txn with read-committed-always isolation
-    DB_TXN outer_txn;
-    r = env->txn_begin(env, NULL, &txn, DB_READ_COMMITTED_ALWAYS);
+    DB_TXN *outer_txn;
+    r = env->txn_begin(env, NULL, &outer_txn, DB_READ_COMMITTED_ALWAYS); CKERR(r);
 
     // outer txn sees john
-    r = db->get(db, &outer_txn, &john, &val, 0); CKERR(r);
+    r = db->get(db, outer_txn, &john, &val, 0); CKERR(r);
 
     // outer txn does not yet see christian
-    r = db->get(db, &outer_txn, &christian, &val, 0); CKERR2(r, DB_NOTFOUND);
+    r = db->get(db, outer_txn, &christian, &val, 0); CKERR2(r, DB_NOTFOUND);
 
     // insert christian in another txn (NULL means generate an auto-commit txn)
-    r = db->put(db, NULL, &christian, &christian, 0); CKERR(r)
+    r = db->put(db, NULL, &christian, &christian, 0); CKERR(r);
 
     // outer txn sees christian
-    r = db->get(db, &outer_txn, &christian, &val, 0); CKERR(r);
+    r = db->get(db, outer_txn, &christian, &val, 0); CKERR(r);
 
     // delete john in another txn
-    r = db->del(db, NULL, &john, &val, 0); CKERR(r);
+    r = db->del(db, NULL, &john, 0); CKERR(r);
 
     // outer txn no longer sees john
-    r = db->get(db, &outer_txn, &john, &val, 0); CKERR2(r, DB_NOTFOUND);
+    r = db->get(db, outer_txn, &john, &val, 0); CKERR2(r, DB_NOTFOUND);
 
     r = db->close(db, 0); CKERR(r);
     r = env->dbremove(env, NULL, "db", NULL, 0); CKERR(r);
@@ -151,8 +151,6 @@ int test_main(int argc, char * const argv[]) {
     r = toku_os_mkdir(TOKU_TEST_FILENAME, 0755); CKERR(r);
     r = db_env_create(&env, 0); CKERR(r);
     r = env->open(env, TOKU_TEST_FILENAME, envflags, 0755);
-
-    r = myinitstate_r(random(), random_buf, 8, &random_data); CKERR(r);
 
     test_simple_committed_read(env);
 

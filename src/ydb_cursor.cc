@@ -886,9 +886,10 @@ toku_db_cursor_internal(DB * db, DB_TXN * txn, DBC *c, uint32_t flags, int is_te
     bool is_snapshot_read = false;
     bool is_read_committed_always = false;
     if (txn) {
-        is_snapshot_read = (dbc_struct_i(c)->iso == TOKU_ISO_READ_COMMITTED || 
-                            dbc_struct_i(c)->iso == TOKU_ISO_SNAPSHOT);
         is_read_committed_always = dbc_struct_i(c)->iso == TOKU_ISO_READ_COMMITTED_ALWAYS;
+        is_snapshot_read = (dbc_struct_i(c)->iso == TOKU_ISO_READ_COMMITTED || 
+                            dbc_struct_i(c)->iso == TOKU_ISO_SNAPSHOT ||
+                            is_read_committed_always);
     }
     int r = toku_ft_cursor_create(
         db->i->ft_handle, 

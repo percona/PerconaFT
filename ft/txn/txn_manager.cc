@@ -401,25 +401,28 @@ find_xid (const TOKUTXN &txn, const TOKUTXN &txnfind)
 
 static inline void txn_manager_create_snapshot_unlocked(
     TXN_MANAGER txn_manager,
-    TOKUTXN txn
+    TOKUTXN txn,
+    bool add_to_snapshot_list
     ) 
 {    
     txn->snapshot_txnid64 = ++txn_manager->last_xid;    
     setup_live_root_txn_list(&txn_manager->live_root_ids, txn->live_root_txn_list);  
-    // Add this txn to the global list of txns that have their own snapshots.
-    // (Note, if a txn is a child that creates its own snapshot, then that child xid
-    // is the xid stored in the global list.) 
-    if (txn_manager->snapshot_head == NULL) {
-        invariant(txn_manager->snapshot_tail == NULL);
-        txn_manager->snapshot_head = txn;
-        txn_manager->snapshot_tail = txn;
+    if (add_to_snapshot_list) {
+        // Add this txn to the global list of txns that have their own snapshots.
+        // (Note, if a txn is a child that creates its own snapshot, then that child xid
+        // is the xid stored in the global list.) 
+        if (txn_manager->snapshot_head == NULL) {
+            invariant(txn_manager->snapshot_tail == NULL);
+            txn_manager->snapshot_head = txn;
+            txn_manager->snapshot_tail = txn;
+        }
+        else {
+            txn_manager->snapshot_tail->snapshot_next = txn;
+            txn->snapshot_prev = txn_manager->snapshot_tail;
+            txn_manager->snapshot_tail = txn;
+        }
+        txn_manager->num_snapshots++;
     }
-    else {
-        txn_manager->snapshot_tail->snapshot_next = txn;
-        txn->snapshot_prev = txn_manager->snapshot_tail;
-        txn_manager->snapshot_tail = txn;
-    }
-    txn_manager->num_snapshots++;
 }
 
 // template-only function, but must be extern
@@ -560,7 +563,7 @@ void toku_txn_manager_handle_snapshot_create_for_child_txn(
         invariant(txn->live_root_txn_list == nullptr);
         XMALLOC(txn->live_root_txn_list);
         txn_manager_lock(txn_manager);
-        txn_manager_create_snapshot_unlocked(txn_manager, txn);
+        txn_manager_create_snapshot_unlocked(txn_manager, txn, true);
         txn_manager_unlock(txn_manager);
     }
     else {
@@ -660,10 +663,11 @@ void toku_txn_manager_start_txn(
     }
     set_oldest_referenced_xid(txn_manager);
     
-    if (needs_snapshot) {
+    if (needs_snapshot || snapshot_type == TOKU_ISO_READ_COMMITTED_ALWAYS) {
         txn_manager_create_snapshot_unlocked(
             txn_manager,
-            txn
+            txn,
+            needs_snapshot
             );
     }
 
