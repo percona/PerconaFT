@@ -25,15 +25,17 @@ namespace ftcxx {
     class DB {
     public:
         DB()
-            : _db(nullptr)
+            : _db(nullptr),
+              _close_on_destroy(false)
         {}
 
-        explicit DB(::DB *d)
-            : _db(d)
+        explicit DB(::DB *d, bool close_on_destroy=false)
+            : _db(d),
+              _close_on_destroy(close_on_destroy)
         {}
 
         ~DB() {
-            if (_db) {
+            if (_db && _close_on_destroy) {
                 close();
             }
         }
@@ -42,13 +44,16 @@ namespace ftcxx {
         DB& operator=(const DB &) = delete;
 
         DB(DB &&o)
-            : _db(nullptr)
+            : _db(nullptr),
+              _close_on_destroy(false)
         {
             std::swap(_db, o._db);
+            std::swap(_close_on_destroy, o._close_on_destroy);
         }
 
         DB& operator=(DB &&o) {
             std::swap(_db, o._db);
+            std::swap(_close_on_destroy, o._close_on_destroy);
             return *this;
         }
 
@@ -171,6 +176,7 @@ namespace ftcxx {
 
     private:
         ::DB *_db;
+        bool _close_on_destroy;
     };
 
     class DBBuilder {
@@ -230,7 +236,7 @@ namespace ftcxx {
                 handle_ft_retval(r);
             }
 
-            return DB(db);
+            return DB(db, true);
         }
 
         DBBuilder& set_readpagesize(uint32_t readpagesize) {
