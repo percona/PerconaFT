@@ -98,6 +98,7 @@ PATENT RIGHTS GRANT:
 #include <ft/cachetable/checkpoint.h>
 #include <ft/log_header.h>
 #include <ft/txn/txn_manager.h>
+#include "ft/txn/rollback-apply.h"
 
 
 #include "ydb-internal.h"
@@ -161,12 +162,16 @@ static int toku_txn_commit(DB_TXN * txn, uint32_t flags,
     flags &= ~DB_TXN_NOSYNC;
 
     int r;
+    bool deferCommitMessages = false;
     if (flags!=0) {
-        // frees the tokutxn
         r = toku_txn_abort_txn(db_txn_struct_i(txn)->tokutxn, poll, poll_extra);
     } else {
-        // frees the tokutxn
-        r = toku_txn_commit_txn(db_txn_struct_i(txn)->tokutxn, nosync,
+        // When committing, we don't immedietely send commit messages,
+        // that happens below. The reason is that when we send the commit messages,
+        // we want the transaction to be removed from live lists so that garbage collection
+        // can happen.
+        deferCommitMessages = true;
+        r = toku_txn_commit_txn(db_txn_struct_i(txn)->tokutxn, nosync, deferCommitMessages,
                                 poll, poll_extra);
     }
     if (r!=0 && !toku_env_is_panicked(txn->mgrp)) {
@@ -198,6 +203,14 @@ static int toku_txn_commit(DB_TXN * txn, uint32_t flags,
         }
     }
     toku_txn_maybe_fsync_log(logger, do_fsync_lsn, do_fsync);
+    if (deferCommitMessages) {
+        // send commit messages. This does so with the assumption
+        // that message application code in ule.cc can handle the fact
+        // that a commit message may arrive AFTER another message injection
+        // performed the commit via implicit promotion.
+        r = toku_rollback_commit(db_txn_struct_i(txn)->tokutxn, ZERO_LSN);
+    }
+    
     if (flags!=0) {
         r = EINVAL;
         goto cleanup;
