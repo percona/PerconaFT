@@ -290,9 +290,9 @@ void toku_txn_update_xids_in_txn(struct tokutxn *txn, TXNID xid);
 
 int toku_txn_load_txninfo (struct tokutxn *txn, struct txninfo *info);
 
-int toku_txn_commit_txn (struct tokutxn *txn, int nosync,
+int toku_txn_commit_txn (struct tokutxn *txn, int nosync, bool deferCommitMessages,
                          TXN_PROGRESS_POLL_FUNCTION poll, void *poll_extra);
-int toku_txn_commit_with_lsn(struct tokutxn *txn, int nosync, LSN oplsn,
+int toku_txn_commit_with_lsn(struct tokutxn *txn, int nosync, LSN oplsn, bool deferCommitMessages,
                              TXN_PROGRESS_POLL_FUNCTION poll, void *poll_extra);
 
 int toku_txn_abort_txn(struct tokutxn *txn,
