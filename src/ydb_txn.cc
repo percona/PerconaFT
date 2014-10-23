@@ -508,7 +508,8 @@ int toku_txn_begin(DB_ENV *env, DB_TXN * stxn, DB_TXN ** txn, uint32_t flags) {
     uint32_t iso_flags = flags & DB_ISOLATION_FLAGS;
     if (!(iso_flags == 0 || 
           iso_flags == DB_TXN_SNAPSHOT || 
-          iso_flags == DB_READ_COMMITTED || 
+          iso_flags == DB_READ_COMMITTED ||
+          iso_flags == DB_READ_COMMITTED_ALWAYS ||
           iso_flags == DB_READ_UNCOMMITTED || 
           iso_flags == DB_SERIALIZABLE || 
           iso_flags == DB_INHERIT_ISOLATION)
@@ -537,6 +538,9 @@ int toku_txn_begin(DB_ENV *env, DB_TXN * stxn, DB_TXN ** txn, uint32_t flags) {
             break;
         case (DB_READ_COMMITTED):
             child_isolation = TOKU_ISO_READ_COMMITTED;
+            break;
+        case (DB_READ_COMMITTED_ALWAYS):
+            child_isolation = TOKU_ISO_READ_COMMITTED_ALWAYS;
             break;
         case (DB_READ_UNCOMMITTED):
             child_isolation = TOKU_ISO_READ_UNCOMMITTED;
@@ -596,6 +600,11 @@ int toku_txn_begin(DB_ENV *env, DB_TXN * stxn, DB_TXN ** txn, uint32_t flags) {
         case(TOKU_ISO_READ_COMMITTED):
         {
             snapshot_type = TXN_SNAPSHOT_CHILD;
+            break;
+        }
+        case(TOKU_ISO_READ_COMMITTED_ALWAYS) :
+        {
+            snapshot_type = TXN_COPIES_SNAPSHOT;
             break;
         }
         default:

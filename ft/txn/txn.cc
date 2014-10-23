@@ -788,7 +788,7 @@ void toku_txn_set_client_id(TOKUTXN txn, uint64_t client_id) {
     txn->client_id = client_id;
 }
 
-int toku_txn_reads_txnid(TXNID txnid, TOKUTXN txn) {
+int toku_txn_reads_txnid(TXNID txnid, TOKUTXN txn, bool is_provisional UU()) {
     int r = 0;
     TXNID oldest_live_in_snapshot = toku_get_oldest_in_live_root_txn_list(txn);
     if (oldest_live_in_snapshot == TXNID_NONE && txnid < txn->snapshot_txnid64) {

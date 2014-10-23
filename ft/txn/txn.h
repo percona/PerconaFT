@@ -135,7 +135,8 @@ static const LSN MAX_LSN = { .lsn = UINT64_MAX };
 typedef enum __TXN_SNAPSHOT_TYPE { 
     TXN_SNAPSHOT_NONE=0,
     TXN_SNAPSHOT_ROOT=1,
-    TXN_SNAPSHOT_CHILD=2
+    TXN_SNAPSHOT_CHILD=2,
+    TXN_COPIES_SNAPSHOT=3
 } TXN_SNAPSHOT_TYPE;
 
 typedef toku::omt<struct tokutxn *> txn_omt_t;
@@ -144,14 +145,6 @@ typedef toku::omt<struct referenced_xid_tuple, struct referenced_xid_tuple *> rx
 
 inline bool txn_pair_is_none(TXNID_PAIR txnid) {
     return txnid.parent_id64 == TXNID_NONE && txnid.child_id64 == TXNID_NONE;
-}
-
-inline bool txn_needs_snapshot(TXN_SNAPSHOT_TYPE snapshot_type, struct tokutxn *parent) {
-    // we need a snapshot if the snapshot type is a child or
-    // if the snapshot type is root and we have no parent.
-    // Cases that we don't need a snapshot: when snapshot type is NONE
-    //  or when it is ROOT and we have a parent
-    return (snapshot_type != TXN_SNAPSHOT_NONE && (parent==NULL || snapshot_type == TXN_SNAPSHOT_CHILD));
 }
 
 struct tokulogger;
@@ -379,7 +372,7 @@ void toku_txn_set_client_id(struct tokutxn *txn, uint64_t client_id);
 // For the above to NOT be true:
 //  - id > context->snapshot_txnid64 OR id is in context's live root transaction list
 //
-int toku_txn_reads_txnid(TXNID txnid, struct tokutxn *txn);
+int toku_txn_reads_txnid(TXNID txnid, struct tokutxn *txn, bool is_provisional UU());
 
 void txn_status_init(void);
 
