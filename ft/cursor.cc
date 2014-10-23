@@ -94,12 +94,12 @@ PATENT RIGHTS GRANT:
 #include "util/dbt.h"
 
 int toku_ft_cursor_create(FT_HANDLE ft_handle, FT_CURSOR cursor, TOKUTXN ttxn,
-                          bool is_snapshot_read,
+                          enum cursor_read_type read_type,
                           bool disable_prefetching,
                           bool is_temporary) {
-    if (is_snapshot_read) {
+    if (read_type == C_READ_SNAPSHOT) {
         invariant(ttxn != NULL);
-        int accepted = toku_txn_reads_txnid(ft_handle->ft->h->root_xid_that_created, ttxn);
+        int accepted = toku_txn_reads_txnid(ft_handle->ft->h->root_xid_that_created, ttxn, false); // last parameter is irrelevant
         if (accepted != TOKUDB_ACCEPT) {
             invariant(accepted == 0);
             return TOKUDB_MVCC_DICTIONARY_TOO_NEW;
@@ -109,7 +109,7 @@ int toku_ft_cursor_create(FT_HANDLE ft_handle, FT_CURSOR cursor, TOKUTXN ttxn,
     memset(cursor, 0, sizeof(*cursor));
     cursor->ft_handle = ft_handle;
     cursor->ttxn = ttxn;
-    cursor->is_snapshot_read = is_snapshot_read;
+    cursor->read_type = read_type;
     cursor->disable_prefetching = disable_prefetching;
     cursor->is_temporary = is_temporary;
     return 0;
@@ -126,7 +126,8 @@ void toku_ft_cursor_destroy(FT_CURSOR cursor) {
 int toku_ft_cursor(FT_HANDLE ft_handle, FT_CURSOR *cursorptr, TOKUTXN ttxn,
                    bool is_snapshot_read, bool disable_prefetching) {
     FT_CURSOR XCALLOC(cursor);
-    int r = toku_ft_cursor_create(ft_handle, cursor, ttxn, is_snapshot_read, disable_prefetching, false);
+    enum cursor_read_type read_type = is_snapshot_read ? C_READ_SNAPSHOT : C_READ_ANY;
+    int r = toku_ft_cursor_create(ft_handle, cursor, ttxn, read_type, disable_prefetching, false);
     if (r == 0) {
         *cursorptr = cursor;
     } else {
@@ -321,11 +322,11 @@ int toku_ft_cursor_shortcut(FT_CURSOR cursor, int direction, uint32_t index, bn_
         r = bd->fetch_klpair(index, &le, &foundkeylen, &foundkey);
         invariant_zero(r);
 
-        if (toku_ft_cursor_is_leaf_mode(cursor) || !le_val_is_del(le, cursor->is_snapshot_read, cursor->ttxn)) {
+        if (toku_ft_cursor_is_leaf_mode(cursor) || !le_val_is_del(le, cursor->read_type, cursor->ttxn)) {
             le_extract_val(
                 le,
                 toku_ft_cursor_is_leaf_mode(cursor),
-                cursor->is_snapshot_read,
+                cursor->read_type,
                 cursor->ttxn,
                 vallen,
                 val

@@ -2059,13 +2059,13 @@ uxr_get_txnid(UXR uxr) {
 }
 
 static int
-le_iterate_get_accepted_index(TXNID *xids, uint32_t *index, uint32_t num_xids, LE_ITERATE_CALLBACK f, TOKUTXN context) {
+le_iterate_get_accepted_index(TXNID *xids, uint32_t *index, uint32_t num_xids, LE_ITERATE_CALLBACK f, TOKUTXN context, bool top_is_provisional) {
     uint32_t i;
     int r = 0;
     // if this for loop does not return anything, we return num_xids-1, which should map to T_0
     for (i = 0; i < num_xids - 1; i++) {
         TXNID xid = toku_dtoh64(xids[i]);
-        r = f(xid, context);
+        r = f(xid, context, (i == 0 && top_is_provisional));
         if (r==TOKUDB_ACCEPT) {
             r = 0;
             break; //or goto something
@@ -2141,7 +2141,7 @@ le_iterate_is_del(LEAFENTRY le, LE_ITERATE_CALLBACK f, bool *is_delp, TOKUTXN co
 #if ULE_DEBUG
             ule_verify_xids(&ule, num_interesting, xids);
 #endif
-            r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context);
+            r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context, (num_puxrs != 0));
             if (r!=0) goto cleanup;
             invariant(index < num_interesting);
 
@@ -2173,23 +2173,36 @@ cleanup:
     return r;
 }
 
+static int le_iterate_read_committed_callback(TXNID txnid, TOKUTXN txn, bool is_provisional UU()) {
+    if (is_provisional) {
+        return toku_txn_reads_txnid(txnid, txn, is_provisional);
+    }
+    return TOKUDB_ACCEPT;
+}
+
 //
 // Returns true if the value that is to be read is empty.
 //
-int le_val_is_del(LEAFENTRY le, bool is_snapshot_read, TOKUTXN txn) {
+int le_val_is_del(LEAFENTRY le, enum cursor_read_type read_type, TOKUTXN txn) {
     int rval;
-    if (is_snapshot_read) {
+    if (read_type == C_READ_SNAPSHOT || read_type == C_READ_COMMITTED) {
+        LE_ITERATE_CALLBACK f = (read_type == C_READ_SNAPSHOT) ?
+            toku_txn_reads_txnid :
+            le_iterate_read_committed_callback;
         bool is_del = false;
         le_iterate_is_del(
             le,
-            toku_txn_reads_txnid,
+            f,
             &is_del,
             txn
             );
         rval = is_del;
     }
-    else {
+    else if (read_type == C_READ_ANY) {
         rval = le_latest_is_del(le);
+    }
+    else {
+        invariant(false);
     }
     return rval;
 }
@@ -2250,7 +2263,7 @@ le_iterate_val(LEAFENTRY le, LE_ITERATE_CALLBACK f, void** valpp, uint32_t *vall
 #if ULE_DEBUG
             ule_verify_xids(&ule, num_interesting, xids);
 #endif
-            r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context);
+            r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context, (num_puxrs != 0));
             if (r!=0) goto cleanup;
             invariant(index < num_interesting);
 
@@ -2316,22 +2329,28 @@ cleanup:
 
 void le_extract_val(LEAFENTRY le,
                     // should we return the entire leafentry as the val?
-                    bool is_leaf_mode, bool is_snapshot_read,
+                    bool is_leaf_mode, enum cursor_read_type read_type,
                     TOKUTXN ttxn, uint32_t *vallen, void **val) {
     if (is_leaf_mode) {
         *val = le;
         *vallen = leafentry_memsize(le);
-    } else if (is_snapshot_read) {
+    } else if (read_type == C_READ_SNAPSHOT || read_type == C_READ_COMMITTED) {
+        LE_ITERATE_CALLBACK f = (read_type == C_READ_SNAPSHOT) ?
+            toku_txn_reads_txnid :
+            le_iterate_read_committed_callback;
         int r = le_iterate_val(
             le,
-            toku_txn_reads_txnid,
+            f,
             val,
             vallen,
             ttxn
             );
         lazy_assert_zero(r);
-    } else {
+    } else if (read_type == C_READ_ANY){
         *val = le_latest_val_and_len(le, vallen);
+    }
+    else {
+        assert(false);
     }
 }
 
