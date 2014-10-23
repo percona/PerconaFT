@@ -315,8 +315,14 @@ void toku_txn_get_fsync_info(struct tokutxn *ttxn, bool* do_fsync, LSN* do_fsync
 // Complete and destroy a txn
 void toku_txn_close_txn(struct tokutxn *txn);
 
+// remove from txn info from manager
+void toku_txn_remove_from_manager(TOKUTXN txn);
+
 // Remove a txn from any live txn lists
 void toku_txn_complete_txn(struct tokutxn *txn);
+
+// removes references txn is holding
+void note_txn_closing (TOKUTXN txn);
 
 // Free the memory of a txn
 void toku_txn_destroy_txn(struct tokutxn *txn);

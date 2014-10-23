@@ -189,7 +189,7 @@ static int toku_txn_commit(DB_TXN * txn, uint32_t flags,
     // remove the txn from the list of live transactions, and then
     // release the lock tree locks. MVCC requires that toku_txn_complete_txn
     // get called first, otherwise we have bugs, such as #4145 and #4153
-    toku_txn_complete_txn(ttxn);
+    toku_txn_remove_from_manager(ttxn);
     toku_txn_release_locks(txn);
     // this lock must be released after toku_txn_complete_txn and toku_txn_release_locks because
     // this lock must be held until the references to the open FTs is released
@@ -210,7 +210,8 @@ static int toku_txn_commit(DB_TXN * txn, uint32_t flags,
         // performed the commit via implicit promotion.
         r = toku_rollback_commit(db_txn_struct_i(txn)->tokutxn, ZERO_LSN);
     }
-    
+    note_txn_closing (ttxn);    
+
     if (flags!=0) {
         r = EINVAL;
         goto cleanup;

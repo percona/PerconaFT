@@ -621,11 +621,11 @@ int remove_txn (const FT &h, const uint32_t UU(idx), TOKUTXN const UU(txn))
 }
 
 // for every ft in txn, remove it.
-static void note_txn_closing (TOKUTXN txn) {
+void note_txn_closing (TOKUTXN txn) {
     txn->open_fts.iterate<struct tokutxn, remove_txn>(txn);
 }
 
-void toku_txn_complete_txn(TOKUTXN txn) {
+void toku_txn_remove_from_manager(TOKUTXN txn) {
     //assert(txn->roll_info.spilled_rollback_head.b == ROLLBACK_NONE.b);
     //assert(txn->roll_info.spilled_rollback_tail.b == ROLLBACK_NONE.b);
     //assert(txn->roll_info.current_rollback.b == ROLLBACK_NONE.b);
@@ -643,6 +643,10 @@ void toku_txn_complete_txn(TOKUTXN txn) {
         toku_txn_manager_finish_txn(txn->logger->txn_manager, txn);
         txn->child_manager->destroy();
     }
+}
+
+void toku_txn_complete_txn(TOKUTXN txn) {
+    toku_txn_remove_from_manager(txn);
     // note that here is another place we depend on
     // this function being called with the multi operation lock
     note_txn_closing(txn);
