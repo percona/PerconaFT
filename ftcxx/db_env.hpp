@@ -52,6 +52,11 @@ namespace ftcxx {
         typedef std::map<std::string, TOKU_ENGINE_STATUS_ROW_S> Status;
         void get_status(Status &status, fs_redzone_state &redzone_state, uint64_t &env_panic, std::string &panic_string) const;
 
+        void log_flush() {
+            int r = _env->log_flush(_env, NULL);
+            handle_ft_retval(r);
+        }
+
     private:
         DB_ENV *_env;
         bool _close_on_destroy;
@@ -137,21 +142,6 @@ namespace ftcxx {
                 handle_ft_retval(r);
             }
 
-            if (_cleaner_period) {
-                r = env->cleaner_set_period(env, _cleaner_period);
-                handle_ft_retval(r);
-            }
-
-            if (_cleaner_iterations) {
-                r = env->cleaner_set_iterations(env, _cleaner_iterations);
-                handle_ft_retval(r);
-            }
-
-            if (_checkpointing_period) {
-                r = env->checkpointing_set_period(env, _checkpointing_period);
-                handle_ft_retval(r);
-            }
-
             if (_lk_max_memory) {
                 r = env->set_lk_max_memory(env, _lk_max_memory);
                 handle_ft_retval(r);
@@ -193,6 +183,21 @@ namespace ftcxx {
 
             r = env->open(env, env_dir, flags, mode);
             handle_ft_retval(r);
+
+            if (_cleaner_period) {
+                r = env->cleaner_set_period(env, _cleaner_period);
+                handle_ft_retval(r);
+            }
+
+            if (_cleaner_iterations) {
+                r = env->cleaner_set_iterations(env, _cleaner_iterations);
+                handle_ft_retval(r);
+            }
+
+            if (_checkpointing_period) {
+                r = env->checkpointing_set_period(env, _checkpointing_period);
+                handle_ft_retval(r);
+            }
 
             return DBEnv(env, true);
         }
