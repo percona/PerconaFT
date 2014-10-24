@@ -5,9 +5,9 @@
 namespace ftcxx {
 
     struct Stats {
-        Stats() : dataSize(0), fileSize(0), numberOfKeys(0) {};
-        size_t dataSize;
-        size_t fileSize;
-        size_t numberOfKeys;
+        Stats() : data_size(0), file_size(0), num_keys(0) {};
+        size_t data_size;
+        size_t file_size;
+        size_t num_keys;
     };
 }

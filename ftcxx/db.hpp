@@ -110,9 +110,9 @@ namespace ftcxx {
             DB_BTREE_STAT64 s = {0, 0, 0};
             int r = _db->stat64(_db, NULL, &s);
             handle_ft_retval(r);
-            stats.dataSize = s.bt_dsize;
-            stats.fileSize = s.bt_fsize;
-            stats.numberOfKeys = s.bt_nkeys;
+            stats.data_size = s.bt_dsize;
+            stats.file_size = s.bt_fsize;
+            stats.num_keys = s.bt_nkeys;
             return stats;
         }
 
