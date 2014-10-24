@@ -96,6 +96,16 @@ namespace ftcxx {
             return put(txn, &kdbt, &vdbt, flags);
         }
 
+        int update(const DBTxn &txn, DBT *key, DBT *val, int flags=0) const {
+            return _db->update(_db, txn.txn(), key, val, flags);
+        }
+
+        int update(const DBTxn &txn, const Slice &key, const Slice &extra, int flags=0) const {
+            DBT kdbt = key.dbt();
+            DBT edbt = extra.dbt();
+            return update(txn, &kdbt, &edbt, flags);
+        }
+
         int del(const DBTxn &txn, DBT *key, int flags=0) const {
             return _db->del(_db, txn.txn(), key, flags);
         }
