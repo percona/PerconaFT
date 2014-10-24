@@ -116,7 +116,7 @@ keycompare (const void *key1, unsigned int key1len, const void *key2, unsigned i
 }
 
 static int
-reverse_compare (DB *db __attribute__((__unused__)), const DBT *a, const DBT*b) {
+reverse_compare (const DBT *a, const DBT*b) {
     return -keycompare(a->data, a->size, b->data, b->size);
 }
 

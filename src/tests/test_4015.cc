@@ -93,17 +93,8 @@ PATENT RIGHTS GRANT:
 #include "toku_pthread.h"
 #include <portability/toku_atomic.h>
 
-static int my_compare (DB *db, const DBT *a, const DBT *b) {
-    assert(db);
-    assert(db->cmp_descriptor);
-    assert(db->cmp_descriptor->dbt.size >= 3);
-    char *CAST_FROM_VOIDP(data, db->cmp_descriptor->dbt.data);
-    assert(data[0]=='f');
-    assert(data[1]=='o');
-    assert(data[2]=='o');
-    if (verbose) printf("compare descriptor=%s\n", data);
-    sched_yield();
-    return uint_dbt_cmp(db, a, b);
+static int my_compare (const DBT *a, const DBT *b) {
+    return uint_dbt_cmp(a, b);
 }
 
 DB_ENV *env;

@@ -109,7 +109,7 @@ static int qsort_compare_ints (const void *a, const void *b) {
 
 }
 
-static int compare_ints (DB *UU(desc), const DBT *akey, const DBT *bkey) {
+static int compare_ints (const DBT *akey, const DBT *bkey) {
     assert(akey->size==sizeof(int));
     assert(bkey->size==sizeof(int));
     return qsort_compare_ints(akey->data, bkey->data);

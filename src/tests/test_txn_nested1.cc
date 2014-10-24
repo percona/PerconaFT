@@ -178,7 +178,7 @@ test_txn_nesting (int depth) {
 	r = db->put(db, this_txn, &key, &val, 0);          CKERR(r);
 
         r = db->get(db, this_txn, &key, &observed_val, 0); CKERR(r);
-	assert(int_dbt_cmp(db, &val, &observed_val) == 0);
+	assert(int_dbt_cmp(&val, &observed_val) == 0);
     }
 
     int which_val = depth-1;
@@ -192,7 +192,7 @@ test_txn_nesting (int depth) {
         dbt_init(&observed_val, NULL, 0);
         r = db->get(db, txns[i], &key, &observed_val, 0); CKERR(r);
 	dbt_init(&val, &vals[which_val], sizeof i);
-	assert(int_dbt_cmp(db, &val, &observed_val) == 0);
+	assert(int_dbt_cmp(&val, &observed_val) == 0);
 
 	if (i % 2) {
 	    r = txns[i]->commit(txns[i], DB_TXN_NOSYNC);   CKERR(r);
@@ -210,7 +210,7 @@ test_txn_nesting (int depth) {
     else {
         CKERR(r);
 	dbt_init(&val, &vals[which_val], sizeof i);
-        assert(int_dbt_cmp(db, &val, &observed_val) == 0);
+        assert(int_dbt_cmp(&val, &observed_val) == 0);
     }
 }
 

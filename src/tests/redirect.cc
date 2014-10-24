@@ -263,7 +263,7 @@ verify(int64_t i) {
         dbt_init(&val_observed, NULL, 0);
         r = db->get(db, txn, &key, &val_observed, 0);
         CKERR(r);
-        r = int64_dbt_cmp(db, &val_expected, &val_observed);
+        r = int64_dbt_cmp(&val_expected, &val_observed);
         assert(r==0);
     }
 }

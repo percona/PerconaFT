@@ -154,7 +154,7 @@ enum ftnode_verify_type {
 };
 
 static int
-string_key_cmp(DB *UU(e), const DBT *a, const DBT *b)
+string_key_cmp(const DBT *a, const DBT *b)
 {
     char *CAST_FROM_VOIDP(s, a->data);
     char *CAST_FROM_VOIDP(t, b->data);

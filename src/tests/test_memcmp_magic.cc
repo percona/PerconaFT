@@ -130,7 +130,7 @@ static void test_memcmp_magic(void) {
     r = env->close(env, 0); CKERR(r);
 }
 
-static int comparison_function_unused(DB *UU(db), const DBT *UU(a), const DBT *UU(b)) {
+static int comparison_function_unused(const DBT *UU(a), const DBT *UU(b)) {
     // We're testing that the memcmp magic gets used so the real
     // comparison function should never get called.
     invariant(false);

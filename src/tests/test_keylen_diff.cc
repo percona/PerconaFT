@@ -114,7 +114,7 @@ struct packed_key {
 // the point is that keys can be packed as integers or doubles, but
 // we'll treat them both as doubles for the sake of comparison.
 // this means a 4 byte number could equal an 8 byte number.
-static int packed_key_cmp(DB *UU(db), const DBT *a, const DBT *b) {
+static int packed_key_cmp(const DBT *a, const DBT *b) {
     assert(a->size == 5 || a->size == 9);
     assert(b->size == 5 || b->size == 9);
     char *k1 = reinterpret_cast<char *>(a->data);

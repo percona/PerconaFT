@@ -2741,7 +2741,7 @@ int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *ft_handle_
                    int basementnodesize,
                    enum toku_compression_method compression_method,
                    CACHETABLE cachetable, TOKUTXN txn,
-                   int (*compare_fun)(DB *, const DBT*,const DBT*)) {
+                   ft_compare_func compare_fun) {
     FT_HANDLE ft_handle;
     const int only_create = 0;
 
@@ -3243,7 +3243,7 @@ void toku_ft_handle_get_basementnodesize(FT_HANDLE ft_handle, unsigned int *base
     }
 }
 
-void toku_ft_set_bt_compare(FT_HANDLE ft_handle, int (*bt_compare)(DB*, const DBT*, const DBT*)) {
+void toku_ft_set_bt_compare(FT_HANDLE ft_handle, ft_compare_func bt_compare) {
     ft_handle->options.compare_fun = bt_compare;
 }
 
@@ -4726,7 +4726,7 @@ int toku_keycompare(const void *key1, uint32_t key1len, const void *key2, uint32
     }
 }
 
-int toku_builtin_compare_fun(DB *db __attribute__((__unused__)), const DBT *a, const DBT*b) {
+int toku_builtin_compare_fun(const DBT *a, const DBT*b) {
     return toku_keycompare(a->data, a->size, b->data, b->size);
 }
 

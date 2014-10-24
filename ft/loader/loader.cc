@@ -1419,7 +1419,7 @@ int merge_row_arrays_base (struct row dest[/*an+bn*/], struct row a[/*an*/], int
         DBT akey; memset(&akey, 0, sizeof akey); akey.data=rowset->data+a->off; akey.size=a->klen;
         DBT bkey; memset(&bkey, 0, sizeof bkey); bkey.data=rowset->data+b->off; bkey.size=b->klen;
 
-        int compare_result = compare(dest_db, &akey, &bkey);
+        int compare_result = compare(&akey, &bkey);
         if (compare_result==0) {
             if (bl->error_callback.error_callback) {
                 DBT aval; memset(&aval, 0, sizeof aval); aval.data=rowset->data + a->off + a->klen; aval.size = a->vlen;
@@ -1465,7 +1465,7 @@ static int binary_search (int *location,
     } else {
         int a2 = an/2;
         DBT akey = make_dbt(rowset->data+a[a2].off,  a[a2].klen);
-        int compare_result = compare(dest_db, key, &akey);
+        int compare_result = compare(key, &akey);
         if (compare_result==0) {
             if (bl->error_callback.error_callback) {
                 DBT aval = make_dbt(rowset->data + a[a2].off + a[a2].klen,  a[a2].vlen);
@@ -1737,7 +1737,7 @@ int sort_and_write_rows (struct rowset rows, struct merge_fileset *fs, FTLOADER 
 
         if (result == 0) {
             DBT min_rowset_key = make_dbt(rows.data+rows.rows[0].off, rows.rows[0].klen);
-            if (fs->have_sorted_output && compare(dest_db, &fs->prev_key, &min_rowset_key) < 0) {
+            if (fs->have_sorted_output && compare(&fs->prev_key, &min_rowset_key) < 0) {
                 // write everything to the same output if the max key in the temp file (prev_key) is < min of the sorted rowset
                 result = write_rowset_to_file(bl, fs->sorted_output, rows);
                 if (result == 0) {

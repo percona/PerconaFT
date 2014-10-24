@@ -1665,7 +1665,7 @@ env_checkpointing_end_atomic_operation(DB_ENV * env) {
 }
 
 static int
-env_set_default_bt_compare(DB_ENV * env, int (*bt_compare) (DB *, const DBT *, const DBT *)) {
+env_set_default_bt_compare(DB_ENV * env, ft_compare_func bt_compare) {
     HANDLE_PANICKED_ENV(env);
     int r = 0;
     if (env_opened(env)) r = EINVAL;

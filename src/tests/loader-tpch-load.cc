@@ -115,8 +115,8 @@ struct tpch_key {
 };
 
 static __attribute__((__unused__)) int
-tpch_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
-    assert(db && a && b);
+tpch_dbt_cmp (const DBT *a, const DBT *b) {
+    assert(a && b);
     assert(a->size == sizeof(struct tpch_key));
     assert(b->size == sizeof(struct tpch_key));
 

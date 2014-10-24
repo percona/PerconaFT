@@ -116,7 +116,7 @@ le_cursor_get_next(LE_CURSOR cursor, DBT *val) {
 }
 
 static int 
-test_keycompare(DB* UU(desc), const DBT *a, const DBT *b) {
+test_keycompare(const DBT *a, const DBT *b) {
     return toku_keycompare(a->data, a->size, b->data, b->size);
 }
 

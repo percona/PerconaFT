@@ -1210,8 +1210,7 @@ parse_args(int argc, const char *argv[]) {
     }
 }
 
-static int cmp_fn(DB *db __attribute__((unused)),
-                     const DBT *a, const DBT *b) {
+static int cmp_fn(const DBT *a, const DBT *b) {
     int c;
     if (a->size > b->size) {
         c = memcmp(a->data, b->data, b->size);

@@ -125,8 +125,8 @@ static void test_points(void) {
     range_buffer::iterator::record rec;
     while (iter.current(&rec)) {
         const DBT *expected_point = get_dbt_by_iteration(i);
-        invariant(compare_dbts(nullptr, expected_point, rec.get_left_key()) == 0);
-        invariant(compare_dbts(nullptr, expected_point, rec.get_right_key()) == 0);
+        invariant(compare_dbts(expected_point, rec.get_left_key()) == 0);
+        invariant(compare_dbts(expected_point, rec.get_right_key()) == 0);
         iter.next();
         i++;
     }
@@ -155,8 +155,8 @@ static void test_ranges(void) {
     while (iter.current(&rec)) {
         const DBT *expected_left = get_dbt_by_iteration(i);
         const DBT *expected_right = get_dbt_by_iteration(i + 1);
-        invariant(compare_dbts(nullptr, expected_left, rec.get_left_key()) == 0);
-        invariant(compare_dbts(nullptr, expected_right, rec.get_right_key()) == 0);
+        invariant(compare_dbts(expected_left, rec.get_left_key()) == 0);
+        invariant(compare_dbts(expected_right, rec.get_right_key()) == 0);
         iter.next();
         i += 2;
     }
@@ -190,15 +190,15 @@ static void test_mixed(void) {
     while (iter.current(&rec)) {
         const DBT *expected_left = get_dbt_by_iteration(i);
         const DBT *expected_right = get_dbt_by_iteration(i + 1);
-        invariant(compare_dbts(nullptr, expected_left, rec.get_left_key()) == 0);
-        invariant(compare_dbts(nullptr, expected_right, rec.get_right_key()) == 0);
+        invariant(compare_dbts(expected_left, rec.get_left_key()) == 0);
+        invariant(compare_dbts(expected_right, rec.get_right_key()) == 0);
         iter.next();
 
         const DBT *expected_point = get_dbt_by_iteration(i + 2);
         bool had_point = iter.current(&rec);
         invariant(had_point);
-        invariant(compare_dbts(nullptr, expected_point, rec.get_left_key()) == 0);
-        invariant(compare_dbts(nullptr, expected_point, rec.get_right_key()) == 0);
+        invariant(compare_dbts(expected_point, rec.get_left_key()) == 0);
+        invariant(compare_dbts(expected_point, rec.get_right_key()) == 0);
         iter.next();
         i += 3;
     }

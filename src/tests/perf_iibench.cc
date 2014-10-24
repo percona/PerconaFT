@@ -332,9 +332,8 @@ static DB *iibench_set_descriptor_after_db_opens(DB_ENV *env, DB *db, int idx, r
     return db;
 }
 
-static int iibench_compare_keys(DB *db, const DBT *a, const DBT *b) {
-    const int db_idx = iibench_get_db_idx(db);
-    if (db_idx == 0) {
+static int iibench_compare_keys(const DBT *a, const DBT *b) {
+    if (a->size == 8) {
         invariant(a->size == 8);
         invariant(b->size == 8);
         uint64_t x = *(uint64_t *) a->data;

@@ -98,8 +98,7 @@ static DBT *expected_b;
 static DESCRIPTOR expected_descriptor;
 static int expected_comparison_magic = 55;
 
-static int my_compare_dbts(DB *db, const DBT *a, const DBT *b) {
-    invariant(db->cmp_descriptor == expected_descriptor);
+static int my_compare_dbts(const DBT *a, const DBT *b) {
     (void) a; 
     (void) b;
     return expected_comparison_magic;

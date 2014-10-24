@@ -117,7 +117,7 @@ static void *my_malloc(size_t n) {
         return os_malloc(n);
 }
 
-static int my_compare(DB *UU(desc), const DBT *UU(akey), const DBT *UU(bkey)) {
+static int my_compare(const DBT *UU(akey), const DBT *UU(bkey)) {
     return EINVAL;
 }
 

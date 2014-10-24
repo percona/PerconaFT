@@ -332,10 +332,10 @@ static void create_and_open_dbs(DB **dbs, const char *suffix, int *idx) {
 }
 
 static int
-uint_or_size_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
-  assert(db && a && b);
+uint_or_size_dbt_cmp (const DBT *a, const DBT *b) {
+  assert(a && b);
   if (a->size == sizeof(unsigned int) && b->size == sizeof(unsigned int)) {
-      return uint_dbt_cmp(db, a, b);
+      return uint_dbt_cmp(a, b);
   }
   return a->size - b->size;
 }

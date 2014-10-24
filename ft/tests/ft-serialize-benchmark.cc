@@ -124,7 +124,7 @@ le_add_to_bn(bn_data* bn, uint32_t idx, char *key, int keylen, char *val, int va
 }
 
 static int
-long_key_cmp(DB *UU(e), const DBT *a, const DBT *b)
+long_key_cmp(const DBT *a, const DBT *b)
 {
     const long *CAST_FROM_VOIDP(x, a->data);
     const long *CAST_FROM_VOIDP(y, b->data);

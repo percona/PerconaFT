@@ -91,7 +91,7 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 
 static  int
-int64_key_cmp (DB *db UU(), const DBT *a, const DBT *b) {
+int64_key_cmp (const DBT *a, const DBT *b) {
     int64_t x = *(int64_t *) a->data;
     int64_t y = *(int64_t *) b->data;
 

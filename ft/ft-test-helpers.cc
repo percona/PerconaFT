@@ -248,7 +248,7 @@ int toku_testsetup_insert_to_leaf (FT_HANDLE ft_handle, BLOCKNUM blocknum, const
 }
 
 static int
-testhelper_string_key_cmp(DB *UU(e), const DBT *a, const DBT *b)
+testhelper_string_key_cmp(const DBT *a, const DBT *b)
 {
     char *CAST_FROM_VOIDP(s, a->data), *CAST_FROM_VOIDP(t, b->data);
     return strcmp(s, t);

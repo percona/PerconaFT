@@ -232,7 +232,7 @@ static inline uint32_t myrandom (void) {
 }
 
 static __attribute__((__unused__)) int
-int64_dbt_cmp (DB *db UU(), const DBT *a, const DBT *b) {
+int64_dbt_cmp (const DBT *a, const DBT *b) {
 //    assert(db && a && b);
     assert(a);
     assert(b);
@@ -250,8 +250,8 @@ int64_dbt_cmp (DB *db UU(), const DBT *a, const DBT *b) {
 }
 
 static __attribute__((__unused__)) int
-int_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
-  assert(db && a && b);
+int_dbt_cmp (const DBT *a, const DBT *b) {
+  assert(a && b);
   assert(a->size == sizeof(int));
   assert(b->size == sizeof(int));
 
@@ -264,8 +264,8 @@ int_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
 }
 
 static __attribute__((__unused__)) int
-uint_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
-  assert(db && a && b);
+uint_dbt_cmp (const DBT *a, const DBT *b) {
+  assert(a && b);
   assert(a->size == sizeof(unsigned int));
   assert(b->size == sizeof(unsigned int));
 

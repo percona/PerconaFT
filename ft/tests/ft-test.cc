@@ -418,7 +418,7 @@ static void test_cursor_next (void) {
 
 }
 
-static int wrong_compare_fun(DB* UU(desc), const DBT *a, const DBT *b) {
+static int wrong_compare_fun(const DBT *a, const DBT *b) {
     unsigned int i;
     unsigned char *CAST_FROM_VOIDP(ad, a->data);
     unsigned char *CAST_FROM_VOIDP(bd, b->data);
@@ -446,8 +446,8 @@ static void test_wrongendian_compare (int wrong_p, unsigned int N) {
 	char a[4]={0,1,0,0};
 	char b[4]={1,0,0,0};
 	DBT at, bt;
-	assert(wrong_compare_fun(NULL, toku_fill_dbt(&at, a, 4), toku_fill_dbt(&bt, b, 4))>0);
-	assert(wrong_compare_fun(NULL, toku_fill_dbt(&at, b, 4), toku_fill_dbt(&bt, a, 4))<0);
+	assert(wrong_compare_fun(toku_fill_dbt(&at, a, 4), toku_fill_dbt(&bt, b, 4))>0);
+	assert(wrong_compare_fun(toku_fill_dbt(&at, b, 4), toku_fill_dbt(&bt, a, 4))<0);
     }
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
@@ -536,7 +536,7 @@ static void test_wrongendian_compare (int wrong_p, unsigned int N) {
     
 }
 
-static int test_ft_cursor_keycompare(DB *desc __attribute__((unused)), const DBT *a, const DBT *b) {
+static int test_ft_cursor_keycompare(const DBT *a, const DBT *b) {
     return toku_keycompare(a->data, a->size, b->data, b->size);
 }
 

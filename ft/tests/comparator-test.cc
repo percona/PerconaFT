@@ -96,9 +96,9 @@ static DBT dbt_a;
 static DBT dbt_b;
 static DESCRIPTOR expected_desc;
 
-static int magic_compare(DB *db, const DBT *a, const DBT *b) {
-    invariant(db && a && b);
-    invariant(db->cmp_descriptor == expected_desc);
+static int magic_compare(const DBT *a, const DBT *b) {
+    invariant(a && b);
+    //invariant(db->cmp_descriptor == expected_desc);
     invariant(a == &dbt_a);
     invariant(b == &dbt_b);
     return MAGIC;
@@ -139,9 +139,9 @@ static void test_desc(void) {
     cmp.destroy();
 }
 
-static int dont_compare_me_bro(DB *db, const DBT *a, const DBT *b) {
+static int dont_compare_me_bro(const DBT *a, const DBT *b) {
     abort();
-    return db && a && b;
+    return a && b;
 }
 
 static void test_infinity(void) {

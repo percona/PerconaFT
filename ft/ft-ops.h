@@ -103,7 +103,7 @@ PATENT RIGHTS GRANT:
 
 typedef struct ft_handle *FT_HANDLE;
 
-int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int nodesize, int basementnodesize, enum toku_compression_method compression_method, CACHETABLE, TOKUTXN, int(*)(DB *,const DBT*,const DBT*)) __attribute__ ((warn_unused_result));
+int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int nodesize, int basementnodesize, enum toku_compression_method compression_method, CACHETABLE, TOKUTXN, ft_compare_func) __attribute__ ((warn_unused_result));
 
 // effect: changes the descriptor for the ft of the given handle.
 // requires: 

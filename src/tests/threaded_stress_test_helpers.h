@@ -1962,7 +1962,7 @@ static void open_db(DB *db, int idx, struct cli_args *cli_args) {
 }
 
 static int create_tables(DB_ENV **env_res, DB **db_res, int num_DBs,
-                        int (*bt_compare)(DB *, const DBT *, const DBT *),
+                        int (*bt_compare)(const DBT *, const DBT *),
                         struct cli_args *cli_args
 ) {
     int r;
@@ -2168,7 +2168,7 @@ static void do_xa_recovery(DB_ENV* env) {
 }
 
 static int open_tables(DB_ENV **env_res, DB **db_res, int num_DBs,
-                      int (*bt_compare)(DB *, const DBT *, const DBT *),
+                      int (*bt_compare)(const DBT *, const DBT *),
                       struct cli_args *cli_args) {
     int r;
     struct env_args env_args = cli_args->env_args;
@@ -2816,8 +2816,8 @@ stress_dbt_cmp(const DBT *a, const DBT *b) {
 }
 
 static int
-stress_cmp(DB *db, const DBT *a, const DBT *b) {
-    assert(db && a && b);
+stress_cmp(const DBT *a, const DBT *b) {
+    assert(a && b);
     assert(a->size == b->size);
 
     if (a->size == sizeof(int)) {
@@ -2882,7 +2882,7 @@ UU() stress_recover(struct cli_args *args) {
 }
 
 static void
-open_and_stress_tables(struct cli_args *args, bool fill_with_zeroes, int (*cmp)(DB *, const DBT *, const DBT *))
+open_and_stress_tables(struct cli_args *args, bool fill_with_zeroes, int (*cmp)(const DBT *, const DBT *))
 {
     if ((args->key_size < 8 && args->key_size != 4) ||
         (args->val_size < 8 && args->val_size != 4)) {
@@ -2936,7 +2936,7 @@ UU() perf_test_main(struct cli_args *args) {
 }
 
 static void
-UU() perf_test_main_with_cmp(struct cli_args *args, int (*cmp)(DB *, const DBT *, const DBT *)) {
+UU() perf_test_main_with_cmp(struct cli_args *args, int (*cmp)(const DBT *, const DBT *)) {
     // Do not begin the test by creating a table of all zeroes.
     // We want to control the row size and its compressibility.
     open_and_stress_tables(args, false, cmp);

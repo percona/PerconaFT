@@ -95,7 +95,7 @@ PATENT RIGHTS GRANT:
 
 namespace toku {
 
-static int my_cmp(DB *UU(db), const DBT *UU(a), const DBT *UU(b)) {
+static int my_cmp(const DBT *UU(a), const DBT *UU(b)) {
     return 0;
 }
 

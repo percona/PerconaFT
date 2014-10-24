@@ -146,8 +146,8 @@ static void assert_desc_eight (DB* db) {
 }
 
 static int
-desc_int64_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
-    assert_cmp_desc_valid(db);
+desc_int64_dbt_cmp (const DBT *a, const DBT *b) {
+    //assert_cmp_desc_valid(db);
     assert(a);
     assert(b);
 

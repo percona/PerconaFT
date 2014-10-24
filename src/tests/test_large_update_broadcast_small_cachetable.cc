@@ -129,7 +129,7 @@ static int update_fun(DB *UU(db),
 }
 
 static int
-int_cmp(DB *UU(db), const DBT *a, const DBT *b) {
+int_cmp(const DBT *a, const DBT *b) {
     unsigned int *ap, *bp;
     assert(a->size == sizeof(*ap));
     CAST_FROM_VOIDP(ap, a->data);

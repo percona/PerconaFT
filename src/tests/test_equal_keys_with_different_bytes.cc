@@ -92,8 +92,7 @@ PATENT RIGHTS GRANT:
 
 #include "test.h"
 
-static int compare_strings_case_insensitive(DB *db, const DBT *a, const DBT *b) {
-    invariant_notnull(db);
+static int compare_strings_case_insensitive(const DBT *a, const DBT *b) {
     return strcasecmp(reinterpret_cast<char *>(a->data),
                       reinterpret_cast<char *>(b->data));
 }

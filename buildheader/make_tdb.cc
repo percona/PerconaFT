@@ -425,7 +425,7 @@ static void print_db_env_struct (void) {
                              "int (*checkpointing_resume)                 (DB_ENV*) /* Alert tokuft that 'postpone' is no longer necessary */",
                              "int (*checkpointing_begin_atomic_operation) (DB_ENV*) /* Begin a set of operations (that must be atomic as far as checkpoints are concerned). i.e. inserting into every index in one table */",
                              "int (*checkpointing_end_atomic_operation)   (DB_ENV*) /* End   a set of operations (that must be atomic as far as checkpoints are concerned). */",
-                             "int (*set_default_bt_compare)               (DB_ENV*,int (*bt_compare) (DB *, const DBT *, const DBT *)) /* Set default (key) comparison function for all DBs in this environment.  Required for RECOVERY since you cannot open the DBs manually. */",
+                             "int (*set_default_bt_compare)               (DB_ENV*,int (*bt_compare) (const DBT *, const DBT *)) /* Set default (key) comparison function for all DBs in this environment.  Required for RECOVERY since you cannot open the DBs manually. */",
                              "int (*get_engine_status_num_rows)           (DB_ENV*, uint64_t*)  /* return number of rows in engine status */",
                              "int (*get_engine_status)                    (DB_ENV*, TOKU_ENGINE_STATUS_ROW, uint64_t, uint64_t*, fs_redzone_state*, uint64_t*, char*, int, toku_engine_status_include_type) /* Fill in status struct and redzone state, possibly env panic string */",
                              "int (*get_engine_status_text)               (DB_ENV*, char*, int)     /* Fill in status text */",

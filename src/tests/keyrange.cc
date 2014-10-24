@@ -111,7 +111,7 @@ static bool use_loader = false;
 static bool random_keys = false;
 
 static int 
-my_compare(DB *this_db UU(), const DBT *a UU(), const DBT *b UU()) {
+my_compare(const DBT *a UU(), const DBT *b UU()) {
     assert(a->size == b->size);
     return memcmp(a->data, b->data, a->size);
 }

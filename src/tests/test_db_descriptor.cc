@@ -146,10 +146,9 @@ verify_db_matches(void) {
 }
 
 static int
-verify_int_cmp (DB *dbp, const DBT *a, const DBT *b) {
+verify_int_cmp (const DBT *a, const DBT *b) {
     num_called++;
-    verify_db_matches();
-    int r = int_dbt_cmp(dbp, a, b);
+    int r = int_dbt_cmp(a, b);
     return r;
 }
 
