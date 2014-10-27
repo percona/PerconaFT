@@ -680,11 +680,7 @@ dictionary_redirect_internal(const char *dst_fname_in_env, FT src_ft, TOKUTXN tx
         src_handle = toku_list_struct(list, struct ft_handle, live_ft_handle_link);
 
         toku_list_remove(&src_handle->live_ft_handle_link);
-
         toku_ft_note_ft_handle_open(dst_ft, src_handle);
-        if (src_handle->redirect_callback) {
-            src_handle->redirect_callback(src_handle, src_handle->redirect_callback_extra);
-        }
     }
     assert(dst_ft);
     // making sure that we are not leaking src_ft

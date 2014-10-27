@@ -131,9 +131,6 @@ int toku_ft_handle_set_memcmp_magic(FT_HANDLE, uint8_t magic);
 void toku_ft_set_bt_compare(FT_HANDLE ft_handle, ft_compare_func cmp_func);
 const toku::comparator &toku_ft_get_comparator(FT_HANDLE ft_handle);
 
-typedef void (*on_redirect_callback)(FT_HANDLE ft_handle, void *extra);
-void toku_ft_set_redirect_callback(FT_HANDLE ft_handle, on_redirect_callback cb, void *extra);
-
 // How updates (update/insert/deletes) work:
 // There are two flavers of upsertdels:  Singleton and broadcast.
 // When a singleton upsertdel message arrives it contains a key and an extra DBT.

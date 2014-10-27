@@ -3247,11 +3247,6 @@ void toku_ft_set_bt_compare(FT_HANDLE ft_handle, ft_compare_func bt_compare) {
     ft_handle->options.compare_fun = bt_compare;
 }
 
-void toku_ft_set_redirect_callback(FT_HANDLE ft_handle, on_redirect_callback redir_cb, void* extra) {
-    ft_handle->redirect_callback = redir_cb;
-    ft_handle->redirect_callback_extra = extra;
-}
-
 void toku_ft_set_update(FT_HANDLE ft_handle, ft_update_func update_fun) {
     ft_handle->options.update_fun = update_fun;
 }

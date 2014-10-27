@@ -398,14 +398,6 @@ db_set_descriptors(DB *db, FT_HANDLE ft_handle) {
     }
 }
 
-// callback that sets the descriptors when 
-// a dictionary is redirected at the ft layer
-static void
-db_on_redirect_callback(FT_HANDLE ft_handle, void* extra) {
-    DB *db = (DB *) extra;
-    db_set_descriptors(db, ft_handle);
-}
-
 // when a locktree is created, clone a ft handle and store it
 // as userdata so we can close it later.
 int toku_db_lt_on_create_callback(toku::locktree *lt, void *extra) {
@@ -461,11 +453,6 @@ int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t
     if (db->dbenv->i->update_function) {
         toku_ft_set_update(db->i->ft_handle,db->dbenv->i->update_function);
     }
-    toku_ft_set_redirect_callback(
-        db->i->ft_handle,
-        db_on_redirect_callback,
-        db
-        );
     bool need_locktree = (bool)((db->dbenv->i->open_flags & DB_INIT_LOCK) &&
                                 (db->dbenv->i->open_flags & DB_INIT_TXN));
 

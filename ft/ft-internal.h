@@ -287,8 +287,6 @@ struct ft_handle {
     // The fractal tree.
     FT ft;
 
-    on_redirect_callback redirect_callback;
-    void *redirect_callback_extra;
     struct toku_list live_ft_handle_link;
     bool did_set_flags;
 
