@@ -99,10 +99,12 @@ PATENT RIGHTS GRANT:
 
 class dictionary {
     char* m_dname;
+    uint64_t m_id;
 public:
-    void create(const char* dname);
+    void create(uint64_t id, const char* dname);
     void destroy();
-    const char* get_dname();
+    const char* get_dname() const;
+    uint64_t get_id() const;
 };
 
 class dictionary_manager {
@@ -110,13 +112,13 @@ class dictionary_manager {
     toku_mutex_t m_mutex;
     toku::omt<dictionary *> m_dictionary_map;
 
-    dictionary* find(const char* dname);
+    dictionary* find(const uint64_t id);
     void add_db(dictionary* dbi);
-    static int find_by_dname(dictionary *const &dbi, const char* const &dname);
+    static int find_by_id(dictionary *const &dbi, const uint64_t &id);
 
 public:
     void create();
     void destroy();
-    dictionary* get_dictionary(const char * dname);
+    dictionary* get_dictionary(const uint64_t id, const char * dname);
     void remove_dictionary(dictionary* dbi);
 };

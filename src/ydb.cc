@@ -1182,6 +1182,7 @@ env_close(DB_ENV * env, uint32_t flags) {
 
     env_fs_destroy(env);
     env->i->ltm.destroy();
+    env->i->dict_manager.destroy();
     if (env->i->data_dir)
         toku_free(env->i->data_dir);
     if (env->i->lg_dir)
@@ -2665,6 +2666,7 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     // The extra parameter for escalation is simply a pointer to this environment.
     // The escalate callback will need it to translate txnids to DB_TXNs
     result->i->ltm.create(toku_db_lt_on_create_callback, toku_db_lt_on_destroy_callback, toku_db_txn_escalate_callback, result);
+    result->i->dict_manager.create();
 
     XMALLOC(result->i->open_dbs_by_dname);
     result->i->open_dbs_by_dname->create();

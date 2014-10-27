@@ -108,6 +108,7 @@ PATENT RIGHTS GRANT:
 #include <locktree/range_buffer.h>
 
 #include <toku_list.h>
+#include "dictionary.h"
 
 struct __toku_db_internal {
     int opened;
@@ -154,6 +155,7 @@ struct __toku_db_env_internal {
     CACHETABLE cachetable;
     TOKULOGGER logger;
     toku::locktree_manager ltm;
+    dictionary_manager dict_manager;
     lock_timeout_callback lock_wait_timeout_callback;   // Called when a lock request times out waiting for a lock.
 
     DB *directory;                                      // Maps dnames to inames

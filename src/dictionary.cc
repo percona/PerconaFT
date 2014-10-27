@@ -94,7 +94,8 @@ PATENT RIGHTS GRANT:
 #include <db.h>
 #include "dictionary.h"
 
-void dictionary::create(const char* dname) {
+void dictionary::create(uint64_t id, const char* dname) {
+    m_id = id;
     m_dname = toku_strdup(dname);
 }
 
@@ -102,10 +103,13 @@ void dictionary::destroy(){
     toku_free(m_dname);
 }
 
-const char* dictionary::get_dname() {
+const char* dictionary::get_dname() const {
     return m_dname;
 }
 
+uint64_t dictionary::get_id() const {
+    return m_id;
+}
 
 
 void dictionary_manager::create() {
@@ -115,22 +119,23 @@ void dictionary_manager::create() {
 }
 
 void dictionary_manager::destroy() {
+    invariant(m_dictionary_map.size() == 0);
     m_dictionary_map.destroy();
     toku_mutex_destroy(&m_mutex);
 }
 
-int dictionary_manager::find_by_dname(dictionary *const &dbi, const char* const &dname) {
-    return strcmp(dbi->get_dname(), dname);
+int dictionary_manager::find_by_id(dictionary *const &dbi, const uint64_t &id) {
+    return dbi->get_id() < id ? -1 : dbi->get_id() > id;
 }
 
-dictionary* dictionary_manager::find(const char* dname) {
+dictionary* dictionary_manager::find(const uint64_t id) {
     dictionary *dbi;
-    int r = m_dictionary_map.find_zero<const char*, find_by_dname>(dname, &dbi, nullptr);
+    int r = m_dictionary_map.find_zero<const uint64_t, find_by_id>(id, &dbi, nullptr);
     return r == 0 ? dbi : nullptr;
 }
 
 void dictionary_manager::add_db(dictionary* dbi) {
-    int r = m_dictionary_map.insert<const char*, find_by_dname>(dbi, dbi->get_dname(), nullptr);
+    int r = m_dictionary_map.insert<const uint64_t, find_by_id>(dbi, dbi->get_id(), nullptr);
     invariant_zero(r);
 }
 
@@ -138,8 +143,9 @@ void dictionary_manager::remove_dictionary(dictionary* dbi) {
     toku_mutex_lock(&m_mutex);
     uint32_t idx;
     dictionary *found_dbi;
-    int r = m_dictionary_map.find_zero<const char*, find_by_dname>(
-        dbi->get_dname(),
+    const uint64_t id = dbi->get_id();
+    int r = m_dictionary_map.find_zero<const uint64_t, find_by_id>(
+        id,
         &found_dbi,
         &idx
         );
@@ -150,12 +156,12 @@ void dictionary_manager::remove_dictionary(dictionary* dbi) {
     toku_mutex_unlock(&m_mutex);
 }
 
-dictionary* dictionary_manager::get_dictionary(const char * dname) {
+dictionary* dictionary_manager::get_dictionary(const uint64_t id, const char * dname) {
     toku_mutex_lock(&m_mutex);
-    dictionary *dbi = find(dname);
+    dictionary *dbi = find(id);
     if (dbi == nullptr) {
         XCALLOC(dbi);
-        dbi->create(dname);
+        dbi->create(id, dname);
     }
     toku_mutex_unlock(&m_mutex);
     return dbi;
