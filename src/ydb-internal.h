@@ -326,3 +326,14 @@ txn_is_read_only(DB_TXN* txn) {
 void env_panic(DB_ENV * env, int cause, const char * msg);
 void env_note_db_opened(DB_ENV *env, DB *db);
 void env_note_db_closed(DB_ENV *env, DB *db);
+
+void ydb_layer_status_init (void);
+int
+env_get_engine_status_num_rows (DB_ENV * UU(env), uint64_t * num_rowsp);
+// intended for use by toku_assert logic, when env is not known
+int 
+toku_maybe_get_engine_status_text (char * buff, int buffsize);
+
+int
+toku_maybe_err_engine_status (void);
+
