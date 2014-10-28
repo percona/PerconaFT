@@ -137,7 +137,7 @@ int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname, uint32_t flags,
 int toku_db_pre_acquire_table_lock(DB *db, DB_TXN *txn);
 int toku_db_get (DB * db, DB_TXN * txn, DBT * key, DBT * data, uint32_t flags);
 int toku_db_create(DB ** db, DB_ENV * env, uint32_t flags);
-int toku_db_close(DB * db);
+void toku_db_close(DB * db);
 int toku_setup_db_internal (DB **dbp, DB_ENV *env, uint32_t flags, FT_HANDLE ft_handle, bool is_open);
 int db_getf_set(DB *db, DB_TXN *txn, uint32_t flags, DBT *key, YDB_CALLBACK_FUNCTION f, void *extra);
 int autotxn_db_get(DB* db, DB_TXN* txn, DBT* key, DBT* data, uint32_t flags);

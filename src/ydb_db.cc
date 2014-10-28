@@ -195,9 +195,8 @@ static int toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *db
 
 // Effect: Do the work required of DB->close().
 // requires: the multi_operation client lock is held.
-int 
+void
 toku_db_close(DB * db) {
-    int r = 0;
     if (db_opened(db) && db->i->dname) {
         // internal (non-user) dictionary has no dname
         env_note_db_closed(db->dbenv, db);  // tell env that this db is no longer in use by the user of this api (user-closed, may still be in use by fractal tree internals)
@@ -214,7 +213,6 @@ toku_db_close(DB * db) {
     }
     toku_free(db->i);
     toku_free(db);
-    return r;
 }
 
 ///////////
@@ -818,9 +816,9 @@ static int
 locked_db_close(DB * db, uint32_t UU(flags)) {
     // cannot begin a checkpoint
     toku_multi_operation_client_lock();
-    int r = toku_db_close(db);
+    toku_db_close(db);
     toku_multi_operation_client_unlock();
-    return r;
+    return 0;
 }
 
 int 

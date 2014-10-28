@@ -159,7 +159,6 @@ struct __toku_db_env_internal {
     lock_timeout_callback lock_wait_timeout_callback;   // Called when a lock request times out waiting for a lock.
 
     DB *directory;                                      // Maps dnames to inames
-    DB *persistent_environment;                         // Stores environment settings, can be used for upgrade
     toku::omt<DB *> *open_dbs_by_dname;                              // Stores open db handles, sorted first by dname and then by numerical value of pointer to the db (arbitrarily assigned memory location)
     toku::omt<DB *> *open_dbs_by_dict_id;                            // Stores open db handles, sorted by dictionary id and then by numerical value of pointer to the db (arbitrarily assigned memory location)
     toku_pthread_rwlock_t open_dbs_rwlock;              // rwlock that protects the OMT of open dbs.

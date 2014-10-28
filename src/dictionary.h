@@ -95,6 +95,7 @@ PATENT RIGHTS GRANT:
 #include <toku_pthread.h>
 
 #include <util/omt.h>
+#include "ft/txn/txn.h"
 
 
 class dictionary {
@@ -108,6 +109,20 @@ public:
 };
 
 class dictionary_manager {
+    // persistent environment stuff, should be own class
+private:
+    DB* m_persistent_environment;
+    int maybe_upgrade_persistent_environment_dictionary(
+        DB_TXN * txn,
+        LSN last_lsn_of_clean_shutdown_read_from_log
+        );
+public:
+    int setup_persistent_environment(DB_ENV* env, bool newenv, DB_TXN* txn, int mode, LSN last_lsn_of_clean_shutdown_read_from_log);
+    int get_persistent_environtment_cursor(DB_TXN* txn, DBC** c);
+
+
+
+private:
     // protects access the map
     toku_mutex_t m_mutex;
     toku::omt<dictionary *> m_dictionary_map;
@@ -117,6 +132,9 @@ class dictionary_manager {
     static int find_by_id(dictionary *const &dbi, const uint64_t &id);
 
 public:
+    dictionary_manager() : m_persistent_environment(nullptr) {
+    }
+    int validate_environment(DB_ENV* env, bool* valid_newenv);
     void create();
     void destroy();
     dictionary* get_dictionary(const uint64_t id, const char * dname);

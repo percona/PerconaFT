@@ -209,25 +209,7 @@ validate_env(DB_ENV * env, bool * valid_newenv, bool need_rollback_cachefile) {
     toku_struct_stat buf;
     char* path = NULL;
 
-    // Test for persistent environment
-    path = toku_construct_full_name(2, env->i->dir, toku_product_name_strings.environmentdictionary);
-    assert(path);
-    r = toku_stat(path, &buf);
-    if (r == 0) {
-        expect_newenv = false;  // persistent info exists
-    }
-    else {
-        int stat_errno = get_error_errno();
-        if (stat_errno == ENOENT) {
-            expect_newenv = true;
-            r = 0;
-        }
-        else {
-            r = toku_ydb_do_error(env, stat_errno, "Unable to access persistent environment\n");
-            assert(r);
-        }
-    }
-    toku_free(path);
+    r = env->i->dict_manager.validate_environment(env, &expect_newenv);
 
     // Test for existence of rollback cachefile if it is expected to exist
     if (r == 0 && need_rollback_cachefile) {
@@ -254,31 +236,6 @@ validate_env(DB_ENV * env, bool * valid_newenv, bool need_rollback_cachefile) {
         toku_free(path);
     }
 
-    // Test for fileops directory
-    if (r == 0) {
-        path = toku_construct_full_name(2, env->i->dir, toku_product_name_strings.fileopsdirectory);
-        assert(path);
-        r = toku_stat(path, &buf);
-        if (r == 0) {  
-            if (expect_newenv)  // fileops directory exists, but persistent env is missing
-                r = toku_ydb_do_error(env, ENOENT, "Persistent environment is missing\n");
-        }
-        else {
-            int stat_errno = get_error_errno();
-            if (stat_errno == ENOENT) {
-                if (!expect_newenv)  // fileops directory is missing but persistent env exists
-                    r = toku_ydb_do_error(env, ENOENT, "Fileops directory is missing\n");
-                else 
-                    r = 0;           // both fileops directory and persistent env are missing
-            }
-            else {
-                r = toku_ydb_do_error(env, stat_errno, "Unable to access fileops directory\n");
-                assert(r);
-            }
-        }
-        toku_free(path);
-    }
-
     // Test for recovery log
     if ((r == 0) && (env->i->open_flags & DB_INIT_LOG)) {
         // if using transactions, test for existence of log
@@ -296,212 +253,6 @@ validate_env(DB_ENV * env, bool * valid_newenv, bool need_rollback_cachefile) {
     else 
         *valid_newenv = false;
     return r;
-}
-
-// Keys used in persistent environment dictionary:
-// Following keys added in version 12
-static const char * orig_env_ver_key = "original_version";
-static const char * curr_env_ver_key = "current_version";  
-// Following keys added in version 14, add more keys for future versions
-static const char * creation_time_key         = "creation_time";
-
-// Values read from (or written into) persistent environment,
-// kept here for read-only access from engine status.
-// Note, persistent_upgrade_status info is separate in part to simplify its exclusion from engine status until relevant.
-typedef enum {
-    PERSISTENT_UPGRADE_ORIGINAL_ENV_VERSION = 0,
-    PERSISTENT_UPGRADE_STORED_ENV_VERSION_AT_STARTUP,    // read from curr_env_ver_key, prev version as of this startup
-    PERSISTENT_UPGRADE_LAST_LSN_OF_V13,
-    PERSISTENT_UPGRADE_V14_TIME,
-    PERSISTENT_UPGRADE_V14_FOOTPRINT,
-    PERSISTENT_UPGRADE_STATUS_NUM_ROWS
-} persistent_upgrade_status_entry;
-
-typedef struct {
-    bool initialized;
-    TOKU_ENGINE_STATUS_ROW_S status[PERSISTENT_UPGRADE_STATUS_NUM_ROWS];
-} PERSISTENT_UPGRADE_STATUS_S, *PERSISTENT_UPGRADE_STATUS;
-
-static PERSISTENT_UPGRADE_STATUS_S persistent_upgrade_status;
-
-#define PERSISTENT_UPGRADE_STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(persistent_upgrade_status, k, c, t, "upgrade: " l, inc)
-
-static void
-persistent_upgrade_status_init (void) {
-    // Note, this function initializes the keyname, type, and legend fields.
-    // Value fields are initialized to zero by compiler.
-
-    PERSISTENT_UPGRADE_STATUS_INIT(PERSISTENT_UPGRADE_ORIGINAL_ENV_VERSION,           nullptr, UINT64,   "original version (at time of environment creation)", TOKU_ENGINE_STATUS);
-    PERSISTENT_UPGRADE_STATUS_INIT(PERSISTENT_UPGRADE_STORED_ENV_VERSION_AT_STARTUP,  nullptr, UINT64,   "version at time of startup", TOKU_ENGINE_STATUS);
-    PERSISTENT_UPGRADE_STATUS_INIT(PERSISTENT_UPGRADE_LAST_LSN_OF_V13,                nullptr, UINT64,   "last LSN of version 13", TOKU_ENGINE_STATUS);
-    PERSISTENT_UPGRADE_STATUS_INIT(PERSISTENT_UPGRADE_V14_TIME,                       nullptr, UNIXTIME, "time of upgrade to version 14", TOKU_ENGINE_STATUS);
-    PERSISTENT_UPGRADE_STATUS_INIT(PERSISTENT_UPGRADE_V14_FOOTPRINT,                  nullptr, UINT64,   "footprint from version 13 to 14", TOKU_ENGINE_STATUS);
-    persistent_upgrade_status.initialized = true;
-}
-
-#define PERSISTENT_UPGRADE_STATUS_VALUE(x) persistent_upgrade_status.status[x].value.num
-
-static char * get_upgrade_time_key(int version) {
-    static char upgrade_time_key[sizeof("upgrade_v_time") + 12];
-    {
-        int n;
-        n = snprintf(upgrade_time_key, sizeof(upgrade_time_key), "upgrade_v%d_time", version);
-        assert(n >= 0 && n < (int)sizeof(upgrade_time_key));
-    }
-    return &upgrade_time_key[0];
-}
-
-static char * get_upgrade_footprint_key(int version) {
-    static char upgrade_footprint_key[sizeof("upgrade_v_footprint") + 12];
-    {
-        int n;
-        n = snprintf(upgrade_footprint_key, sizeof(upgrade_footprint_key), "upgrade_v%d_footprint", version);
-        assert(n >= 0 && n < (int)sizeof(upgrade_footprint_key));
-    }
-    return &upgrade_footprint_key[0];
-}
-
-static char * get_upgrade_last_lsn_key(int version) {
-    static char upgrade_last_lsn_key[sizeof("upgrade_v_last_lsn") + 12];
-    {
-        int n;
-        n = snprintf(upgrade_last_lsn_key, sizeof(upgrade_last_lsn_key), "upgrade_v%d_last_lsn", version);
-        assert(n >= 0 && n < (int)sizeof(upgrade_last_lsn_key));
-    }
-    return &upgrade_last_lsn_key[0];
-}
-
-
-// Requires: persistent environment dictionary is already open.
-// Input arg is lsn of clean shutdown of previous version,
-// or ZERO_LSN if no upgrade or if crash between log upgrade and here.
-// NOTE: To maintain compatibility with previous versions, do not change the 
-//       format of any information stored in the persistent environment dictionary.
-//       For example, some values are stored as 32 bits, even though they are immediately
-//       converted to 64 bits when read.  Do not change them to be stored as 64 bits.
-//
-static int
-maybe_upgrade_persistent_environment_dictionary(DB_ENV * env, DB_TXN * txn, LSN last_lsn_of_clean_shutdown_read_from_log) {
-    int r;
-    DBT key, val;
-    DB *persistent_environment = env->i->persistent_environment;
-
-    if (!persistent_upgrade_status.initialized)
-        persistent_upgrade_status_init();
-
-    toku_fill_dbt(&key, curr_env_ver_key, strlen(curr_env_ver_key));
-    toku_init_dbt(&val);
-    r = toku_db_get(persistent_environment, txn, &key, &val, 0);
-    assert(r == 0);
-    uint32_t stored_env_version = toku_dtoh32(*(uint32_t*)val.data);
-    PERSISTENT_UPGRADE_STATUS_VALUE(PERSISTENT_UPGRADE_STORED_ENV_VERSION_AT_STARTUP) = stored_env_version;
-    if (stored_env_version > FT_LAYOUT_VERSION)
-        r = TOKUDB_DICTIONARY_TOO_NEW;
-    else if (stored_env_version < FT_LAYOUT_MIN_SUPPORTED_VERSION)
-        r = TOKUDB_DICTIONARY_TOO_OLD;
-    else if (stored_env_version < FT_LAYOUT_VERSION) {
-        const uint32_t curr_env_ver_d = toku_htod32(FT_LAYOUT_VERSION);
-        toku_fill_dbt(&key, curr_env_ver_key, strlen(curr_env_ver_key));
-        toku_fill_dbt(&val, &curr_env_ver_d, sizeof(curr_env_ver_d));
-        r = toku_db_put(persistent_environment, txn, &key, &val, 0, false);
-        assert_zero(r);
-
-        time_t upgrade_time_d = toku_htod64(time(NULL));
-        uint64_t upgrade_footprint_d = toku_htod64(toku_log_upgrade_get_footprint());
-        uint64_t upgrade_last_lsn_d = toku_htod64(last_lsn_of_clean_shutdown_read_from_log.lsn);
-        for (int version = stored_env_version+1; version <= FT_LAYOUT_VERSION; version++) {
-            uint32_t put_flag = DB_NOOVERWRITE;
-            if (version <= FT_LAYOUT_VERSION_19) {
-                // See #5902.
-                // To prevent a crash (and any higher complexity code) we'll simply
-                // silently not overwrite anything if it exists.
-                // The keys existing for version <= 19 is not necessarily an error.
-                // If this happens for versions > 19 it IS an error and we'll use DB_NOOVERWRITE.
-                put_flag = DB_NOOVERWRITE_NO_ERROR;
-            }
-
-
-            char* upgrade_time_key = get_upgrade_time_key(version);
-            toku_fill_dbt(&key, upgrade_time_key, strlen(upgrade_time_key));
-            toku_fill_dbt(&val, &upgrade_time_d, sizeof(upgrade_time_d));
-            r = toku_db_put(persistent_environment, txn, &key, &val, put_flag, false);
-            assert_zero(r);
-
-            char* upgrade_footprint_key = get_upgrade_footprint_key(version);
-            toku_fill_dbt(&key, upgrade_footprint_key, strlen(upgrade_footprint_key));
-            toku_fill_dbt(&val, &upgrade_footprint_d, sizeof(upgrade_footprint_d));
-            r = toku_db_put(persistent_environment, txn, &key, &val, put_flag, false);
-            assert_zero(r);
-
-            char* upgrade_last_lsn_key = get_upgrade_last_lsn_key(version);
-            toku_fill_dbt(&key, upgrade_last_lsn_key, strlen(upgrade_last_lsn_key));
-            toku_fill_dbt(&val, &upgrade_last_lsn_d, sizeof(upgrade_last_lsn_d));
-            r = toku_db_put(persistent_environment, txn, &key, &val, put_flag, false);
-            assert_zero(r);
-        }
-
-    }
-    return r;
-}
-
-
-
-// Capture contents of persistent_environment dictionary so that it can be read by engine status
-static void
-capture_persistent_env_contents (DB_ENV * env, DB_TXN * txn) {
-    int r;
-    DBT key, val;
-    DB *persistent_environment = env->i->persistent_environment;
-
-    toku_fill_dbt(&key, curr_env_ver_key, strlen(curr_env_ver_key));
-    toku_init_dbt(&val);
-    r = toku_db_get(persistent_environment, txn, &key, &val, 0);
-    assert_zero(r);
-    uint32_t curr_env_version = toku_dtoh32(*(uint32_t*)val.data);
-    assert(curr_env_version == FT_LAYOUT_VERSION);
-
-    toku_fill_dbt(&key, orig_env_ver_key, strlen(orig_env_ver_key));
-    toku_init_dbt(&val);
-    r = toku_db_get(persistent_environment, txn, &key, &val, 0);
-    assert_zero(r);
-    uint64_t persistent_original_env_version = toku_dtoh32(*(uint32_t*)val.data);
-    PERSISTENT_UPGRADE_STATUS_VALUE(PERSISTENT_UPGRADE_ORIGINAL_ENV_VERSION) = persistent_original_env_version;
-    assert(persistent_original_env_version <= curr_env_version);
-
-    // make no assertions about timestamps, clock may have been reset
-    if (persistent_original_env_version >= FT_LAYOUT_VERSION_14) {
-        toku_fill_dbt(&key, creation_time_key, strlen(creation_time_key));
-        toku_init_dbt(&val);
-        r = toku_db_get(persistent_environment, txn, &key, &val, 0);
-        assert_zero(r);
-        //STATUS_VALUE(YDB_LAYER_TIME_CREATION) = toku_dtoh64((*(time_t*)val.data));
-    }
-
-    if (persistent_original_env_version != curr_env_version) {
-        // an upgrade was performed at some time, capture info about the upgrade
-
-        char * last_lsn_key = get_upgrade_last_lsn_key(curr_env_version);
-        toku_fill_dbt(&key, last_lsn_key, strlen(last_lsn_key));
-        toku_init_dbt(&val);
-        r = toku_db_get(persistent_environment, txn, &key, &val, 0);
-        assert_zero(r);
-        PERSISTENT_UPGRADE_STATUS_VALUE(PERSISTENT_UPGRADE_LAST_LSN_OF_V13) = toku_dtoh64(*(uint64_t*)val.data);
-
-        char * time_key = get_upgrade_time_key(curr_env_version);
-        toku_fill_dbt(&key, time_key, strlen(time_key));
-        toku_init_dbt(&val);
-        r = toku_db_get(persistent_environment, txn, &key, &val, 0);
-        assert_zero(r);
-        PERSISTENT_UPGRADE_STATUS_VALUE(PERSISTENT_UPGRADE_V14_TIME) = toku_dtoh64(*(time_t*)val.data);
-
-        char * footprint_key = get_upgrade_footprint_key(curr_env_version);
-        toku_fill_dbt(&key, footprint_key, strlen(footprint_key));
-        toku_init_dbt(&val);
-        r = toku_db_get(persistent_environment, txn, &key, &val, 0);
-        assert_zero(r);
-        PERSISTENT_UPGRADE_STATUS_VALUE(PERSISTENT_UPGRADE_V14_FOOTPRINT) = toku_dtoh64(*(uint64_t*)val.data);
-    }
-
 }
 
 static void
@@ -777,42 +528,15 @@ cleanup:
 
 static int setup_metadata_files(DB_ENV* env, bool newenv, DB_TXN* txn, int mode, LSN last_lsn_of_clean_shutdown_read_from_log) {
     int r = 0;
-    r = toku_db_create(&env->i->persistent_environment, env, 0);
-    assert_zero(r);
-    r = toku_db_use_builtin_key_cmp(env->i->persistent_environment);
-    assert_zero(r);
-    r = toku_db_open_iname(env->i->persistent_environment, txn, toku_product_name_strings.environmentdictionary, DB_CREATE, mode);
-    if (r != 0) {
-        r = toku_ydb_do_error(env, r, "Cant open persistent env\n");
-        goto cleanup;
-    }
-    if (newenv) {
-        // create new persistent_environment
-        DBT key, val;
-        uint32_t persistent_original_env_version = FT_LAYOUT_VERSION;
-        const uint32_t environment_version = toku_htod32(persistent_original_env_version);
-
-        toku_fill_dbt(&key, orig_env_ver_key, strlen(orig_env_ver_key));
-        toku_fill_dbt(&val, &environment_version, sizeof(environment_version));
-        r = toku_db_put(env->i->persistent_environment, txn, &key, &val, 0, false);
-        assert_zero(r);
-
-        toku_fill_dbt(&key, curr_env_ver_key, strlen(curr_env_ver_key));
-        toku_fill_dbt(&val, &environment_version, sizeof(environment_version));
-        r = toku_db_put(env->i->persistent_environment, txn, &key, &val, 0, false);
-        assert_zero(r);
-
-        time_t creation_time_d = toku_htod64(time(NULL));
-        toku_fill_dbt(&key, creation_time_key, strlen(creation_time_key));
-        toku_fill_dbt(&val, &creation_time_d, sizeof(creation_time_d));
-        r = toku_db_put(env->i->persistent_environment, txn, &key, &val, 0, false);
-        assert_zero(r);
-    }
-    else {
-        r = maybe_upgrade_persistent_environment_dictionary(env, txn, last_lsn_of_clean_shutdown_read_from_log);
-        assert_zero(r);
-    }
-    capture_persistent_env_contents(env, txn);
+    r = env->i->dict_manager.setup_persistent_environment(
+        env,
+        newenv,
+        txn,
+        mode,
+        last_lsn_of_clean_shutdown_read_from_log
+        );
+    if (r != 0) goto cleanup;
+    
     r = toku_db_create(&env->i->directory, env, 0);
     assert_zero(r);
     r = toku_db_use_builtin_key_cmp(env->i->directory);
@@ -1031,21 +755,9 @@ env_close(DB_ENV * env, uint32_t flags) {
             goto panic_and_quit_early;
         }
     }
-    if (env->i->persistent_environment) {
-        r = toku_db_close(env->i->persistent_environment);
-        if (r) {
-            err_msg = "Cannot close persistent environment dictionary (DB->close error)\n";
-            toku_ydb_do_error(env, r, "%s", err_msg);
-            goto panic_and_quit_early;
-        }
-    }
+    env->i->dict_manager.destroy();
     if (env->i->directory) {
-        r = toku_db_close(env->i->directory);
-        if (r) {
-            err_msg = "Cannot close Directory dictionary (DB->close error)\n";
-            toku_ydb_do_error(env, r, "%s", err_msg);
-            goto panic_and_quit_early;
-        }
+        toku_db_close(env->i->directory);
     }
     env_fsync_log_cron_destroy(env);
     if (env->i->cachetable) {
@@ -1095,7 +807,6 @@ env_close(DB_ENV * env, uint32_t flags) {
 
     env_fs_destroy(env);
     env->i->ltm.destroy();
-    env->i->dict_manager.destroy();
     if (env->i->data_dir)
         toku_free(env->i->data_dir);
     if (env->i->lg_dir)

@@ -953,7 +953,6 @@ env_get_engine_status_num_rows (DB_ENV * UU(env), uint64_t * num_rowsp) {
 #if 0
     // enable when upgrade is supported
     num_rows += FT_UPGRADE_STATUS_NUM_ROWS;
-    num_rows += PERSISTENT_UPGRADE_STATUS_NUM_ROWS;
 #endif
     *num_rowsp = num_rows;
     return 0;
@@ -1374,7 +1373,7 @@ env_get_cursor_for_persistent_environment(DB_ENV* env, DB_TXN* txn, DBC** c) {
     if (!env_opened(env)) {
         return EINVAL;
     }
-    return toku_db_cursor(env->i->persistent_environment, txn, c, 0);
+    return env->i->dict_manager.get_persistent_environtment_cursor(txn, c);
 }
 
 static int
@@ -1851,8 +1850,7 @@ can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char *iname_in_env) {
     } else {
         got_lock = false;
     }
-    r = toku_db_close(db);
-    assert_zero(r);
+    toku_db_close(db);
 
     return got_lock;
 }
@@ -1940,8 +1938,7 @@ env_dbremove(DB_ENV * env, DB_TXN *txn, const char *fname, const char *dbname, u
 
 exit:
     if (db) {
-        int ret = toku_db_close(db);
-        assert(ret == 0);
+        toku_db_close(db);
     }
     if (iname) {
         toku_free(iname);
