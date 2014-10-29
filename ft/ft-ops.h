@@ -105,32 +105,6 @@ typedef struct ft_handle *FT_HANDLE;
 
 int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int nodesize, int basementnodesize, enum toku_compression_method compression_method, CACHETABLE, TOKUTXN, ft_compare_func) __attribute__ ((warn_unused_result));
 
-// effect: changes the descriptor for the ft of the given handle.
-// requires: 
-// - cannot change descriptor for same ft in two threads in parallel. 
-// - can only update cmp descriptor immidiately after opening the FIRST ft handle for this ft and before 
-//   ANY operations. to update the cmp descriptor after any operations have already happened, all handles 
-//   and transactions must close and reopen before the change, then you can update the cmp descriptor
-void toku_ft_change_descriptor(FT_HANDLE t, const DBT* old_descriptor, const DBT* new_descriptor, bool do_log, TOKUTXN txn, bool update_cmp_descriptor);
-uint32_t toku_serialize_descriptor_size(DESCRIPTOR desc);
-
-void toku_ft_handle_create(ft_compare_func cmp_func, ft_update_func update_func, FT_HANDLE *ft);
-void toku_ft_set_flags(FT_HANDLE, unsigned int flags);
-void toku_ft_get_flags(FT_HANDLE, unsigned int *flags);
-void toku_ft_handle_set_nodesize(FT_HANDLE, unsigned int nodesize);
-void toku_ft_handle_get_nodesize(FT_HANDLE, unsigned int *nodesize);
-void toku_ft_get_maximum_advised_key_value_lengths(unsigned int *klimit, unsigned int *vlimit);
-void toku_ft_handle_set_basementnodesize(FT_HANDLE, unsigned int basementnodesize);
-void toku_ft_handle_get_basementnodesize(FT_HANDLE, unsigned int *basementnodesize);
-void toku_ft_handle_set_compression_method(FT_HANDLE, enum toku_compression_method);
-void toku_ft_handle_get_compression_method(FT_HANDLE, enum toku_compression_method *);
-void toku_ft_handle_set_fanout(FT_HANDLE, unsigned int fanout);
-void toku_ft_handle_get_fanout(FT_HANDLE, unsigned int *fanout);
-int toku_ft_handle_set_memcmp_magic(FT_HANDLE, uint8_t magic);
-
-void toku_ft_set_bt_compare(FT_HANDLE ft_handle, ft_compare_func cmp_func);
-const toku::comparator &toku_ft_get_comparator(FT_HANDLE ft_handle);
-
 // How updates (update/insert/deletes) work:
 // There are two flavers of upsertdels:  Singleton and broadcast.
 // When a singleton upsertdel message arrives it contains a key and an extra DBT.
@@ -170,6 +144,34 @@ const toku::comparator &toku_ft_get_comparator(FT_HANDLE ft_handle);
 typedef int (*ft_update_func)(DB *db, const DBT *key, const DBT *old_val, const DBT *extra,
                               void (*set_val)(const DBT *new_val, void *set_extra),
                               void *set_extra);
+
+
+// effect: changes the descriptor for the ft of the given handle.
+// requires: 
+// - cannot change descriptor for same ft in two threads in parallel. 
+// - can only update cmp descriptor immidiately after opening the FIRST ft handle for this ft and before 
+//   ANY operations. to update the cmp descriptor after any operations have already happened, all handles 
+//   and transactions must close and reopen before the change, then you can update the cmp descriptor
+void toku_ft_change_descriptor(FT_HANDLE t, const DBT* old_descriptor, const DBT* new_descriptor, bool do_log, TOKUTXN txn, bool update_cmp_descriptor);
+uint32_t toku_serialize_descriptor_size(DESCRIPTOR desc);
+
+void toku_ft_handle_create(ft_compare_func cmp_func, ft_update_func update_func, FT_HANDLE *ft);
+void toku_ft_set_flags(FT_HANDLE, unsigned int flags);
+void toku_ft_get_flags(FT_HANDLE, unsigned int *flags);
+void toku_ft_handle_set_nodesize(FT_HANDLE, unsigned int nodesize);
+void toku_ft_handle_get_nodesize(FT_HANDLE, unsigned int *nodesize);
+void toku_ft_get_maximum_advised_key_value_lengths(unsigned int *klimit, unsigned int *vlimit);
+void toku_ft_handle_set_basementnodesize(FT_HANDLE, unsigned int basementnodesize);
+void toku_ft_handle_get_basementnodesize(FT_HANDLE, unsigned int *basementnodesize);
+void toku_ft_handle_set_compression_method(FT_HANDLE, enum toku_compression_method);
+void toku_ft_handle_get_compression_method(FT_HANDLE, enum toku_compression_method *);
+void toku_ft_handle_set_fanout(FT_HANDLE, unsigned int fanout);
+void toku_ft_handle_get_fanout(FT_HANDLE, unsigned int *fanout);
+int toku_ft_handle_set_memcmp_magic(FT_HANDLE, uint8_t magic);
+
+void toku_ft_set_bt_compare(FT_HANDLE ft_handle, ft_compare_func cmp_func);
+const toku::comparator &toku_ft_get_comparator(FT_HANDLE ft_handle);
+
 void toku_ft_set_update(FT_HANDLE ft_h, ft_update_func update_fun);
 
 int toku_ft_handle_open(FT_HANDLE, const char *fname_in_env,
