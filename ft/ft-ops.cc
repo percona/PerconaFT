@@ -2745,7 +2745,7 @@ int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *ft_handle_
     FT_HANDLE ft_handle;
     const int only_create = 0;
 
-    toku_ft_handle_create(&ft_handle);
+    toku_ft_handle_create(compare_fun, NULL, &ft_handle);
     toku_ft_handle_set_nodesize(ft_handle, nodesize);
     toku_ft_handle_set_basementnodesize(ft_handle, basementnodesize);
     toku_ft_handle_set_compression_method(ft_handle, compression_method);
@@ -3134,8 +3134,10 @@ toku_ft_handle_open(FT_HANDLE t, const char *fname_in_env, int is_create, int on
 // clone an ft handle. the cloned handle has a new dict_id but refers to the same fractal tree
 int 
 toku_ft_handle_clone(FT_HANDLE *cloned_ft_handle, FT_HANDLE ft_handle, TOKUTXN txn) {
-    FT_HANDLE result_ft_handle; 
-    toku_ft_handle_create(&result_ft_handle);
+    FT_HANDLE result_ft_handle;
+    // the right functions will be populated via toku_ft_handle_inherit_options
+    // below, so passing in NULL for first two parameters
+    toku_ft_handle_create(NULL, NULL, &result_ft_handle);
 
     // we're cloning, so the handle better have an open ft and open cf
     invariant(ft_handle->ft);
@@ -3291,7 +3293,7 @@ int toku_close_ft_handle_nolsn(FT_HANDLE ft_handle, char **UU(error_string)) {
     return 0;
 }
 
-void toku_ft_handle_create(FT_HANDLE *ft_handle_ptr) {
+void toku_ft_handle_create(ft_compare_func cmp_func, ft_update_func update_func, FT_HANDLE *ft_handle_ptr) {
     FT_HANDLE XMALLOC(ft_handle);
     memset(ft_handle, 0, sizeof *ft_handle);
     toku_list_init(&ft_handle->live_ft_handle_link);
@@ -3301,8 +3303,8 @@ void toku_ft_handle_create(FT_HANDLE *ft_handle_ptr) {
     ft_handle->options.basementnodesize = FT_DEFAULT_BASEMENT_NODE_SIZE;
     ft_handle->options.compression_method = TOKU_DEFAULT_COMPRESSION_METHOD;
     ft_handle->options.fanout = FT_DEFAULT_FANOUT;
-    ft_handle->options.compare_fun = toku_builtin_compare_fun;
-    ft_handle->options.update_fun = NULL;
+    ft_handle->options.compare_fun = cmp_func;
+    ft_handle->options.update_fun = update_func;
     *ft_handle_ptr = ft_handle;
 }
 

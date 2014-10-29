@@ -116,7 +116,6 @@ struct __toku_db_internal {
     DICTIONARY_ID dict_id;        // unique identifier used by locktree logic
     toku::locktree *lt;
     struct simple_dbt skey, sval; // static key and value
-    bool key_compare_was_set;     // true if a comparison function was provided before call to db->open()  (if false, use environment's comparison function).  
     char *dname;                  // dname is constant for this handle (handle must be closed before file is renamed)
     DB_INDEXER *indexer;
 };

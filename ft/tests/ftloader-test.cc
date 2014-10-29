@@ -340,7 +340,7 @@ static void verify_dbfile(int n, int sorted_keys[], const char *sorted_vals[], c
 
     TOKUTXN const null_txn = NULL;
     FT_HANDLE t = NULL;
-    toku_ft_handle_create(&t);
+    toku_ft_handle_create(compare_ints, NULL, &t);
     toku_ft_set_bt_compare(t, compare_ints);
     r = toku_ft_handle_open(t, name, 0, 0, ct, null_txn); assert(r==0);
 

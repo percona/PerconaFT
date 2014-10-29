@@ -114,7 +114,7 @@ int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int node
 void toku_ft_change_descriptor(FT_HANDLE t, const DBT* old_descriptor, const DBT* new_descriptor, bool do_log, TOKUTXN txn, bool update_cmp_descriptor);
 uint32_t toku_serialize_descriptor_size(DESCRIPTOR desc);
 
-void toku_ft_handle_create(FT_HANDLE *ft);
+void toku_ft_handle_create(ft_compare_func cmp_func, ft_update_func update_func, FT_HANDLE *ft);
 void toku_ft_set_flags(FT_HANDLE, unsigned int flags);
 void toku_ft_get_flags(FT_HANDLE, unsigned int *flags);
 void toku_ft_handle_set_nodesize(FT_HANDLE, unsigned int nodesize);

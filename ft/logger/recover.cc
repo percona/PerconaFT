@@ -359,7 +359,9 @@ static int internal_recover_fopen_or_fcreate (RECOVER_ENV renv, bool must_create
     FT_HANDLE ft_handle = NULL;
     char *iname = fixup_fname(bs_iname);
 
-    toku_ft_handle_create(&ft_handle);
+    // proper functions will be populated below, so first two parameters
+    // can be "original" defaults
+    toku_ft_handle_create(toku_builtin_compare_fun, NULL, &ft_handle);
     toku_ft_set_flags(ft_handle, treeflags);
 
     if (nodesize != 0) {
@@ -516,7 +518,7 @@ static int toku_recover_fassociate (struct logtype_fassociate *l, RECOVER_ENV re
             if (rollback_file) {
                 max_acceptable_lsn = renv->ss.checkpoint_begin_lsn;
                 FT_HANDLE t;
-                toku_ft_handle_create(&t);
+                toku_ft_handle_create(toku_builtin_compare_fun, NULL, &t);
                 r = toku_ft_handle_open_recovery(t, toku_product_name_strings.rollback_cachefile, false, false, renv->ct, (TOKUTXN)NULL, l->filenum, max_acceptable_lsn);
                 renv->logger->rollback_cachefile = t->ft->cf;
                 toku_logger_initialize_rollback_cache(renv->logger, t->ft);

@@ -622,7 +622,9 @@ static int
 ft_handle_open_for_redirect(FT_HANDLE *new_ftp, const char *fname_in_env, TOKUTXN txn, FT old_ft) {
     FT_HANDLE ft_handle;
     assert(old_ft->dict_id.dictid != DICTIONARY_ID_NONE.dictid);
-    toku_ft_handle_create(&ft_handle);
+    // setting first two parameters to NULL, as proper values
+    // will be set in functions below
+    toku_ft_handle_create(NULL, NULL, &ft_handle);
     toku_ft_set_bt_compare(ft_handle, old_ft->cmp.get_compare_func());
     toku_ft_set_update(ft_handle, old_ft->update_fun);
     toku_ft_handle_set_nodesize(ft_handle, old_ft->h->nodesize);

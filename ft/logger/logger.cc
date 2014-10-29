@@ -279,7 +279,7 @@ int toku_logger_open_rollback(TOKULOGGER logger, CACHETABLE cachetable, bool cre
     assert(!logger->rollback_cachefile);
 
     FT_HANDLE ft_handle = nullptr;   // Note, there is no DB associated with this FT.
-    toku_ft_handle_create(&ft_handle);
+    toku_ft_handle_create(toku_builtin_compare_fun, NULL, &ft_handle);
     int r = toku_ft_handle_open(ft_handle, toku_product_name_strings.rollback_cachefile, create, create, cachetable, nullptr);
     if (r == 0) {
         FT ft = ft_handle->ft;

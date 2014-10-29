@@ -438,13 +438,6 @@ int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t
     // we should always have SOME environment comparison function
     // set, even if it is the default one set in toku_env_create
     invariant(db->dbenv->i->bt_compare);
-    if (!db->i->key_compare_was_set) {
-        toku_ft_set_bt_compare(db->i->ft_handle, db->dbenv->i->bt_compare);
-        db->i->key_compare_was_set = true;
-    }
-    if (db->dbenv->i->update_function) {
-        toku_ft_set_update(db->i->ft_handle,db->dbenv->i->update_function);
-    }
     bool need_locktree = (bool)((db->dbenv->i->open_flags & DB_INIT_LOCK) &&
                                 (db->dbenv->i->open_flags & DB_INIT_TXN));
 
@@ -1068,7 +1061,7 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     
 
     FT_HANDLE ft_handle;
-    toku_ft_handle_create(&ft_handle);
+    toku_ft_handle_create(env->i->bt_compare, env->i->update_function, &ft_handle);
 
     int r = toku_setup_db_internal(db, env, flags, ft_handle, false);
     if (r != 0) return r;
