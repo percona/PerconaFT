@@ -112,8 +112,6 @@ PATENT RIGHTS GRANT:
 
 struct __toku_db_internal {
     int opened;
-    uint32_t open_flags;
-    int open_mode;
     FT_HANDLE ft_handle;
     DICTIONARY_ID dict_id;        // unique identifier used by locktree logic
     toku::locktree *lt;

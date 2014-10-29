@@ -246,7 +246,7 @@ toku_db_get (DB * db, DB_TXN * txn, DBT * key, DBT * data, uint32_t flags) {
     int r;
     uint32_t iso_flags = flags & DB_ISOLATION_FLAGS;
 
-    if ((db->i->open_flags & DB_THREAD) && db_thread_need_flags(data))
+    if (db_thread_need_flags(data))
         return EINVAL;
 
     uint32_t lock_flags = flags & (DB_PRELOCKED | DB_PRELOCKED_WRITE);
@@ -441,7 +441,7 @@ int toku_db_use_builtin_key_cmp(DB *db) {
     return r;
 }
 
-int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags, int mode) {
+int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags, int UU() mode) {
     //Set comparison functions if not yet set.
     HANDLE_READ_ONLY_TXN(txn);
     if (!db->i->key_compare_was_set && db->dbenv->i->bt_compare) {
@@ -456,25 +456,15 @@ int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t
 
     int is_db_excl    = flags & DB_EXCL;    flags&=~DB_EXCL;
     int is_db_create  = flags & DB_CREATE;  flags&=~DB_CREATE;
-    //We support READ_UNCOMMITTED and READ_COMMITTED whether or not the flag is provided.
-                                            flags&=~DB_READ_UNCOMMITTED;
-                                            flags&=~DB_READ_COMMITTED;
-                                            flags&=~DB_SERIALIZABLE;
-                                            flags&=~DB_IS_HOT_INDEX;
-    // unknown or conflicting flags are bad
-    int unknown_flags = flags & ~DB_THREAD;
-    unknown_flags &= ~DB_BLACKHOLE;
-    if (unknown_flags || (is_db_excl && !is_db_create)) {
+     // unknown or conflicting flags are bad
+     if (is_db_excl && !is_db_create) {
         return EINVAL;
     }
 
     if (db_opened(db)) {
         return EINVAL;              /* It was already open. */
     }
-    
-    db->i->open_flags = flags;
-    db->i->open_mode = mode;
-
+     
     FT_HANDLE ft_handle = db->i->ft_handle;
     int r = toku_ft_handle_open(ft_handle, iname_in_env,
                       is_db_create, is_db_excl,
@@ -1147,8 +1137,6 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     
     result->i->dict_id = DICTIONARY_ID_NONE;
     result->i->opened = 0;
-    result->i->open_flags = 0;
-    result->i->open_mode = 0;
     result->i->indexer = NULL;
     *db = result;
     return 0;
