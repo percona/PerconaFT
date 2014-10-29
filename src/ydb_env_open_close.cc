@@ -527,27 +527,13 @@ cleanup:
 }
 
 static int setup_metadata_files(DB_ENV* env, bool newenv, DB_TXN* txn, int mode, LSN last_lsn_of_clean_shutdown_read_from_log) {
-    int r = 0;
-    r = env->i->dict_manager.setup_persistent_environment(
+    return env->i->dict_manager.setup_metadata(
         env,
         newenv,
         txn,
         mode,
         last_lsn_of_clean_shutdown_read_from_log
         );
-    if (r != 0) goto cleanup;
-    
-    r = toku_db_create(&env->i->directory, env, 0);
-    assert_zero(r);
-    r = toku_db_use_builtin_key_cmp(env->i->directory);
-    assert_zero(r);
-    r = toku_db_open_iname(env->i->directory, txn, toku_product_name_strings.fileopsdirectory, DB_CREATE, mode);
-    if (r != 0) {
-        r = toku_ydb_do_error(env, r, "Cant open %s\n", toku_product_name_strings.fileopsdirectory);
-        goto cleanup;
-    }
-cleanup:
-    return r;
 }
 
 static int setup_minicrons(DB_ENV* env) {
@@ -756,9 +742,6 @@ env_close(DB_ENV * env, uint32_t flags) {
         }
     }
     env->i->dict_manager.destroy();
-    if (env->i->directory) {
-        toku_db_close(env->i->directory);
-    }
     env_fsync_log_cron_destroy(env);
     if (env->i->cachetable) {
         toku_cachetable_prepare_close(env->i->cachetable);

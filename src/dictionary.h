@@ -116,27 +116,49 @@ private:
         DB_TXN * txn,
         LSN last_lsn_of_clean_shutdown_read_from_log
         );
-public:
     int setup_persistent_environment(DB_ENV* env, bool newenv, DB_TXN* txn, int mode, LSN last_lsn_of_clean_shutdown_read_from_log);
+    int setup_directory(DB_ENV* env, DB_TXN* txn, int mode);
+public:
     int get_persistent_environtment_cursor(DB_TXN* txn, DBC** c);
 
 
 
 private:
+    DB* m_directory;
+
+public:
+    dictionary_manager() : 
+        m_persistent_environment(nullptr),
+        m_directory(nullptr)
+    {
+    }
+    int validate_environment(DB_ENV* env, bool* valid_newenv);
+    int setup_metadata(
+        DB_ENV* env,
+        bool newenv,
+        DB_TXN* txn,
+        int mode,
+        LSN last_lsn_of_clean_shutdown_read_from_log
+        );
+    int get_directory_cursor(DB_TXN* txn, DBC** c);
+    int get_iname(const char* dname, DB_TXN* txn, char** iname);
+    int get_iname_in_dbt(DBT* dname_dbt, DBT* iname_dbt);
+    // used in a part of bulk loading
+    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname);
+    int pre_acquire_fileops_lock(DB_TXN* txn, char* dname);
+    int rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname);
+    void create();
+    void destroy();
+
+    
+private:
     // protects access the map
     toku_mutex_t m_mutex;
     toku::omt<dictionary *> m_dictionary_map;
-
     dictionary* find(const uint64_t id);
     void add_db(dictionary* dbi);
     static int find_by_id(dictionary *const &dbi, const uint64_t &id);
-
 public:
-    dictionary_manager() : m_persistent_environment(nullptr) {
-    }
-    int validate_environment(DB_ENV* env, bool* valid_newenv);
-    void create();
-    void destroy();
     dictionary* get_dictionary(const uint64_t id, const char * dname);
     void remove_dictionary(dictionary* dbi);
 };

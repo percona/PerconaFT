@@ -98,6 +98,8 @@ PATENT RIGHTS GRANT:
 #include "ydb_db.h"
 #include "ydb_write.h"
 #include "ydb_cursor.h"
+#include <locktree/locktree.h>
+#include "ydb_row_lock.h"
 
 void dictionary::create(uint64_t id, const char* dname) {
     m_id = id;
@@ -331,8 +333,178 @@ cleanup:
     return r;
 }
 
+int dictionary_manager::setup_directory(DB_ENV* env, DB_TXN* txn, int mode) {
+    int r = toku_db_create(&m_directory, env, 0);
+    assert_zero(r);
+    r = toku_db_use_builtin_key_cmp(m_directory);
+    assert_zero(r);
+    r = toku_db_open_iname(m_directory, txn, toku_product_name_strings.fileopsdirectory, DB_CREATE, mode);
+    if (r != 0) {
+        r = toku_ydb_do_error(env, r, "Cant open %s\n", toku_product_name_strings.fileopsdirectory);
+    }
+    return r;
+}
+
+int dictionary_manager::setup_metadata(
+    DB_ENV* env,
+    bool newenv,
+    DB_TXN* txn,
+    int mode,
+    LSN last_lsn_of_clean_shutdown_read_from_log
+    )
+{
+    int r = 0;
+    r = setup_persistent_environment(
+        env,
+        newenv,
+        txn,
+        mode,
+        last_lsn_of_clean_shutdown_read_from_log
+        );
+    if (r != 0) goto cleanup;
+    r = setup_directory(env, txn, mode);
+    
+cleanup:
+    return r;
+}
+
+
 int dictionary_manager::get_persistent_environtment_cursor(DB_TXN* txn, DBC** c) {
     return toku_db_cursor(m_persistent_environment, txn, c, 0);
+}
+
+int dictionary_manager::get_directory_cursor(DB_TXN* txn, DBC** c) {
+    return toku_db_cursor(m_directory, txn, c, 0);
+}
+
+// get the iname for the given dname and set it in the variable iname
+// responsibility of caller to free iname
+int dictionary_manager::get_iname(const char* dname, DB_TXN* txn, char** iname) {
+    DBT dname_dbt;
+    DBT iname_dbt;
+    toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
+    toku_init_dbt_flags(&iname_dbt, DB_DBT_MALLOC);
+
+    // get iname
+    int r = toku_db_get(m_directory, txn, &dname_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
+    if (r == 0) {
+        *iname = (char *) iname_dbt.data;
+    }
+    return r;
+}
+
+// pure laziness, should really only need above function
+int dictionary_manager::get_iname_in_dbt(DBT* dname_dbt, DBT* iname_dbt) {
+    return autotxn_db_get(m_directory, NULL, dname_dbt, iname_dbt, DB_SERIALIZABLE|DB_PRELOCKED); // allocates memory for iname
+}
+
+int dictionary_manager::change_iname(DB_TXN* txn, const char* dname, const char* new_iname) {
+    DBT dname_dbt;  // holds dname
+    toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
+    DBT iname_dbt;  // holds new iname
+    toku_fill_dbt(&iname_dbt, new_iname, strlen(new_iname) + 1);      // iname_in_env goes in directory
+    return toku_db_put(m_directory, txn, &dname_dbt, &iname_dbt, 0, true);
+}
+
+int dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
+    DBT key_in_directory = { .data = dname, .size = (uint32_t) strlen(dname)+1 };
+    //Left end of range == right end of range (point lock)
+    return toku_db_get_range_lock(m_directory, txn,
+            &key_in_directory, &key_in_directory,
+            toku::lock_request::type::WRITE);
+}
+
+// see if we can acquire a table lock for the given dname.
+// requires: write lock on dname in the directory. dictionary
+//          open, close, and begin checkpoint cannot occur.
+// returns: true if we could open, lock, and close a dictionary
+//          with the given dname, false otherwise.
+static bool
+can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char *iname_in_env) {
+    int r;
+    bool got_lock = false;
+    DB *db;
+
+    r = toku_db_create(&db, env, 0);
+    assert_zero(r);
+    r = toku_db_open_iname(db, txn, iname_in_env, 0, 0);
+    assert_zero(r);
+    r = toku_db_pre_acquire_table_lock(db, txn);
+    if (r == 0) {
+        got_lock = true;
+    } else {
+        got_lock = false;
+    }
+    toku_db_close(db);
+
+    return got_lock;
+}
+
+int dictionary_manager::rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname) {
+    // TODO: possibly do an early check here for open handles
+    char *iname = NULL;
+    char *dummy = NULL; // used to verify an iname does not already exist for new_dname
+    int r = get_iname(old_dname, txn, &iname);
+    if (r == DB_NOTFOUND) {
+        r = ENOENT;
+    }
+    else if (r == 0) {
+        // verify that newname does not already exist
+        r = get_iname(new_dname, txn, &dummy);
+        if (r == 0) {
+            r = EEXIST;
+        }
+        else if (r == DB_NOTFOUND) {
+            // remove old (dname,iname) and insert (newname,iname) in directory
+            DBT old_dname_dbt;
+            toku_fill_dbt(&old_dname_dbt, old_dname, strlen(old_dname)+1);
+            DBT new_dname_dbt;
+            toku_fill_dbt(&new_dname_dbt, new_dname, strlen(new_dname)+1);
+            DBT iname_dbt;
+            toku_fill_dbt(&iname_dbt, iname, strlen(iname)+1);
+            r = toku_db_del(m_directory, txn, &old_dname_dbt, DB_DELETE_ANY, true);
+            if (r != 0) { goto exit; }
+            r = toku_db_put(m_directory, txn, &new_dname_dbt, &iname_dbt, 0, true);
+            if (r != 0) { goto exit; }
+
+            //Now that we have writelocks on both dnames, verify that there are still no handles open. (to prevent race conditions)
+            /*
+            if (env_is_db_with_dname_open(env, old_dname)) {
+                printf("Cannot rename dictionary with an open handle.\n");
+                r = EINVAL;
+                goto exit;
+            }
+            if (env_is_db_with_dname_open(env, new_dname)) {
+                printf("Cannot rename dictionary; Dictionary with target name has an open handle.\n");
+                r = EINVAL;
+                goto exit;
+            }
+            */
+
+            // we know a live db handle does not exist.
+            //
+            // use the internally opened db to try and get a table lock
+            // 
+            // if we can't get it, then some txn needs the ft and we
+            // should return lock not granted.
+            //
+            // otherwise, we're okay in marking this ft as remove on
+            // commit. no new handles can open for this dictionary
+            // because the txn has directory write locks on the dname
+            if (txn && !can_acquire_table_lock(env, txn, iname)) {
+                r = DB_LOCK_NOTGRANTED;
+            }
+        }
+    }
+
+exit:
+    if (iname) {
+        toku_free(iname);
+    }
+    if (dummy) {
+        toku_free(iname);
+    }
+    return r;
 }
 
 void dictionary_manager::create() {
@@ -344,6 +516,9 @@ void dictionary_manager::create() {
 void dictionary_manager::destroy() {
     if (m_persistent_environment) {
         toku_db_close(m_persistent_environment);
+    }
+    if (m_directory) {
+        toku_db_close(m_directory);
     }
     m_dictionary_map.destroy();
     toku_mutex_destroy(&m_mutex);

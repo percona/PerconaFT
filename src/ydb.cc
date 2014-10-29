@@ -238,11 +238,6 @@ toku_ydb_destroy(void) {
     }
 }
 
-static int
-ydb_getf_do_nothing(DBT const* UU(key), DBT const* UU(val), void* UU(extra)) {
-    return 0;
-}
-
 /* env methods */
 
 static void
@@ -1381,7 +1376,7 @@ env_get_cursor_for_directory(DB_ENV* env, DB_TXN* txn, DBC** c) {
     if (!env_opened(env)) {
         return EINVAL;
     }
-    return toku_db_cursor(env->i->directory, txn, c, 0);
+    return env->i->dict_manager.get_directory_cursor(txn, c);
 }
 
 struct ltm_iterate_requests_callback_extra {
@@ -1829,32 +1824,6 @@ env_dbremove_subdb(DB_ENV * env, DB_TXN * txn, const char *fname, const char *db
     return r;
 }
 
-// see if we can acquire a table lock for the given dname.
-// requires: write lock on dname in the directory. dictionary
-//          open, close, and begin checkpoint cannot occur.
-// returns: true if we could open, lock, and close a dictionary
-//          with the given dname, false otherwise.
-static bool
-can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char *iname_in_env) {
-    int r;
-    bool got_lock = false;
-    DB *db;
-
-    r = toku_db_create(&db, env, 0);
-    assert_zero(r);
-    r = toku_db_open_iname(db, txn, iname_in_env, 0, 0);
-    assert_zero(r);
-    r = toku_db_pre_acquire_table_lock(db, txn);
-    if (r == 0) {
-        got_lock = true;
-    } else {
-        got_lock = false;
-    }
-    toku_db_close(db);
-
-    return got_lock;
-}
-
 static int
 env_dbremove(DB_ENV * env, DB_TXN *txn, const char *fname, const char *dbname, uint32_t flags) {
     int r;
@@ -1969,7 +1938,6 @@ env_dbrename_subdb(DB_ENV *env, DB_TXN *txn, const char *fname, const char *dbna
 
 static int
 env_dbrename(DB_ENV *env, DB_TXN *txn, const char *fname, const char *dbname, const char *newname, uint32_t flags) {
-    int r;
     HANDLE_PANICKED_ENV(env);
     if (!env_opened(env) || flags != 0) {
         return EINVAL;
@@ -1991,65 +1959,7 @@ env_dbrename(DB_ENV *env, DB_TXN *txn, const char *fname, const char *dbname, co
     if (env_is_db_with_dname_open(env, newname)) {
         return toku_ydb_do_error(env, EINVAL, "Cannot rename dictionary; Dictionary with target name has an open handle.\n");
     }
-    
-    DBT old_dname_dbt;  
-    DBT new_dname_dbt;  
-    DBT iname_dbt;  
-    toku_fill_dbt(&old_dname_dbt, dname, strlen(dname)+1);
-    toku_fill_dbt(&new_dname_dbt, newname, strlen(newname)+1);
-    toku_init_dbt_flags(&iname_dbt, DB_DBT_REALLOC);
-
-    // get iname
-    r = toku_db_get(env->i->directory, txn, &old_dname_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
-    char *iname = (char *) iname_dbt.data;
-    if (r == DB_NOTFOUND) {
-        r = ENOENT;
-    } else if (r == 0) {
-        // verify that newname does not already exist
-        r = db_getf_set(env->i->directory, txn, DB_SERIALIZABLE, &new_dname_dbt, ydb_getf_do_nothing, NULL);
-        if (r == 0) {
-            r = EEXIST;
-        }
-        else if (r == DB_NOTFOUND) {
-            // remove old (dname,iname) and insert (newname,iname) in directory
-            r = toku_db_del(env->i->directory, txn, &old_dname_dbt, DB_DELETE_ANY, true);
-            if (r != 0) { goto exit; }
-            r = toku_db_put(env->i->directory, txn, &new_dname_dbt, &iname_dbt, 0, true);
-            if (r != 0) { goto exit; }
-
-            //Now that we have writelocks on both dnames, verify that there are still no handles open. (to prevent race conditions)
-            if (env_is_db_with_dname_open(env, dname)) {
-                r = toku_ydb_do_error(env, EINVAL, "Cannot rename dictionary with an open handle.\n");
-                goto exit;
-            }
-            if (env_is_db_with_dname_open(env, newname)) {
-                r = toku_ydb_do_error(env, EINVAL, "Cannot rename dictionary; Dictionary with target name has an open handle.\n");
-                goto exit;
-            }
-
-            // we know a live db handle does not exist.
-            //
-            // use the internally opened db to try and get a table lock
-            // 
-            // if we can't get it, then some txn needs the ft and we
-            // should return lock not granted.
-            //
-            // otherwise, we're okay in marking this ft as remove on
-            // commit. no new handles can open for this dictionary
-            // because the txn has directory write locks on the dname
-            if (txn && !can_acquire_table_lock(env, txn, iname)) {
-                r = DB_LOCK_NOTGRANTED;
-            }
-            // We don't do anything at the ft or cachetable layer for rename.
-            // We just update entries in the environment's directory.
-        }
-    }
-
-exit:
-    if (iname) {
-        toku_free(iname);
-    }
-    return r;
+    return env->i->dict_manager.rename(env, txn, dname, newname);
 }
 
 int 
@@ -2120,9 +2030,7 @@ include_toku_pthread_yield (void) {
 // as it is called by user
 static int 
 env_get_iname(DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt) {
-    DB *directory = env->i->directory;
-    int r = autotxn_db_get(directory, NULL, dname_dbt, iname_dbt, DB_SERIALIZABLE|DB_PRELOCKED); // allocates memory for iname
-    return r;
+    return env->i->dict_manager.get_iname_in_dbt(dname_dbt, iname_dbt);
 }
 
 // TODO 2216:  Patch out this (dangerous) function when loader is working and 
@@ -2131,18 +2039,13 @@ env_get_iname(DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt) {
 int
 toku_test_db_redirect_dictionary(DB * db, const char * dname_of_new_file, DB_TXN *dbtxn) {
     int r;
-    DBT dname_dbt;
-    DBT iname_dbt;
     char * new_iname_in_env;
 
     FT_HANDLE ft_handle = db->i->ft_handle;
     TOKUTXN tokutxn = db_txn_struct_i(dbtxn)->tokutxn;
 
-    toku_fill_dbt(&dname_dbt, dname_of_new_file, strlen(dname_of_new_file)+1);
-    toku_init_dbt_flags(&iname_dbt, DB_DBT_REALLOC);
-    r = toku_db_get(db->dbenv->i->directory, dbtxn, &dname_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
+    r = db->dbenv->i->dict_manager.get_iname(dname_of_new_file, dbtxn, &new_iname_in_env);
     assert_zero(r);
-    new_iname_in_env = (char *) iname_dbt.data;
 
     toku_multi_operation_client_lock(); //Must hold MO lock for dictionary_redirect.
     r = toku_dictionary_redirect(new_iname_in_env, ft_handle, tokutxn);

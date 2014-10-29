@@ -542,11 +542,7 @@ int toku_db_pre_acquire_fileops_lock(DB *db, DB_TXN *txn) {
     if (!dname)
         return 0;
 
-    DBT key_in_directory = { .data = dname, .size = (uint32_t) strlen(dname)+1 };
-    //Left end of range == right end of range (point lock)
-    int r = toku_db_get_range_lock(db->dbenv->i->directory, txn,
-            &key_in_directory, &key_in_directory,
-            toku::lock_request::type::WRITE);
+    int r = db->dbenv->i->dict_manager.pre_acquire_fileops_lock(txn, dname);
     if (r == 0)
         STATUS_VALUE(YDB_LAYER_DIRECTORY_WRITE_LOCKS)++;  // accountability 
     else
@@ -1176,8 +1172,6 @@ load_inames(DB_ENV * env, DB_TXN * txn, int N, DB * dbs[/*N*/], const char * new
     int i;
     
     TXNID_PAIR xid = TXNID_PAIR_NONE;
-    DBT dname_dbt;  // holds dname
-    DBT iname_dbt;  // holds new iname
     
     const char *mark;
 
@@ -1196,14 +1190,12 @@ load_inames(DB_ENV * env, DB_TXN * txn, int N, DB * dbs[/*N*/], const char * new
     }
     for (i = 0; i < N; i++) {
         char * dname = dbs[i]->i->dname;
-        toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
         // now create new iname
         char hint[strlen(dname) + 1];
         create_iname_hint(dname, hint);
         const char *new_iname = create_iname(env, xid.parent_id64, xid.child_id64, hint, mark, i);               // allocates memory for iname_in_env
         new_inames_in_env[i] = new_iname;
-        toku_fill_dbt(&iname_dbt, new_iname, strlen(new_iname) + 1);      // iname_in_env goes in directory
-        rval = toku_db_put(env->i->directory, txn, &dname_dbt, &iname_dbt, 0, true);
+        rval = env->i->dict_manager.change_iname(txn, dname, new_iname);
         if (rval) break;
     }
 
