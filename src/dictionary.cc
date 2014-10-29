@@ -291,8 +291,7 @@ int dictionary_manager::setup_persistent_environment(
     int r = 0;
     r = toku_db_create(&m_persistent_environment, env, 0);
     assert_zero(r);
-    r = toku_db_use_builtin_key_cmp(m_persistent_environment);
-    assert_zero(r);
+    toku_db_use_builtin_key_cmp(m_persistent_environment);
     r = toku_db_open_iname(m_persistent_environment, txn, toku_product_name_strings.environmentdictionary, DB_CREATE, mode);
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open persistent env\n");
@@ -331,8 +330,7 @@ cleanup:
 int dictionary_manager::setup_directory(DB_ENV* env, DB_TXN* txn, int mode) {
     int r = toku_db_create(&m_directory, env, 0);
     assert_zero(r);
-    r = toku_db_use_builtin_key_cmp(m_directory);
-    assert_zero(r);
+    toku_db_use_builtin_key_cmp(m_directory);
     r = toku_db_open_iname(m_directory, txn, toku_product_name_strings.fileopsdirectory, DB_CREATE, mode);
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open %s\n", toku_product_name_strings.fileopsdirectory);

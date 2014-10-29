@@ -423,28 +423,22 @@ void toku_db_lt_on_destroy_callback(toku::locktree *lt) {
 
 // Instruct db to use the default (built-in) key comparison function
 // by setting the flag bits in the db and ft structs
-int toku_db_use_builtin_key_cmp(DB *db) {
-    HANDLE_PANICKED_DB(db);
-    int r = 0;
-    if (db_opened(db)) {
-        r = toku_ydb_do_error(db->dbenv, EINVAL, "Comparison functions cannot be set after DB open.\n");
-    } else if (db->i->key_compare_was_set) {
-        r = toku_ydb_do_error(db->dbenv, EINVAL, "Key comparison function already set.\n");
-    } else {
-        uint32_t tflags;
-        toku_ft_get_flags(db->i->ft_handle, &tflags);
-
-        tflags |= TOKU_DB_KEYCMP_BUILTIN;
-        toku_ft_set_flags(db->i->ft_handle, tflags);
-        db->i->key_compare_was_set = true;
-    }
-    return r;
+void toku_db_use_builtin_key_cmp(DB *db) {
+    assert(!db_opened(db));
+    assert(!db->i->ft_handle->did_set_flags);
+    uint32_t tflags;
+    toku_ft_get_flags(db->i->ft_handle, &tflags);
+    tflags |= TOKU_DB_KEYCMP_BUILTIN;
+    toku_ft_set_flags(db->i->ft_handle, tflags);
 }
 
 int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags, int UU() mode) {
     //Set comparison functions if not yet set.
     HANDLE_READ_ONLY_TXN(txn);
-    if (!db->i->key_compare_was_set && db->dbenv->i->bt_compare) {
+    // we should always have SOME environment comparison function
+    // set, even if it is the default one set in toku_env_create
+    invariant(db->dbenv->i->bt_compare);
+    if (!db->i->key_compare_was_set) {
         toku_ft_set_bt_compare(db->i->ft_handle, db->dbenv->i->bt_compare);
         db->i->key_compare_was_set = true;
     }
