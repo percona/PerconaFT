@@ -1368,7 +1368,7 @@ env_get_cursor_for_persistent_environment(DB_ENV* env, DB_TXN* txn, DBC** c) {
     if (!env_opened(env)) {
         return EINVAL;
     }
-    return env->i->dict_manager.get_persistent_environtment_cursor(txn, c);
+    return env->i->dict_manager.get_persistent_environment_cursor(txn, c);
 }
 
 static int

@@ -364,7 +364,7 @@ cleanup:
 }
 
 
-int dictionary_manager::get_persistent_environtment_cursor(DB_TXN* txn, DBC** c) {
+int dictionary_manager::get_persistent_environment_cursor(DB_TXN* txn, DBC** c) {
     return toku_db_cursor(m_persistent_environment, txn, c, 0);
 }
 
