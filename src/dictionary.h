@@ -97,6 +97,7 @@ PATENT RIGHTS GRANT:
 #include <util/omt.h>
 #include "ft/txn/txn.h"
 
+int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname, uint32_t flags, int mode);
 
 class dictionary {
     char* m_dname;

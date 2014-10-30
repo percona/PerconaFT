@@ -291,7 +291,7 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
         toku_fill_dbt(&iname_dbt, iname, strlen(iname) + 1);
         //
         // put_flags will be 0 for performance only, avoid unnecessary query
-        // if we are creating a hot index, per #3166, we do not want the write lock  in directory grabbed.
+        // if we are creating a hot index, per #3166, we do not want the write lock in directory grabbed.
         // directory read lock is grabbed in toku_db_get above
         //
         uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0); 
@@ -311,20 +311,6 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
         toku_free(iname);
     }
     return r;
-}
-
-// set the descriptor and cmp_descriptor to the
-// descriptors from the given ft, updating the
-// locktree's descriptor pointer if necessary
-static void
-db_set_descriptors(DB *db, FT_HANDLE ft_handle) {
-    const toku::comparator &cmp = toku_ft_get_comparator(ft_handle);
-    db->descriptor = toku_ft_get_descriptor(ft_handle);
-    db->cmp_descriptor = toku_ft_get_cmp_descriptor(ft_handle);
-    invariant(db->cmp_descriptor == cmp.get_descriptor());
-    if (db->i->lt) {
-        db->i->lt->set_comparator(cmp);
-    }
 }
 
 // when a locktree is created, clone a ft handle and store it
@@ -361,78 +347,6 @@ void toku_db_use_builtin_key_cmp(DB *db) {
     toku_ft_get_flags(db->i->ft_handle, &tflags);
     tflags |= TOKU_DB_KEYCMP_BUILTIN;
     toku_ft_set_flags(db->i->ft_handle, tflags);
-}
-
-int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags, int UU() mode) {
-    //Set comparison functions if not yet set.
-    HANDLE_READ_ONLY_TXN(txn);
-    // we should always have SOME environment comparison function
-    // set, even if it is the default one set in toku_env_create
-    invariant(db->dbenv->i->bt_compare);
-    bool need_locktree = (bool)((db->dbenv->i->open_flags & DB_INIT_LOCK) &&
-                                (db->dbenv->i->open_flags & DB_INIT_TXN));
-
-    int is_db_excl    = flags & DB_EXCL;    flags&=~DB_EXCL;
-    int is_db_create  = flags & DB_CREATE;  flags&=~DB_CREATE;
-     // unknown or conflicting flags are bad
-     if (is_db_excl && !is_db_create) {
-        return EINVAL;
-    }
-
-    if (db_opened(db)) {
-        return EINVAL;              /* It was already open. */
-    }
-     
-    FT_HANDLE ft_handle = db->i->ft_handle;
-    int r = toku_ft_handle_open(ft_handle, iname_in_env,
-                      is_db_create, is_db_excl,
-                      db->dbenv->i->cachetable,
-                      txn ? db_txn_struct_i(txn)->tokutxn : nullptr);
-    if (r != 0) {
-        goto out;
-    }
-
-    // if the dictionary was opened as a blackhole, mark the
-    // fractal tree as blackhole too.
-    if (flags & DB_BLACKHOLE) {
-        toku_ft_set_blackhole(ft_handle);
-    }
-
-    db->i->opened = 1;
-
-    // now that the handle has successfully opened, a valid descriptor
-    // is in the ft. we need to set the db's descriptor pointers
-    db_set_descriptors(db, ft_handle);
-
-    if (need_locktree) {
-        db->i->dict_id = toku_ft_get_dictionary_id(db->i->ft_handle);
-        struct lt_on_create_callback_extra on_create_extra = {
-            .txn = txn,
-            .ft_handle = db->i->ft_handle,
-        };
-        db->i->lt = db->dbenv->i->ltm.get_lt(db->i->dict_id,
-                                             toku_ft_get_comparator(db->i->ft_handle),
-                                             &on_create_extra);
-        if (db->i->lt == nullptr) {
-            r = errno;
-            if (r == 0) {
-                r = EINVAL;
-            }
-            goto out;
-        }
-    }
-    r = 0;
- 
-out:
-    if (r != 0) {
-        db->i->dict_id = DICTIONARY_ID_NONE;
-        db->i->opened = 0;
-        if (db->i->lt) {
-            db->dbenv->i->ltm.release_lt(db->i->lt);
-            db->i->lt = nullptr;
-        }
-    }
-    return r;
 }
 
 // Return the maximum key and val size in 
