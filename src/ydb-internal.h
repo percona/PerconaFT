@@ -155,10 +155,6 @@ struct __toku_db_env_internal {
     dictionary_manager dict_manager;
     lock_timeout_callback lock_wait_timeout_callback;   // Called when a lock request times out waiting for a lock.
 
-    toku::omt<DB *> *open_dbs_by_dname;                              // Stores open db handles, sorted first by dname and then by numerical value of pointer to the db (arbitrarily assigned memory location)
-    toku::omt<DB *> *open_dbs_by_dict_id;                            // Stores open db handles, sorted by dictionary id and then by numerical value of pointer to the db (arbitrarily assigned memory location)
-    toku_pthread_rwlock_t open_dbs_rwlock;              // rwlock that protects the OMT of open dbs.
-
     char *real_data_dir;                                // data dir used when the env is opened (relative to cwd, or absolute with leading /)
     char *real_log_dir;                                 // log dir used when the env is opened  (relative to cwd, or absolute with leading /)
     char *real_tmp_dir;                                 // tmp dir used for temporary files (relative to cwd, or absoulte with leading /)
@@ -319,8 +315,6 @@ txn_is_read_only(DB_TXN* txn) {
 #define HANDLE_READ_ONLY_TXN(txn) if(txn_is_read_only(txn)) return EINVAL;
 
 void env_panic(DB_ENV * env, int cause, const char * msg);
-void env_note_db_opened(DB_ENV *env, DB *db);
-void env_note_db_closed(DB_ENV *env, DB *db);
 
 void ydb_layer_status_init (void);
 int

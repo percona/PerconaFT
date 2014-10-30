@@ -733,12 +733,11 @@ env_close(DB_ENV * env, uint32_t flags) {
         r = toku_ydb_do_error(env, EINVAL, "%s", err_msg);
         goto panic_and_quit_early;
     }
-    if (env->i->open_dbs_by_dname) { //Verify that there are no open dbs.
-        if (env->i->open_dbs_by_dname->size() > 0) {
-            err_msg = "Cannot close environment due to open DBs\n";
-            r = toku_ydb_do_error(env, EINVAL, "%s", err_msg);
-            goto panic_and_quit_early;
-        }
+    
+    if (env->i->dict_manager.num_open_dictionaries() > 0) { //Verify that there are no open dbs.
+        err_msg = "Cannot close environment due to open DBs\n";
+        r = toku_ydb_do_error(env, EINVAL, "%s", err_msg);
+        goto panic_and_quit_early;
     }
     env->i->dict_manager.destroy();
     env_fsync_log_cron_destroy(env);
@@ -801,17 +800,8 @@ env_close(DB_ENV * env, uint32_t flags) {
         toku_free(env->i->real_log_dir);
     if (env->i->real_tmp_dir)
         toku_free(env->i->real_tmp_dir);
-    if (env->i->open_dbs_by_dname) {
-        env->i->open_dbs_by_dname->destroy();
-        toku_free(env->i->open_dbs_by_dname);
-    }
-    if (env->i->open_dbs_by_dict_id) {
-        env->i->open_dbs_by_dict_id->destroy();
-        toku_free(env->i->open_dbs_by_dict_id);
-    }
     if (env->i->dir)
         toku_free(env->i->dir);
-    toku_pthread_rwlock_destroy(&env->i->open_dbs_rwlock);
 
     // Immediately before freeing internal environment unlock the directories
     unlock_single_process(env);

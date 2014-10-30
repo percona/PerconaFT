@@ -1402,13 +1402,6 @@ find_db_by_dict_id(DB *const &db, const DICTIONARY_ID &dict_id_find) {
     }
 }
 
-static DB *
-locked_get_db_by_dict_id(DB_ENV *env, DICTIONARY_ID dict_id) {
-    DB *db;
-    int r = env->i->open_dbs_by_dict_id->find_zero<DICTIONARY_ID, find_db_by_dict_id>(dict_id, &db, nullptr);
-    return r == 0 ? db : nullptr;
-}
-
 static int ltm_iterate_requests_callback(DICTIONARY_ID dict_id, TXNID txnid,
                                          const DBT *left_key,
                                          const DBT *right_key,
@@ -1418,14 +1411,14 @@ static int ltm_iterate_requests_callback(DICTIONARY_ID dict_id, TXNID txnid,
     ltm_iterate_requests_callback_extra *info =
         reinterpret_cast<ltm_iterate_requests_callback_extra *>(extra);
 
-    toku_pthread_rwlock_rdlock(&info->env->i->open_dbs_rwlock);
     int r = 0;
-    DB *db = locked_get_db_by_dict_id(info->env, dict_id);
+    assert(false);
+    DB *db = NULL;
+    //DB *db = locked_get_db_by_dict_id(info->env, dict_id);
     if (db != nullptr) {
         r = info->callback(db, txnid, left_key, right_key,
                            blocking_txnid, start_time, info->extra);
     }
-    toku_pthread_rwlock_rdunlock(&info->env->i->open_dbs_rwlock);
     return r;
 }
 
@@ -1443,7 +1436,6 @@ env_iterate_pending_lock_requests(DB_ENV *env,
 }
 
 // for the lifetime of this object:
-// - open_dbs_rwlock must be read locked (or better)
 // - txn_mutex must be held
 struct iter_txn_row_locks_callback_extra {
     iter_txn_row_locks_callback_extra(DB_ENV *e, toku::omt<txn_lt_key_ranges> *m) :
@@ -1457,7 +1449,8 @@ struct iter_txn_row_locks_callback_extra {
         txn_lt_key_ranges ranges;
         const int r = lt_map->fetch(which_lt, &ranges);
         invariant_zero(r);
-        current_db = locked_get_db_by_dict_id(env, ranges.lt->get_dict_id());
+        assert(false);
+        //current_db = locked_get_db_by_dict_id(env, ranges.lt->get_dict_id());
         iter = toku::range_buffer::iterator(ranges.buffer);
     }
 
@@ -1511,7 +1504,6 @@ static int iter_txns_callback(TOKUTXN txn, void *extra) {
     invariant_notnull(dbtxn);
 
     toku_mutex_lock(&db_txn_struct_i(dbtxn)->txn_mutex);
-    toku_pthread_rwlock_rdlock(&info->env->i->open_dbs_rwlock);
 
     iter_txn_row_locks_callback_extra e(info->env, &db_txn_struct_i(dbtxn)->lt_map);
     const int r = info->callback(toku_txn_get_txnid(txn).parent_id64,
@@ -1520,7 +1512,6 @@ static int iter_txns_callback(TOKUTXN txn, void *extra) {
                                  &e,
                                  info->extra);
 
-    toku_pthread_rwlock_rdunlock(&info->env->i->open_dbs_rwlock);
     toku_mutex_unlock(&db_txn_struct_i(dbtxn)->txn_mutex);
 
     return r;
@@ -1533,10 +1524,13 @@ env_iterate_live_transactions(DB_ENV *env,
     if (!env_opened(env)) {
         return EINVAL;
     }
-
+    if (false) {
+        // TODO: FIX!!
     TXN_MANAGER txn_manager = toku_logger_get_txn_manager(env->i->logger);
     iter_txns_callback_extra e(env, callback, extra);
     return toku_txn_manager_iter_over_live_root_txns(txn_manager, iter_txns_callback, &e);
+    }
+    return 0;
 }
 
 static void env_set_loader_memory_size(DB_ENV *env, uint64_t (*get_loader_memory_size_callback)(void)) {
@@ -1681,12 +1675,6 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     result->i->ltm.create(toku_db_lt_on_create_callback, toku_db_lt_on_destroy_callback, toku_db_txn_escalate_callback, result);
     result->i->dict_manager.create();
 
-    XMALLOC(result->i->open_dbs_by_dname);
-    result->i->open_dbs_by_dname->create();
-    XMALLOC(result->i->open_dbs_by_dict_id);
-    result->i->open_dbs_by_dict_id->create();
-    toku_pthread_rwlock_init(&result->i->open_dbs_rwlock, NULL);
-
     *envp = result;
     r = 0;
     toku_sync_fetch_and_add(&tokuft_num_envs, 1);
@@ -1736,77 +1724,6 @@ find_db_by_db_dict_id(DB *const &db, DB *const &dbfind) {
     } else {
         return 0;
     }
-}
-
-// Tell env that there is a new db handle (with non-unique dname in db->i-dname)
-void
-env_note_db_opened(DB_ENV *env, DB *db) {
-    toku_pthread_rwlock_wrlock(&env->i->open_dbs_rwlock);
-    assert(db->i->dname); // internal (non-user) dictionary has no dname
-
-    int r;
-    uint32_t idx;
-
-    r = env->i->open_dbs_by_dname->find_zero<DB *, find_db_by_db_dname>(db, nullptr, &idx);
-    assert(r == DB_NOTFOUND);
-    r = env->i->open_dbs_by_dname->insert_at(db, idx);
-    assert_zero(r);
-    r = env->i->open_dbs_by_dict_id->find_zero<DB *, find_db_by_db_dict_id>(db, nullptr, &idx);
-    assert(r == DB_NOTFOUND);
-    r = env->i->open_dbs_by_dict_id->insert_at(db, idx);
-    assert_zero(r);
-
-    STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) = env->i->open_dbs_by_dname->size();
-    STATUS_VALUE(YDB_LAYER_NUM_DB_OPEN)++;
-    if (STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) > STATUS_VALUE(YDB_LAYER_MAX_OPEN_DBS)) {
-        STATUS_VALUE(YDB_LAYER_MAX_OPEN_DBS) = STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS);
-    }
-    toku_pthread_rwlock_wrunlock(&env->i->open_dbs_rwlock);
-}
-
-// Effect: Tell the DB_ENV that the DB is no longer in use by the user of the API.  The DB may still be in use by the fractal tree internals.
-void
-env_note_db_closed(DB_ENV *env, DB *db) {
-    toku_pthread_rwlock_wrlock(&env->i->open_dbs_rwlock);
-    assert(db->i->dname); // internal (non-user) dictionary has no dname
-    assert(env->i->open_dbs_by_dname->size() > 0);
-    assert(env->i->open_dbs_by_dict_id->size() > 0);
-
-    int r;
-    uint32_t idx;
-
-    r = env->i->open_dbs_by_dname->find_zero<DB *, find_db_by_db_dname>(db, nullptr, &idx);
-    assert_zero(r);
-    r = env->i->open_dbs_by_dname->delete_at(idx);
-    assert_zero(r);
-    r = env->i->open_dbs_by_dict_id->find_zero<DB *, find_db_by_db_dict_id>(db, nullptr, &idx);
-    assert_zero(r);
-    r = env->i->open_dbs_by_dict_id->delete_at(idx);
-    assert_zero(r);
-
-    STATUS_VALUE(YDB_LAYER_NUM_DB_CLOSE)++;
-    STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) = env->i->open_dbs_by_dname->size();
-    toku_pthread_rwlock_wrunlock(&env->i->open_dbs_rwlock);
-}
-
-static int
-find_open_db_by_dname(DB *const &db, const char *const &dnamefind) {
-    return strcmp(db->i->dname, dnamefind);
-}
-
-// return true if there is any db open with the given dname
-static bool
-env_is_db_with_dname_open(DB_ENV *env, const char *dname) {
-    DB *db;
-    toku_pthread_rwlock_rdlock(&env->i->open_dbs_rwlock);
-    int r = env->i->open_dbs_by_dname->find_zero<const char *, find_open_db_by_dname>(dname, &db, nullptr);
-    if (r == 0) {
-        invariant(strcmp(dname, db->i->dname) == 0);
-    } else {
-        invariant(r == DB_NOTFOUND);
-    }
-    toku_pthread_rwlock_rdunlock(&env->i->open_dbs_rwlock);
-    return r == 0 ? true : false;
 }
 
 //We do not (yet?) support deleting subdbs by deleting the enclosing 'fname'
@@ -1877,14 +1794,6 @@ env_dbrename(DB_ENV *env, DB_TXN *txn, const char *fname, const char *dbname, co
     const char * dname = fname;
     assert(dbname == NULL);
 
-    // We check for open dnames for the old and new name as a "fast path" to error.
-    // We will need to check these again later.
-    if (env_is_db_with_dname_open(env, dname)) {
-        return toku_ydb_do_error(env, EINVAL, "Cannot rename dictionary with an open handle.\n");
-    }
-    if (env_is_db_with_dname_open(env, newname)) {
-        return toku_ydb_do_error(env, EINVAL, "Cannot rename dictionary; Dictionary with target name has an open handle.\n");
-    }
     return env->i->dict_manager.rename(env, txn, dname, newname);
 }
 

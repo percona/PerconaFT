@@ -162,4 +162,5 @@ private:
 public:
     dictionary* get_dictionary(const char * dname);
     void remove_dictionary(dictionary* dbi);
+    uint32_t num_open_dictionaries();
 };

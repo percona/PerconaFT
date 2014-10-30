@@ -747,6 +747,13 @@ void dictionary_manager::remove_dictionary(dictionary* dbi) {
     toku_mutex_unlock(&m_mutex);
 }
 
+uint32_t dictionary_manager::num_open_dictionaries() {
+    toku_mutex_lock(&m_mutex);
+    uint32_t retval =  m_dictionary_map.size();
+    toku_mutex_unlock(&m_mutex);
+    return retval;    
+}
+
 dictionary* dictionary_manager::get_dictionary(const char * dname) {
     toku_mutex_lock(&m_mutex);
     dictionary *dbi = find(dname);

@@ -145,7 +145,7 @@ void
 toku_db_close(DB * db) {
     if (db_opened(db) && db->i->dname) {
         // internal (non-user) dictionary has no dname
-        env_note_db_closed(db->dbenv, db);  // tell env that this db is no longer in use by the user of this api (user-closed, may still be in use by fractal tree internals)
+        assert(false); // need to handle releasing reference of dictionary
     }
     // close the ft handle, and possibly close the locktree
     toku_ft_handle_close(db->i->ft_handle);
