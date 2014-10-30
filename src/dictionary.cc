@@ -582,6 +582,11 @@ exit:
     return r;
 }
 
+/*
+int dictionary_manager::remove() {
+}
+*/
+
 int dictionary_manager::open_db(
     DB* db,
     const char * dname,

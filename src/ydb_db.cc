@@ -247,11 +247,10 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
 
     ////////////////////////////// do some level of parameter checking.
     uint32_t unused_flags = flags;
-    int r;
     if (dbtype!=DB_BTREE && dbtype!=DB_UNKNOWN) return EINVAL;
     int is_db_excl    = flags & DB_EXCL;    unused_flags&=~DB_EXCL;
     int is_db_create  = flags & DB_CREATE;  unused_flags&=~DB_CREATE;
-    int is_db_hot_index  = flags & DB_IS_HOT_INDEX;  unused_flags&=~DB_IS_HOT_INDEX;
+    unused_flags&=~DB_IS_HOT_INDEX;
 
     //We support READ_UNCOMMITTED and READ_COMMITTED whether or not the flag is provided.
     unused_flags&=~DB_READ_UNCOMMITTED;
@@ -271,46 +270,7 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
         // it was already open
         return EINVAL;
     }
-    //////////////////////////////
-
-    // convert dname to iname
-    //  - look up dname, get iname
-    //  - if dname does not exist, create iname and make entry in directory
-    DBT dname_dbt;  // holds dname
-    DBT iname_dbt;  // holds iname_in_env
-    toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
-    toku_init_dbt_flags(&iname_dbt, DB_DBT_REALLOC);
-    r = toku_db_get(db->dbenv->i->directory, txn, &dname_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
-    char *iname = (char *) iname_dbt.data;
-    if (r == DB_NOTFOUND && !is_db_create) {
-        r = ENOENT;
-    } else if (r==0 && is_db_excl) {
-        r = EEXIST;
-    } else if (r == DB_NOTFOUND) {
-        iname = create_new_iname(dname, db->dbenv, txn, NULL);
-        toku_fill_dbt(&iname_dbt, iname, strlen(iname) + 1);
-        //
-        // put_flags will be 0 for performance only, avoid unnecessary query
-        // if we are creating a hot index, per #3166, we do not want the write lock in directory grabbed.
-        // directory read lock is grabbed in toku_db_get above
-        //
-        uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0); 
-        r = toku_db_put(db->dbenv->i->directory, txn, &dname_dbt, &iname_dbt, put_flags, true);  
-    }
-
-    // we now have an iname
-    if (r == 0) {
-        r = toku_db_open_iname(db, txn, iname, flags);
-        if (r == 0) {
-            db->i->dname = toku_xstrdup(dname);
-            env_note_db_opened(db->dbenv, db);  // tell env that a new db handle is open (using dname)
-        }
-    }
-
-    if (iname) {
-        toku_free(iname);
-    }
-    return r;
+    return db->dbenv->i->dict_manager.open_db(db, dname, txn, flags);
 }
 
 // when a locktree is created, clone a ft handle and store it
