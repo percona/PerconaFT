@@ -99,12 +99,19 @@ PATENT RIGHTS GRANT:
 
 int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname, uint32_t flags);
 
+class dictionary_manager;
+
 class dictionary {
     char* m_dname;
+    uint32_t m_refcount; // access protected by the mutex of dictionary_manager that is managing this dictionary
+    dictionary_manager* m_mgr;
 public:
-    void create(const char* dname);
+    void create(const char* dname, dictionary_manager* manager);
     void destroy();
+    void release();
     const char* get_dname() const;
+
+    friend class dictionary_manager;
 };
 
 class dictionary_manager {
@@ -159,8 +166,9 @@ private:
     static int find_by_dname(dictionary *const &dbi, const char* const &dname);
     dictionary* find(const char* dname);
     void add_db(dictionary* dbi);
+    void remove_dictionary(dictionary* dbi);
 public:
     dictionary* get_dictionary(const char * dname);
-    void remove_dictionary(dictionary* dbi);
+    bool release_dictionary(dictionary* dbi);
     uint32_t num_open_dictionaries();
 };

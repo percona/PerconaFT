@@ -186,12 +186,29 @@ out:
     return r;
 }
 
-void dictionary::create(const char* dname) {
+void dictionary::create(const char* dname, dictionary_manager* manager) {
     m_dname = toku_strdup(dname);
+    m_refcount = 0;
+    m_mgr = manager;
 }
 
 void dictionary::destroy(){
+    invariant(m_refcount == 0);
     toku_free(m_dname);
+}
+
+void dictionary::release(){
+    bool do_destroy = false;
+    if (m_mgr) {
+        do_destroy = m_mgr->release_dictionary(this);
+    }
+    else {
+        invariant(m_refcount == 0);
+        do_destroy = true;
+    }
+    if (do_destroy) {
+        destroy();
+    }
 }
 
 const char* dictionary::get_dname() const {
@@ -543,18 +560,23 @@ int dictionary_manager::rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, 
             if (r != 0) { goto exit; }
 
             //Now that we have writelocks on both dnames, verify that there are still no handles open. (to prevent race conditions)
-            /*
-            if (env_is_db_with_dname_open(env, old_dname)) {
+            dictionary* old_dict = NULL;
+            dictionary* new_dict = NULL;
+            toku_mutex_lock(&m_mutex);
+            old_dict = find(old_dname);
+            new_dict = find(new_dname);
+            toku_mutex_unlock(&m_mutex);
+            
+            if (old_dict) {
                 printf("Cannot rename dictionary with an open handle.\n");
                 r = EINVAL;
                 goto exit;
             }
-            if (env_is_db_with_dname_open(env, new_dname)) {
+            if (new_dict) {
                 printf("Cannot rename dictionary; Dictionary with target name has an open handle.\n");
                 r = EINVAL;
                 goto exit;
             }
-            */
 
             // we know a live db handle does not exist.
             //
@@ -618,13 +640,15 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
         goto exit;
     }
     if (txn) {
+        dictionary* old_dict = NULL;
+        toku_mutex_lock(&m_mutex);
+        old_dict = find(dname);
+        toku_mutex_unlock(&m_mutex);
         // Now that we have a writelock on dname, verify that there are still no handles open. (to prevent race conditions)
-        /*
-        if (env_is_db_with_dname_open(env, dname)) {
+        if (old_dict) {
             r = toku_ydb_do_error(env, EINVAL, "Cannot remove dictionary with an open handle.\n");
             goto exit;
         }
-        */
         // we know a live db handle does not exist.
         //
         // use the internally opened db to try and get a table lock
@@ -683,12 +707,13 @@ int dictionary_manager::open_db(
         change_iname(txn, dname, iname, put_flags);
     }
 
+    
     // we now have an iname
     if (r == 0) {
         r = toku_db_open_iname(db, txn, iname, flags);
         if (r == 0) {
-            //db->i->dname = toku_xstrdup(dname);
-            //env_note_db_opened(db->dbenv, db);  // tell env that a new db handle is open (using dname)
+            // now that the directory has been updated, create the dictionary
+            db->i->dict = get_dictionary(dname);
         }
     }
 
@@ -731,7 +756,6 @@ void dictionary_manager::add_db(dictionary* dbi) {
 }
 
 void dictionary_manager::remove_dictionary(dictionary* dbi) {
-    toku_mutex_lock(&m_mutex);
     uint32_t idx;
     dictionary *found_dbi;
     const char* dname = dbi->get_dname();
@@ -744,7 +768,18 @@ void dictionary_manager::remove_dictionary(dictionary* dbi) {
     invariant(found_dbi == dbi);
     r = m_dictionary_map.delete_at(idx);
     invariant_zero(r);
+}
+
+bool dictionary_manager::release_dictionary(dictionary* dbi) {
+    bool do_destroy = false;
+    toku_mutex_lock(&m_mutex);
+    dbi->m_refcount--;
+    if (dbi->m_refcount == 0) {
+        remove_dictionary(dbi);
+        do_destroy = true;
+    }
     toku_mutex_unlock(&m_mutex);
+    return do_destroy;
 }
 
 uint32_t dictionary_manager::num_open_dictionaries() {
@@ -759,9 +794,10 @@ dictionary* dictionary_manager::get_dictionary(const char * dname) {
     dictionary *dbi = find(dname);
     if (dbi == nullptr) {
         XCALLOC(dbi);
-        dbi->create(dname);
+        dbi->create(dname, this);
         add_db(dbi);
     }
+    dbi->m_refcount++;
     toku_mutex_unlock(&m_mutex);
     return dbi;
 }
