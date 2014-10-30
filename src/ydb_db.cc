@@ -107,6 +107,7 @@ PATENT RIGHTS GRANT:
 #include <portability/toku_atomic.h>
 #include <util/status.h>
 #include <ft/le-cursor.h>
+#include "iname_helpers.h"
 
 static YDB_DB_LAYER_STATUS_S ydb_db_layer_status;
 #ifdef STATUS_VALUE
@@ -134,61 +135,6 @@ ydb_db_layer_get_status(YDB_DB_LAYER_STATUS statp) {
     if (!ydb_db_layer_status.initialized)
         ydb_db_layer_status_init();
     *statp = ydb_db_layer_status;
-}
-
-static void
-create_iname_hint(const char *dname, char *hint) {
-    //Requires: size of hint array must be > strlen(dname)
-    //Copy alphanumeric characters only.
-    //Replace strings of non-alphanumeric characters with a single underscore.
-    bool underscored = false;
-    while (*dname) {
-        if (isalnum(*dname)) {
-            char c = *dname++;
-            *hint++ = c;
-            underscored = false;
-        }
-        else {
-            if (!underscored)
-                *hint++ = '_';
-            dname++;
-            underscored = true;
-        }
-    }
-    *hint = '\0';
-}
-
-// n < 0  means to ignore mark and ignore n
-// n >= 0 means to include mark ("_B_" or "_P_") with hex value of n in iname
-// (intended for use by loader, which will create many inames using one txnid).
-static char *
-construct_iname(DB_ENV *env, uint64_t id1, uint64_t id2, char *hint, const char *mark, int n) {
-    int bytes;
-    char inamebase[strlen(hint) +
-                   8 +  // hex file format version
-                   24 + // hex id (normally the txnid's parent and child)
-                   8  + // hex value of n if non-neg
-                   sizeof("_B___.") + // extra pieces
-                   strlen(toku_product_name)];
-    if (n < 0)
-        bytes = snprintf(inamebase, sizeof(inamebase),
-                         "%s_%" PRIx64 "_%" PRIx64 "_%" PRIx32            ".%s",
-                         hint, id1, id2, FT_LAYOUT_VERSION, toku_product_name);
-    else {
-        invariant(strlen(mark) == 1);
-        bytes = snprintf(inamebase, sizeof(inamebase),
-                         "%s_%" PRIx64 "_%" PRIx64 "_%" PRIx32 "_%s_%" PRIx32 ".%s",
-                         hint, id1, id2, FT_LAYOUT_VERSION, mark, n, toku_product_name);
-    }
-    assert(bytes>0);
-    assert(bytes<=(int)sizeof(inamebase)-1);
-    char *rval;
-    if (env->i->data_dir)
-        rval = toku_construct_full_name(2, env->i->data_dir, inamebase);
-    else
-        rval = toku_construct_full_name(1, inamebase);
-    assert(rval);
-    return rval;
 }
 
 static int toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYPE dbtype, uint32_t flags, int mode);
@@ -276,25 +222,6 @@ db_open_subdb(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTY
         r = toku_db_open(db, txn, subdb_full_name, null_subdbname, dbtype, flags, mode);
     }
     return r;
-}
-
-static uint64_t nontransactional_open_id = 0;
-
-static char* create_new_iname(const char* dname, DB_ENV* env, DB_TXN* txn, const char* mark) {
-    char hint[strlen(dname) + 1];
-    
-    // create iname and make entry in directory
-    uint64_t id1 = 0;
-    uint64_t id2 = 0;
-    
-    if (txn) {
-        id1 = toku_txn_get_txnid(db_txn_struct_i(txn)->tokutxn).parent_id64;
-        id2 = toku_txn_get_txnid(db_txn_struct_i(txn)->tokutxn).child_id64;
-    } else {
-        id1 = toku_sync_fetch_and_add(&nontransactional_open_id, 1);
-    }
-    create_iname_hint(dname, hint);
-    return construct_iname(env, id1, id2, hint, mark, -1);  // allocated memory for iname
 }
 
 // inames are created here.
