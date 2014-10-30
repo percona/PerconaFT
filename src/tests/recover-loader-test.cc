@@ -211,11 +211,12 @@ verify_file(char const * const dirname, char const * const filename) {
 }
 
 void
-get_inames(DBT* inames, DB** dbs) {
+get_inames(DBT* inames, DB** dbs UU()) {
     int i;
     for (i = 0; i < NUM_DBS; i++) {
 	DBT dname;
-	char * dname_str = dbs[i]->i->dict->get_dname();
+	const char * dname_str = NULL; //dbs[i]->i->dict->get_dname();
+	assert(false); // TODO: fix later
 	dbt_init(&dname, dname_str, strlen(dname_str)+1);
 	dbt_init(&(inames[i]), NULL, 0);
 	inames[i].flags |= DB_DBT_MALLOC;
