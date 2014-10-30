@@ -526,12 +526,11 @@ cleanup:
     return r;
 }
 
-static int setup_metadata_files(DB_ENV* env, bool newenv, DB_TXN* txn, int mode, LSN last_lsn_of_clean_shutdown_read_from_log) {
+static int setup_metadata_files(DB_ENV* env, bool newenv, DB_TXN* txn, LSN last_lsn_of_clean_shutdown_read_from_log) {
     return env->i->dict_manager.setup_metadata(
         env,
         newenv,
         txn,
-        mode,
         last_lsn_of_clean_shutdown_read_from_log
         );
 }
@@ -658,7 +657,7 @@ env_open(DB_ENV* env, const char *home, uint32_t flags, int mode)
         assert_zero(r);
     }
 
-    setup_metadata_files(env, newenv, txn, mode, last_lsn_of_clean_shutdown_read_from_log);
+    setup_metadata_files(env, newenv, txn, last_lsn_of_clean_shutdown_read_from_log);
     if (r!=0) goto cleanup;
 
     if (using_txns) {

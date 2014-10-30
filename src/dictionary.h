@@ -115,8 +115,8 @@ private:
         DB_TXN * txn,
         LSN last_lsn_of_clean_shutdown_read_from_log
         );
-    int setup_persistent_environment(DB_ENV* env, bool newenv, DB_TXN* txn, int mode, LSN last_lsn_of_clean_shutdown_read_from_log);
-    int setup_directory(DB_ENV* env, DB_TXN* txn, int mode);
+    int setup_persistent_environment(DB_ENV* env, bool newenv, DB_TXN* txn, LSN last_lsn_of_clean_shutdown_read_from_log);
+    int setup_directory(DB_ENV* env, DB_TXN* txn);
 public:
     int get_persistent_environment_cursor(DB_TXN* txn, DBC** c);
 
@@ -136,7 +136,6 @@ public:
         DB_ENV* env,
         bool newenv,
         DB_TXN* txn,
-        int mode,
         LSN last_lsn_of_clean_shutdown_read_from_log
         );
     int get_directory_cursor(DB_TXN* txn, DBC** c);

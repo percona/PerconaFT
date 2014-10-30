@@ -369,7 +369,6 @@ int dictionary_manager::setup_persistent_environment(
     DB_ENV* env,
     bool newenv,
     DB_TXN* txn,
-    int mode,
     LSN last_lsn_of_clean_shutdown_read_from_log
     ) 
 {
@@ -412,7 +411,7 @@ cleanup:
     return r;
 }
 
-int dictionary_manager::setup_directory(DB_ENV* env, DB_TXN* txn, int mode) {
+int dictionary_manager::setup_directory(DB_ENV* env, DB_TXN* txn) {
     int r = toku_db_create(&m_directory, env, 0);
     assert_zero(r);
     toku_db_use_builtin_key_cmp(m_directory);
@@ -427,7 +426,6 @@ int dictionary_manager::setup_metadata(
     DB_ENV* env,
     bool newenv,
     DB_TXN* txn,
-    int mode,
     LSN last_lsn_of_clean_shutdown_read_from_log
     )
 {
@@ -436,11 +434,10 @@ int dictionary_manager::setup_metadata(
         env,
         newenv,
         txn,
-        mode,
         last_lsn_of_clean_shutdown_read_from_log
         );
     if (r != 0) goto cleanup;
-    r = setup_directory(env, txn, mode);
+    r = setup_directory(env, txn);
     
 cleanup:
     return r;
@@ -612,7 +609,7 @@ int dictionary_manager::open_db(
 
     // we now have an iname
     if (r == 0) {
-        r = toku_db_open_iname(db, txn, iname, flags, 0);
+        r = toku_db_open_iname(db, txn, iname, flags);
         if (r == 0) {
             //db->i->dname = toku_xstrdup(dname);
             //env_note_db_opened(db->dbenv, db);  // tell env that a new db handle is open (using dname)
