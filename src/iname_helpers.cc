@@ -93,6 +93,9 @@ PATENT RIGHTS GRANT:
 
 #include <db.h>
 
+#include "ydb-internal.h"
+#include "iname_helpers.h"
+
 static uint64_t nontransactional_open_id = 0;
 
 // functions used to construct inames from dnames

@@ -93,4 +93,9 @@ PATENT RIGHTS GRANT:
 
 #include <db.h>
 
+#include <ft/ft.h>
+
+#include "ydb-internal.h"
+//#include "ydb_txn.h"
+
 char* create_new_iname(const char* dname, DB_ENV* env, DB_TXN* txn, const char* mark);
