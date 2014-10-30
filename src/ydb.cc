@@ -1390,19 +1390,7 @@ struct ltm_iterate_requests_callback_extra {
     void *extra;
 };
 
-static int
-find_db_by_dict_id(DB *const &db, const DICTIONARY_ID &dict_id_find) {
-    DICTIONARY_ID dict_id = db->i->dict_id;
-    if (dict_id.dictid < dict_id_find.dictid) {
-        return -1;
-    } else if (dict_id.dictid > dict_id_find.dictid) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-static int ltm_iterate_requests_callback(DICTIONARY_ID dict_id, TXNID txnid,
+static int ltm_iterate_requests_callback(DICTIONARY_ID dict_id UU(), TXNID txnid,
                                          const DBT *left_key,
                                          const DBT *right_key,
                                          TXNID blocking_txnid,
@@ -1692,38 +1680,6 @@ int
 DB_ENV_CREATE_FUN (DB_ENV ** envp, uint32_t flags) {
     int r = toku_env_create(envp, flags); 
     return r;
-}
-
-// return 0 if v and dbv refer to same db (including same dname)
-// return <0 if v is earlier in omt than dbv
-// return >0 if v is later in omt than dbv
-static int
-find_db_by_db_dname(DB *const &db, DB *const &dbfind) {
-    int cmp;
-    const char *dname     = db->i->dname;
-    const char *dnamefind = dbfind->i->dname;
-    cmp = strcmp(dname, dnamefind);
-    if (cmp != 0) return cmp;
-    if (db < dbfind) return -1;
-    if (db > dbfind) return  1;
-    return 0;
-}
-
-static int
-find_db_by_db_dict_id(DB *const &db, DB *const &dbfind) {
-    DICTIONARY_ID dict_id = db->i->dict_id;
-    DICTIONARY_ID dict_id_find = dbfind->i->dict_id;
-    if (dict_id.dictid < dict_id_find.dictid) {
-        return -1;
-    } else if (dict_id.dictid > dict_id_find.dictid) {
-        return 1;
-    } else if (db < dbfind) {
-        return -1;
-    } else if (db > dbfind) {
-        return 1;
-    } else {
-        return 0;
-    }
 }
 
 //We do not (yet?) support deleting subdbs by deleting the enclosing 'fname'
