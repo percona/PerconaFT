@@ -605,13 +605,7 @@ exit:
 }
 
 int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
-    // We check for an open db here as a "fast path" to error.
-    // We'll need to check again below to be sure.
-    /*
-    if (env_is_db_with_dname_open(env, dname)) {
-        return toku_ydb_do_error(env, EINVAL, "Cannot remove dictionary with an open handle.\n");
-    }
-    */
+    // TODO: perhaps add a fast path of bailing if open handles exist
     char* iname = NULL;
     int r = get_iname(dname, txn, &iname);
 
@@ -706,7 +700,6 @@ int dictionary_manager::open_db(
         uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0); 
         change_iname(txn, dname, iname, put_flags);
     }
-
     
     // we now have an iname
     if (r == 0) {
