@@ -698,7 +698,6 @@ int dictionary_manager::open_db(
     return r;
 }
 
-
 void dictionary_manager::create() {
     ZERO_STRUCT(m_mutex);
     toku_mutex_init(&m_mutex, nullptr);
