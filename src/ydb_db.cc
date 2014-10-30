@@ -280,7 +280,7 @@ db_open_subdb(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTY
 
 static uint64_t nontransactional_open_id = 0;
 
-static char* create_new_iname(const char* dname, DB_ENV* env, DB_TXN* txn) {
+static char* create_new_iname(const char* dname, DB_ENV* env, DB_TXN* txn, const char* mark) {
     char hint[strlen(dname) + 1];
     
     // create iname and make entry in directory
@@ -294,7 +294,7 @@ static char* create_new_iname(const char* dname, DB_ENV* env, DB_TXN* txn) {
         id1 = toku_sync_fetch_and_add(&nontransactional_open_id, 1);
     }
     create_iname_hint(dname, hint);
-    return construct_iname(env, id1, id2, hint, NULL, -1);  // allocated memory for iname
+    return construct_iname(env, id1, id2, hint, mark, -1);  // allocated memory for iname
 }
 
 // inames are created here.
@@ -360,7 +360,7 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
     } else if (r==0 && is_db_excl) {
         r = EEXIST;
     } else if (r == DB_NOTFOUND) {
-        iname = create_new_iname(dname, db->dbenv, txn);
+        iname = create_new_iname(dname, db->dbenv, txn, NULL);
         toku_fill_dbt(&iname_dbt, iname, strlen(iname) + 1);
         //
         // put_flags will be 0 for performance only, avoid unnecessary query
@@ -1150,8 +1150,6 @@ load_inames(DB_ENV * env, DB_TXN * txn, int N, DB * dbs[/*N*/], const char * new
     int rval = 0;
     int i;
     
-    TXNID_PAIR xid = TXNID_PAIR_NONE;
-    
     const char *mark;
 
     if (mark_as_loader) {
@@ -1164,15 +1162,9 @@ load_inames(DB_ENV * env, DB_TXN * txn, int N, DB * dbs[/*N*/], const char * new
         new_inames_in_env[i] = NULL;
     }
 
-    if (txn) {
-        xid = toku_txn_get_txnid(db_txn_struct_i(txn)->tokutxn);
-    }
     for (i = 0; i < N; i++) {
         char * dname = dbs[i]->i->dname;
-        // now create new iname
-        char hint[strlen(dname) + 1];
-        create_iname_hint(dname, hint);
-        const char *new_iname = construct_iname(env, xid.parent_id64, xid.child_id64, hint, mark, i);               // allocates memory for iname_in_env
+        const char *new_iname = create_new_iname(dname, env, txn, mark);
         new_inames_in_env[i] = new_iname;
         rval = env->i->dict_manager.change_iname(txn, dname, new_iname);
         if (rval) break;
