@@ -145,7 +145,7 @@ public:
     int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags);
     int pre_acquire_fileops_lock(DB_TXN* txn, char* dname);
     int rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname);
-    //int remove();
+    int remove(const char * dname, DB_ENV* env, DB_TXN* txn);
     void create();
     void destroy();
 

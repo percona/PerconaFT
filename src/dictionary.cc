@@ -582,10 +582,81 @@ exit:
     return r;
 }
 
-/*
-int dictionary_manager::remove() {
+int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
+    // We check for an open db here as a "fast path" to error.
+    // We'll need to check again below to be sure.
+    /*
+    if (env_is_db_with_dname_open(env, dname)) {
+        return toku_ydb_do_error(env, EINVAL, "Cannot remove dictionary with an open handle.\n");
+    }
+    */
+    char* iname = NULL;
+    int r = get_iname(dname, txn, &iname);
+
+    DB *db = NULL;
+    if (r != 0) {
+        if (r == DB_NOTFOUND) {
+            r = ENOENT;
+        }
+        goto exit;
+    }
+    // remove (dname,iname) from directory
+    DBT dname_dbt;  
+    toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
+    r = toku_db_del(m_directory, txn, &dname_dbt, DB_DELETE_ANY, true);
+    if (r != 0) {
+        goto exit;
+    }
+    r = toku_db_create(&db, env, 0);
+    lazy_assert_zero(r);
+    r = toku_db_open_iname(db, txn, iname, 0);
+    if (txn && r) {
+        if (r == EMFILE || r == ENFILE)
+            r = toku_ydb_do_error(env, r, "toku dbremove failed because open file limit reached\n");
+        else
+            r = toku_ydb_do_error(env, r, "toku dbremove failed\n");
+        goto exit;
+    }
+    if (txn) {
+        // Now that we have a writelock on dname, verify that there are still no handles open. (to prevent race conditions)
+        /*
+        if (env_is_db_with_dname_open(env, dname)) {
+            r = toku_ydb_do_error(env, EINVAL, "Cannot remove dictionary with an open handle.\n");
+            goto exit;
+        }
+        */
+        // we know a live db handle does not exist.
+        //
+        // use the internally opened db to try and get a table lock
+        //
+        // if we can't get it, then some txn needs the ft and we
+        // should return lock not granted.
+        //
+        // otherwise, we're okay in marking this ft as remove on
+        // commit. no new handles can open for this dictionary
+        // because the txn has directory write locks on the dname
+        r = toku_db_pre_acquire_table_lock(db, txn);
+        if (r != 0) {
+            r = DB_LOCK_NOTGRANTED;
+            goto exit;
+        }
+        // The ft will be unlinked when the txn commits
+        toku_ft_unlink_on_commit(db->i->ft_handle, db_txn_struct_i(txn)->tokutxn);
+    }
+    else {
+        // unlink the ft without a txn
+        toku_ft_unlink(db->i->ft_handle);
+    }
+
+exit:
+    if (db) {
+        toku_db_close(db);
+    }
+    if (iname) {
+        toku_free(iname);
+    }
+    return r;
 }
-*/
 
 int dictionary_manager::open_db(
     DB* db,
