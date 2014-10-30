@@ -100,6 +100,7 @@ PATENT RIGHTS GRANT:
 #include "ydb_cursor.h"
 #include <locktree/locktree.h>
 #include "ydb_row_lock.h"
+#include "iname_helpers.h"
 
 
 // set the descriptor and cmp_descriptor to the
@@ -111,12 +112,9 @@ db_set_descriptors(DB *db, FT_HANDLE ft_handle) {
     db->descriptor = toku_ft_get_descriptor(ft_handle);
     db->cmp_descriptor = toku_ft_get_cmp_descriptor(ft_handle);
     invariant(db->cmp_descriptor == cmp.get_descriptor());
-    if (db->i->lt) {
-        db->i->lt->set_comparator(cmp);
-    }
 }
 
-int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags, int UU() mode) {
+int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags) {
     //Set comparison functions if not yet set.
     HANDLE_READ_ONLY_TXN(txn);
     // we should always have SOME environment comparison function
@@ -379,7 +377,7 @@ int dictionary_manager::setup_persistent_environment(
     r = toku_db_create(&m_persistent_environment, env, 0);
     assert_zero(r);
     toku_db_use_builtin_key_cmp(m_persistent_environment);
-    r = toku_db_open_iname(m_persistent_environment, txn, toku_product_name_strings.environmentdictionary, DB_CREATE, mode);
+    r = toku_db_open_iname(m_persistent_environment, txn, toku_product_name_strings.environmentdictionary, DB_CREATE);
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open persistent env\n");
         goto cleanup;
@@ -418,7 +416,7 @@ int dictionary_manager::setup_directory(DB_ENV* env, DB_TXN* txn, int mode) {
     int r = toku_db_create(&m_directory, env, 0);
     assert_zero(r);
     toku_db_use_builtin_key_cmp(m_directory);
-    r = toku_db_open_iname(m_directory, txn, toku_product_name_strings.fileopsdirectory, DB_CREATE, mode);
+    r = toku_db_open_iname(m_directory, txn, toku_product_name_strings.fileopsdirectory, DB_CREATE);
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open %s\n", toku_product_name_strings.fileopsdirectory);
     }
@@ -478,12 +476,12 @@ int dictionary_manager::get_iname_in_dbt(DBT* dname_dbt, DBT* iname_dbt) {
     return autotxn_db_get(m_directory, NULL, dname_dbt, iname_dbt, DB_SERIALIZABLE|DB_PRELOCKED); // allocates memory for iname
 }
 
-int dictionary_manager::change_iname(DB_TXN* txn, const char* dname, const char* new_iname) {
+int dictionary_manager::change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags) {
     DBT dname_dbt;  // holds dname
     toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
     DBT iname_dbt;  // holds new iname
     toku_fill_dbt(&iname_dbt, new_iname, strlen(new_iname) + 1);      // iname_in_env goes in directory
-    return toku_db_put(m_directory, txn, &dname_dbt, &iname_dbt, 0, true);
+    return toku_db_put(m_directory, txn, &dname_dbt, &iname_dbt, put_flags, true);
 }
 
 int dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
@@ -507,7 +505,7 @@ can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char *iname_in_env) {
 
     r = toku_db_create(&db, env, 0);
     assert_zero(r);
-    r = toku_db_open_iname(db, txn, iname_in_env, 0, 0);
+    r = toku_db_open_iname(db, txn, iname_in_env, 0);
     assert_zero(r);
     r = toku_db_pre_acquire_table_lock(db, txn);
     if (r == 0) {
@@ -586,6 +584,47 @@ exit:
     }
     return r;
 }
+
+int dictionary_manager::open_db(
+    DB* db,
+    const char * dname,
+    DB_TXN * txn,
+    uint32_t flags
+    )
+{
+    int r = 0;
+    int is_db_excl = flags & DB_EXCL;
+    int is_db_create = flags & DB_CREATE;
+    int is_db_hot_index  = flags & DB_IS_HOT_INDEX;
+    
+    assert(!db_opened(db));
+    char* iname = NULL;
+    r = get_iname(dname, txn, &iname);
+    if (r == DB_NOTFOUND && !is_db_create) {
+        r = ENOENT;
+    } else if (r==0 && is_db_excl) {
+        r = EEXIST;
+    } else if (r == DB_NOTFOUND) {
+        iname = create_new_iname(dname, db->dbenv, txn, NULL);
+        uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0); 
+        change_iname(txn, dname, iname, put_flags);
+    }
+
+    // we now have an iname
+    if (r == 0) {
+        r = toku_db_open_iname(db, txn, iname, flags, 0);
+        if (r == 0) {
+            //db->i->dname = toku_xstrdup(dname);
+            //env_note_db_opened(db->dbenv, db);  // tell env that a new db handle is open (using dname)
+        }
+    }
+
+    if (iname) {
+        toku_free(iname);
+    }
+    return r;
+}
+
 
 void dictionary_manager::create() {
     ZERO_STRUCT(m_mutex);

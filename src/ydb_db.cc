@@ -300,7 +300,7 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
 
     // we now have an iname
     if (r == 0) {
-        r = toku_db_open_iname(db, txn, iname, flags, mode);
+        r = toku_db_open_iname(db, txn, iname, flags);
         if (r == 0) {
             db->i->dname = toku_xstrdup(dname);
             env_note_db_opened(db->dbenv, db);  // tell env that a new db handle is open (using dname)
@@ -1007,7 +1007,7 @@ load_inames(DB_ENV * env, DB_TXN * txn, int N, DB * dbs[/*N*/], const char * new
         char * dname = dbs[i]->i->dname;
         const char *new_iname = create_new_iname(dname, env, txn, mark);
         new_inames_in_env[i] = new_iname;
-        rval = env->i->dict_manager.change_iname(txn, dname, new_iname);
+        rval = env->i->dict_manager.change_iname(txn, dname, new_iname, 0);
         if (rval) break;
     }
 

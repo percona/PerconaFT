@@ -1868,7 +1868,7 @@ env_dbremove(DB_ENV * env, DB_TXN *txn, const char *fname, const char *dbname, u
     }
     r = toku_db_create(&db, env, 0);
     lazy_assert_zero(r);
-    r = toku_db_open_iname(db, txn, iname, 0, 0);
+    r = toku_db_open_iname(db, txn, iname, 0);
     if (txn && r) {
         if (r == EMFILE || r == ENFILE)
             r = toku_ydb_do_error(env, r, "toku dbremove failed because open file limit reached\n");

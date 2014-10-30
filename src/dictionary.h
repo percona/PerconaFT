@@ -97,7 +97,7 @@ PATENT RIGHTS GRANT:
 #include <util/omt.h>
 #include "ft/txn/txn.h"
 
-int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname, uint32_t flags, int mode);
+int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname, uint32_t flags);
 
 class dictionary {
     char* m_dname;
@@ -143,11 +143,13 @@ public:
     int get_iname(const char* dname, DB_TXN* txn, char** iname);
     int get_iname_in_dbt(DBT* dname_dbt, DBT* iname_dbt);
     // used in a part of bulk loading
-    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname);
+    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags);
     int pre_acquire_fileops_lock(DB_TXN* txn, char* dname);
     int rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname);
     void create();
     void destroy();
+
+    int open_db(DB* db, const char * dname, DB_TXN * txn, uint32_t flags);
 
     
 private:
