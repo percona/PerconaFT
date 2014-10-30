@@ -167,8 +167,8 @@ private:
     dictionary* find(const char* dname);
     void add_db(dictionary* dbi);
     void remove_dictionary(dictionary* dbi);
-public:
     dictionary* get_dictionary(const char * dname);
+public:
     bool release_dictionary(dictionary* dbi);
     uint32_t num_open_dictionaries();
 };

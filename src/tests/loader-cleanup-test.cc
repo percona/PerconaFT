@@ -419,7 +419,7 @@ get_inames(DBT* inames, DB** dbs) {
     int i;
     for (i = 0; i < NUM_DBS; i++) {
 	DBT dname;
-	char * dname_str = dbs[i]->i->dname;
+	char * dname_str = dbs[i]->i->dict->get_dname();
 	dbt_init(&dname, dname_str, strlen(dname_str)+1);
 	dbt_init(&(inames[i]), NULL, 0);
 	inames[i].flags |= DB_DBT_MALLOC;
@@ -461,7 +461,7 @@ print_inames(DB** dbs) {
     for (i = 0; i < NUM_DBS; i++) {
 	DBT dname;
 	DBT iname;
-	char * dname_str = dbs[i]->i->dname;
+	char * dname_str = dbs[i]->i->dict->get_dname();
 	dbt_init(&dname, dname_str, sizeof(dname_str));
 	dbt_init(&iname, NULL, 0);
 	iname.flags |= DB_DBT_MALLOC;
