@@ -211,7 +211,7 @@ void dictionary::release(){
     }
 }
 
-const char* dictionary::get_dname() const {
+char* dictionary::get_dname() const {
     return m_dname;
 }
 

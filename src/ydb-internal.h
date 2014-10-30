@@ -117,7 +117,6 @@ struct __toku_db_internal {
     toku::locktree *lt;
     dictionary* dict;
     struct simple_dbt skey, sval; // static key and value
-    char *dname;                  // dname is constant for this handle (handle must be closed before file is renamed)
     DB_INDEXER *indexer;
 };
 

@@ -153,9 +153,6 @@ toku_db_close(DB * db) {
     }
     toku_sdbt_cleanup(&db->i->skey);
     toku_sdbt_cleanup(&db->i->sval);
-    if (db->i->dname) {
-        toku_free(db->i->dname);
-    }
     toku_free(db->i);
     toku_free(db);
 }
@@ -319,7 +316,7 @@ toku_db_get_max_row_size(DB * UU(db), uint32_t * max_key_size, uint32_t * max_va
 
 int toku_db_pre_acquire_fileops_lock(DB *db, DB_TXN *txn) {
     // bad hack because some environment dictionaries do not have a dname
-    char *dname = db->i->dname;
+    char *dname = db->i->dict->get_dname();
     if (!dname)
         return 0;
 
@@ -537,10 +534,10 @@ toku_db_get_dname(DB *db) {
     if (!db_opened(db)) {
         return nullptr;
     }
-    if (db->i->dname == nullptr) {
+    if (db->i->dict->get_dname() == nullptr) {
         return ""; 
     }
-    return db->i->dname;
+    return db->i->dict->get_dname();
 }
 
 static int 
@@ -963,7 +960,7 @@ load_inames(DB_ENV * env, DB_TXN * txn, int N, DB * dbs[/*N*/], const char * new
     }
 
     for (i = 0; i < N; i++) {
-        char * dname = dbs[i]->i->dname;
+        const char * dname = dbs[i]->i->dict->get_dname();
         const char *new_iname = create_new_iname(dname, env, txn, mark);
         new_inames_in_env[i] = new_iname;
         rval = env->i->dict_manager.change_iname(txn, dname, new_iname, 0);

@@ -109,7 +109,7 @@ public:
     void create(const char* dname, dictionary_manager* manager);
     void destroy();
     void release();
-    const char* get_dname() const;
+    char* get_dname() const;
 
     friend class dictionary_manager;
 };

@@ -1400,7 +1400,7 @@ static int ltm_iterate_requests_callback(DICTIONARY_ID dict_id UU(), TXNID txnid
         reinterpret_cast<ltm_iterate_requests_callback_extra *>(extra);
 
     int r = 0;
-    assert(false);
+    assert(false); // TODO: FIX THIS LATER, after locktree and dictionary id are in dictionary manager
     DB *db = NULL;
     //DB *db = locked_get_db_by_dict_id(info->env, dict_id);
     if (db != nullptr) {
