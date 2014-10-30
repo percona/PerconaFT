@@ -101,22 +101,16 @@ PATENT RIGHTS GRANT:
 #include <locktree/locktree.h>
 #include "ydb_row_lock.h"
 
-void dictionary::create(const char* dname, const char* iname) {
+void dictionary::create(const char* dname) {
     m_dname = toku_strdup(dname);
-    m_iname = toku_strdup(iname);
 }
 
 void dictionary::destroy(){
     toku_free(m_dname);
-    toku_free(m_iname);
 }
 
 const char* dictionary::get_dname() const {
     return m_dname;
-}
-
-const char* dictionary::get_iname() const {
-    return m_iname;
 }
 
 // verifies that either all of the metadata files we are expecting exist
@@ -560,7 +554,7 @@ dictionary* dictionary_manager::get_dictionary(const char * dname) {
     dictionary *dbi = find(dname);
     if (dbi == nullptr) {
         XCALLOC(dbi);
-        dbi->create(dname, dname); // TODO: FIX!!!!!!
+        dbi->create(dname);
         add_db(dbi);
     }
     toku_mutex_unlock(&m_mutex);

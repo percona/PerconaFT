@@ -100,12 +100,10 @@ PATENT RIGHTS GRANT:
 
 class dictionary {
     char* m_dname;
-    char* m_iname;
 public:
-    void create(const char* dname, const char* iname);
+    void create(const char* dname);
     void destroy();
     const char* get_dname() const;
-    const char* get_iname() const;
 };
 
 class dictionary_manager {
