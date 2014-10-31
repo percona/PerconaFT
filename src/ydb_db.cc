@@ -303,6 +303,7 @@ void toku_db_use_builtin_key_cmp(DB *db) {
     toku_ft_get_flags(db->i->ft_handle, &tflags);
     tflags |= TOKU_DB_KEYCMP_BUILTIN;
     toku_ft_set_flags(db->i->ft_handle, tflags);
+    toku_ft_set_bt_compare(db->i->ft_handle, toku_builtin_compare_fun);
 }
 
 // Return the maximum key and val size in 

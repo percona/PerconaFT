@@ -717,6 +717,7 @@ int dictionary_manager::open_db(
         iname = create_new_iname(dname, db->dbenv, txn, NULL);
         uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0); 
         change_iname(txn, dname, iname, put_flags);
+        r = 0;
     }
     
     // we now have an iname
