@@ -2879,6 +2879,7 @@ int toku_ft_handle_set_memcmp_magic(FT_HANDLE ft_handle, uint8_t magic) {
 static int
 verify_builtin_comparisons_consistent(FT_HANDLE t, uint32_t flags) {
     if ((flags & TOKU_DB_KEYCMP_BUILTIN) && (t->options.compare_fun != toku_builtin_compare_fun)) {
+        printf("flags have TOKU_DB_KEYCMP_BUILTIN set, but the FT_HANDLE does not have the right comparison function\n");
         return EINVAL;
     }
     return 0;

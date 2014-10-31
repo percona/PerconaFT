@@ -657,7 +657,7 @@ env_open(DB_ENV* env, const char *home, uint32_t flags, int mode)
         assert_zero(r);
     }
 
-    setup_metadata_files(env, newenv, txn, last_lsn_of_clean_shutdown_read_from_log);
+    r = setup_metadata_files(env, newenv, txn, last_lsn_of_clean_shutdown_read_from_log);
     if (r!=0) goto cleanup;
 
     if (using_txns) {
