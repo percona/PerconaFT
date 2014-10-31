@@ -114,7 +114,7 @@ db_set_descriptors(DB *db, FT_HANDLE ft_handle) {
     invariant(db->cmp_descriptor == cmp.get_descriptor());
 }
 
-int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags) {
+static int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags) {
     //Set comparison functions if not yet set.
     HANDLE_READ_ONLY_TXN(txn);
     // we should always have SOME environment comparison function
@@ -187,14 +187,21 @@ out:
 }
 
 void dictionary::create(const char* dname, dictionary_manager* manager) {
-    m_dname = toku_strdup(dname);
+    if (dname) {
+        m_dname = toku_strdup(dname);
+    }
+    else {
+        m_dname = nullptr;
+    }
     m_refcount = 0;
     m_mgr = manager;
 }
 
 void dictionary::destroy(){
     invariant(m_refcount == 0);
-    toku_free(m_dname);
+    if (m_dname) {
+        toku_free(m_dname);
+    }
 }
 
 void dictionary::release(){
@@ -393,7 +400,7 @@ int dictionary_manager::setup_persistent_environment(
     r = toku_db_create(&m_persistent_environment, env, 0);
     assert_zero(r);
     toku_db_use_builtin_key_cmp(m_persistent_environment);
-    r = toku_db_open_iname(m_persistent_environment, txn, toku_product_name_strings.environmentdictionary, DB_CREATE);
+    r = open_internal_db(m_persistent_environment, txn, NULL, toku_product_name_strings.environmentdictionary, DB_CREATE);
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open persistent env\n");
         goto cleanup;
@@ -432,7 +439,7 @@ int dictionary_manager::setup_directory(DB_ENV* env, DB_TXN* txn) {
     int r = toku_db_create(&m_directory, env, 0);
     assert_zero(r);
     toku_db_use_builtin_key_cmp(m_directory);
-    r = toku_db_open_iname(m_directory, txn, toku_product_name_strings.fileopsdirectory, DB_CREATE);
+    r = open_internal_db(m_directory, txn, NULL, toku_product_name_strings.fileopsdirectory, DB_CREATE);
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open %s\n", toku_product_name_strings.fileopsdirectory);
     }
@@ -511,15 +518,15 @@ int dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
 //          open, close, and begin checkpoint cannot occur.
 // returns: true if we could open, lock, and close a dictionary
 //          with the given dname, false otherwise.
-static bool
-can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char *iname_in_env) {
+bool
+dictionary_manager::can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char *iname_in_env) {
     int r;
     bool got_lock = false;
     DB *db;
 
     r = toku_db_create(&db, env, 0);
     assert_zero(r);
-    r = toku_db_open_iname(db, txn, iname_in_env, 0);
+    r = open_internal_db(db, txn, NULL, iname_in_env, 0);
     assert_zero(r);
     r = toku_db_pre_acquire_table_lock(db, txn);
     if (r == 0) {
@@ -625,7 +632,7 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
     }
     r = toku_db_create(&db, env, 0);
     lazy_assert_zero(r);
-    r = toku_db_open_iname(db, txn, iname, 0);
+    r = open_internal_db(db, txn, NULL, iname, 0);
     if (txn && r) {
         if (r == EMFILE || r == ENFILE)
             r = toku_ydb_do_error(env, r, "toku dbremove failed because open file limit reached\n");
@@ -672,6 +679,17 @@ exit:
     }
     if (iname) {
         toku_free(iname);
+    }
+    return r;
+}
+
+int dictionary_manager::open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags) {    
+    int r = toku_db_open_iname(db, txn, iname, flags);
+    if (r == 0) {
+        dictionary *dbi = NULL;
+        XCALLOC(dbi);
+        dbi->create(dname, NULL);
+        db->i->dict = dbi;
     }
     return r;
 }

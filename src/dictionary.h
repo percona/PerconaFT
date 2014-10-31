@@ -97,8 +97,6 @@ PATENT RIGHTS GRANT:
 #include <util/omt.h>
 #include "ft/txn/txn.h"
 
-int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname, uint32_t flags);
-
 class dictionary_manager;
 
 class dictionary {
@@ -131,6 +129,10 @@ public:
 
 private:
     DB* m_directory;
+    // used to open DBs that will be used internally
+    // in the dictionary_manager
+    bool can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char *iname_in_env);
+    int open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags);
 
 public:
     dictionary_manager() : 
