@@ -118,6 +118,7 @@ struct __toku_db_internal {
     dictionary* dict;
     struct simple_dbt skey, sval; // static key and value
     DB_INDEXER *indexer;
+    uint32_t open_flags;
 };
 
 int toku_db_set_indexer(DB *db, DB_INDEXER *indexer);

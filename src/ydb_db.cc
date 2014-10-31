@@ -191,7 +191,7 @@ toku_db_get (DB * db, DB_TXN * txn, DBT * key, DBT * data, uint32_t flags) {
     int r;
     uint32_t iso_flags = flags & DB_ISOLATION_FLAGS;
 
-    if (db_thread_need_flags(data))
+    if ((db->i->open_flags & DB_THREAD) && db_thread_need_flags(data))
         return EINVAL;
 
     uint32_t lock_flags = flags & (DB_PRELOCKED | DB_PRELOCKED_WRITE);
@@ -271,6 +271,7 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
     }
     int r =  db->dbenv->i->dict_manager.open_db(db, dname, txn, flags);
     if (r == 0) {
+        db->i->open_flags = flags;
         STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) = db->dbenv->i->dict_manager.num_open_dictionaries();
         STATUS_VALUE(YDB_LAYER_NUM_DB_OPEN)++;
         if (STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) > STATUS_VALUE(YDB_LAYER_MAX_OPEN_DBS)) {
