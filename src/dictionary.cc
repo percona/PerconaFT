@@ -333,10 +333,12 @@ int dictionary_manager::maybe_upgrade_persistent_environment_dictionary(
     )
 {
     int r;
-    DBT key, val;
+    DBT key, val, put_val;
 
     toku_fill_dbt(&key, curr_env_ver_key, strlen(curr_env_ver_key));
     toku_init_dbt(&val);
+    toku_init_dbt(&put_val);
+    toku_init_dbt_flags(&val, DB_DBT_MALLOC);
     r = toku_db_get(m_persistent_environment, txn, &key, &val, 0);
     assert(r == 0);
     uint32_t stored_env_version = toku_dtoh32(*(uint32_t*)val.data);
@@ -347,8 +349,8 @@ int dictionary_manager::maybe_upgrade_persistent_environment_dictionary(
     else if (stored_env_version < FT_LAYOUT_VERSION) {
         const uint32_t curr_env_ver_d = toku_htod32(FT_LAYOUT_VERSION);
         toku_fill_dbt(&key, curr_env_ver_key, strlen(curr_env_ver_key));
-        toku_fill_dbt(&val, &curr_env_ver_d, sizeof(curr_env_ver_d));
-        r = toku_db_put(m_persistent_environment, txn, &key, &val, 0, false);
+        toku_fill_dbt(&put_val, &curr_env_ver_d, sizeof(curr_env_ver_d));
+        r = toku_db_put(m_persistent_environment, txn, &key, &put_val, 0, false);
         assert_zero(r);
 
         time_t upgrade_time_d = toku_htod64(time(NULL));
@@ -368,24 +370,25 @@ int dictionary_manager::maybe_upgrade_persistent_environment_dictionary(
 
             char* upgrade_time_key = get_upgrade_time_key(version);
             toku_fill_dbt(&key, upgrade_time_key, strlen(upgrade_time_key));
-            toku_fill_dbt(&val, &upgrade_time_d, sizeof(upgrade_time_d));
-            r = toku_db_put(m_persistent_environment, txn, &key, &val, put_flag, false);
+            toku_fill_dbt(&put_val, &upgrade_time_d, sizeof(upgrade_time_d));
+            r = toku_db_put(m_persistent_environment, txn, &key, &put_val, put_flag, false);
             assert_zero(r);
 
             char* upgrade_footprint_key = get_upgrade_footprint_key(version);
             toku_fill_dbt(&key, upgrade_footprint_key, strlen(upgrade_footprint_key));
-            toku_fill_dbt(&val, &upgrade_footprint_d, sizeof(upgrade_footprint_d));
-            r = toku_db_put(m_persistent_environment, txn, &key, &val, put_flag, false);
+            toku_fill_dbt(&put_val, &upgrade_footprint_d, sizeof(upgrade_footprint_d));
+            r = toku_db_put(m_persistent_environment, txn, &key, &put_val, put_flag, false);
             assert_zero(r);
 
             char* upgrade_last_lsn_key = get_upgrade_last_lsn_key(version);
             toku_fill_dbt(&key, upgrade_last_lsn_key, strlen(upgrade_last_lsn_key));
-            toku_fill_dbt(&val, &upgrade_last_lsn_d, sizeof(upgrade_last_lsn_d));
-            r = toku_db_put(m_persistent_environment, txn, &key, &val, put_flag, false);
+            toku_fill_dbt(&put_val, &upgrade_last_lsn_d, sizeof(upgrade_last_lsn_d));
+            r = toku_db_put(m_persistent_environment, txn, &key, &put_val, put_flag, false);
             assert_zero(r);
         }
 
     }
+    if (val.data) toku_free(val.data);
     return r;
 }
 
