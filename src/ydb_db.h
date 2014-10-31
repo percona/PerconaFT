@@ -101,6 +101,9 @@ typedef enum {
     YDB_LAYER_DIRECTORY_WRITE_LOCKS_FAIL,   /* total directory write locks unable to be taken */
     YDB_LAYER_LOGSUPPRESS,                  /* number of times logs are suppressed for empty table (2440) */
     YDB_LAYER_LOGSUPPRESS_FAIL,             /* number of times unable to suppress logs for empty table (2440) */
+    YDB_LAYER_NUM_DB_OPEN,
+    YDB_LAYER_NUM_OPEN_DBS,
+    YDB_LAYER_MAX_OPEN_DBS,
     YDB_DB_LAYER_STATUS_NUM_ROWS              /* number of rows in this status array */
 } ydb_db_lock_layer_status_entry;
 

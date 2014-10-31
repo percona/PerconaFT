@@ -126,6 +126,9 @@ ydb_db_layer_status_init (void) {
     STATUS_INIT(YDB_LAYER_DIRECTORY_WRITE_LOCKS_FAIL, nullptr, UINT64,   "directory write locks fail", TOKU_ENGINE_STATUS);
     STATUS_INIT(YDB_LAYER_LOGSUPPRESS,                nullptr, UINT64,   "log suppress", TOKU_ENGINE_STATUS);
     STATUS_INIT(YDB_LAYER_LOGSUPPRESS_FAIL,           nullptr, UINT64,   "log suppress fail", TOKU_ENGINE_STATUS);
+    STATUS_INIT(YDB_LAYER_NUM_DB_OPEN,                DB_OPENS, UINT64,   "db opens", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
+    STATUS_INIT(YDB_LAYER_NUM_OPEN_DBS,               DB_OPEN_CURRENT, UINT64,   "num open dbs now", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
+    STATUS_INIT(YDB_LAYER_MAX_OPEN_DBS,               DB_OPEN_MAX, UINT64,   "max open dbs", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     ydb_db_layer_status.initialized = true;
 }
 #undef STATUS_INIT
@@ -266,7 +269,15 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
         // it was already open
         return EINVAL;
     }
-    return db->dbenv->i->dict_manager.open_db(db, dname, txn, flags);
+    int r =  db->dbenv->i->dict_manager.open_db(db, dname, txn, flags);
+    if (r == 0) {
+        STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) = db->dbenv->i->dict_manager.num_open_dictionaries();
+        STATUS_VALUE(YDB_LAYER_NUM_DB_OPEN)++;
+        if (STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) > STATUS_VALUE(YDB_LAYER_MAX_OPEN_DBS)) {
+            STATUS_VALUE(YDB_LAYER_MAX_OPEN_DBS) = STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS);
+        }
+    }
+    return r;
 }
 
 // when a locktree is created, clone a ft handle and store it

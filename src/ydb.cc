@@ -163,10 +163,7 @@ typedef enum {
     YDB_LAYER_TIME_CREATION = 0,            /* timestamp of environment creation, read from persistent environment */
     YDB_LAYER_TIME_STARTUP,                 /* timestamp of system startup */
     YDB_LAYER_TIME_NOW,                     /* timestamp of engine status query */
-    YDB_LAYER_NUM_DB_OPEN,
     YDB_LAYER_NUM_DB_CLOSE,
-    YDB_LAYER_NUM_OPEN_DBS,
-    YDB_LAYER_MAX_OPEN_DBS,
     YDB_LAYER_FSYNC_LOG_PERIOD,
 #if 0
     YDB_LAYER_ORIGINAL_ENV_VERSION,         /* version of original environment, read from persistent environment */
@@ -196,10 +193,7 @@ ydb_layer_status_init (void) {
     STATUS_INIT(YDB_LAYER_TIME_CREATION,              nullptr, UNIXTIME, "time of environment creation", TOKU_ENGINE_STATUS);
     STATUS_INIT(YDB_LAYER_TIME_STARTUP,               nullptr, UNIXTIME, "time of engine startup", TOKU_ENGINE_STATUS);
     STATUS_INIT(YDB_LAYER_TIME_NOW,                   nullptr, UNIXTIME, "time now", TOKU_ENGINE_STATUS);
-    STATUS_INIT(YDB_LAYER_NUM_DB_OPEN,                DB_OPENS, UINT64,   "db opens", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(YDB_LAYER_NUM_DB_CLOSE,               DB_CLOSES, UINT64,   "db closes", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(YDB_LAYER_NUM_OPEN_DBS,               DB_OPEN_CURRENT, UINT64,   "num open dbs now", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(YDB_LAYER_MAX_OPEN_DBS,               DB_OPEN_MAX, UINT64,   "max open dbs", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(YDB_LAYER_FSYNC_LOG_PERIOD,           nullptr, UINT64,   "period, in ms, that recovery log is automatically fsynced", TOKU_ENGINE_STATUS);
 
     STATUS_VALUE(YDB_LAYER_TIME_STARTUP) = time(NULL);
