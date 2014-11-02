@@ -17,7 +17,7 @@ namespace ftcxx {
         if (db.db() != nullptr) {
             DB_TXN *txnp = txn.txn();
             if (txnp == nullptr) {
-                _txn = DBTxn(DBEnv(db.db()->dbenv), DB_TXN_READ_ONLY | DB_TXN_SNAPSHOT);
+                _txn = DBTxn(DBEnv(db.db()->dbenv), DB_TXN_READ_ONLY | DB_READ_UNCOMMITTED);
                 txnp = _txn.txn();
             }
 
