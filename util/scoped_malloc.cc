@@ -117,7 +117,7 @@ void toku_scoped_malloc_destroy(void) {}
 #else // __APPLE__
 
 #include <set>
-#include <pthread.h>
+#include <portability/toku_pthread.h>
 
 #include <portability/toku_pthread.h>
 

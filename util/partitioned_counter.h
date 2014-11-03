@@ -151,7 +151,7 @@ void partitioned_counters_destroy(void);
 #endif
 
 #if 0
-#include <pthread.h>
+#include <portability/toku_pthread.h>
 #include "fttypes.h"
 
 // Used inside the PARTITIONED_COUNTER.

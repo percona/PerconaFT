@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 #include "log-internal.h"
 #include "logger/logcursor.h"
 #include <limits.h>
-#include <unistd.h>
 
 enum lc_direction { LC_FORWARD, LC_BACKWARD, LC_FIRST, LC_LAST };
 

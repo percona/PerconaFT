@@ -91,7 +91,7 @@ PATENT RIGHTS GRANT:
 
 // Demonstrate a race if #5833 isn't fixed.
 
-#include <pthread.h>
+#include <portability/toku_pthread.h>
 #include <toku_portability.h>
 #include <util/partitioned_counter.h>
 #include "test.h"

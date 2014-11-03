@@ -121,7 +121,7 @@ PATENT RIGHTS GRANT:
  *
  */
 
-#include <pthread.h>
+#include <portability/toku_pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

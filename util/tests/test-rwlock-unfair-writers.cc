@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <unistd.h>
-#include <pthread.h>
+#include <portability/toku_pthread.h>
 
 pthread_rwlock_t rwlock;
 volatile int killed = 0;

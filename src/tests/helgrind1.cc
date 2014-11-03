@@ -90,7 +90,7 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 // The helgrind1.tdbrun test should fail.  This is merely a check to verify that helgrind actually notices a race.
 
-#include <pthread.h>
+#include <portability/toku_pthread.h>
 int x;
 
 static void *starta(void* ignore __attribute__((__unused__))) {

@@ -90,7 +90,7 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 #include "test.h"
-#include <pthread.h>
+#include <portability/toku_pthread.h>
 
 // verify that a commit of a big txn does not block the commits of other txn's
 // commit writer (0) happens before bigtxn commit (1) happens before checkpoint (2)

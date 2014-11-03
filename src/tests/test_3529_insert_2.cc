@@ -101,7 +101,7 @@ PATENT RIGHTS GRANT:
 #include <db.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <pthread.h>
+#include <portability/toku_pthread.h>
 
 static DB_ENV *env = NULL;
 static DB_TXN *txn_a = NULL;

@@ -97,7 +97,7 @@ PATENT RIGHTS GRANT:
 
 
 #include "test.h"
-#include <pthread.h>
+#include <portability/toku_pthread.h>
 
 
 static DB_ENV *env;

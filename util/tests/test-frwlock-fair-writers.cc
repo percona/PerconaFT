@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <toku_assert.h>
 #include <unistd.h>
-#include <pthread.h>
+#include <portability/toku_pthread.h>
 #include <util/frwlock.h>
 
 toku_mutex_t rwlock_mutex;

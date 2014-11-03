@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 
 #include <errno.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "portability/toku_assert.h"
 #include "portability/memory.h"

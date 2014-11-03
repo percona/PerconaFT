@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 #include <memory.h>
 #include <ctype.h>
 #include <limits.h>
-#include <unistd.h>
 
 #include "ft/serialize/block_table.h"
 #include "ft/ft.h"
