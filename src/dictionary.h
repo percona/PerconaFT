@@ -192,12 +192,20 @@ public:
         DB_TXN* txn,
         LSN last_lsn_of_clean_shutdown_read_from_log
         );
-    int get_directory_cursor(DB_TXN* txn, DBC** c);
-    int get_iname(const char* dname, DB_TXN* txn, char** iname);
+    int get_directory_cursor(DB_TXN* txn, DBC** c) {
+        return pdm.get_directory_cursor(txn, c);
+    }
+    int get_iname(const char* dname, DB_TXN* txn, char** iname) {
+        return pdm.get_iname(dname, txn, iname);
+    }
     int get_iname_in_dbt(DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt);
     // used in a part of bulk loading
-    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags);
-    int pre_acquire_fileops_lock(DB_TXN* txn, char* dname);
+    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags) {
+        return pdm.change_iname(txn, dname, new_iname, put_flags);
+    }
+    int pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
+        return pdm.pre_acquire_fileops_lock(txn, dname);
+    }
     int rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname);
     int remove(const char * dname, DB_ENV* env, DB_TXN* txn);
     void create();

@@ -624,14 +624,6 @@ int dictionary_manager::get_persistent_environment_cursor(DB_TXN* txn, DBC** c) 
     return toku_db_cursor(m_persistent_environment, txn, c, 0);
 }
 
-int dictionary_manager::get_directory_cursor(DB_TXN* txn, DBC** c) {
-    return pdm.get_directory_cursor(txn, c);
-}
-
-int dictionary_manager::get_iname(const char* dname, DB_TXN* txn, char** iname) {
-    return pdm.get_iname(dname, txn, iname);
-}
-
 // this is a test function, ONLY. Should not be used in production
 int dictionary_manager::get_iname_in_dbt(DB_ENV* env UU(), DBT* dname_dbt UU(), DBT* iname_dbt UU()) {
     if (!iname_dbt->flags & DB_DBT_MALLOC) { // assuming all tests call with this
@@ -647,14 +639,6 @@ int dictionary_manager::get_iname_in_dbt(DB_ENV* env UU(), DBT* dname_dbt UU(), 
     int ret = locked_txn_commit(txn, 0);
     assert_zero(ret);
     return r;
-}
-
-int dictionary_manager::change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags) {
-    return pdm.change_iname(txn, dname, new_iname, put_flags);
-}
-
-int dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
-    return pdm.pre_acquire_fileops_lock(txn, dname);
 }
 
 // see if we can acquire a table lock for the given dname.
