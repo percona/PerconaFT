@@ -110,7 +110,7 @@ static void *producer(void *extra) {
     while (running) {
         buf->push(random());
         if (running) {
-            usleep(random() % 1000);
+            toku_os_usleep(random() % 1000);
         }
     }
 
@@ -128,7 +128,7 @@ static void *consumer(void *extra) {
     while (!producers_joined) {
         e->xorsum ^= e->buf->pop();
         if (running) {
-            usleep(random() % 100);
+            toku_os_usleep(random() % 100);
         }
     }
     uint32_t x;
@@ -161,7 +161,7 @@ static void test_with_threads(void) {
         invariant_zero(r);
     }
 
-    usleep(20 * 1000 * 1000);
+    toku_os_usleep(20 * 1000 * 1000);
 
     swapped = toku_sync_bool_compare_and_swap(&running, true, false);
     invariant(swapped);

@@ -277,7 +277,7 @@ static void *stress_mark_worker(void *extrav) {
         rwlock_read_unlock(&shared.lock);
         toku_mutex_unlock(&mutex);
 
-        usleep(1);
+        toku_os_usleep(1);
     }
 
     return nullptr;
@@ -424,7 +424,7 @@ static void *stress_delete_worker(void *extrav) {
         // early iterations sleep for a short time
         // later iterations sleep longer
         int sleep_for = 1000 * 100 * (1.5 * (i+1) / repetitions);
-        usleep(sleep_for);
+        toku_os_usleep(sleep_for);
 
         toku_mutex_lock(&mutex);
         rwlock_write_lock(&shared.lock, &mutex);

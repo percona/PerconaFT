@@ -106,6 +106,7 @@ PATENT RIGHTS GRANT:
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/wait.h>
 #if defined(HAVE_SYSCALL_H)
 # include <syscall.h>
 #endif
@@ -147,12 +148,24 @@ toku_portability_destroy(void) {
     toku_memory_shutdown();
 }
 
-void toku_os_sleep(uint64_t seconds) {
+void
+toku_os_sleep(uint64_t seconds) {
     sleep(seconds);
 }
 
-void toku_os_usleep(uint64_t usecs) {
+void
+toku_os_usleep(uint64_t usecs) {
     usleep(usecs);
+}
+
+int
+toku_os_fork(void) {
+    return fork();
+}
+
+pid_t
+toku_os_waitpid(pid_t pid, int *status, int options) {
+    return waitpid(pid, status, options);
 }
 
 int

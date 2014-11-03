@@ -15,7 +15,7 @@ static void *t1_func(void *arg) {
         toku_mutex_lock(&rwlock_mutex);
         rwlock.write_lock(false);
         toku_mutex_unlock(&rwlock_mutex);
-        usleep(10000);
+        toku_os_usleep(10000);
         toku_mutex_lock(&rwlock_mutex);
         rwlock.write_unlock();
         toku_mutex_unlock(&rwlock_mutex);

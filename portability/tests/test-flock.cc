@@ -97,7 +97,7 @@ PATENT RIGHTS GRANT:
 int main(void) {
     int fd = toku_os_lock_file(TOKU_TEST_FILENAME);
     assert(fd != -1);
-    pid_t pid = fork();
+    pid_t pid = toku_os_fork();
     assert(pid != -1);
     if (pid == 0) {
         int fd2 = toku_os_lock_file(TOKU_TEST_FILENAME);
@@ -105,7 +105,7 @@ int main(void) {
 	return 0;
     } else {
         int status;
-        pid_t wpid = waitpid(-1, &status, 0);
+        pid_t wpid = toku_os_waitpid(-1, &status, 0);
 	assert(wpid == pid);
 	assert(status == 0);
     }

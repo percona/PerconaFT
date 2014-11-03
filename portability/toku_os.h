@@ -92,10 +92,10 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 #include <dirent.h>
-#include <sys/time.h>
 
-#include "toku_stdint.h"
-#include "toku_os_types.h"
+#include "portability/toku_os_types.h"
+#include "portability/toku_stdint.h"
+#include "portability/toku_time.h"
 
 // Sleep for `seconds'
 void toku_os_sleep(uint64_t seconds);
@@ -108,6 +108,14 @@ int toku_os_getpid(void) __attribute__((__visibility__("default")));
 
 // Returns: the current thread id
 int toku_os_gettid(void) __attribute__((__visibility__("default")));
+
+// Effect: Forks the current process, returning r == 0 for the child process
+// and r > 0 for the parent process, where r == child_pid
+int toku_os_fork(void);
+
+// Effect: Wait for a process to finish. -1 means any in the current process group.
+// Returns: The process that finished
+pid_t toku_os_waitpid(pid_t pid, int *status, int options);
 
 // Returns: the number of processors in the system
 int toku_os_get_number_processors(void);

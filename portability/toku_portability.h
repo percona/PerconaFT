@@ -182,8 +182,6 @@ extern "C" {
 int      open(const char *path, int flag, ...)      __attribute__((__deprecated__));
 int      close(int fd)                              __attribute__((__deprecated__));
 int      creat(const char *path, mode_t mode)       __attribute__((__deprecated__));
-FILE     *fopen(const char *path, const char *mode) __attribute__((__deprecated__));
-int      fclose(FILE *f)                            __attribute__((__deprecated__));
 int      fstat(int fd, struct stat *buf)            __attribute__((__deprecated__));
 int      stat(const char *path, struct stat *buf)   __attribute__((__deprecated__));
 int      getpid(void)                               __attribute__((__deprecated__));

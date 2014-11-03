@@ -99,8 +99,8 @@ int main(void) {
     r = unsetenv("TOKU_NCPUS"); 
     assert(r == 0);
 
-    int max_cpus = sysconf(_SC_NPROCESSORS_ONLN);
-    assert(toku_os_get_number_active_processors() == max_cpus);
+    int max_cpus = toku_os_get_number_processors();
+    assert(max_cpus > 0);
 
     // change the TOKU_NCPUS env variable and verify that the correct number is computed
     for (int ncpus = 1; ncpus <= max_cpus; ncpus++) {

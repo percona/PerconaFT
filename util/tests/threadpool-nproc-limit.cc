@@ -90,12 +90,14 @@ PATENT RIGHTS GRANT:
 
 // this test verifies that the toku thread pool is resilient when hitting the nproc limit.
 
-#include <util/threadpool.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
 #include <string.h>
-#include <errno.h>
+
+#include <sys/time.h>
+#include <sys/resource.h>
+
+#include "portability/toku_assert.h"
+#include "util/threadpool.h"
 
 int verbose = 0;
 
