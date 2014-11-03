@@ -308,10 +308,9 @@ int persistent_dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* d
 }
 
 int persistent_dictionary_manager::rename(DB_TXN* txn, const char *old_dname, const char *new_dname) {
-    // TODO: possibly do an early check here for open handles
-    char *iname = NULL;
-    char *dummy = NULL; // used to verify an iname does not already exist for new_dname
-    int r = get_iname(old_dname, txn, &iname);
+    dictionary_info dinfo;
+    dictionary_info dummy; // used to verify an iname does not already exist for new_dname
+    int r = get_dinfo(old_dname, txn, &dinfo);
     if (r != 0) {
         if (r == DB_NOTFOUND) {
             r = ENOENT;
@@ -319,7 +318,7 @@ int persistent_dictionary_manager::rename(DB_TXN* txn, const char *old_dname, co
         goto exit;
     }
     // verify that newname does not already exist
-    r = get_iname(new_dname, txn, &dummy);
+    r = get_dinfo(new_dname, txn, &dummy);
     if (r == 0) {
         r = EEXIST;
         goto exit;
@@ -333,25 +332,21 @@ int persistent_dictionary_manager::rename(DB_TXN* txn, const char *old_dname, co
     DBT new_dname_dbt;
     toku_fill_dbt(&new_dname_dbt, new_dname, strlen(new_dname)+1);
     DBT iname_dbt;
-    toku_fill_dbt(&iname_dbt, iname, strlen(iname)+1);
+    toku_fill_dbt(&iname_dbt, dinfo.iname, strlen(dinfo.iname)+1);
     r = toku_db_del(m_directory, txn, &old_dname_dbt, DB_DELETE_ANY, true);
     if (r != 0) { goto exit; }
     r = toku_db_put(m_directory, txn, &new_dname_dbt, &iname_dbt, 0, true);
     if (r != 0) { goto exit; }
 
 exit:
-    if (iname) {
-        toku_free(iname);
-    }
-    if (dummy) {
-        toku_free(iname);
-    }
+    dinfo.destroy();
+    dummy.destroy();
     return r;
 }
 
 int persistent_dictionary_manager::remove(const char * dname, DB_TXN* txn) {
-    char* iname = NULL;
-    int r = get_iname(dname, txn, &iname);
+    dictionary_info dinfo;
+    int r = get_dinfo(dname, txn, &dinfo);
     if (r != 0) {
         if (r == DB_NOTFOUND) {
             r = ENOENT;
@@ -359,16 +354,15 @@ int persistent_dictionary_manager::remove(const char * dname, DB_TXN* txn) {
         goto exit;
     }
     // remove (dname,iname) from directory
-    DBT dname_dbt;  
-    toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
+    // TODO: verify that dnames match between what we found
+    DBT dname_dbt;
+    toku_fill_dbt(&dname_dbt, dinfo.dname, strlen(dinfo.dname)+1);
     r = toku_db_del(m_directory, txn, &dname_dbt, DB_DELETE_ANY, true);
     if (r != 0) {
         goto exit;
     }
 exit:
-    if (iname) {
-        toku_free(iname);
-    }
+    dinfo.destroy();
     return r;
 }
 
@@ -685,7 +679,7 @@ dictionary_manager::can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const dicti
 }
 
 int dictionary_manager::rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname) {
-    //Now that we have writelocks on both dnames, verify that there are still no handles open. (to prevent race conditions)
+    // TODO: possibly do an early check to see if handles open
     dictionary_info dinfo;
     dictionary* old_dict = NULL;
     dictionary* new_dict = NULL;
