@@ -1815,7 +1815,7 @@ include_toku_pthread_yield (void) {
 // as it is called by user
 static int 
 env_get_iname(DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt) {
-    return env->i->dict_manager.get_iname_in_dbt(dname_dbt, iname_dbt);
+    return env->i->dict_manager.get_iname_in_dbt(env, dname_dbt, iname_dbt);
 }
 
 // TODO 2216:  Patch out this (dangerous) function when loader is working and 

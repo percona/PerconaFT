@@ -174,7 +174,7 @@ public:
         );
     int get_directory_cursor(DB_TXN* txn, DBC** c);
     int get_iname(const char* dname, DB_TXN* txn, char** iname);
-    int get_iname_in_dbt(DBT* dname_dbt, DBT* iname_dbt);
+    int get_iname_in_dbt(DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt);
     // used in a part of bulk loading
     int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags);
     int pre_acquire_fileops_lock(DB_TXN* txn, char* dname);
