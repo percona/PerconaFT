@@ -110,7 +110,7 @@ test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute_
 
 	static uint64_t buf [BUFSIZE]; // make this static because it's too big to fit on the stack.
 
-	fd = open(FNAME, O_CREAT+O_RDWR+O_BINARY, 0777);
+	fd = toku_os_open(FNAME, O_CREAT+O_RDWR+O_BINARY, 0777);
 	assert(fd>=0);
 	memset(buf, 0, sizeof(buf));
 	uint64_t i;
@@ -134,7 +134,7 @@ test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute_
         assert(r==0);
     }
     assert(file_size==file_size2);
-    close(fd);
+    toku_os_close(fd);
 
     unlink(FNAME);
     return 0;

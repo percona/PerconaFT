@@ -93,6 +93,7 @@ PATENT RIGHTS GRANT:
 #include <toku_assert.h>
 #include <toku_stdint.h>
 #include <toku_os.h>
+#include <portability/toku_portability.h>
 
 // verify that we can compute processor frequency even when out of file descriptors.
 
@@ -111,7 +112,7 @@ static void run_test(void) {
 int main(void) {
     run_test();
     while (1) {
-        int fd = open("/dev/null", O_RDONLY);
+        int fd = toku_os_open("/dev/null", O_RDONLY, 0644);
         if (fd < 0)
             break;
     }

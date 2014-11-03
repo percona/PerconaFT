@@ -2798,7 +2798,7 @@ static int ft_create_file(FT_HANDLE UU(ft_handle), const char *fname, int *fdp) 
     if (r == 0) {
         *fdp = fd;
     } else {
-        int rr = close(fd);
+        int rr = toku_os_close(fd);
         assert_zero(rr);
     }
     return r;

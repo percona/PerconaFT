@@ -130,7 +130,7 @@ void toku_logcursor_print(TOKULOGCURSOR lc)  {
 static int lc_close_cur_logfile(TOKULOGCURSOR lc) {
     int r=0;
     if ( lc->is_open ) {
-        r = fclose(lc->cur_fp);
+        r = toku_os_fclose(lc->cur_fp);
         assert(0==r);
         lc->is_open = false;
     }
@@ -148,14 +148,14 @@ static toku_off_t lc_file_len(const char *name) {
 // and makes subsequent accesses to it fast.  The intention is to speed up backward scans of the
 // file.
 static void lc_catfile(const char *fname, void *buffer, size_t buffer_size) {
-    int fd = open(fname, O_RDONLY);
+    int fd = toku_os_open(fname, O_RDONLY, 0);
     if (fd >= 0) {
         while (1) {
             ssize_t r = read(fd, buffer, buffer_size);
             if ((int)r <= 0)
                 break;
         }
-        close(fd);
+        toku_os_close(fd);
     }
 }
 
@@ -164,7 +164,7 @@ static int lc_open_logfile(TOKULOGCURSOR lc, int index) {
     assert( !lc->is_open );
     if( index == -1 || index >= lc->n_logfiles) return DB_NOTFOUND;
     lc_catfile(lc->logfiles[index], lc->buffer, lc->buffer_size);
-    lc->cur_fp = fopen(lc->logfiles[index], "rb");
+    lc->cur_fp = toku_os_fopen(lc->logfiles[index], "rb");
     if ( lc->cur_fp == NULL ) 
         return DB_NOTFOUND;
     r = setvbuf(lc->cur_fp, (char *) lc->buffer, _IOFBF, lc->buffer_size);

@@ -464,13 +464,13 @@ main(int argc, char const * const argv[])
     }
 
     // Open the file as read-only.
-    dictfd = open(dictfname, O_RDONLY | O_BINARY, S_IRWXU | S_IRWXG | S_IRWXO);
+    dictfd = toku_os_open(dictfname, O_RDONLY | O_BINARY, S_IRWXU | S_IRWXG | S_IRWXO);
     if (dictfd < 0) {
         perror(dictfname);
         fflush(stderr);
         abort();
     }
-    outf = fopen(outfname, "w");
+    outf = toku_os_fopen(outfname, "w");
     if (!outf) {
         perror(outfname);
         fflush(stderr);

@@ -112,11 +112,11 @@ run_test(void) {
     // run recovery
 
     // redirect stderr
-    int devnul = open(DEV_NULL_FILE, O_WRONLY);
+    int devnul = toku_os_open(DEV_NULL_FILE, O_WRONLY, 0);
     assert(devnul>=0);
     r = toku_dup2(devnul, fileno(stderr));
     assert(r==fileno(stderr));
-    r = close(devnul);
+    r = toku_os_close(devnul);
     assert(r==0);
 
     r = tokuft_recover(NULL,

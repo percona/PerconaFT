@@ -665,7 +665,7 @@ int main (int argc, const char *const argv[]) {
     assert_zero(r);
 
     fname = argv[0];
-    int fd = open(fname, O_RDWR + O_BINARY);
+    int fd = toku_os_open(fname, O_RDWR + O_BINARY, 0);
     if (fd < 0) {
         fprintf(stderr, "%s: can not open %s errno %d\n", arg0, fname, errno);
         return 1;

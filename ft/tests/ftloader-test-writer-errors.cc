@@ -202,7 +202,7 @@ static int write_dbfile (char *tf_template, int n, char *output_name, bool expec
     DESCRIPTOR_S desc;
     toku_fill_dbt(&desc.dbt, "abcd", 4);
 
-    int fd = open(output_name, O_RDWR | O_CREAT | O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO);
+    int fd = toku_os_open(output_name, O_RDWR | O_CREAT | O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO);
     assert(fd>=0);
 
     toku_set_func_malloc_only(my_malloc);

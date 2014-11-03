@@ -261,7 +261,7 @@ test_serialize_leaf_check_msn(enum ftnode_verify_type bft, bool do_clone) {
     //    struct ft_handle source_ft;
     struct ftnode sn, *dn;
 
-    int fd = open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
+    int fd = toku_os_open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
 
     int r;
 
@@ -381,7 +381,7 @@ test_serialize_leaf_check_msn(enum ftnode_verify_type bft, bool do_clone) {
     toku_free(src_ndd);
     toku_free(dest_ndd);
 
-    r = close(fd); assert(r != -1);
+    r = toku_os_close(fd); assert(r != -1);
 }
 
 static void
@@ -391,7 +391,7 @@ test_serialize_leaf_with_large_pivots(enum ftnode_verify_type bft, bool do_clone
     const int keylens = 256*1024, vallens = 0;
     const uint32_t nrows = 8;
     // assert(val_size > BN_MAX_SIZE);  // BN_MAX_SIZE isn't visible
-    int fd = open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
+    int fd = toku_os_open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
 
     sn.max_msn_applied_to_node_on_disk.msn = 0;
     sn.flags = 0x11223344;
@@ -516,7 +516,7 @@ test_serialize_leaf_with_large_pivots(enum ftnode_verify_type bft, bool do_clone
     toku_free(src_ndd);
     toku_free(dest_ndd);
 
-    r = close(fd); assert(r != -1);
+    r = toku_os_close(fd); assert(r != -1);
 }
 
 static void
@@ -524,7 +524,7 @@ test_serialize_leaf_with_many_rows(enum ftnode_verify_type bft, bool do_clone) {
     int r;
     struct ftnode sn, *dn;
     const uint32_t nrows = 196*1024;
-    int fd = open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
+    int fd = toku_os_open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
 
     sn.max_msn_applied_to_node_on_disk.msn = 0;
     sn.flags = 0x11223344;
@@ -644,7 +644,7 @@ test_serialize_leaf_with_many_rows(enum ftnode_verify_type bft, bool do_clone) {
     toku_free(src_ndd);
     toku_free(dest_ndd);
 
-    r = close(fd); assert(r != -1);
+    r = toku_os_close(fd); assert(r != -1);
 }
 
 
@@ -656,7 +656,7 @@ test_serialize_leaf_with_large_rows(enum ftnode_verify_type bft, bool do_clone) 
     const size_t key_size = 8;
     const size_t val_size = 512*1024;
     // assert(val_size > BN_MAX_SIZE);  // BN_MAX_SIZE isn't visible
-    int fd = open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
+    int fd = toku_os_open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
 
     sn.max_msn_applied_to_node_on_disk.msn = 0;
     sn.flags = 0x11223344;
@@ -781,7 +781,7 @@ test_serialize_leaf_with_large_rows(enum ftnode_verify_type bft, bool do_clone) 
     toku_free(src_ndd);
     toku_free(dest_ndd);
 
-    r = close(fd); assert(r != -1);
+    r = toku_os_close(fd); assert(r != -1);
 }
 
 
@@ -789,7 +789,7 @@ static void
 test_serialize_leaf_with_empty_basement_nodes(enum ftnode_verify_type bft, bool do_clone) {
     struct ftnode sn, *dn;
 
-    int fd = open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
+    int fd = toku_os_open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
 
     int r;
 
@@ -909,14 +909,14 @@ test_serialize_leaf_with_empty_basement_nodes(enum ftnode_verify_type bft, bool 
     toku_free(src_ndd);
     toku_free(dest_ndd);
 
-    r = close(fd); assert(r != -1);
+    r = toku_os_close(fd); assert(r != -1);
 }
 
 static void
 test_serialize_leaf_with_multiple_empty_basement_nodes(enum ftnode_verify_type bft, bool do_clone) {
     struct ftnode sn, *dn;
 
-    int fd = open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
+    int fd = toku_os_open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
 
     int r;
 
@@ -1008,7 +1008,7 @@ test_serialize_leaf_with_multiple_empty_basement_nodes(enum ftnode_verify_type b
     toku_free(src_ndd);
     toku_free(dest_ndd);
 
-    r = close(fd); assert(r != -1);
+    r = toku_os_close(fd); assert(r != -1);
 }
 
 
@@ -1017,7 +1017,7 @@ test_serialize_nonleaf(enum ftnode_verify_type bft, bool do_clone) {
     //    struct ft_handle source_ft;
     struct ftnode sn, *dn;
 
-    int fd = open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
+    int fd = toku_os_open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
 
     int r;
 
@@ -1132,7 +1132,7 @@ test_serialize_nonleaf(enum ftnode_verify_type bft, bool do_clone) {
     toku_free(src_ndd);
     toku_free(dest_ndd);
 
-    r = close(fd); assert(r != -1);
+    r = toku_os_close(fd); assert(r != -1);
 }
 
 int

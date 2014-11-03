@@ -140,7 +140,7 @@ enum test_type {event,                   // any event
 		enospc_p,                // loader->close() fails due to enospc return from toku_os_pwrite()
 		einval_fdo,              // return einval from fdopen()
 		einval_fo,               // return einval from fopen()
-		einval_o,                // return einval from open()
+		einval_o,                // return einval from toku_os_open()
 		enospc_fc};              // return enospc from fclose()
 
 
@@ -346,7 +346,7 @@ bad_open(const char *path, int oflag, int mode) {
 	errno = EINVAL;
 	rval = -1;
     } else {
-	rval = open(path, oflag, mode);
+	rval = toku_os_open(path, oflag, mode);
     }
     return rval;
 }
@@ -761,7 +761,7 @@ static void test_loader(enum test_type t, DB **dbs, int trigger)
 	    printf("loader->close() returned 0 but should have failed due to non-zero return from polling function.\n");
 	    fflush(stdout);
 	}
-	assert(r);  // not defined what close() returns when poll function returns non-zero
+	assert(r);  // not defined what toku_os_close() returns when poll function returns non-zero
     }
     else if (error_injection && !failed_put) {
 	const char * type = err_type_str(t);

@@ -183,7 +183,11 @@ extern "C" {
 
 // Deprecated functions.
 #if !defined(TOKU_ALLOW_DEPRECATED)
-int      creat(const char *pathname, mode_t mode)   __attribute__((__deprecated__));
+int      open(const char *path, int flag, ...)      __attribute__((__deprecated__));
+int      close(int fd)                              __attribute__((__deprecated__));
+int      creat(const char *path, mode_t mode)       __attribute__((__deprecated__));
+FILE     *fopen(const char *path, const char *mode) __attribute__((__deprecated__));
+int      fclose(FILE *f)                            __attribute__((__deprecated__));
 int      fstat(int fd, struct stat *buf)            __attribute__((__deprecated__));
 int      stat(const char *path, struct stat *buf)   __attribute__((__deprecated__));
 int      getpid(void)                               __attribute__((__deprecated__));
@@ -293,6 +297,10 @@ ssize_t toku_os_pwrite (int fd, const void *buf, size_t len, toku_off_t off) __a
 int toku_os_write (int fd, const void *buf, size_t len) __attribute__((__visibility__("default")));
 
 // wrappers around file system calls
+//
+// the native version goes straight for the native system implementation, ignoring
+// any functions set using the toku_set_func_* API below (useful for installing
+// functions that sometimes forcefully fail, othertimes passing through)
 FILE * toku_os_fdopen(int fildes, const char *mode);    
 FILE * toku_os_fopen(const char *filename, const char *mode);
 int toku_os_open(const char *path, int oflag, int mode);

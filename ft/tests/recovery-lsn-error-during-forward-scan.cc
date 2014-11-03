@@ -143,10 +143,10 @@ run_test(void) {
     r = toku_logger_close(&logger); assert(r == 0);
 
     // redirect stderr
-    int devnul = open(DEV_NULL_FILE, O_WRONLY);
+    int devnul = toku_os_open(DEV_NULL_FILE, O_WRONLY, 0);
     assert(devnul>=0);
     r = toku_dup2(devnul, fileno(stderr)); 	    assert(r==fileno(stderr));
-    r = close(devnul);                      assert(r==0);
+    r = toku_os_close(devnul);                      assert(r==0);
 
     // delete log 2 at the turnaround to force
     toku_recover_set_callback(recover_callback_at_turnaround, NULL);

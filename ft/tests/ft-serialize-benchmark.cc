@@ -136,7 +136,7 @@ test_serialize_leaf(int valsize, int nelts, double entropy, int ser_runs, int de
     //    struct ft_handle source_ft;
     struct ftnode *sn, *dn;
 
-    int fd = open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
+    int fd = toku_os_open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
 
     int r;
 
@@ -284,7 +284,7 @@ test_serialize_leaf(int valsize, int nelts, double entropy, int ser_runs, int de
     toku_free(ft_h);
     toku_free(ft);
 
-    r = close(fd); assert(r != -1);
+    r = toku_os_close(fd); assert(r != -1);
 }
 
 static void
@@ -292,7 +292,7 @@ test_serialize_nonleaf(int valsize, int nelts, double entropy, int ser_runs, int
     //    struct ft_handle source_ft;
     struct ftnode sn, *dn;
 
-    int fd = open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
+    int fd = toku_os_open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO); assert(fd >= 0);
 
     int r;
 
@@ -421,7 +421,7 @@ test_serialize_nonleaf(int valsize, int nelts, double entropy, int ser_runs, int
     toku_free(ndd);
     toku_free(ndd2);
 
-    r = close(fd); assert(r != -1);
+    r = toku_os_close(fd); assert(r != -1);
 }
 
 int

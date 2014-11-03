@@ -194,7 +194,7 @@ bad_fopen(const char *filename, const char *mode) {
 	errno = EINVAL;
 	rval  = NULL;
     } else {
-	rval = fopen(filename, mode);
+	rval = toku_os_fopen_native(filename, mode);
     }
     return rval;
 }
@@ -210,7 +210,7 @@ bad_open(const char *path, int oflag, int mode) {
 	errno = EINVAL;
 	rval = -1;
     } else {
-	rval = open(path, oflag, mode);
+	rval = toku_os_open_native(path, oflag, mode);
     }
     return rval;
 }
@@ -222,7 +222,7 @@ bad_fclose(FILE * stream) {
     int rval;
     event_count++;
     // Must close the stream even in the "error case" because otherwise there is no way to get the memory back.
-    rval = fclose(stream);
+    rval = toku_os_fclose_native(stream);
     if (rval==0) {
 	if (event_count_trigger == event_count) {
             if (verbose) printf("%s %d\n", __FUNCTION__, event_count);
@@ -365,7 +365,7 @@ static void test (const char *directory, bool is_error) {
     int *XMALLOC_N(N_SOURCES, n_records_in_fd);
     for (int i=0; i<N_SOURCES; i++) {
 	fnames[i] = make_fname(directory, "temp", i);
-	fds[i] = open(fnames[i], O_CREAT|O_RDWR, S_IRWXU);
+	fds[i] = toku_os_open(fnames[i], O_CREAT|O_RDWR, S_IRWXU);
 	assert(fds[i]>=0);
 	n_records_in_fd[i] = 0;
     }

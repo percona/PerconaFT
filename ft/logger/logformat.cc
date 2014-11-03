@@ -842,11 +842,11 @@ int main (int argc, const char *const argv[]) {
     chmod(headerpath, S_IRUSR|S_IWUSR);
     unlink(codepath);
     unlink(headerpath);
-    cf = fopen(codepath, "w");
-    if (cf==0) { int r = get_error_errno(); printf("fopen of %s failed because of errno=%d (%s)\n", codepath, r, strerror(r)); } // sometimes this is failing, so let's make a better diagnostic
+    cf = toku_os_fopen(codepath, "w");
+    if (cf==0) { int r = get_error_errno(); printf("toku_os_fopen of %s failed because of errno=%d (%s)\n", codepath, r, strerror(r)); } // sometimes this is failing, so let's make a better diagnostic
     assert(cf!=0);
-    hf = fopen(headerpath, "w");     assert(hf!=0);
-    pf = fopen(printpath, "w");   assert(pf!=0);
+    hf = toku_os_fopen(headerpath, "w");     assert(hf!=0);
+    pf = toku_os_fopen(printpath, "w");   assert(pf!=0);
     fprintf2(cf, hf, "/* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */\n");
     fprintf2(cf, hf, "// vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:\n");
     fprintf(hf, "#pragma once\n");
@@ -867,9 +867,9 @@ int main (int argc, const char *const argv[]) {
     generate_log_entry_functions();
     generate_logprint();
     {
-        int r=fclose(hf); assert(r==0);
-        r=fclose(cf); assert(r==0);
-        r=fclose(pf); assert(r==0);
+        int r=toku_os_fclose(hf); assert(r==0);
+        r=toku_os_fclose(cf); assert(r==0);
+        r=toku_os_fclose(pf); assert(r==0);
         // Make it tougher to modify by mistake
         chmod(codepath, S_IRUSR|S_IRGRP|S_IROTH);
         chmod(headerpath, S_IRUSR|S_IRGRP|S_IROTH);

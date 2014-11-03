@@ -437,7 +437,7 @@ int toku_cachetable_openfd_with_filenum (CACHEFILE *cfptr, CACHETABLE ct, int fd
     r = toku_os_get_unique_file_id(fd, &fileid);
     if (r != 0) { 
         r = get_error_errno();
-        close(fd);
+        toku_os_close(fd);
         return r;
     }
     ct->cf_list.write_lock();
@@ -446,7 +446,7 @@ int toku_cachetable_openfd_with_filenum (CACHEFILE *cfptr, CACHETABLE ct, int fd
         *was_open = true;
         // Reuse an existing cachefile and close the caller's fd, whose
         // responsibility has been passed to us.
-        r = close(fd);
+        r = toku_os_close(fd);
         assert(r == 0);
         *cfptr = existing_cf;
         r = 0;
@@ -504,7 +504,7 @@ static void cachetable_flush_cachefile (CACHETABLE, CACHEFILE cf, bool evict_com
 //TEST_ONLY_FUNCTION
 int toku_cachetable_openf (CACHEFILE *cfptr, CACHETABLE ct, const char *fname_in_env, int flags, mode_t mode) {
     char *fname_in_cwd = toku_construct_full_name(2, ct->env_dir, fname_in_env);
-    int fd = open(fname_in_cwd, flags+O_BINARY, mode);
+    int fd = toku_os_open(fname_in_cwd, flags+O_BINARY, mode);
     int r;
     if (fd < 0) {
         r = get_error_errno();
@@ -559,7 +559,7 @@ void toku_cachefile_close(CACHEFILE *cfp, bool oplsn_valid, LSN oplsn) {
     }
     // fsync and close the fd. 
     toku_file_fsync_without_accounting(cf->fd);
-    int r = close(cf->fd);
+    int r = toku_os_close(cf->fd);
     assert(r == 0);
     cf->fd = -1;
 

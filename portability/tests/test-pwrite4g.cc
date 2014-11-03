@@ -108,7 +108,7 @@ static int iszero(char *cp, size_t n) {
 int test_main(int UU(argc), char *const UU(argv[])) {
     int r;
     unlink(TOKU_TEST_FILENAME);
-    int fd = open(TOKU_TEST_FILENAME, O_RDWR | O_CREAT | O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO);
+    int fd = toku_os_open(TOKU_TEST_FILENAME, O_RDWR | O_CREAT | O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO);
     assert(fd>=0);
     char *XMALLOC_N_ALIGNED(512, 512, buf);
     memset(buf, 0, 512);
@@ -127,7 +127,7 @@ int test_main(int UU(argc), char *const UU(argv[])) {
     assert(r == 0);
     assert(fsize > 100 + 512);
     toku_free(buf);
-    r = close(fd);
+    r = toku_os_close(fd);
     assert(r==0);
     return 0;
 }

@@ -422,7 +422,7 @@ static void test_merge_files (const char *tf_template, const char *output_name) 
     DESCRIPTOR_S desc;
     toku_fill_dbt(&desc.dbt, "abcd", 4);
 
-    int fd = open(output_name, O_RDWR | O_CREAT | O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO);
+    int fd = toku_os_open(output_name, O_RDWR | O_CREAT | O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO);
     assert(fd>=0);
     
     r = toku_loader_write_ft_from_q_in_C(&bl, &desc, fd, 1000, q, size_est, 0, 0, 0, TOKU_DEFAULT_COMPRESSION_METHOD, 16);

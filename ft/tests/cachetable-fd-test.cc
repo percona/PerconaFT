@@ -112,16 +112,16 @@ cachetable_fd_test (void) {
     // test set to good fd succeeds
     char fname2[TOKU_PATH_MAX+1];
     unlink(toku_path_join(fname2, 2, TOKU_TEST_FILENAME, "test2.dat"));
-    int fd2 = open(fname2, O_RDWR | O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
+    int fd2 = toku_os_open(fname2, O_RDWR | O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
     assert(fd2 >= 0 && fd1 != fd2);
     struct fileid id;
     r = toku_os_get_unique_file_id(fd2, &id);
     assert(r == 0);
-    close(fd2);
+    toku_os_close(fd2);
 
     // test set to bogus fd fails
-    int fd3 = open(DEV_NULL_FILE, O_RDWR); assert(fd3 >= 0);
-    r = close(fd3);
+    int fd3 = toku_os_open(DEV_NULL_FILE, O_RDWR, 0); assert(fd3 >= 0);
+    r = toku_os_close(fd3);
     assert(r == 0);
     r = toku_os_get_unique_file_id(fd3, &id);
     assert(r < 0);

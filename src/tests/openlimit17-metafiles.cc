@@ -125,13 +125,13 @@ int test_main (int argc __attribute__((__unused__)), char *const argv[] __attrib
     }
     int unused = 0;
     for (int i = 0; i < N; i++, unused++) {
-        fds[i] = open("/dev/null", O_RDONLY);
+        fds[i] = toku_os_open("/dev/null", O_RDONLY, 0);
         if (fds[i] == -1)
             break;
     }
     for (int i = 0; i < N; i++) {
         if (fds[i] != -1) {
-            close(fds[i]);
+            toku_os_close(fds[i]);
         }
     }
 

@@ -107,7 +107,7 @@ static void test1 (size_t chars_per_file, size_t bytes_per_read) {
     for (int i=0; i<N; i++) {
 	snprintf(fnames[i], 100, "dbufio-test-file%d.data", i);
 	unlink(fnames[i]);
-	fds[i] = open(fnames[i], O_CREAT|O_RDWR, S_IRWXU);
+	fds[i] = toku_os_open(fnames[i], O_CREAT|O_RDWR, S_IRWXU);
 	//printf("fds[%d]=%d is %s\n", i, fds[i], fnames[i]);
 	assert(fds[i]>=0);
 	n_read[i]=0;
@@ -159,7 +159,7 @@ static void test1 (size_t chars_per_file, size_t bytes_per_read) {
 	    assert(r==0);
 	}
 	{
-	    int r = close(fds[i]);
+	    int r = toku_os_close(fds[i]);
 	    assert(r==0);
 	}
 	assert(n_read[i]==chars_per_file);

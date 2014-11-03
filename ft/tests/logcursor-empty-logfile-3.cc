@@ -141,9 +141,9 @@ test_main (int argc, const char *argv[]) {
         assert(r == 0);
         char mt_fname[TOKU_PATH_MAX+1];
         snprintf(mt_fname, TOKU_PATH_MAX, "%s/log%012lld.tokulog%d", TOKU_TEST_FILENAME, nexti, TOKU_LOG_VERSION);
-        int mt_fd = open(mt_fname, O_CREAT+O_WRONLY+O_TRUNC+O_EXCL+O_BINARY, S_IRWXU);
+        int mt_fd = toku_os_open(mt_fname, O_CREAT+O_WRONLY+O_TRUNC+O_EXCL+O_BINARY, S_IRWXU);
         assert(mt_fd != -1);
-        r = close(mt_fd);
+        r = toku_os_close(mt_fd);
     }
 
     // create N log files with a hello message
@@ -170,9 +170,9 @@ test_main (int argc, const char *argv[]) {
         assert(r == 0);
         char mt_fname[TOKU_PATH_MAX+1];
         snprintf(mt_fname, TOKU_PATH_MAX, "%s/log%012lld.tokulog%d", TOKU_TEST_FILENAME, nexti, TOKU_LOG_VERSION);
-        int mt_fd = open(mt_fname, O_CREAT+O_WRONLY+O_TRUNC+O_EXCL+O_BINARY, S_IRWXU);
+        int mt_fd = toku_os_open(mt_fname, O_CREAT+O_WRONLY+O_TRUNC+O_EXCL+O_BINARY, S_IRWXU);
         assert(mt_fd != -1);
-        r = close(mt_fd);
+        r = toku_os_close(mt_fd);
     }
 
     // verify the log forwards

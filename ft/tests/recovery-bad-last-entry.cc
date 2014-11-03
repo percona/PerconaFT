@@ -130,10 +130,10 @@ run_test(void) {
         toku_logger_close(&logger);
 
         // redirect stderr
-        int devnul = open(DEV_NULL_FILE, O_WRONLY);
+        int devnul = toku_os_open(DEV_NULL_FILE, O_WRONLY, 0);
         assert(devnul>=0);
         r = toku_dup2(devnul, fileno(stderr)); 	    assert(r==fileno(stderr));
-        r = close(devnul);                      assert(r==0);
+        r = toku_os_close(devnul);                      assert(r==0);
 
         char fname[TOKU_PATH_MAX+1];
         sprintf(fname, "%s/%s%d", TOKU_TEST_FILENAME, "log000000000000.tokulog", TOKU_LOG_VERSION);
