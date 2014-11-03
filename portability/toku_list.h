@@ -165,13 +165,4 @@ static inline void toku_list_move(struct toku_list *newhead, struct toku_list *o
     toku_list_init(oldhead);
 }
 
-// TODO: __builtin_offset here is not portable
-//
-// Note: Need the extra level of parens in these macros so that
-//   toku_list_struct(h, foo, b)->zot
-// will work right.  Otherwise the type cast will try to include ->zot, and it will be all messed up.
-#if ((defined(__GNUC__) && __GNUC__ >= 4) || defined(__builtin_offsetof) ) && !defined(__clang__) 
-#define toku_list_struct(p, t, f) ((t*)((char*)(p) - __builtin_offsetof(t, f)))
-#else
 #define toku_list_struct(p, t, f) ((t*)((char*)(p) - ((char*)&((t*)0)->f)))
-#endif
