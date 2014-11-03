@@ -116,7 +116,6 @@ class persistent_dictionary_manager {
 private:
     DB* m_directory; // maps dname to dictionary id
     DB* m_inamedb; // maps dictionary id to iname
-    int open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags);
     int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname);
     
 public:
@@ -156,7 +155,6 @@ private:
     // used to open DBs that will be used internally
     // in the dictionary_manager
     bool can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char *iname_in_env);
-    int open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags);
     int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname);
     int validate_metadata_db(DB_ENV* env, const char* iname, bool expect_newenv);
 

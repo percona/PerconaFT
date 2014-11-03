@@ -186,6 +186,17 @@ out:
     return r;
 }
 
+static int open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags) {    
+    int r = toku_db_open_iname(db, txn, iname, flags);
+    if (r == 0) {
+        dictionary *dbi = NULL;
+        XCALLOC(dbi);
+        dbi->create(dname, NULL);
+        db->i->dict = dbi;
+    }
+    return r;
+}
+
 void dictionary::create(const char* dname, dictionary_manager* manager) {
     if (dname) {
         m_dname = toku_strdup(dname);
@@ -343,17 +354,6 @@ int persistent_dictionary_manager::remove(const char * dname, DB_TXN* txn) {
 exit:
     if (iname) {
         toku_free(iname);
-    }
-    return r;
-}
-
-int persistent_dictionary_manager::open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags) {    
-    int r = toku_db_open_iname(db, txn, iname, flags);
-    if (r == 0) {
-        dictionary *dbi = NULL;
-        XCALLOC(dbi);
-        dbi->create(dname, NULL);
-        db->i->dict = dbi;
     }
     return r;
 }
@@ -787,17 +787,6 @@ exit:
     }
     if (db) {
         toku_db_close(db);
-    }
-    return r;
-}
-
-int dictionary_manager::open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags) {    
-    int r = toku_db_open_iname(db, txn, iname, flags);
-    if (r == 0) {
-        dictionary *dbi = NULL;
-        XCALLOC(dbi);
-        dbi->create(dname, NULL);
-        db->i->dict = dbi;
     }
     return r;
 }
