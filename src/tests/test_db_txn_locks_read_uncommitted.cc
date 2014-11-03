@@ -93,7 +93,6 @@ PATENT RIGHTS GRANT:
 #include <db.h>
 
 #include <errno.h>
-#include <sys/stat.h>
 
 
 // TOKU_TEST_FILENAME is defined in the Makefile

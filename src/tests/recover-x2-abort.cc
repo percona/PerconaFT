@@ -105,7 +105,6 @@ PATENT RIGHTS GRANT:
  *   open the environment doing recovery
  *   check to see if both rows are present in A and maybe present in B
  */
-#include <sys/stat.h>
 #include "test.h"
 
 

@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 // force a checkpoint to span multiple tokulog files.  in other words, the begin checkpoint log entry and the
 // end checkpoint log entry for the same checkpoint are in different log files.
 
-#include <sys/stat.h>
 #include "test.h"
 
 const int envflags = DB_INIT_MPOOL|DB_CREATE|DB_THREAD |DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_TXN|DB_PRIVATE;

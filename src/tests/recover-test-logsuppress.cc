@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 // Verify that log-suppress recovery is done properly.  (See ticket 2781.)
 
 
-#include <sys/stat.h>
 #include <db.h>
 #include "test.h"
 #include "ydb-internal.h"

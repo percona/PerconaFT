@@ -90,7 +90,6 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 #include "test.h"
-#include <sys/resource.h>
 
 // create 200 databases and close them.  set the open file limit to 100 and try to open all of them.
 // eventually, the locktree can not clone fractal tree, and the db open fails.

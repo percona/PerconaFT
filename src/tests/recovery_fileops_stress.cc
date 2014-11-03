@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 #include "toku_pthread.h"
 #include <db.h>
-#include <sys/stat.h>
 #include <stdlib.h>
 
 static const int NUM_DICTIONARIES = 100;

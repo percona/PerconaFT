@@ -96,7 +96,6 @@ PATENT RIGHTS GRANT:
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/resource.h>
 
 int verbose = 0;
 

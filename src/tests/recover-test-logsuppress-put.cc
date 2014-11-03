@@ -93,7 +93,6 @@ PATENT RIGHTS GRANT:
 // TODO: determine if this is useful at all anymore (log suppression does not exist anymore)
 
 
-#include <sys/stat.h>
 #include <db.h>
 #include "test.h"
 #include "ydb-internal.h"

@@ -95,7 +95,6 @@ PATENT RIGHTS GRANT:
  */
 
 #include <db.h>
-#include <sys/stat.h>
 
 static DB_ENV *env;
 static DB *db;

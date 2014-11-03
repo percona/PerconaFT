@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 
 /* Is it feasible to run 4 billion transactions in one test in the regression tests? */
 #include <db.h>
-#include <sys/stat.h>
 #include <ft/logger/log.h>
 #include <src/ydb_txn.h>
 

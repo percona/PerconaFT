@@ -93,13 +93,6 @@ PATENT RIGHTS GRANT:
 #include "logger/logcursor.h"
 #include "test.h"
 
-#if defined(HAVE_LIMITS_H)
-# include <limits.h>
-#endif
-#if defined(HAVE_SYS_SYSLIMITS_H)
-# include <sys/syslimits.h>
-#endif
-
 const char LOGDIR[100] = "./dir.test_logcursor";
 const int FSYNC = 1;
 const int NO_FSYNC = 0;
@@ -221,7 +214,7 @@ int test_0 (void) {
 // test per-file version
 int test_1 () {
     int r=0;
-    char logfile[PATH_MAX];
+    char logfile[1024];
     sprintf(logfile, "log000000000000.tokulog%d", TOKU_LOG_VERSION);
 
     struct toku_logcursor *cursor;

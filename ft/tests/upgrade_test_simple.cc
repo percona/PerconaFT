@@ -90,7 +90,6 @@ PATENT RIGHTS GRANT:
 
 #include <stdlib.h>
 #include <libgen.h>
-#include <sys/time.h>
 #include <portability/toku_path.h>
 #include "test.h"
 

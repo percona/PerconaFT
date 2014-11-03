@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 /* Does removing subdatabases corrupt the db file/other dbs in that file? (when nothing else open) */
 
 #include <stdlib.h>
-#include <sys/stat.h>
 #include <errno.h>
 #include <db.h>
 #include <memory.h>

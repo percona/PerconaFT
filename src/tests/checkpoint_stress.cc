@@ -90,7 +90,6 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 #include "toku_pthread.h"
 #include <db.h>
-#include <sys/stat.h>
 #include "checkpoint_test.h"
 
 

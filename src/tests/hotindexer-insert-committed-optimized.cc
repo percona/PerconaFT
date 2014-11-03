@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 #include "toku_pthread.h"
 #include "key-val.h"
 #include <db.h>
-#include <sys/stat.h>
 
 DB_ENV *env;
 enum {NUM_DBS=1};

@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 /* Nested transactions. */
 
 #include <db.h>
-#include <sys/stat.h>
 
 static DB_ENV *env;
 static DB *db;

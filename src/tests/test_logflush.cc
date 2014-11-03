@@ -90,7 +90,6 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 
 #include <db.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 
 // Return the offset

@@ -93,7 +93,6 @@ PATENT RIGHTS GRANT:
 
 #include "test.h"
 #include <db.h>
-#include <sys/resource.h>
 
 static const char *envdir = TOKU_TEST_FILENAME;
 

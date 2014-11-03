@@ -95,7 +95,6 @@ PATENT RIGHTS GRANT:
 #include <toku_portability.h>
 #include <toku_assert.h>
 #include <stdio.h>
-#include <sys/types.h>
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>

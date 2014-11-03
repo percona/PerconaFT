@@ -117,8 +117,6 @@ PATENT RIGHTS GRANT:
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include <sys/time.h>
-#include <sys/types.h>
 
 #include <toku_portability.h>
 #include <toku_assert.h>

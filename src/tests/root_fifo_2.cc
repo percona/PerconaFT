@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 // test txn commit after db close
 
 #include "test.h"
-#include <sys/stat.h>
 
 DB_ENV *null_env = NULL;
 DB *null_db = NULL;

@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 
 
 #include <stdlib.h>
-#include <sys/stat.h>
 #include <stdio.h>
 
 #include <db.h>

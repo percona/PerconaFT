@@ -97,7 +97,6 @@ PATENT RIGHTS GRANT:
 // verify ststs after an update callback deletes row
 
 #include <db.h>
-#include <sys/stat.h>
 
 static int 
 my_update_callback(DB *db UU(), const DBT *key UU(), const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra) {

@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 
 #include <stdlib.h>
 #include <memory.h>
-#include <sys/stat.h>
 #include <db.h>
 #include <ft/txn/xids.h>
 #define MAX_NEST MAX_TRANSACTION_RECORDS

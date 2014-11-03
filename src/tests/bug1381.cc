@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 /* Test for #1381:  If we insert into a locked empty table, not much goes into the rollback data structure. */
 
 #include <db.h>
-#include <sys/stat.h>
 #include <memory.h>
 
 static int generate_row_for_put(

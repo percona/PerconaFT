@@ -100,7 +100,6 @@ PATENT RIGHTS GRANT:
 // the table lock should fail since txn_a holds a read lock on the deleted key range.
 
 #include <db.h>
-#include <sys/stat.h>
 
 static DB_ENV *env = NULL;
 static DB_TXN *txn_a = NULL;

@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 #include "toku_pthread.h"
 #include <db.h>
-#include <sys/stat.h>
 #include "key-val.h"
 
 toku_mutex_t put_lock;

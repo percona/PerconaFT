@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 /* Simple test of logging.  Can I start TokuFT with logging enabled? */
 
 #include <stdlib.h>
-#include <sys/stat.h>
 #include <errno.h>
 #include <db.h>
 

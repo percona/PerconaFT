@@ -97,8 +97,6 @@ PATENT RIGHTS GRANT:
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 
 static int

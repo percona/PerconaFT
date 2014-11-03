@@ -93,7 +93,6 @@ PATENT RIGHTS GRANT:
 
 #include "test.h"
 #include <db.h>
-#include <sys/resource.h>
 
 static int loader_flags = 0;
 static const char *envdir = TOKU_TEST_FILENAME;

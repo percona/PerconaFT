@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 
 #include "test.h"
 #include <fcntl.h>
-#include <sys/resource.h>
 
 // try to open the environment with a small number of unused file descriptors
 

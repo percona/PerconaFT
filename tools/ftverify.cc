@@ -112,8 +112,6 @@ PATENT RIGHTS GRANT:
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <sysexits.h>
 
 static int num_cores = 0; // cache the number of cores for the parallelization

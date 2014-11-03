@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 
 #include "test.h"
 #include <db.h>
-#include <sys/resource.h>
 
 static void env_open_close(void) {
     int r;

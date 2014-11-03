@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 /* Do I return EINVAL when passing in NULL for something that would otherwise be strdup'd? */
 
 #include <stdlib.h>
-#include <sys/stat.h>
 #include <errno.h>
 #include <db.h>
 

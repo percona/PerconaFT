@@ -98,7 +98,6 @@ PATENT RIGHTS GRANT:
  */
 
 #include <db.h>
-#include <sys/stat.h>
 
 int N = 50000;
 

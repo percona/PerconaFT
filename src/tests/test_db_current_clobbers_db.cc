@@ -92,8 +92,6 @@ PATENT RIGHTS GRANT:
 /* DB_CURRENT */
 
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <db.h>
 
 

@@ -94,7 +94,6 @@ PATENT RIGHTS GRANT:
 #include <db.h>
 #include <toku_pthread.h>
 #include <toku_time.h>
-#include <sys/stat.h>
 
 DB_ENV *env;
 DB *db;

@@ -90,7 +90,6 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 // this test makes sure the LSN filtering is used during recovery
 
-#include <sys/stat.h>
 #include <fcntl.h>
 #include "test.h"
 

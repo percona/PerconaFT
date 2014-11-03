@@ -94,7 +94,6 @@ PATENT RIGHTS GRANT:
 
 #include <memory.h>
 #include <inttypes.h>
-#include <sys/stat.h>
 #include <db.h>
 
 

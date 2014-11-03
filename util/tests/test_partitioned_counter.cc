@@ -125,7 +125,6 @@ PATENT RIGHTS GRANT:
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
 #include <toku_race_tools.h>
 #include <toku_assert.h>
 #include <portability/toku_atomic.h>

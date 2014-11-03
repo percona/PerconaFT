@@ -97,7 +97,6 @@ PATENT RIGHTS GRANT:
 #include <db.h>
 #include <stdlib.h>
 #include <memory.h>
-#include <sys/stat.h>
 
 static void
 test_autotxn (uint32_t env_flags, uint32_t db_flags) {

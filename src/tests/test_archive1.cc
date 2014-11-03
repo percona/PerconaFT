@@ -90,7 +90,6 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 /* Test log archive. */
 #include <db.h>
-#include <sys/stat.h>
 #include <memory.h>
 
 int

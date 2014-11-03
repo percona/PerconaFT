@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 #include <db.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 
 static void
 check_logmax (int max) {

@@ -94,7 +94,6 @@ PATENT RIGHTS GRANT:
 
 #include <memory.h>
 #include <errno.h>
-#include <sys/stat.h>
 #include <db.h>
 
 

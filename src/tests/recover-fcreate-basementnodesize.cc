@@ -89,7 +89,6 @@ PATENT RIGHTS GRANT:
 
 #ident "Copyright (c) 2011-2013 Tokutek Inc.  All rights reserved."
 
-#include <sys/stat.h>
 #include "test.h"
 
 

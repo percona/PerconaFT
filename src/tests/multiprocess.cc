@@ -89,7 +89,6 @@ PATENT RIGHTS GRANT:
 #ident "$Id$"
 #include "test.h"
 #include <db.h>
-#include <sys/stat.h>
 
 #include "test.h"
 

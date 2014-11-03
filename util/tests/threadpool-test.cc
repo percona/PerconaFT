@@ -104,7 +104,6 @@ PATENT RIGHTS GRANT:
 #if defined(HAVE_MALLOC_H)
 # include <malloc.h>
 #elif defined(HAVE_SYS_MALLOC_H)
-# include <sys/malloc.h>
 #endif
 
 struct my_threadpool {

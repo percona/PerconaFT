@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 #include "toku_pthread.h"
 #include <db.h>
-#include <sys/stat.h>
 
 DB_ENV *env;
 enum {MAX_NAME=128};

@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
-#include <sys/stat.h>
 
 #include "src/tests/test.h"
 

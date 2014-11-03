@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 
 #include <stdlib.h>
 #include <memory.h>
-#include <sys/stat.h>
 #include <db.h>
 
 static void

@@ -89,7 +89,6 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007, 2008 Tokutek Inc.  All rights reserved."
 
 #include <stdlib.h>
-#include <sys/time.h>
 #include "test.h"
 
 

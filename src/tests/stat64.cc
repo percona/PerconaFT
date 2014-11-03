@@ -93,7 +93,6 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 
 #include <db.h>
-#include <sys/stat.h>
 
 static void
 test_stat64 (unsigned int N) {

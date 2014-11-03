@@ -96,8 +96,6 @@ PATENT RIGHTS GRANT:
 #include <db.h>
 #include <stdlib.h>
 #include <search.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <memory.h>
 
 

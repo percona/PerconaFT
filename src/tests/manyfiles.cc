@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 /* How fast can we do insertions when there are many files? */
 
 #include <db.h>
-#include <sys/stat.h>
 
 #define NFILES 1000
 #define NINSERTS_PER 1000

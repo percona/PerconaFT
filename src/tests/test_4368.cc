@@ -92,8 +92,6 @@ PATENT RIGHTS GRANT:
 /* Can I close a db without opening it? */
 
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <db.h>
 
 

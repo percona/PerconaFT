@@ -89,7 +89,6 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #include "test.h"
 #include <db.h>
-#include <sys/stat.h>
 
 DB_ENV *env;
 DB *db;

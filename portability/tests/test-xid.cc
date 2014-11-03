@@ -97,7 +97,6 @@ PATENT RIGHTS GRANT:
 # include <syscall.h>
 #endif
 #if defined(HAVE_SYS_SYSCALL_H)
-# include <sys/syscall.h>
 #endif
 #if defined(HAVE_PTHREAD_NP_H)
 # include <pthread_np.h>
