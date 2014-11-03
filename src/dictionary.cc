@@ -445,7 +445,7 @@ cleanup:
     return r;
 }
 
-int dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname) {
+int persistent_dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname) {
     int r = toku_db_create(db, env, 0);
     assert_zero(r);
     toku_db_use_builtin_key_cmp(*db);
@@ -453,6 +453,15 @@ int dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, con
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open %s\n", iname);
     }
+    return r;
+}
+
+int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn) {
+    int r = setup_internal_db(&m_directory, env, txn, toku_product_name_strings.fileopsdirectory);
+    if (r != 0) goto cleanup;
+    r = setup_internal_db(&m_inamedb, env, txn, toku_product_name_strings.fileopsinames);
+    if (r != 0) goto cleanup;
+cleanup:
     return r;
 }
 
@@ -471,9 +480,7 @@ int dictionary_manager::setup_metadata(
         last_lsn_of_clean_shutdown_read_from_log
         );
     if (r != 0) goto cleanup;
-    r = setup_internal_db(&m_directory, env, txn, toku_product_name_strings.fileopsdirectory);
-    if (r != 0) goto cleanup;
-    r = setup_internal_db(&m_inamedb, env, txn, toku_product_name_strings.fileopsinames);
+    r = pdm.initialize(env, txn);
     if (r != 0) goto cleanup;
     
 cleanup:
@@ -485,13 +492,17 @@ int dictionary_manager::get_persistent_environment_cursor(DB_TXN* txn, DBC** c) 
     return toku_db_cursor(m_persistent_environment, txn, c, 0);
 }
 
-int dictionary_manager::get_directory_cursor(DB_TXN* txn, DBC** c) {
+int persistent_dictionary_manager::get_directory_cursor(DB_TXN* txn, DBC** c) {
     return toku_db_cursor(m_directory, txn, c, 0);
+}
+
+int dictionary_manager::get_directory_cursor(DB_TXN* txn, DBC** c) {
+    return pdm.get_directory_cursor(txn, c);
 }
 
 // get the iname for the given dname and set it in the variable iname
 // responsibility of caller to free iname
-int dictionary_manager::get_iname(const char* dname, DB_TXN* txn, char** iname) {
+int persistent_dictionary_manager::get_iname(const char* dname, DB_TXN* txn, char** iname) {
     DBT dname_dbt;
     DBT iname_dbt;
     toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
@@ -505,12 +516,17 @@ int dictionary_manager::get_iname(const char* dname, DB_TXN* txn, char** iname) 
     return r;
 }
 
-// pure laziness, should really only need above function
-int dictionary_manager::get_iname_in_dbt(DBT* dname_dbt, DBT* iname_dbt) {
-    return autotxn_db_get(m_directory, NULL, dname_dbt, iname_dbt, DB_SERIALIZABLE|DB_PRELOCKED); // allocates memory for iname
+int dictionary_manager::get_iname(const char* dname, DB_TXN* txn, char** iname) {
+    return pdm.get_iname(dname, txn, iname);
 }
 
-int dictionary_manager::change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags) {
+// pure laziness, should really only need above function
+int dictionary_manager::get_iname_in_dbt(DBT* dname_dbt UU(), DBT* iname_dbt UU()) {
+    assert(false); // TODO: fix this
+    //return autotxn_db_get(m_directory, NULL, dname_dbt, iname_dbt, DB_SERIALIZABLE|DB_PRELOCKED); // allocates memory for iname
+}
+
+int persistent_dictionary_manager::change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags) {
     DBT dname_dbt;  // holds dname
     toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
     DBT iname_dbt;  // holds new iname
@@ -518,12 +534,20 @@ int dictionary_manager::change_iname(DB_TXN* txn, const char* dname, const char*
     return toku_db_put(m_directory, txn, &dname_dbt, &iname_dbt, put_flags, true);
 }
 
-int dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
+int dictionary_manager::change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags) {
+    return pdm.change_iname(txn, dname, new_iname, put_flags);
+}
+
+int persistent_dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
     DBT key_in_directory = { .data = dname, .size = (uint32_t) strlen(dname)+1 };
     //Left end of range == right end of range (point lock)
     return toku_db_get_range_lock(m_directory, txn,
             &key_in_directory, &key_in_directory,
             toku::lock_request::type::WRITE);
+}
+
+int dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
+    return pdm.pre_acquire_fileops_lock(txn, dname);
 }
 
 // see if we can acquire a table lock for the given dname.
@@ -552,67 +576,37 @@ dictionary_manager::can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char 
     return got_lock;
 }
 
-int dictionary_manager::rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname) {
+int persistent_dictionary_manager::rename(DB_TXN* txn, const char *old_dname, const char *new_dname) {
     // TODO: possibly do an early check here for open handles
     char *iname = NULL;
     char *dummy = NULL; // used to verify an iname does not already exist for new_dname
     int r = get_iname(old_dname, txn, &iname);
-    if (r == DB_NOTFOUND) {
-        r = ENOENT;
-    }
-    else if (r == 0) {
-        // verify that newname does not already exist
-        r = get_iname(new_dname, txn, &dummy);
-        if (r == 0) {
-            r = EEXIST;
+    if (r != 0) {
+        if (r == DB_NOTFOUND) {
+            r = ENOENT;
         }
-        else if (r == DB_NOTFOUND) {
-            // remove old (dname,iname) and insert (newname,iname) in directory
-            DBT old_dname_dbt;
-            toku_fill_dbt(&old_dname_dbt, old_dname, strlen(old_dname)+1);
-            DBT new_dname_dbt;
-            toku_fill_dbt(&new_dname_dbt, new_dname, strlen(new_dname)+1);
-            DBT iname_dbt;
-            toku_fill_dbt(&iname_dbt, iname, strlen(iname)+1);
-            r = toku_db_del(m_directory, txn, &old_dname_dbt, DB_DELETE_ANY, true);
-            if (r != 0) { goto exit; }
-            r = toku_db_put(m_directory, txn, &new_dname_dbt, &iname_dbt, 0, true);
-            if (r != 0) { goto exit; }
-
-            //Now that we have writelocks on both dnames, verify that there are still no handles open. (to prevent race conditions)
-            dictionary* old_dict = NULL;
-            dictionary* new_dict = NULL;
-            toku_mutex_lock(&m_mutex);
-            old_dict = find(old_dname);
-            new_dict = find(new_dname);
-            toku_mutex_unlock(&m_mutex);
-            
-            if (old_dict) {
-                printf("Cannot rename dictionary with an open handle.\n");
-                r = EINVAL;
-                goto exit;
-            }
-            if (new_dict) {
-                printf("Cannot rename dictionary; Dictionary with target name has an open handle.\n");
-                r = EINVAL;
-                goto exit;
-            }
-
-            // we know a live db handle does not exist.
-            //
-            // use the internally opened db to try and get a table lock
-            // 
-            // if we can't get it, then some txn needs the ft and we
-            // should return lock not granted.
-            //
-            // otherwise, we're okay in marking this ft as remove on
-            // commit. no new handles can open for this dictionary
-            // because the txn has directory write locks on the dname
-            if (txn && !can_acquire_table_lock(env, txn, iname)) {
-                r = DB_LOCK_NOTGRANTED;
-            }
-        }
+        goto exit;
     }
+    // verify that newname does not already exist
+    r = get_iname(new_dname, txn, &dummy);
+    if (r == 0) {
+        r = EEXIST;
+        goto exit;
+    }
+    if (r != DB_NOTFOUND) {
+        goto exit;
+    }
+    // remove old (dname,iname) and insert (newname,iname) in directory
+    DBT old_dname_dbt;
+    toku_fill_dbt(&old_dname_dbt, old_dname, strlen(old_dname)+1);
+    DBT new_dname_dbt;
+    toku_fill_dbt(&new_dname_dbt, new_dname, strlen(new_dname)+1);
+    DBT iname_dbt;
+    toku_fill_dbt(&iname_dbt, iname, strlen(iname)+1);
+    r = toku_db_del(m_directory, txn, &old_dname_dbt, DB_DELETE_ANY, true);
+    if (r != 0) { goto exit; }
+    r = toku_db_put(m_directory, txn, &new_dname_dbt, &iname_dbt, 0, true);
+    if (r != 0) { goto exit; }
 
 exit:
     if (iname) {
@@ -624,12 +618,55 @@ exit:
     return r;
 }
 
-int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
-    // TODO: perhaps add a fast path of bailing if open handles exist
+int dictionary_manager::rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname) {
+    //Now that we have writelocks on both dnames, verify that there are still no handles open. (to prevent race conditions)
+    char *iname = NULL;
+    dictionary* old_dict = NULL;
+    dictionary* new_dict = NULL;
+    int r = get_iname(old_dname, txn, &iname);
+    if (r != 0) {
+        if (r == DB_NOTFOUND) {
+            r = ENOENT;
+        }
+        goto exit;
+    }
+    // perform the rename in metadata dictionaries
+    r = pdm.rename(txn, old_dname, new_dname);
+    if (r != 0) goto exit;
+
+    // do some checks to make sure that
+    // we can do perform the operation, namely,
+    // make sure no open handles exist and make sure
+    // we can grab a table lock on the dictionary
+    toku_mutex_lock(&m_mutex);
+    old_dict = find(old_dname);
+    new_dict = find(new_dname);
+    toku_mutex_unlock(&m_mutex);
+    
+    if (old_dict) {
+        printf("Cannot rename dictionary with an open handle.\n");
+        r = EINVAL;
+        goto exit;
+    }
+    if (new_dict) {
+        printf("Cannot rename dictionary; Dictionary with target name has an open handle.\n");
+        r = EINVAL;
+        goto exit;
+    }
+    if (txn && !can_acquire_table_lock(env, txn, iname)) {
+        r = DB_LOCK_NOTGRANTED;
+    }
+
+exit:
+    if (iname) {
+        toku_free(iname);
+    }
+    return r;
+}
+
+int persistent_dictionary_manager::remove(const char * dname, DB_TXN* txn) {
     char* iname = NULL;
     int r = get_iname(dname, txn, &iname);
-
-    DB *db = NULL;
     if (r != 0) {
         if (r == DB_NOTFOUND) {
             r = ENOENT;
@@ -643,6 +680,22 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
     if (r != 0) {
         goto exit;
     }
+exit:
+    if (iname) {
+        toku_free(iname);
+    }
+    return r;
+}
+
+int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
+    // TODO: perhaps add a fast path of bailing if open handles exist
+    DB *db = NULL;
+    char* iname = NULL;
+    int r = pdm.get_iname(dname, txn, &iname);
+    if (r != 0) goto exit;
+    r = pdm.remove(dname, txn);
+    if (r != 0) goto exit;
+
     r = toku_db_create(&db, env, 0);
     lazy_assert_zero(r);
     r = open_internal_db(db, txn, NULL, iname, 0);
@@ -687,11 +740,11 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
     }
 
 exit:
-    if (db) {
-        toku_db_close(db);
-    }
     if (iname) {
         toku_free(iname);
+    }
+    if (db) {
+        toku_db_close(db);
     }
     return r;
 }
@@ -705,6 +758,24 @@ int dictionary_manager::open_internal_db(DB* db, DB_TXN* txn, const char* dname,
         db->i->dict = dbi;
     }
     return r;
+}
+
+int persistent_dictionary_manager::open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags) {    
+    int r = toku_db_open_iname(db, txn, iname, flags);
+    if (r == 0) {
+        dictionary *dbi = NULL;
+        XCALLOC(dbi);
+        dbi->create(dname, NULL);
+        db->i->dict = dbi;
+    }
+    return r;
+}
+
+int  persistent_dictionary_manager::create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index) {
+    char* iname = create_new_iname(dname, env, txn, NULL);
+    uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0); 
+    assert(false); // need to pass out information
+    return change_iname(txn, dname, iname, put_flags);
 }
 
 int dictionary_manager::open_db(
@@ -727,10 +798,7 @@ int dictionary_manager::open_db(
     } else if (r==0 && is_db_excl) {
         r = EEXIST;
     } else if (r == DB_NOTFOUND) {
-        iname = create_new_iname(dname, db->dbenv, txn, NULL);
-        uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0); 
-        change_iname(txn, dname, iname, put_flags);
-        r = 0;
+        r = pdm.create_new_db(txn, dname, db->dbenv, is_db_hot_index);
     }
     
     // we now have an iname
@@ -754,16 +822,20 @@ void dictionary_manager::create() {
     m_dictionary_map.create();
 }
 
-void dictionary_manager::destroy() {
-    if (m_persistent_environment) {
-        toku_db_close(m_persistent_environment);
-    }
+void persistent_dictionary_manager::destroy() {
     if (m_directory) {
         toku_db_close(m_directory);
     }
     if (m_inamedb) {
         toku_db_close(m_inamedb);
     }
+}
+
+void dictionary_manager::destroy() {
+    if (m_persistent_environment) {
+        toku_db_close(m_persistent_environment);
+    }
+    pdm.destroy();
     m_dictionary_map.destroy();
     toku_mutex_destroy(&m_mutex);
 }

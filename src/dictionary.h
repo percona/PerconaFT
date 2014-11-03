@@ -112,6 +112,30 @@ public:
     friend class dictionary_manager;
 };
 
+class persistent_dictionary_manager {
+private:
+    DB* m_directory; // maps dname to dictionary id
+    DB* m_inamedb; // maps dictionary id to iname
+    int open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags);
+    int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname);
+    
+public:
+    persistent_dictionary_manager() : 
+        m_directory(nullptr),
+        m_inamedb(nullptr)
+    {
+    }
+    int initialize(DB_ENV* env, DB_TXN* txn);
+    int get_directory_cursor(DB_TXN* txn, DBC** c);
+    int get_iname(const char* dname, DB_TXN* txn, char** iname);
+    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags);
+    int pre_acquire_fileops_lock(DB_TXN* txn, char* dname);
+    int create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index);
+    int remove(const char * dname, DB_TXN* txn);
+    int rename(DB_TXN* txn, const char *old_dname, const char *new_dname);
+    void destroy();
+};
+
 class dictionary_manager {
     // persistent environment stuff, should be own class
 private:
@@ -127,8 +151,7 @@ public:
 
 
 private:
-    DB* m_directory; // maps dname to dictionary id
-    DB* m_inamedb; // maps dictionary id to iname
+    persistent_dictionary_manager pdm;
     
     // used to open DBs that will be used internally
     // in the dictionary_manager
@@ -139,9 +162,7 @@ private:
 
 public:
     dictionary_manager() : 
-        m_persistent_environment(nullptr),
-        m_directory(nullptr),
-        m_inamedb(nullptr)
+        m_persistent_environment(nullptr)
     {
     }
     int validate_environment(DB_ENV* env, bool* valid_newenv);
