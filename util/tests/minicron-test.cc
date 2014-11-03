@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 #include <toku_portability.h>
 #include "test.h"
 #include "util/minicron.h"
-#include <unistd.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -127,7 +126,7 @@ test1 (void* v)
     struct minicron m;
     memset(&m, 0, sizeof(struct minicron));
     int r = toku_minicron_setup(&m, 0, never_run, 0);   assert(r==0);
-    sleep(1);
+    toku_os_sleep(1);
     r = toku_minicron_shutdown(&m);                     assert(r==0);
     return v;
 }
@@ -139,7 +138,7 @@ test2 (void* v)
     struct minicron m;
     memset(&m, 0, sizeof(struct minicron));
     int r = toku_minicron_setup(&m, 10000, never_run, 0);   assert(r==0);
-    sleep(2);
+    toku_os_sleep(2);
     r = toku_minicron_shutdown(&m);                     assert(r==0);
     return v;
 }
@@ -176,7 +175,7 @@ test3 (void* v)
     tx.counter=0;
     memset(&m, 0, sizeof(struct minicron));
     int r = toku_minicron_setup(&m, 1000, run_5x, &tx);   assert(r==0);
-    sleep(5);
+    toku_os_sleep(5);
     r = toku_minicron_shutdown(&m);                     assert(r==0);
     assert(tx.counter>=4 && tx.counter<=5); // after 5 seconds it could have run 4 or 5 times.
     return v;
@@ -187,7 +186,7 @@ run_3sec (void *v) {
     if (verbose) printf("start3sec at %.6f\n", elapsed());
     int *CAST_FROM_VOIDP(counter, v);
     (*counter)++;
-    sleep(3);
+    toku_os_sleep(3);
     if (verbose) printf("end3sec at %.6f\n", elapsed());
     return 0;
 }
@@ -199,7 +198,7 @@ test4 (void *v) {
     int counter = 0;
     memset(&m, 0, sizeof(struct minicron));
     int r = toku_minicron_setup(&m, 2000, run_3sec, &counter); assert(r==0);
-    sleep(10);
+    toku_os_sleep(10);
     r = toku_minicron_shutdown(&m);                     assert(r==0);
     assert(counter==3);
     return v;
@@ -212,7 +211,7 @@ test5 (void *v) {
     memset(&m, 0, sizeof(struct minicron));
     int r = toku_minicron_setup(&m, 10000, run_3sec, &counter); assert(r==0);
     toku_minicron_change_period(&m, 2000);
-    sleep(10);
+    toku_os_sleep(10);
     r = toku_minicron_shutdown(&m);                     assert(r==0);
     assert(counter==3);
     return v;
@@ -224,7 +223,7 @@ test6 (void *v) {
     memset(&m, 0, sizeof(struct minicron));
     int r = toku_minicron_setup(&m, 5000, never_run, 0); assert(r==0);
     toku_minicron_change_period(&m, 0);
-    sleep(7);
+    toku_os_sleep(7);
     r = toku_minicron_shutdown(&m);                          assert(r==0);
     return v;
 }
@@ -236,7 +235,7 @@ test7 (void *v) {
     memset(&m, 0, sizeof(struct minicron));
     int counter = 0;
     int r = toku_minicron_setup(&m, 5000, run_3sec, &counter); assert(r==0);
-    sleep(17);
+    toku_os_sleep(17);
     r = toku_minicron_shutdown(&m);                     assert(r==0);
     assert(counter==3);
     return v;

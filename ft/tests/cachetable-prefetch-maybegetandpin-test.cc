@@ -105,7 +105,7 @@ fetch (CACHEFILE f        __attribute__((__unused__)),
        void *extraargs    __attribute__((__unused__))
        ) {
 
-    sleep(10);
+    toku_os_sleep(10);
 
     *value = 0;
     *sizep = make_pair_attr(1);

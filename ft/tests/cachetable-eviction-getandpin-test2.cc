@@ -115,7 +115,7 @@ pe_callback (
     void *finalize_extra
     ) 
 {
-    sleep(3);
+    toku_os_sleep(3);
     finalize(make_pair_attr(bytes_to_free.size - 7), finalize_extra);
     return 0;
 }

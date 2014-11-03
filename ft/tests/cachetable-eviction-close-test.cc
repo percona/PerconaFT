@@ -111,7 +111,7 @@ flush (CACHEFILE f __attribute__((__unused__)),
         bool UU(is_clone)
        ) {
     assert(expect_full_flush);
-    sleep(2);
+    toku_os_sleep(2);
 }
 
 static int fetch_calls = 0;

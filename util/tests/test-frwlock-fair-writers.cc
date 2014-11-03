@@ -2,7 +2,6 @@
 
 #include <stdio.h>
 #include <toku_assert.h>
-#include <unistd.h>
 #include <portability/toku_pthread.h>
 #include <util/frwlock.h>
 
@@ -37,7 +36,7 @@ int main(void) {
         r = toku_pthread_create(&tids[i], NULL, t1_func, NULL); 
         assert(r == 0);
     }
-    sleep(10);
+    toku_os_sleep(10);
     killed = 1;
     for (int i = 0; i < nthreads; i++) {
         void *ret;

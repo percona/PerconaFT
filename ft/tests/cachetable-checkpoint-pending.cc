@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 
 #include "test.h"
 #include <stdio.h>
-#include <unistd.h>
 #include "cachetable-test.h"
 #include "cachetable/checkpoint.h"
 #include <portability/toku_atomic.h>

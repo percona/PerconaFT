@@ -94,7 +94,6 @@ PATENT RIGHTS GRANT:
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <db.h>
 #include <string.h>
 

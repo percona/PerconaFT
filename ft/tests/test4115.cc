@@ -93,7 +93,6 @@ PATENT RIGHTS GRANT:
 
 #include "test.h"
 
-#include <unistd.h>
 
 static TOKUTXN const null_txn = 0;
 

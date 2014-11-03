@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 #include <portability/toku_config.h>
 #include <stdio.h>
 #include <toku_stdint.h>
-#include <unistd.h>
 #include <toku_assert.h>
 #include "toku_os.h"
 #if defined(HAVE_SYSCALL_H)

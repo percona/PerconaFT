@@ -135,7 +135,7 @@ test_stat64_create_time (uint64_t n) {
     r = txn->commit(txn, 0);    assert(r == 0);
 
     // stats after checkpoint
-    sleep(10);
+    toku_os_sleep(10);
     r = env->txn_checkpoint(env, 0, 0, 0); assert(r == 0);
     r = env->txn_begin(env, 0, &txn, 0);  CKERR(r);
     DB_BTREE_STAT64 s2;
@@ -158,7 +158,7 @@ test_stat64_create_time (uint64_t n) {
     }
 
     // stats after checkpoint
-    sleep(10);
+    toku_os_sleep(10);
     r = env->txn_checkpoint(env, 0, 0, 0); assert(r == 0);
     r = env->txn_begin(env, 0, &txn, 0);  CKERR(r);
     DB_BTREE_STAT64 s4;

@@ -89,14 +89,18 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
 
-#include <sys/wait.h>
-#include <toku_race_tools.h>
-#include "toku_crash.h"
-#include "toku_atomic.h"
+#include "portability/toku_atomic.h"
+#include "portability/toku_crash.h"
+#include "portability/toku_os.h"
+#include "portability/toku_pthread.h"
+#include "portability/toku_race_tools.h"
 
 enum { MAX_GDB_ARGS = 128 };
 
@@ -151,7 +155,7 @@ intermediate_process(pid_t parent_pid, const char *gdb_path) {
         }
 
         if (timeout_pid == 0) {
-            sleep(5);  // Timeout of 5 seconds
+            toku_os_sleep(5);  // Timeout of 5 seconds
             goto success;
         } else {
             pid_t exited_pid = wait(NULL);  // Wait for first child to exit
@@ -180,7 +184,7 @@ failure:
 
 static void
 spawn_gdb(const char *gdb_path) {
-    pid_t parent_pid = getpid();
+    pid_t parent_pid = toku_os_getpid();
 #if defined(HAVE_SYS_PRCTL_H)
     // On systems that require permission for the same user to ptrace,
     // give permission for this process and (more importantly) all its children to debug this process.

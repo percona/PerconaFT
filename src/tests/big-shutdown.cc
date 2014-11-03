@@ -156,7 +156,7 @@ static void big_shutdown(void) {
         fprintf(stderr, "env->checkpointing_set_period\n");
     r = env->checkpointing_set_period(env, 2);
     CKERR(r);
-    sleep(3);
+    toku_os_sleep(3);
 
     if (verbose)
         fprintf(stderr, "db->close\n");

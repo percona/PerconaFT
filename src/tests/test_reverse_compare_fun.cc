@@ -99,7 +99,6 @@ PATENT RIGHTS GRANT:
 #include <memory.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 
 static int

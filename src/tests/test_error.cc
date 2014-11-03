@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 #include <sys/stat.h>
 #include <errno.h>
 #include <stdio.h>
-#include <unistd.h>
 
 char const* expect_errpfx;
 int n_handle_error=0;

@@ -94,7 +94,6 @@ PATENT RIGHTS GRANT:
 #include <db.h>
 #include <portability/toku_pthread.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <memory.h>
 
 DB_ENV *env;

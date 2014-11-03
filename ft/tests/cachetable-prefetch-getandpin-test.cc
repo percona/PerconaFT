@@ -126,7 +126,7 @@ fetch (CACHEFILE f        __attribute__((__unused__)),
        ) {
 
     if(!expect_pf) {
-        sleep(2);
+        toku_os_sleep(2);
     }
     *value = 0;
     *sizep = make_pair_attr(2);
@@ -147,7 +147,7 @@ static bool pf_req_callback(void* UU(ftnode_pv), void* UU(read_extraargs)) {
 
 static int pf_callback(void* UU(ftnode_pv), void* UU(dd), void* UU(read_extraargs), int UU(fd), PAIR_ATTR* UU(sizep)) {
     assert(expect_pf);
-    sleep(2);
+    toku_os_sleep(2);
     *sizep = make_pair_attr(2);
     return 0;
 }

@@ -97,7 +97,6 @@ PATENT RIGHTS GRANT:
 // verify stats after the merge.
 
 #include <db.h>
-#include <unistd.h>
 #include <sys/stat.h>
 
 static DB_ENV *env = NULL;

@@ -101,7 +101,6 @@ PATENT RIGHTS GRANT:
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
-#include <unistd.h>
 
 static volatile bool running;
 static volatile bool producers_joined;

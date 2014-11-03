@@ -122,7 +122,7 @@ test_main (int argc, const char *argv[]) {
     BYTESTRING bs0 = { .len = 5, .data = (char *) "hello" };
     toku_log_comment(logger, &lsn, 0, now(), bs0);
 
-    sleep(11);
+    toku_os_sleep(11);
 
     BYTESTRING bs1 = { .len = 5, .data = (char *) "world" };
     toku_log_comment(logger, &lsn, 0, now(), bs1);

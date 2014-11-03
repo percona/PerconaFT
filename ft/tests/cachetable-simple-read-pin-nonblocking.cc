@@ -106,7 +106,7 @@ sleep_fetch (CACHEFILE f        __attribute__((__unused__)),
        int  *dirtyp,
        void *extraargs    __attribute__((__unused__))
        ) {
-    sleep(2);
+    toku_os_sleep(2);
     *dirtyp = 0;
     *value = NULL;
     *sizep = make_pair_attr(8);
@@ -119,7 +119,7 @@ static bool sleep_pf_req_callback(void* UU(ftnode_pv), void* UU(read_extraargs))
 }
 
 static int sleep_pf_callback(void* UU(ftnode_pv), void* UU(disk_data), void* UU(read_extraargs), int UU(fd), PAIR_ATTR* sizep) {
-   sleep(2);
+   toku_os_sleep(2);
   *sizep = make_pair_attr(8);
   pf_called = true;
   return 0;
@@ -164,7 +164,7 @@ run_test (void) {
     toku_pthread_t fetch_tid;
     fetch_called = false;
     r = toku_pthread_create(&fetch_tid, NULL, run_expensive_fetch, NULL); 
-    sleep(1);
+    toku_os_sleep(1);
     r = toku_cachetable_get_and_pin(f1, make_blocknum(1), 1, &v1, &s1, wc, sleep_fetch, def_pf_req_callback, def_pf_callback, false, NULL);
     assert_zero(r);
     assert(fetch_called);
@@ -186,7 +186,7 @@ run_test (void) {
     toku_pthread_t pf_tid;
     pf_called = false;
     r = toku_pthread_create(&pf_tid, NULL, run_expensive_pf, NULL); 
-    sleep(1);
+    toku_os_sleep(1);
     r = toku_cachetable_get_and_pin(f1, make_blocknum(1), 1, &v1, &s1, wc, sleep_fetch, def_pf_req_callback, def_pf_callback, false, NULL);
     assert_zero(r);
     assert(pf_called);

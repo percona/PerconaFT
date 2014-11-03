@@ -94,7 +94,6 @@ PATENT RIGHTS GRANT:
 #include <errno.h>
 #include <string.h>
 #include <toku_stdint.h>
-#include <unistd.h>
 #include <toku_assert.h>
 #include "toku_os.h"
 

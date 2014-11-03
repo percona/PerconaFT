@@ -94,7 +94,6 @@ PATENT RIGHTS GRANT:
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <db.h>
 #include <toku_byteswap.h>

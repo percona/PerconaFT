@@ -198,7 +198,7 @@ static inline void toku_env_run_lock_escalation_for_test(DB_ENV *env) {
 
 // Common error handling macros and panic detection
 #define MAYBE_RETURN_ERROR(cond, status) if (cond) return status;
-#define HANDLE_PANICKED_ENV(env) if (toku_env_is_panicked(env)) { sleep(1); return EINVAL; }
+#define HANDLE_PANICKED_ENV(env) if (toku_env_is_panicked(env)) { toku_os_sleep(1); return EINVAL; }
 #define HANDLE_PANICKED_DB(db) HANDLE_PANICKED_ENV(db->dbenv)
 
 // Only commit/abort/prelock (which are used by handlerton) are allowed when a child exists.

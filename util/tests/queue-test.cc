@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 #include "toku_os.h"
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <toku_assert.h>
 #include <toku_pthread.h>
 #include "util/queue.h"
@@ -145,7 +144,7 @@ static void queue_test_0 (uint64_t weight)
     enq(q, 1L, weight);
     enq(q, 2L, weight);
     enq(q, 3L, weight);
-    sleep(1);
+    toku_os_sleep(1);
     enq(q, 4L, weight);
     enq(q, 5L, weight);
     r = toku_queue_eof(q);                                      assert(r==0);

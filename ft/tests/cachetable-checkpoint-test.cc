@@ -90,7 +90,6 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 #include "cachetable-test.h"
 #include <stdio.h>
-#include <unistd.h>
 
 
 #include "cachetable/checkpoint.h"

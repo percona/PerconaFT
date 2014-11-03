@@ -168,7 +168,7 @@ test_writer_priority_thread (void *arg) {
     rwlock_write_lock(&rwe->the_rwlock, &rwe->mutex);
     rwe->e++; assert(rwe->e == 3);
     toku_mutex_unlock(&rwe->mutex);
-    sleep(1);
+    toku_os_sleep(1);
     toku_mutex_lock(&rwe->mutex);
     rwe->e++; assert(rwe->e == 4);
     rwlock_write_unlock(&rwe->the_rwlock);
@@ -188,27 +188,27 @@ test_writer_priority (void) {
     rw_event_init(rwe);
     toku_mutex_lock(&rwe->mutex);
     rwlock_read_lock(&rwe->the_rwlock, &rwe->mutex);
-    sleep(1);
+    toku_os_sleep(1);
     rwe->e++; assert(rwe->e == 1);
     toku_mutex_unlock(&rwe->mutex);
 
     toku_pthread_t tid;
     r = toku_pthread_create(&tid, 0, test_writer_priority_thread, rwe);
-    sleep(1);
+    toku_os_sleep(1);
     toku_mutex_lock(&rwe->mutex);
     rwe->e++; assert(rwe->e == 2);
     toku_mutex_unlock(&rwe->mutex);
 
-    sleep(1);
+    toku_os_sleep(1);
     toku_mutex_lock(&rwe->mutex);
     rwlock_read_unlock(&rwe->the_rwlock);
     toku_mutex_unlock(&rwe->mutex);
-    sleep(1);
+    toku_os_sleep(1);
     toku_mutex_lock(&rwe->mutex);
     rwlock_read_lock(&rwe->the_rwlock, &rwe->mutex);
     rwe->e++; assert(rwe->e == 5);
     toku_mutex_unlock(&rwe->mutex);
-    sleep(1);
+    toku_os_sleep(1);
     toku_mutex_lock(&rwe->mutex);
     rwlock_read_unlock(&rwe->the_rwlock);
     toku_mutex_unlock(&rwe->mutex);
@@ -246,13 +246,13 @@ test_single_writer (void) {
     toku_mutex_lock(&rwe->mutex);
     rwlock_write_lock(&rwe->the_rwlock, &rwe->mutex);
     assert(rwlock_writers(&rwe->the_rwlock) == 1);
-    sleep(1);
+    toku_os_sleep(1);
     rwe->e++; assert(rwe->e == 1);
     toku_mutex_unlock(&rwe->mutex);
 
     toku_pthread_t tid;
     r = toku_pthread_create(&tid, 0, test_single_writer_thread, rwe);
-    sleep(1);
+    toku_os_sleep(1);
     toku_mutex_lock(&rwe->mutex);
     rwe->e++; assert(rwe->e == 2);
     assert(rwlock_writers(&rwe->the_rwlock) == 1);

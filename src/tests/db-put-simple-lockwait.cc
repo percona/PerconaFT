@@ -153,7 +153,7 @@ static void simple_lockwait(DB_ENV *db_env, DB *db, int do_txn, int nrows, int n
         r = toku_pthread_create(&tids[i], NULL, insert_one, arg);
     }
 
-    sleep(10);
+    toku_os_sleep(10);
     if (do_txn) {
         r = txns[0]->commit(txns[0], 0); assert(r == 0);
     }

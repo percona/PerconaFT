@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #include "test.h"
 #include <stdio.h>
-#include <unistd.h>
 #include "cachetable-test.h"
 
 #include "cachetable/checkpoint.h"
@@ -137,7 +136,7 @@ static int fetch(
     ) 
 {
     n_fetch++;
-    sleep(10);
+    toku_os_sleep(10);
     *value = 0;
     *sizep = make_pair_attr(item_size);
     *dirtyp = 0;

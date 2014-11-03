@@ -93,7 +93,6 @@ PATENT RIGHTS GRANT:
 #include <toku_assert.h>
 #include <string.h>
 #include <stdio.h>
-#include <unistd.h>
 #include "loader/loader-internal.h"
 #include "memory.h"
 #include <portability/toku_path.h>

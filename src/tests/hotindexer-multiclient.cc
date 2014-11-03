@@ -489,7 +489,7 @@ int test_main(int argc, char * const *argv) {
             if ( verbose > 1 ) printf("start txn abort\n");
             r = txn->abort(txn); CKERR(r);
             if ( verbose > 1 ) printf("      txn aborted\n");
-            sleep(2 + cs->client_number);
+            toku_os_sleep(2 + cs->client_number);
             // now retry, waiting until the deadlock resolves itself
             r = env->txn_begin(env, cs->txn, &txn, 0); CKERR(r);
             if ( verbose > 1 ) printf("txn begin\n");
@@ -510,7 +510,7 @@ int test_main(int argc, char * const *argv) {
                     if ( verbose ) printf("start txn abort\n");
                     r = txn->abort(txn); CKERR(r);
                     if ( verbose ) printf("      txn aborted\n");
-                    sleep(2 + cs->client_number);
+                    toku_os_sleep(2 + cs->client_number);
                     r = env->txn_begin(env, cs->txn, &txn, 0); CKERR(r);
                     if ( verbose ) printf("txn begin\n");
                 }

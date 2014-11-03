@@ -109,7 +109,7 @@ flush (CACHEFILE f __attribute__((__unused__)),
         bool UU(is_clone)
        ) {
     if (do_sleep) {
-        sleep(3);
+        toku_os_sleep(3);
     }
 }
 

@@ -95,7 +95,6 @@ PATENT RIGHTS GRANT:
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include <unistd.h>
 #include <errno.h>
 #include <sys/resource.h>
 

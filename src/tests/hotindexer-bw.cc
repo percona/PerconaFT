@@ -182,7 +182,7 @@ static void * client(void *arg)
                                    cs->flags);
             toku_mutex_unlock(&put_lock);
             if ( rr == 0 ) break;
-            sleep(0);
+            toku_os_sleep(0);
         }
         if ( rr != 0 ) {
             if ( verbose ) printf("client[%u] : put_multiple returns %d, i=%u, n=%u, key=%u\n", cs->client_number, rr, i, n, k);
@@ -492,7 +492,7 @@ int test_main(int argc, char * const *argv) {
             if ( verbose > 1 ) printf("start txn abort\n");
             r = txn->abort(txn); CKERR(r);
             if ( verbose > 1 ) printf("      txn aborted\n");
-            sleep(2 + cs->client_number);
+            toku_os_sleep(2 + cs->client_number);
             // now retry, waiting until the deadlock resolves itself
             r = env->txn_begin(env, cs->txn, &txn, 0); CKERR(r);
             if ( verbose > 1 ) printf("txn begin\n");
@@ -513,7 +513,7 @@ int test_main(int argc, char * const *argv) {
                     if ( verbose ) printf("start txn abort\n");
                     r = txn->abort(txn); CKERR(r);
                     if ( verbose ) printf("      txn aborted\n");
-                    sleep(2 + cs->client_number);
+                    toku_os_sleep(2 + cs->client_number);
                     r = env->txn_begin(env, cs->txn, &txn, 0); CKERR(r);
                     if ( verbose ) printf("txn begin\n");
                 }

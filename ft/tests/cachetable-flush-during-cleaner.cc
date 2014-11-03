@@ -103,7 +103,7 @@ cleaner_callback(
     )
 {
     should_close = true;
-    sleep(2);
+    toku_os_sleep(2);
     PAIR_ATTR attr = make_pair_attr(8);
     attr.cache_pressure_size = 8;
     int r = toku_test_cachetable_unpin(f1, blocknum, fullhash, CACHETABLE_CLEAN, attr);

@@ -126,7 +126,7 @@ fetch (CACHEFILE f        __attribute__((__unused__)),
        ) {
 
     fetch_calls++;
-    sleep(10);
+    toku_os_sleep(10);
 
     *value = toku_malloc(1);
     *sizep = make_pair_attr(1);

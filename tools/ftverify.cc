@@ -115,7 +115,6 @@ PATENT RIGHTS GRANT:
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sysexits.h>
-#include <unistd.h>
 
 static int num_cores = 0; // cache the number of cores for the parallelization
 static struct toku_thread_pool *ft_pool = NULL;

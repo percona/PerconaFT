@@ -366,7 +366,7 @@ static void test_evictor(void) {
     r = toku_cachetable_get_and_pin(f2, make_blocknum(1), toku_cachetable_hash(f2, make_blocknum(1)), &v1, &s1, wc, def_fetch, def_pf_req_callback, def_pf_callback, true, NULL);
     r = toku_test_cachetable_unpin(f2, make_blocknum(1), toku_cachetable_hash(f2, make_blocknum(1)), CACHETABLE_CLEAN, make_pair_attr(8));
     // now sleep for 2 seconds, and check to see if f1 has been closed
-    sleep(2);
+    toku_os_sleep(2);
     assert(free_called);
 
     toku_cachefile_close(&f2, false, ZERO_LSN);

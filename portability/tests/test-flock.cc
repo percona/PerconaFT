@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 #include <stdio.h>
 #include <toku_assert.h>
 #include <errno.h>
-#include <unistd.h>
 #include <sys/wait.h>
 #include "toku_portability.h"
 #include <portability/toku_path.h>

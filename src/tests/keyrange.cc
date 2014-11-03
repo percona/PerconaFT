@@ -96,7 +96,6 @@ PATENT RIGHTS GRANT:
 // 3. basements on disk versus basements in memory
 
 #include <db.h>
-#include <unistd.h>
 #include <sys/stat.h>
 
 static DB_ENV *env = NULL;

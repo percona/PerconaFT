@@ -113,7 +113,7 @@ flush (CACHEFILE f __attribute__((__unused__)),
 static void kibbutz_work(void *fe_v)
 {
     CACHEFILE CAST_FROM_VOIDP(f1, fe_v);
-    sleep(2);
+    toku_os_sleep(2);
     int r = toku_test_cachetable_unpin(f1, make_blocknum(1), 1, CACHETABLE_CLEAN, make_pair_attr(8));
     assert(r==0);
     remove_background_job_from_cf(f1);    

@@ -104,10 +104,10 @@ void toku_os_sleep(uint64_t seconds);
 void toku_os_usleep(uint64_t usecs);
 
 // Returns: the current process id
-int toku_os_getpid(void)   __attribute__((__visibility__("default")));
+int toku_os_getpid(void) __attribute__((__visibility__("default")));
 
 // Returns: the current thread id
-int toku_os_gettid(void)  __attribute__((__visibility__("default")));
+int toku_os_gettid(void) __attribute__((__visibility__("default")));
 
 // Returns: the number of processors in the system
 int toku_os_get_number_processors(void);

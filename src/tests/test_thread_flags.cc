@@ -90,7 +90,6 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include <errno.h>
 #include <sys/stat.h>

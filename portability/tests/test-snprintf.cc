@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 #include <test.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <toku_portability.h>
 #include <toku_assert.h>
 #include <toku_os.h>

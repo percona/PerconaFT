@@ -159,7 +159,7 @@ pe_callback (
     void *finalize_extra
     ) 
 {
-    sleep(2);
+    toku_os_sleep(2);
     finalize(bytes_to_free, finalize_extra);
     return 0;
 }

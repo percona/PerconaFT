@@ -100,7 +100,9 @@ PATENT RIGHTS GRANT:
 // B commits its txn
 
 #include "test.h"
-#include "toku_pthread.h"
+
+#include "portability/toku_os.h"
+#include "portability/toku_pthread.h"
 
 struct test_seq {
     int state;
@@ -144,7 +146,7 @@ static void t_a(DB_ENV *db_env, DB *db, struct test_seq *seq) {
     DBT val = { .data = &k, .size = sizeof k };
     r = db->put(db, txn_a, &key, &val, 0); assert(r == 0);
     test_seq_next_state(seq);
-    sleep(10);
+    toku_os_sleep(10);
     r = txn_a->commit(txn_a, 0); assert(r == 0);
 }
 

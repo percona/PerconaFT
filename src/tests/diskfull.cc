@@ -93,7 +93,6 @@ PATENT RIGHTS GRANT:
 
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
 #include <portability/toku_atomic.h>
 
 #define DOERR(r) do { if (r!=0) { did_fail=1; fprintf(error_file, "%s:%d error %d (%s)\n", __FILE__, __LINE__, r, db_strerror(r)); }} while (0)

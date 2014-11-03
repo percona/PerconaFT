@@ -98,7 +98,7 @@ bool foo;
 static void kibbutz_work(void *fe_v)
 {
     CACHEFILE CAST_FROM_VOIDP(f1, fe_v);
-    sleep(2);
+    toku_os_sleep(2);
     // note that we make the size 16 to induce an eviction
     // once evictions are moved to their own thread, we need
     // to modify this test

@@ -114,7 +114,7 @@ flush (CACHEFILE f __attribute__((__unused__)),
         bool UU(is_clone)
        ) {
     assert(w == false);
-    sleep(1);
+    toku_os_sleep(1);
     flush_calls++;
     if (keep == false) {
         flush_evict_calls++;
@@ -175,7 +175,7 @@ static void cachetable_prefetch_flowcontrol_test (int cachetable_size_limit) {
     }
 
     // wait for all of the blocks to be fetched
-    sleep(3);
+    toku_os_sleep(3);
 
     // prefetch keys N .. 2*N-1.  0 .. N-1 should be evicted.
     for (i=i+1; i<2*cachetable_size_limit; i++) {

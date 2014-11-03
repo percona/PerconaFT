@@ -94,7 +94,6 @@ PATENT RIGHTS GRANT:
 #include "cachetable/checkpoint.h"
 #include "le-cursor.h"
 #include "test.h"
-#include <unistd.h>
 
 static TOKUTXN const null_txn = 0;
 

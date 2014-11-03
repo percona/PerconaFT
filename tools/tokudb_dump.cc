@@ -96,7 +96,6 @@ PATENT RIGHTS GRANT:
 #include <toku_assert.h>
 #include <stdio.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>

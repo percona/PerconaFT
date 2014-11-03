@@ -174,7 +174,7 @@ try_again_after_handling_write_error(int fd, size_t len, ssize_t r_write) {
                 fprintf(stderr, "retry in %d second%s\n", toku_write_enospc_sleep, toku_write_enospc_sleep > 1 ? "s" : "");
                 fflush(stderr);
             }
-            sleep(toku_write_enospc_sleep);
+            toku_os_sleep(toku_write_enospc_sleep);
             try_again = 1;
             toku_sync_fetch_and_sub(&toku_write_enospc_current, 1);
             break;

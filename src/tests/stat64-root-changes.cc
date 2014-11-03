@@ -97,7 +97,6 @@ PATENT RIGHTS GRANT:
 // verify ststs after an update callback deletes row
 
 #include <db.h>
-#include <unistd.h>
 #include <sys/stat.h>
 
 static int 

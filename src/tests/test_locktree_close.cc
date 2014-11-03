@@ -92,7 +92,6 @@ PATENT RIGHTS GRANT:
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <unistd.h>
 #include <memory.h>
 #include <errno.h>
 #include <sys/stat.h>

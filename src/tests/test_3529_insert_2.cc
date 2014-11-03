@@ -99,7 +99,6 @@ PATENT RIGHTS GRANT:
 // when txn_a finishes reading the deleted keys, txn_b tries to insert key 2 and should get lock not granted.
 
 #include <db.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <portability/toku_pthread.h>
 

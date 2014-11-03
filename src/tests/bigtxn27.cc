@@ -97,7 +97,7 @@ PATENT RIGHTS GRANT:
 static int test_state = 0;
 
 static void *checkpoint_thread(void *arg) {
-    sleep(1);
+    toku_os_sleep(1);
     DB_ENV *env = (DB_ENV *) arg;
     printf("%s start\n", __FUNCTION__);
     int r = env->txn_checkpoint(env, 0, 0, 0);
@@ -115,7 +115,7 @@ struct writer_arg {
 };
 
 static void *w_thread(void *arg) {
-    sleep(2);
+    toku_os_sleep(2);
     struct writer_arg *warg = (struct writer_arg *) arg;
     DB_ENV *env = warg->env;
     DB *db = warg->db;
@@ -141,7 +141,7 @@ static void *w_thread(void *arg) {
 
 static void bigtxn_progress(TOKU_TXN_PROGRESS progress, void *extra) {
     printf("%s %" PRIu64 " %" PRIu64 " %p\n", __FUNCTION__, progress->entries_processed, progress->entries_total, extra);
-    sleep(1);
+    toku_os_sleep(1);
 }
 
 int test_main (int argc, char *const argv[]) {

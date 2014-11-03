@@ -94,7 +94,6 @@ PATENT RIGHTS GRANT:
 #include <sys/stat.h>
 #include <stdio.h>
 
-#include <unistd.h>
 #include <db.h>
 
 // TOKU_TEST_FILENAME is defined in the Makefile

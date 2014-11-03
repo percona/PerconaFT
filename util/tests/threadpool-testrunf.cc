@@ -94,7 +94,6 @@ PATENT RIGHTS GRANT:
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include <unistd.h>
 
 int verbose = 0;
 
