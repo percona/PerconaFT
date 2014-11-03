@@ -186,18 +186,14 @@ out:
     return r;
 }
 
-static int open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags) {    
-    dictionary_info dinfo;
-    dinfo.dname = (dname) ? toku_strdup(dname) : nullptr;
-    dinfo.iname = toku_strdup(iname);
-    int r = toku_db_open_iname(db, txn, iname, flags);
+static int open_internal_db(DB* db, DB_TXN* txn, const dictionary_info* dinfo, uint32_t flags) {    
+    int r = toku_db_open_iname(db, txn, dinfo->iname, flags);
     if (r == 0) {
         dictionary *dbi = NULL;
         XCALLOC(dbi);
-        dbi->create(&dinfo, NULL);
+        dbi->create(dinfo, NULL);
         db->i->dict = dbi;
     }
-    dinfo.destroy();
     return r;
 }
 
@@ -245,10 +241,13 @@ int persistent_dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TX
     int r = toku_db_create(db, env, 0);
     assert_zero(r);
     toku_db_use_builtin_key_cmp(*db);
-    r = open_internal_db(*db, txn, NULL, iname, DB_CREATE);
+    dictionary_info dinfo;
+    dinfo.iname = toku_strdup(iname);
+    r = open_internal_db(*db, txn, &dinfo, DB_CREATE);
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open %s\n", iname);
     }
+    dinfo.destroy();
     return r;
 }
 
@@ -577,7 +576,10 @@ int dictionary_manager::setup_persistent_environment(
     r = toku_db_create(&m_persistent_environment, env, 0);
     assert_zero(r);
     toku_db_use_builtin_key_cmp(m_persistent_environment);
-    r = open_internal_db(m_persistent_environment, txn, NULL, toku_product_name_strings.environmentdictionary, DB_CREATE);
+    // don't need to destroy it because we are not copying data into it
+    dictionary_info dinfo;
+    dinfo.iname = toku_product_name_strings.environmentdictionary;
+    r = open_internal_db(m_persistent_environment, txn, &dinfo, DB_CREATE);
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open persistent env\n");
         goto cleanup;
@@ -662,14 +664,14 @@ int dictionary_manager::get_iname_in_dbt(DB_ENV* env UU(), DBT* dname_dbt UU(), 
 // returns: true if we could open, lock, and close a dictionary
 //          with the given dname, false otherwise.
 bool
-dictionary_manager::can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char *iname_in_env) {
+dictionary_manager::can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const dictionary_info *dinfo) {
     int r;
     bool got_lock = false;
     DB *db;
 
     r = toku_db_create(&db, env, 0);
     assert_zero(r);
-    r = open_internal_db(db, txn, NULL, iname_in_env, 0);
+    r = open_internal_db(db, txn, dinfo, 0);
     assert_zero(r);
     r = toku_db_pre_acquire_table_lock(db, txn);
     if (r == 0) {
@@ -684,10 +686,10 @@ dictionary_manager::can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char 
 
 int dictionary_manager::rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname) {
     //Now that we have writelocks on both dnames, verify that there are still no handles open. (to prevent race conditions)
-    char *iname = NULL;
+    dictionary_info dinfo;
     dictionary* old_dict = NULL;
     dictionary* new_dict = NULL;
-    int r = pdm.get_iname(old_dname, txn, &iname);
+    int r = pdm.get_dinfo(old_dname, txn, &dinfo);
     if (r != 0) {
         if (r == DB_NOTFOUND) {
             r = ENOENT;
@@ -715,29 +717,29 @@ int dictionary_manager::rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, 
         r = EINVAL;
         goto exit;
     }
-    if (txn && !can_acquire_table_lock(env, txn, iname)) {
+    // the dinfo below holds the old dname, even though the rename has happened
+    // that should be ok, because the locktree does not depend on the dname
+    if (txn && !can_acquire_table_lock(env, txn, &dinfo)) {
         r = DB_LOCK_NOTGRANTED;
     }
 
 exit:
-    if (iname) {
-        toku_free(iname);
-    }
+    dinfo.destroy();
     return r;
 }
 
 int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
     // TODO: perhaps add a fast path of bailing if open handles exist
     DB *db = NULL;
-    char* iname = NULL;
-    int r = pdm.get_iname(dname, txn, &iname);
+    dictionary_info dinfo;
+    int r = pdm.get_dinfo(dname, txn, &dinfo);
     if (r != 0) goto exit;
     r = pdm.remove(dname, txn);
     if (r != 0) goto exit;
 
     r = toku_db_create(&db, env, 0);
     lazy_assert_zero(r);
-    r = open_internal_db(db, txn, NULL, iname, 0);
+    r = open_internal_db(db, txn, &dinfo, 0);
     if (txn && r) {
         if (r == EMFILE || r == ENFILE)
             r = toku_ydb_do_error(env, r, "toku dbremove failed because open file limit reached\n");
@@ -777,9 +779,7 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
     }
 
 exit:
-    if (iname) {
-        toku_free(iname);
-    }
+    dinfo.destroy();
     if (db) {
         toku_db_close(db);
     }

@@ -194,7 +194,7 @@ private:
     
     // used to open DBs that will be used internally
     // in the dictionary_manager
-    bool can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char *iname_in_env);
+    bool can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const dictionary_info *dinfo);
     int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname);
     int validate_metadata_db(DB_ENV* env, const char* iname, bool expect_newenv);
 
