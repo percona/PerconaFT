@@ -632,7 +632,7 @@ int dictionary_manager::get_iname_in_dbt(DB_ENV* env UU(), DBT* dname_dbt UU(), 
     DB_TXN* txn = NULL;
     int r = toku_txn_begin(env, NULL, &txn, 0);
     assert_zero(r);
-    r = get_iname((char *)dname_dbt->data, txn, (char **)(&iname_dbt->data));
+    r = pdm.get_iname((char *)dname_dbt->data, txn, (char **)(&iname_dbt->data));
     if (r == 0) {
         iname_dbt->size = strlen((char*)iname_dbt->data) + 1;
     }
@@ -672,7 +672,7 @@ int dictionary_manager::rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, 
     char *iname = NULL;
     dictionary* old_dict = NULL;
     dictionary* new_dict = NULL;
-    int r = get_iname(old_dname, txn, &iname);
+    int r = pdm.get_iname(old_dname, txn, &iname);
     if (r != 0) {
         if (r == DB_NOTFOUND) {
             r = ENOENT;
@@ -785,7 +785,7 @@ int dictionary_manager::open_db(
     
     assert(!db_opened(db));
     char* iname = NULL;
-    r = get_iname(dname, txn, &iname);
+    r = pdm.get_iname(dname, txn, &iname);
     if (r == DB_NOTFOUND && !is_db_create) {
         r = ENOENT;
     } else if (r==0 && is_db_excl) {
