@@ -1114,6 +1114,13 @@ void tokuft_update_product_name_strings(void) {
         assert((unsigned)n < sizeof(toku_product_name_strings.fileopsdirectory));
     }
     {
+        int n = snprintf(toku_product_name_strings.fileopsinames,
+                         sizeof(toku_product_name_strings.fileopsinames),
+                         "%s.inames", toku_product_name);
+        assert(n >= 0);
+        assert((unsigned)n < sizeof(toku_product_name_strings.fileopsinames));
+    }
+    {
         int n = snprintf(toku_product_name_strings.environmentdictionary,
                          sizeof(toku_product_name_strings.environmentdictionary),
                          "%s.environment", toku_product_name);

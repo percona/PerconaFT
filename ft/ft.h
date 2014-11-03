@@ -227,6 +227,7 @@ struct toku_product_name_strings_struct {
     char db_version[sizeof(toku_product_name) + sizeof("1.2.3 build ") + 256];
     char environmentdictionary[sizeof(toku_product_name) + sizeof(".environment")];
     char fileopsdirectory[sizeof(toku_product_name) + sizeof(".directory")];
+    char fileopsinames[sizeof(toku_product_name) + sizeof(".inames")];
     char single_process_lock[sizeof(toku_product_name) + sizeof("___lock_dont_delete_me")];
     char rollback_cachefile[sizeof(toku_product_name) + sizeof(".rollback")];
 };

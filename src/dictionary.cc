@@ -222,10 +222,38 @@ char* dictionary::get_dname() const {
     return m_dname;
 }
 
+int dictionary_manager::validate_metadata_db(DB_ENV* env, const char* iname, bool expect_newenv) {
+    toku_struct_stat buf;
+    char* path = NULL;
+    path = toku_construct_full_name(2, env->i->dir, iname);
+    assert(path);
+    int r = toku_stat(path, &buf);
+    if (r == 0) {  
+        if (expect_newenv)  // directory exists, but persistent env is missing
+            r = toku_ydb_do_error(env, ENOENT, "Persistent environment is missing\n");
+    }
+    else {
+        int stat_errno = get_error_errno();
+        if (stat_errno == ENOENT) {
+            if (!expect_newenv)  // fileops directory is missing but persistent env exists
+                r = toku_ydb_do_error(env, ENOENT, "Missing: %s\n", iname);
+            else 
+                r = 0;           // both fileops directory and persistent env are missing
+        }
+        else {
+            r = toku_ydb_do_error(env, stat_errno, "Unable to access %s\n", iname);
+            assert(r);
+        }
+    }
+    toku_free(path);
+    return 0;
+}
+
 // verifies that either all of the metadata files we are expecting exist
 // or none do.
 int dictionary_manager::validate_environment(DB_ENV* env, bool* valid_newenv) {
     int r;
+    *valid_newenv = false;
     bool expect_newenv = false;        // set true if we expect to create a new env
     toku_struct_stat buf;
     char* path = NULL;
@@ -251,34 +279,13 @@ int dictionary_manager::validate_environment(DB_ENV* env, bool* valid_newenv) {
     toku_free(path);
 
     // Test for fileops directory
-    if (r == 0) {
-        path = toku_construct_full_name(2, env->i->dir, toku_product_name_strings.fileopsdirectory);
-        assert(path);
-        r = toku_stat(path, &buf);
-        if (r == 0) {  
-            if (expect_newenv)  // fileops directory exists, but persistent env is missing
-                r = toku_ydb_do_error(env, ENOENT, "Persistent environment is missing\n");
-        }
-        else {
-            int stat_errno = get_error_errno();
-            if (stat_errno == ENOENT) {
-                if (!expect_newenv)  // fileops directory is missing but persistent env exists
-                    r = toku_ydb_do_error(env, ENOENT, "Fileops directory is missing\n");
-                else 
-                    r = 0;           // both fileops directory and persistent env are missing
-            }
-            else {
-                r = toku_ydb_do_error(env, stat_errno, "Unable to access fileops directory\n");
-                assert(r);
-            }
-        }
-        toku_free(path);
-    }
+    r = validate_metadata_db(env, toku_product_name_strings.fileopsdirectory, expect_newenv);
+    if (r != 0) goto cleanup;
+    r = validate_metadata_db(env, toku_product_name_strings.fileopsinames, expect_newenv);
+    if (r != 0) goto cleanup;
 
-    if (r == 0)
-        *valid_newenv = expect_newenv;
-    else 
-        *valid_newenv = false;
+    *valid_newenv = expect_newenv;
+cleanup:
     return r;
 }
 
@@ -438,13 +445,13 @@ cleanup:
     return r;
 }
 
-int dictionary_manager::setup_directory(DB_ENV* env, DB_TXN* txn) {
-    int r = toku_db_create(&m_directory, env, 0);
+int dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname) {
+    int r = toku_db_create(db, env, 0);
     assert_zero(r);
-    toku_db_use_builtin_key_cmp(m_directory);
-    r = open_internal_db(m_directory, txn, NULL, toku_product_name_strings.fileopsdirectory, DB_CREATE);
+    toku_db_use_builtin_key_cmp(*db);
+    r = open_internal_db(*db, txn, NULL, iname, DB_CREATE);
     if (r != 0) {
-        r = toku_ydb_do_error(env, r, "Cant open %s\n", toku_product_name_strings.fileopsdirectory);
+        r = toku_ydb_do_error(env, r, "Cant open %s\n", iname);
     }
     return r;
 }
@@ -464,7 +471,10 @@ int dictionary_manager::setup_metadata(
         last_lsn_of_clean_shutdown_read_from_log
         );
     if (r != 0) goto cleanup;
-    r = setup_directory(env, txn);
+    r = setup_internal_db(&m_directory, env, txn, toku_product_name_strings.fileopsdirectory);
+    if (r != 0) goto cleanup;
+    r = setup_internal_db(&m_inamedb, env, txn, toku_product_name_strings.fileopsinames);
+    if (r != 0) goto cleanup;
     
 cleanup:
     return r;
@@ -750,6 +760,9 @@ void dictionary_manager::destroy() {
     }
     if (m_directory) {
         toku_db_close(m_directory);
+    }
+    if (m_inamedb) {
+        toku_db_close(m_inamedb);
     }
     m_dictionary_map.destroy();
     toku_mutex_destroy(&m_mutex);

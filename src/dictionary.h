@@ -121,23 +121,27 @@ private:
         LSN last_lsn_of_clean_shutdown_read_from_log
         );
     int setup_persistent_environment(DB_ENV* env, bool newenv, DB_TXN* txn, LSN last_lsn_of_clean_shutdown_read_from_log);
-    int setup_directory(DB_ENV* env, DB_TXN* txn);
 public:
     int get_persistent_environment_cursor(DB_TXN* txn, DBC** c);
 
 
 
 private:
-    DB* m_directory;
+    DB* m_directory; // maps dname to dictionary id
+    DB* m_inamedb; // maps dictionary id to iname
+    
     // used to open DBs that will be used internally
     // in the dictionary_manager
     bool can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const char *iname_in_env);
     int open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags);
+    int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname);
+    int validate_metadata_db(DB_ENV* env, const char* iname, bool expect_newenv);
 
 public:
     dictionary_manager() : 
         m_persistent_environment(nullptr),
-        m_directory(nullptr)
+        m_directory(nullptr),
+        m_inamedb(nullptr)
     {
     }
     int validate_environment(DB_ENV* env, bool* valid_newenv);
