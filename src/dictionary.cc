@@ -261,9 +261,7 @@ int persistent_dictionary_manager::get_directory_cursor(DB_TXN* txn, DBC** c) {
     return toku_db_cursor(m_directory, txn, c, 0);
 }
 
-// get the iname for the given dname and set it in the variable iname
-// responsibility of caller to free iname
-int persistent_dictionary_manager::get_iname(const char* dname, DB_TXN* txn, char** iname) {
+int persistent_dictionary_manager::get_dinfo(const char* dname, DB_TXN* txn, dictionary_info* dinfo) {
     DBT dname_dbt;
     DBT iname_dbt;
     toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
@@ -272,8 +270,20 @@ int persistent_dictionary_manager::get_iname(const char* dname, DB_TXN* txn, cha
     // get iname
     int r = toku_db_get(m_directory, txn, &dname_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
     if (r == 0) {
-        *iname = (char *) iname_dbt.data;
+        dinfo->iname = (char *) iname_dbt.data;
     }
+    return r;
+}
+
+// get the iname for the given dname and set it in the variable iname
+// responsibility of caller to free iname
+int persistent_dictionary_manager::get_iname(const char* dname, DB_TXN* txn, char** iname) {
+    dictionary_info dinfo;
+    int r = get_dinfo(dname, txn, &dinfo);
+    if (r == 0) {
+        *iname = toku_strdup(dinfo.iname);
+    }
+    dinfo.destroy();
     return r;
 }
 
@@ -358,11 +368,10 @@ exit:
     return r;
 }
 
-int  persistent_dictionary_manager::create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index) {
-    char* iname = create_new_iname(dname, env, txn, NULL);
+int  persistent_dictionary_manager::create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo) {
+    dinfo->iname = create_new_iname(dname, env, txn, NULL);
     uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0); 
-    assert(false); // need to pass out information
-    return change_iname(txn, dname, iname, put_flags);
+    return change_iname(txn, dname, dinfo->iname, put_flags);
 }
 
 void persistent_dictionary_manager::destroy() {
@@ -784,28 +793,26 @@ int dictionary_manager::open_db(
     int is_db_hot_index  = flags & DB_IS_HOT_INDEX;
     
     assert(!db_opened(db));
-    char* iname = NULL;
-    r = pdm.get_iname(dname, txn, &iname);
+    dictionary_info dinfo;
+    r = pdm.get_dinfo(dname, txn, &dinfo);
     if (r == DB_NOTFOUND && !is_db_create) {
         r = ENOENT;
     } else if (r==0 && is_db_excl) {
         r = EEXIST;
     } else if (r == DB_NOTFOUND) {
-        r = pdm.create_new_db(txn, dname, db->dbenv, is_db_hot_index);
+        r = pdm.create_new_db(txn, dname, db->dbenv, is_db_hot_index, &dinfo);
     }
     
     // we now have an iname
     if (r == 0) {
-        r = toku_db_open_iname(db, txn, iname, flags);
+        r = toku_db_open_iname(db, txn, dinfo.iname, flags);
         if (r == 0) {
             // now that the directory has been updated, create the dictionary
             db->i->dict = idm.get_dictionary(dname);
         }
     }
-
-    if (iname) {
-        toku_free(iname);
-    }
+    
+    dinfo.destroy();
     return r;
 }
 
