@@ -99,30 +99,34 @@ PATENT RIGHTS GRANT:
 
 class inmemory_dictionary_manager;
 
+// retrieved from metadata stored
+class dictionary_info {
+public:
+    char* dname;
+    char* iname;
+    dictionary_info() : dname(nullptr), iname(nullptr) {
+    }
+    void destroy() {
+        if (dname) {
+            toku_free(dname);
+        }
+        if (iname) {
+            toku_free(iname);
+        }
+    }
+};
+
 class dictionary {
     char* m_dname;
     uint32_t m_refcount; // access protected by the mutex of dictionary_manager that is managing this dictionary
     inmemory_dictionary_manager* m_mgr;
 public:
-    void create(const char* dname, inmemory_dictionary_manager* manager);
+    void create(const dictionary_info* dinfo, inmemory_dictionary_manager* manager);
     void destroy();
     void release();
     char* get_dname() const;
 
     friend class inmemory_dictionary_manager;
-};
-
-// retrieved from metadata stored
-class dictionary_info {
-public:
-    char* iname;
-    dictionary_info() : iname(nullptr) {
-    }
-    void destroy() {
-        if (iname) {
-            toku_free(iname);
-        }
-    }
 };
 
 class persistent_dictionary_manager {
@@ -167,7 +171,7 @@ public:
     }
     bool release_dictionary(dictionary* dbi);
     uint32_t num_open_dictionaries();
-    dictionary* get_dictionary(const char * dname);
+    dictionary* get_dictionary(const dictionary_info* dinfo);
     void create();
     void destroy();
 };

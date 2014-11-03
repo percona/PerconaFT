@@ -187,19 +187,23 @@ out:
 }
 
 static int open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* iname, uint32_t flags) {    
+    dictionary_info dinfo;
+    dinfo.dname = (dname) ? toku_strdup(dname) : nullptr;
+    dinfo.iname = toku_strdup(iname);
     int r = toku_db_open_iname(db, txn, iname, flags);
     if (r == 0) {
         dictionary *dbi = NULL;
         XCALLOC(dbi);
-        dbi->create(dname, NULL);
+        dbi->create(&dinfo, NULL);
         db->i->dict = dbi;
     }
+    dinfo.destroy();
     return r;
 }
 
-void dictionary::create(const char* dname, inmemory_dictionary_manager* manager) {
-    if (dname) {
-        m_dname = toku_strdup(dname);
+void dictionary::create(const dictionary_info* dinfo, inmemory_dictionary_manager* manager) {
+    if (dinfo->dname) {
+        m_dname = toku_strdup(dinfo->dname);
     }
     else {
         m_dname = nullptr;
@@ -271,6 +275,7 @@ int persistent_dictionary_manager::get_dinfo(const char* dname, DB_TXN* txn, dic
     int r = toku_db_get(m_directory, txn, &dname_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
     if (r == 0) {
         dinfo->iname = (char *) iname_dbt.data;
+        dinfo->dname = toku_strdup(dname);
     }
     return r;
 }
@@ -369,6 +374,7 @@ exit:
 }
 
 int  persistent_dictionary_manager::create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo) {
+    dinfo->dname = (dname) ? toku_strdup(dname) : nullptr;
     dinfo->iname = create_new_iname(dname, env, txn, NULL);
     uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0); 
     return change_iname(txn, dname, dinfo->iname, put_flags);
@@ -808,7 +814,7 @@ int dictionary_manager::open_db(
         r = toku_db_open_iname(db, txn, dinfo.iname, flags);
         if (r == 0) {
             // now that the directory has been updated, create the dictionary
-            db->i->dict = idm.get_dictionary(dname);
+            db->i->dict = idm.get_dictionary(&dinfo);
         }
     }
     
@@ -893,12 +899,12 @@ uint32_t inmemory_dictionary_manager::num_open_dictionaries() {
     return retval;    
 }
 
-dictionary* inmemory_dictionary_manager::get_dictionary(const char * dname) {
+dictionary* inmemory_dictionary_manager::get_dictionary(const dictionary_info* dinfo) {
     toku_mutex_lock(&m_mutex);
-    dictionary *dbi = find_locked(dname);
+    dictionary *dbi = find_locked(dinfo->dname);
     if (dbi == nullptr) {
         XCALLOC(dbi);
-        dbi->create(dname, this);
+        dbi->create(dinfo, this);
         add_db(dbi);
     }
     dbi->m_refcount++;
