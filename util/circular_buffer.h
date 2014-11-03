@@ -151,7 +151,7 @@ public:
     // Effect:
     //  Append elt to the end of the queue if there's room before abstime.
     // Notes:
-    //  Blocks until at most abstime waiting for room in the queue.  See pthread_cond_timedwait(3) for an example of how to use abstime.
+    //  Blocks until at most abstime waiting for room in the queue.  See toku_pthread_cond_timedwait(3) for an example of how to use abstime.
     // Returns:
     //  true iff elt was appended
     bool timedpush(const T &elt, toku_timespec_t *abstime) __attribute__((nonnull, warn_unused_result));
@@ -174,7 +174,7 @@ public:
     // Effect:
     //  Remove the first item from the queue and return it, if one exists before abstime
     // Notes:
-    //  Blocks until at most abstime waiting for room in the queue.  See pthread_cond_timedwait(3) for an example of how to use abstime.
+    //  Blocks until at most abstime waiting for room in the queue.  See toku_pthread_cond_timedwait(3) for an example of how to use abstime.
     //  Returns the element in *eltp.
     // Returns:
     //  true iff *eltp was set

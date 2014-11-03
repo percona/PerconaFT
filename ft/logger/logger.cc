@@ -417,7 +417,7 @@ max_int (int a, int b)
 static void
 wait_till_output_available (TOKULOGGER logger)
 // Effect: Wait until output becomes available.
-// Implementation hint: Use a pthread_cond_wait.
+// Implementation hint: Use a toku_pthread_cond_wait.
 // Entry: Holds the output_condition_lock (but not the inlock)
 // Exit: Holds the output_condition_lock and logger->output_is_available
 //

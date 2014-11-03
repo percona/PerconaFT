@@ -123,11 +123,11 @@ void toku_scoped_malloc_destroy(void) {}
 
 namespace toku {
 
-    // see pthread_key handling at the bottom
+    // see toku_pthread_key handling at the bottom
     //
     // when we use gcc 4.8, we can use the 'thread_local' keyword and proper c++
     // constructors/destructors instead of this pthread / global set wizardy.
-    static pthread_key_t tl_stack_destroy_pthread_key;
+    static toku_pthread_key_t tl_stack_destroy_pthread_key;
     class tl_stack;
     std::set<tl_stack *> *global_stack_set;
     toku_mutex_t global_stack_set_mutex = TOKU_MUTEX_INITIALIZER;
@@ -140,7 +140,7 @@ namespace toku {
         void init() {
             m_stack = reinterpret_cast<char *>(toku_xmalloc(STACK_SIZE));
             m_current_offset = 0;
-            int r = pthread_setspecific(tl_stack_destroy_pthread_key, this);
+            int r = toku_pthread_setspecific(tl_stack_destroy_pthread_key, this);
             invariant_zero(r);
         }
 
@@ -228,7 +228,7 @@ namespace toku {
 // pthread key handling:
 // - there is a process-wide pthread key that is associated with the destructor for a tl_stack
 // - on process construction, we initialize the key; on destruction, we clean it up.
-// - when a thread first uses its tl_stack, it calls pthread_setspecific(&destroy_key, "some key"),
+// - when a thread first uses its tl_stack, it calls toku_pthread_setspecific(&destroy_key, "some key"),
 //   associating the destroy key with the tl_stack_destroy_and_deregister destructor
 // - when a thread terminates, it calls the associated destructor; tl_stack_destroy_and_deregister.
 
@@ -238,7 +238,7 @@ void toku_scoped_malloc_init(void) {
     toku::global_stack_set = new std::set<toku::tl_stack *>();
     toku_mutex_unlock(&toku::global_stack_set_mutex);
 
-    int r = pthread_key_create(&toku::tl_stack_destroy_pthread_key,
+    int r = toku_pthread_key_create(&toku::tl_stack_destroy_pthread_key,
                                toku::tl_stack::destroy_and_deregister);
     invariant_zero(r);
 }
@@ -258,7 +258,7 @@ void toku_scoped_malloc_destroy(void) {
 
     // We're deregistering the destructor key here. When this thread exits,
     // the tl_stack destructor won't get called, so we need to do that first.
-    int r = pthread_key_delete(toku::tl_stack_destroy_pthread_key);
+    int r = toku_pthread_key_delete(toku::tl_stack_destroy_pthread_key);
     invariant_zero(r);
 }
 

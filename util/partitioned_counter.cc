@@ -144,13 +144,13 @@ void partitioned_counters_destroy(void) {}
 //  There is also a linked list, for each thread that has a thread-local part
 //  of any counter, of all the thread-local parts of all the counters.
 //
-//  There is a pthread_key which gives us a hook to clean up thread-local
+//  There is a toku_pthread_key which gives us a hook to clean up thread-local
 //  state when a thread terminates.  For each thread-local part of a counter
 //  that the thread has, we add in the thread-local sum into the sum_of_dead.
 //
 //  Finally there is a list of all the thread-local arrays so that when we
 //  destroy the partitioned counter before the threads are done, we can find
-//  and destroy the thread_local_arrays before destroying the pthread_key.
+//  and destroy the thread_local_arrays before destroying the toku_pthread_key.
 //
 // Abstraction function: The sum is represented by the sum of _sum and the
 //  sum's of the thread-local parts of the counter.
@@ -174,37 +174,35 @@ void partitioned_counters_destroy(void) {}
 
 using namespace toku;
 
-static pthread_mutex_t partitioned_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
+static toku_mutex_t partitioned_counter_mutex = TOKU_MUTEX_INITIALIZER;
 
 static void pc_lock (void)
 // Effect: Lock the mutex.
 {
-    int r = pthread_mutex_lock(&partitioned_counter_mutex);
-    assert(r==0);
+    toku_mutex_lock(&partitioned_counter_mutex);
 }
 
 static void pc_unlock (void)
 // Effect: Unlock the mutex.
 {
-    int r = pthread_mutex_unlock(&partitioned_counter_mutex);
-    assert(r==0);
+    toku_mutex_unlock(&partitioned_counter_mutex);
 }
 
 //******************************************************************************
 // Key creation primitives
 //******************************************************************************
-static void pk_create (pthread_key_t *key, void (*destructor)(void*)) {
-    int r = pthread_key_create(key, destructor);
+static void pk_create (toku_pthread_key_t *key, void (*destructor)(void*)) {
+    int r = toku_pthread_key_create(key, destructor);
     assert(r==0);
 }
 
-static void pk_delete (pthread_key_t key) {
-    int r = pthread_key_delete(key);
+static void pk_delete (toku_pthread_key_t key) {
+    int r = toku_pthread_key_delete(key);
     assert(r==0);
 }
 
-static void pk_setspecific (pthread_key_t key, const void *value) {
-    int r = pthread_setspecific(key, value);
+static void pk_setspecific (toku_pthread_key_t key, void *value) {
+    int r = toku_pthread_setspecific(key, value);
     assert(r==0);
 }
 
@@ -264,29 +262,29 @@ static void destroy_thread_local_part_of_partitioned_counters (void *ignore_me _
 }
 
 //******************************************************************************
-// We employ a system-wide pthread_key simply to get a notification when a
+// We employ a system-wide toku_pthread_key simply to get a notification when a
 //  thread terminates. The key will simply contain a constant string (it's "dont
 //  care", but it doesn't matter what it is, as long as it's not NULL.  We need
-//  a constructor function to set up the pthread_key.  We used a constructor
+//  a constructor function to set up the toku_pthread_key.  We used a constructor
 //  function intead of a C++ constructor because that's what we are used to,
 //  rather than because it's necessarily better.  Whenever a thread tries to
 //  increment a partitioned_counter for the first time, it sets the
-//  pthread_setspecific for the thread_destructor_key.  It's OK if the key gets
+//  toku_pthread_setspecific for the thread_destructor_key.  It's OK if the key gets
 //  setspecific multiple times, it's always the same value.  When a thread (that
 //  has created a thread-local part of any partitioned counter) terminates, the
 //  destroy_thread_local_part_of_partitioned_counters will run.  It may run
-//  before or after other pthread_key destructors, but the thread-local
+//  before or after other toku_pthread_key destructors, but the thread-local
 //  ll_thread_head variable is still present until the thread is completely done
 //  running.
 //******************************************************************************
 
-static pthread_key_t thread_destructor_key;
+static toku_pthread_key_t thread_destructor_key;
 
 //******************************************************************************
-// We don't like using up pthread_keys (macos provides only 128 of them),
+// We don't like using up toku_pthread_keys (macos provides only 128 of them),
 // so we built our own.   Also, looking at the source code for linux libc,
-// it looks like pthread_keys get slower if there are a lot of them.
-// So we use only one pthread_key.
+// it looks like toku_pthread_keys get slower if there are a lot of them.
+// So we use only one toku_pthread_key.
 //******************************************************************************
 
 GrowableArray<bool> counters_in_use;
@@ -384,7 +382,7 @@ static struct local_counter *get_or_alloc_thread_local_counter(PARTITIONED_COUNT
 
         // Set things up so that this thread terminates, the thread-local parts of the counter will be destroyed and merged into their respective counters.
         if (!thread_local_array_inited) {
-            pk_setspecific(thread_destructor_key, "dont care");
+            pk_setspecific(thread_destructor_key, const_cast<char *>("dont care"));
             thread_local_array_inited=true;
             thread_local_array.init();
             all_thread_local_arrays.insert(&thread_local_ll_elt, &thread_local_array);

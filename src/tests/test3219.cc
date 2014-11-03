@@ -236,16 +236,16 @@ static void
 run_test (void)
 {
     setup();
-    pthread_t t[3];
-    pthread_fun funs[3] = {start_a, start_b, start_c};
+    toku_pthread_t t[3];
+    toku_pthread_fun funs[3] = {start_a, start_b, start_c};
     finished = false;
     for (int i=0; i<3; i++) {
-	int r = pthread_create(&t[i], NULL, funs[i], NULL);
+	int r = toku_pthread_create(&t[i], NULL, funs[i], NULL);
 	assert(r==0);
     }
     for (int i=0; i<3; i++) {
 	void *rv;
-	int r = pthread_join(t[i], &rv);
+	int r = toku_pthread_join(t[i], &rv);
 	assert(r==0 && rv==NULL);
     }
     finish();

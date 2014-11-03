@@ -115,7 +115,7 @@ PATENT RIGHTS GRANT:
  * How it works.  Each thread has a thread-local counter structure with an integer in it.  To increment, we increment the thread-local structure.
  *   The other operation is to query the counters to get the sum of all the thread-local variables.
  *   The first time a pthread increments the variable we add the variable to a linked list.
- *   When a pthread ends, we use the pthread_key destructor to remove the variable from the linked list.  We also have to remember the sum of everything.
+ *   When a pthread ends, we use the toku_pthread_key destructor to remove the variable from the linked list.  We also have to remember the sum of everything.
  *    that has been removed from the list.
  *   To get the sum we add the sum of the destructed items, plus everything in the list.
  *
@@ -148,26 +148,26 @@ static int finished_counter=0; // counter for all threads that are done.
 
 // We use a single mutex for anything complex.  We'd like to use a mutex per partitioned counter, but we must cope with the possibility of a race between
 // a terminating pthread (which calls destroy_counter()), and a call to the counter destructor.  So we use a global mutex.
-static pthread_mutex_t pc_mutex = PTHREAD_MUTEX_INITIALIZER;
+static toku_mutex_t pc_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct counter_s *head=NULL;
-static pthread_key_t   counter_key;
+static toku_pthread_key_t   counter_key;
 
 static void pc_lock (void)
 // Effect: Lock the pc mutex.  
 {
-    int r = pthread_mutex_lock(&pc_mutex);
+    int r = toku_mutex_lock(&pc_mutex);
     assert(r==0);
 }
 
 static void pc_unlock (void)
 // Effect: Unlock the pc mutex.
 {
-    int r = pthread_mutex_unlock(&pc_mutex);
+    int r = toku_pthread_mutex_unlock(&pc_mutex);
     assert(r==0);
 }
 
 static void destroy_counter (void *counterp)
-// Effect: This is the function passed to pthread_key_create that is to run whenever a thread terminates.
+// Effect: This is the function passed to toku_pthread_key_create that is to run whenever a thread terminates.
 //   The thread-local part of the counter must be copied into the shared state, and the thread-local part of the counter must be
 //   removed from the linked list of all thread-local parts.
 {
@@ -194,7 +194,7 @@ static inline void increment (void) {
     if (!counter.inited) {
         pc_lock();
         struct counter_s *cp = &counter;
-	{ int r = pthread_setspecific(counter_key, cp); assert(r==0); }
+	{ int r = toku_pthread_setspecific(counter_key, cp); assert(r==0); }
 	cp->prev = NULL;
 	cp->next = head;
 	if (head!=NULL) {
@@ -278,21 +278,21 @@ static float tdiff (struct timeval *start, struct timeval *end) {
     return (end->tv_sec-start->tv_sec) +1e-6*(end->tv_usec - start->tv_usec);
 }
 
-static void pt_create (pthread_t *thread, void *(*f)(void*), void *extra) {
-    int r = pthread_create(thread, NULL, f, extra);
+static void pt_create (toku_pthread_t *thread, void *(*f)(void*), void *extra) {
+    int r = toku_pthread_create(thread, NULL, f, extra);
     assert(r==0);
 }
 
-static void pt_join (pthread_t thread, void *expect_extra) {
+static void pt_join (toku_pthread_t thread, void *expect_extra) {
     void *result;
-    int r = pthread_join(thread, &result);
+    int r = toku_pthread_join(thread, &result);
     assert(r==0);
     assert(result==expect_extra);
 }
 
 static void timeit (const char *description, void* (*f)(void*)) {
     struct timeval start, end;
-    pthread_t threads[T];
+    toku_pthread_t threads[T];
     gettimeofday(&start, 0);
     for (int i=0; i<T; i++) {
 	pt_create(&threads[i], f, NULL);
@@ -316,7 +316,7 @@ static void* tl_doit_ptr (void *v) {
 
 static void timeit_with_thread_local_pointer (const char *description, void* (*f)(void*)) {
     struct timeval start, end;
-    pthread_t threads[T];
+    toku_pthread_t threads[T];
     struct { uint64_t values[8] __attribute__((__aligned__(64))); } values[T]; // pad to different cache lines.
     gettimeofday(&start, 0);
     for (int i=0; i<T; i++) {
@@ -348,7 +348,7 @@ static void parse_args (int argc, const char *argv[]) {
 }
 
 static void do_timeit (void) {
-    { int r = pthread_key_create(&counter_key, destroy_counter); assert(r==0); } 
+    { int r = toku_pthread_key_create(&counter_key, destroy_counter); assert(r==0); } 
     printf("%d threads\n%d increments per thread\n", T, N);
     timeit("++",         old_doit_nonatomic);
     timeit("atomic++",   old_doit);
@@ -402,8 +402,8 @@ static void do_testit (void) {
     n_writers[0] = 20;
     n_writers[1] = 40;
     struct test_arguments tas[NGROUPS];
-    pthread_t reader_threads[NGROUPS];
-    pthread_t *writer_threads[NGROUPS];
+    toku_pthread_t reader_threads[NGROUPS];
+    toku_pthread_t *writer_threads[NGROUPS];
     for (int i=0; i<NGROUPS; i++) {
         tas[i].pc                         = create_partitioned_counter();
 	tas[i].limit                      = limits[i];
@@ -442,7 +442,7 @@ static void do_testit2 (void)
 // This test checks to see what happens if a thread is still live when we destruct a counter.
 //   A thread increments the counter, then lets us know through a spin wait, then waits until we destroy the counter.
 {
-    pthread_t t;
+    toku_pthread_t t;
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&spinwait, sizeof(spinwait)); // this is a racy volatile variable.
     {
         PARTITIONED_COUNTER mypc = create_partitioned_counter();

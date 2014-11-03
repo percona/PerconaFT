@@ -93,7 +93,7 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2010-2013 Tokutek Inc.  All rights reserved."
 
 // Fair readers/writer locks.  These are fair (meaning first-come first-served.  No reader starvation, and no writer starvation).  And they are
-// probably faster than the linux readers/writer locks (pthread_rwlock_t).
+// probably faster than the linux readers/writer locks (toku_pthread_rwlock_t).
 struct toku_cv_fair_rwlock_waiter_state; // this structure is used internally.
 typedef struct toku_cv_fair_rwlock_s {
     toku_mutex_t                          mutex;

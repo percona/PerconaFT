@@ -97,14 +97,14 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 
 
-static void pt_create (pthread_t *thread, void *(*f)(void*), void *extra) {
-    int r = pthread_create(thread, NULL, f, extra);
+static void pt_create (toku_pthread_t *thread, void *(*f)(void*), void *extra) {
+    int r = toku_pthread_create(thread, NULL, f, extra);
     assert(r==0);
 }
 
-static void pt_join (pthread_t thread, void *expect_extra) {
+static void pt_join (toku_pthread_t thread, void *expect_extra) {
     void *result;
-    int r = pthread_join(thread, &result);
+    int r = toku_pthread_join(thread, &result);
     assert(r==0);
     assert(result==expect_extra);
 }
@@ -136,7 +136,7 @@ static void *counter_init_fun(void *tnum_pv) {
 }
 
 static void do_test_5833(void) {
-    pthread_t threads[NCOUNTERS];
+    toku_pthread_t threads[NCOUNTERS];
     int       tids[NCOUNTERS];
     for (int i=0; i<NCOUNTERS; i++) {
         tids[i] = i;

@@ -100,7 +100,7 @@ using namespace toku;
 
 static int verbose = 0;
 static int killed = 0;
-static pthread_t big_id, small_id;
+static toku_pthread_t big_id, small_id;
 
 static void locktree_release_lock(locktree *lt, TXNID txn_id, int64_t left_k, int64_t right_k) {
     range_buffer buffer;
@@ -151,7 +151,7 @@ struct big_arg {
 
 static void *big_f(void *_arg) {
     struct big_arg *arg = (struct big_arg *) _arg;
-    assert(pthread_equal(pthread_self(), big_id));
+    assert(toku_pthread_equal(toku_pthread_self(), big_id));
     printf("%u %s\n", toku_os_gettid(), __FUNCTION__);
     run_big_txn(arg->mgr, arg->lt, arg->n_lt, arg->txn_id);
     return arg;
@@ -190,7 +190,7 @@ static void *small_f(void *_arg) {
 }
 
 static void e_callback(TXNID txnid, const locktree *lt, const range_buffer &buffer, void *extra) {
-    assert(pthread_equal(pthread_self(), big_id));
+    assert(toku_pthread_equal(toku_pthread_self(), big_id));
     if (verbose) 
         printf("%u %s %" PRIu64 " %p %d %p\n", toku_os_gettid(), __FUNCTION__, txnid, lt, buffer.get_num_ranges(), extra);
 }

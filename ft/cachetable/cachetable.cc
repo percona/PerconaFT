@@ -3254,10 +3254,10 @@ void pair_list::init() {
     m_table = NULL;
     
 
-    pthread_rwlockattr_t attr;
-    pthread_rwlockattr_init(&attr);
+    toku_pthread_rwlockattr_t attr;
+    toku_pthread_rwlockattr_init(&attr);
 #if defined(HAVE_PTHREAD_RWLOCKATTR_SETKIND_NP)
-    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+    toku_pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
 #else
     // TODO: need to figure out how to make writer-preferential rwlocks
     // happen on osx

@@ -21,7 +21,7 @@ static void *t1_func(void *arg) {
         rwlock.write_unlock();
         toku_mutex_unlock(&rwlock_mutex);
     }
-    printf("%lu %d\n", (unsigned long) pthread_self(), i);
+    printf("%lu %d\n", (unsigned long) toku_pthread_self(), i);
     return arg;
 }
 
@@ -32,16 +32,16 @@ int main(void) {
     rwlock.init(&rwlock_mutex);
     
     const int nthreads = 2;
-    pthread_t tids[nthreads];
+    toku_pthread_t tids[nthreads];
     for (int i = 0; i < nthreads; i++) {
-        r = pthread_create(&tids[i], NULL, t1_func, NULL); 
+        r = toku_pthread_create(&tids[i], NULL, t1_func, NULL); 
         assert(r == 0);
     }
     sleep(10);
     killed = 1;
     for (int i = 0; i < nthreads; i++) {
         void *ret;
-        r = pthread_join(tids[i], &ret);
+        r = toku_pthread_join(tids[i], &ret);
         assert(r == 0);
     }
 

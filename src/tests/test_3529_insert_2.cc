@@ -154,10 +154,10 @@ static ssize_t
 my_pread (int fd, void *buf, size_t count, off_t offset) {
     static int my_pread_count = 0;
     if (++my_pread_count == 5) {
-        pthread_t id;
-        pthread_create(&id, NULL, do_insert_2, NULL);
+        toku_pthread_t id;
+        toku_pthread_create(&id, NULL, do_insert_2, NULL);
         void *ret;
-        pthread_join(id, &ret);
+        toku_pthread_join(id, &ret);
     }
     return pread(fd, buf, count, offset);
 }

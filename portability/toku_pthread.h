@@ -100,7 +100,6 @@ PATENT RIGHTS GRANT:
 typedef pthread_attr_t toku_pthread_attr_t;
 typedef pthread_t toku_pthread_t;
 typedef pthread_mutexattr_t toku_pthread_mutexattr_t;
-typedef pthread_mutex_t toku_pthread_mutex_t;
 typedef pthread_condattr_t toku_pthread_condattr_t;
 typedef pthread_cond_t toku_pthread_cond_t;
 typedef pthread_rwlock_t toku_pthread_rwlock_t;
@@ -421,3 +420,8 @@ static inline int
 toku_pthread_setspecific(toku_pthread_key_t key, void *data) {
     return pthread_setspecific(key, data);
 }
+
+// TODO: This is lazy
+#define toku_pthread_rwlockattr_init pthread_rwlockattr_init
+#define toku_pthread_rwlockattr_setkind_np pthread_rwlockattr_setkind_np
+#define toku_pthread_rwlockattr_destroy pthread_rwlockattr_destroy

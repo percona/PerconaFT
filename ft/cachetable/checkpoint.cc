@@ -206,17 +206,17 @@ static volatile uint64_t toku_checkpoint_long_threshold = 1000000;
 
 static void
 multi_operation_lock_init(void) {
-    pthread_rwlockattr_t attr;
-    pthread_rwlockattr_init(&attr);
+    toku_pthread_rwlockattr_t attr;
+    toku_pthread_rwlockattr_init(&attr);
 #if defined(HAVE_PTHREAD_RWLOCKATTR_SETKIND_NP)
-    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+    toku_pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
 #else
     // TODO: need to figure out how to make writer-preferential rwlocks
     // happen on osx
 #endif
     toku_pthread_rwlock_init(&multi_operation_lock, &attr);
     toku_pthread_rwlock_init(&low_priority_multi_operation_lock, &attr);
-    pthread_rwlockattr_destroy(&attr);
+    toku_pthread_rwlockattr_destroy(&attr);
     locked_mo = false;
 }
 

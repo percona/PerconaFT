@@ -114,7 +114,7 @@ struct kibbutz {
     bool please_shutdown;
     struct todo *head, *tail; // head is the next thing to do.
     int n_workers;
-    pthread_t *workers; // an array of n_workers
+    toku_pthread_t *workers; // an array of n_workers
     struct kid *ids;    // pass this in when creating a worker so it knows who it is.
 };
 

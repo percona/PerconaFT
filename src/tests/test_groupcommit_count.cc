@@ -152,7 +152,7 @@ test_groupcommit (int nthreads) {
     //if (verbose) printf(" That's a total of %d commits\n", nthreads*NITER);
 }
 
-// helgrind doesn't understand that pthread_join removes a race condition.   I'm not impressed... -Bradley
+// helgrind doesn't understand that toku_pthread_join removes a race condition.   I'm not impressed... -Bradley
 // Also, it doesn't happen every time, making helgrind unsuitable for regression tests.
 // So we must put locks around things that are properly serialized anyway.
 
@@ -170,10 +170,10 @@ get_fsync_count (void) {
 
 static int
 do_fsync (int fd) {
-    //fprintf(stderr, "%8.6fs Thread %ld start fsyncing\n", get_tdiff(), pthread_self());
+    //fprintf(stderr, "%8.6fs Thread %ld start fsyncing\n", get_tdiff(), toku_pthread_self());
     inc_fsync_count();
     int r = fsync(fd);
-    //fprintf(stderr, "%8.6fs Thread %ld done  fsyncing\n", get_tdiff(), pthread_self());
+    //fprintf(stderr, "%8.6fs Thread %ld done  fsyncing\n", get_tdiff(), toku_pthread_self());
     return r;
 }
 

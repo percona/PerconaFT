@@ -242,16 +242,16 @@ void time_cas (void) {
 
 void time_pthread_mutex (void) __attribute__((__noinline__));
 void time_pthread_mutex (void) {
-    pthread_mutex_t mutex;
-    { int r = pthread_mutex_init(&mutex, NULL); assert(r==0); }
+    toku_mutex_t mutex;
+    { int r = toku_pthread_mutex_init(&mutex, NULL); assert(r==0); }
     struct timeval start,end;
-    pthread_mutex_lock(&mutex);
-    pthread_mutex_unlock(&mutex);
+    toku_mutex_lock(&mutex);
+    toku_pthread_mutex_unlock(&mutex);
     for (int t=0; t<T; t++) {
 	gettimeofday(&start, NULL);
 	for (int i=0; i<N; i++) {
-	    pthread_mutex_lock(&mutex);
-	    pthread_mutex_unlock(&mutex);
+	    toku_mutex_lock(&mutex);
+	    toku_pthread_mutex_unlock(&mutex);
 	}
 	gettimeofday(&end,   NULL);
 	double diff = 1e9*toku_tdiff(&end, &start)/N;
@@ -259,21 +259,21 @@ void time_pthread_mutex (void) {
 	    fprintf(stderr, "pthread_mutex     = %.6fns/(lock+unlock)\n", diff);
 	best_mutex_time=mind(best_mutex_time,diff);
     }
-    { int r = pthread_mutex_destroy(&mutex);    assert(r==0); }
+    { int r = toku_pthread_mutex_destroy(&mutex);    assert(r==0); }
 }
 
 void time_pthread_rwlock (void) __attribute__((__noinline__));
 void time_pthread_rwlock (void) {
-    pthread_rwlock_t mutex;
-    { int r = pthread_rwlock_init(&mutex, NULL); assert(r==0); }
+    toku_pthread_rwlock_t mutex;
+    { int r = toku_pthread_rwlock_init(&mutex, NULL); assert(r==0); }
     struct timeval start,end;
-    pthread_rwlock_rdlock(&mutex);
-    pthread_rwlock_unlock(&mutex);
+    toku_pthread_rwlock_rdlock(&mutex);
+    toku_pthread_rwlock_unlock(&mutex);
     for (int t=0; t<T; t++) {
 	gettimeofday(&start, NULL);
 	for (int i=0; i<N; i++) {
-	    pthread_rwlock_rdlock(&mutex);
-	    pthread_rwlock_unlock(&mutex);
+	    toku_pthread_rwlock_rdlock(&mutex);
+	    toku_pthread_rwlock_unlock(&mutex);
 	}
 	gettimeofday(&end,   NULL);
 	double diff = 1e9*toku_tdiff(&end, &start)/N;
@@ -281,7 +281,7 @@ void time_pthread_rwlock (void) {
 	    fprintf(stderr, "pthread_rwlock(r) = %.6fns/(lock+unlock)\n", diff);
 	best_rwlock_time=mind(best_rwlock_time,diff);
     }
-    { int r = pthread_rwlock_destroy(&mutex);    assert(r==0); }
+    { int r = toku_pthread_rwlock_destroy(&mutex);    assert(r==0); }
 }
 
 static void util_rwlock_lock (RWLOCK rwlock, toku_mutex_t *mutex) {

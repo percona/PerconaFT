@@ -236,12 +236,12 @@ int main(int argc, const char *argv[]) {
 
     // create the worker threads
     struct arg big_arg = { &mgr, lt_0, 1000 };
-    pthread_t big_id;
+    toku_pthread_t big_id;
     r = toku_pthread_create(&big_id, nullptr, big_f, &big_arg);
     assert(r == 0);
 
     const int n_small = 7;
-    pthread_t small_ids[n_small];
+    toku_pthread_t small_ids[n_small];
     struct arg small_args[n_small];
 
     for (int i = 0; i < n_small; i++) {

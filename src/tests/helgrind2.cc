@@ -175,12 +175,12 @@ static void *startb(void* ignore __attribute__((__unused__))) {
 int
 test_main (int argc, char * const argv[]) {
     parse_args(argc, argv);
-    pthread_t a,b;
+    toku_pthread_t a,b;
     initialize();
-    { int x = pthread_create(&a, NULL, starta, NULL); assert(x==0); }
-    { int x = pthread_create(&b, NULL, startb, NULL); assert(x==0); }
-    { int x = pthread_join(a, NULL);           assert(x==0); }
-    { int x = pthread_join(b, NULL);           assert(x==0); }
+    { int x = toku_pthread_create(&a, NULL, starta, NULL); assert(x==0); }
+    { int x = toku_pthread_create(&b, NULL, startb, NULL); assert(x==0); }
+    { int x = toku_pthread_join(a, NULL);           assert(x==0); }
+    { int x = toku_pthread_join(b, NULL);           assert(x==0); }
     finish();
     return 0;
 }

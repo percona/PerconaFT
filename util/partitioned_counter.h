@@ -96,7 +96,7 @@ PATENT RIGHTS GRANT:
 // Implementation hint: Use thread-local storage so each thread increments its own data.  The increment does not require a lock or atomic operation.
 //  Reading the data can be performed by iterating over the thread-local versions, summing them up.
 //  The data structure also includes a sum for all the threads that have died.
-//  Use a pthread_key to create the thread-local versions.  When a thread finishes, the system calls pthread_key destructor which can add that thread's copy
+//  Use a toku_pthread_key to create the thread-local versions.  When a thread finishes, the system calls toku_pthread_key destructor which can add that thread's copy
 //  into the sum_of_dead counter.
 // Rationale: For statistics such as are found in engine status, we need a counter that requires no cache misses to increment.  We've seen significant
 //  performance speedups by removing certain counters.  Rather than removing those statistics, we would like to just make the counter fast.
@@ -115,7 +115,7 @@ PATENT RIGHTS GRANT:
 //
 // The google style guide says to avoid using constructors, and it appears that
 // constructors may have broken all the tests, because they called
-// pthread_key_create before the key was actually created.  So the google style
+// toku_pthread_key_create before the key was actually created.  So the google style
 // guide may have some wisdom there...
 //
 // This version does not use constructors, essentially reverrting to the google C++ style guide.
@@ -178,7 +178,7 @@ public:
 
 private:
     uint64_t       _sum_of_dead;             // The sum of all thread-local counts from threads that have terminated.
-    pthread_key_t   _key;                     // The pthread_key which gives us the hook to construct and destruct thread-local storage.
+    toku_pthread_key_t   _key;                     // The toku_pthread_key which gives us the hook to construct and destruct thread-local storage.
     struct linked_list_head _ll_counter_head; // A linked list of all the thread-local information for this counter.
     
     // This function is used to destroy the thread-local part of the state when a thread terminates.

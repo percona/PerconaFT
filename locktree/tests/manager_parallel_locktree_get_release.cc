@@ -122,7 +122,7 @@ void manager_unit_test::test_reference_release_lt(void) {
     locktree_manager mgr;
     mgr.create(nullptr, nullptr, nullptr, nullptr);
     const int nthreads = 2;
-    pthread_t ids[nthreads];
+    toku_pthread_t ids[nthreads];
     for (int i = 0; i < nthreads; i++) {
         r = toku_pthread_create(&ids[i], nullptr, my_tester, &mgr);
         assert(r == 0);

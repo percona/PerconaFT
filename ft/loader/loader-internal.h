@@ -263,7 +263,7 @@ struct ft_loader_s {
 
     QUEUE *fractal_queues; // an array of work queues, one for each secondary index.
     toku_pthread_t *fractal_threads;
-    bool *fractal_threads_live; // an array of bools indicating that fractal_threads[i] is a live thread.  (There is no NULL for a pthread_t, so we have to maintain this separately).
+    bool *fractal_threads_live; // an array of bools indicating that fractal_threads[i] is a live thread.  (There is no NULL for a toku_pthread_t, so we have to maintain this separately).
 
     unsigned fractal_workers; // number of fractal tree writer threads
 
@@ -277,7 +277,7 @@ void toku_ft_loader_set_n_rows(FTLOADER bl, uint64_t n_rows);
 // Get the number of rows in the loader.  Used for test.
 uint64_t toku_ft_loader_get_n_rows(FTLOADER bl);
 
-// The data passed into a fractal_thread via pthread_create.
+// The data passed into a fractal_thread via toku_pthread_create.
 struct fractal_thread_args {
     FTLOADER                bl;
     const DESCRIPTOR descriptor;

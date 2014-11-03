@@ -195,13 +195,13 @@ int test_main (int argc, char *const argv[]) {
             printf("put %d\n", i);
     }
 
-    pthread_t checkpoint_tid = 0;
-    r = pthread_create(&checkpoint_tid, NULL, checkpoint_thread, env);
+    toku_pthread_t checkpoint_tid = 0;
+    r = toku_pthread_create(&checkpoint_tid, NULL, checkpoint_thread, env);
     assert(r == 0);
 
-    pthread_t w_tid = 0;
+    toku_pthread_t w_tid = 0;
     struct writer_arg w_arg = { env, db, N };
-    r = pthread_create(&w_tid, NULL, w_thread, &w_arg);
+    r = toku_pthread_create(&w_tid, NULL, w_thread, &w_arg);
     assert(r == 0);
 
     r = bigtxn->commit_with_progress(bigtxn, 0, bigtxn_progress, NULL);
@@ -210,9 +210,9 @@ int test_main (int argc, char *const argv[]) {
     assert(old_state == 1);
 
     void *ret;
-    r = pthread_join(w_tid, &ret);
+    r = toku_pthread_join(w_tid, &ret);
     assert(r == 0);
-    r = pthread_join(checkpoint_tid, &ret);
+    r = toku_pthread_join(checkpoint_tid, &ret);
     assert(r == 0);
 
     r = db->close(db, 0);

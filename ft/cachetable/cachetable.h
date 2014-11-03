@@ -505,7 +505,7 @@ int toku_cachefile_prefetch(CACHEFILE cf, CACHEKEY key, uint32_t fullhash,
 // Postcondition: The cachetable mutex is NOT held.
 // Returns: 0 if success
 // Implement Note: 
-//  1) The pair's rwlock is acquired (for write) (there is not a deadlock here because the rwlock is a pthread_cond_wait using the cachetable mutex).  
+//  1) The pair's rwlock is acquired (for write) (there is not a deadlock here because the rwlock is a toku_pthread_cond_wait using the cachetable mutex).  
 //  Case A:  Single-threaded.
 //    A1)  Call cachetable_fetch_pair, which
 //      a) Obtains a readlock on the cachefile's fd (to prevent multipler readers at once)

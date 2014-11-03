@@ -116,7 +116,7 @@ int toku_queue_enq (QUEUE q, void *item, uint64_t weight, uint64_t *total_weight
 // If total_weight_after_enq!=NULL then return the current weight of the items in the queue (after finishing blocking on overweight, and after enqueueing the item).
 // If successful return 0.
 // If an error occurs, return the error number, and the state of the queue is undefined.  The item may have been enqueued or not, and in fact the queue may be badly corrupted if the condition variables go awry.  If it's just a matter of out-of-memory, then the queue is probably OK.
-// Requires: There is only a single consumer. (We wake up the consumer using a pthread_cond_signal (which is suitable only for single consumers.)
+// Requires: There is only a single consumer. (We wake up the consumer using a toku_pthread_cond_signal (which is suitable only for single consumers.)
 
 int toku_queue_eof (QUEUE q);
 // Effect: Inform the queue that no more values will be inserted.  After all the values that have been inserted are dequeued, further dequeue operations will return EOF.

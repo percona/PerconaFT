@@ -206,7 +206,7 @@ int test_main(int argc, char * const argv[]) {
     dbt_init(&desc, "foo", sizeof("foo"));
     IN_TXN_COMMIT(env, NULL, txn, 0,
                   { int chk_r = db->change_descriptor(db, txn, &desc, DB_UPDATE_CMP_DESCRIPTOR); CKERR(chk_r); });
-    pthread_t thd;
+    toku_pthread_t thd;
     { int chk_r = toku_pthread_create(&thd, NULL, startA, NULL); CKERR(chk_r); }
 
     startB();
