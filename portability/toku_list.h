@@ -165,6 +165,8 @@ static inline void toku_list_move(struct toku_list *newhead, struct toku_list *o
     toku_list_init(oldhead);
 }
 
+// TODO: __builtin_offset here is not portable
+//
 // Note: Need the extra level of parens in these macros so that
 //   toku_list_struct(h, foo, b)->zot
 // will work right.  Otherwise the type cast will try to include ->zot, and it will be all messed up.

@@ -144,7 +144,7 @@ struct leafentry {
         uint8_t  val[0];     //actual val
     }; // For the case where LEAFENTRY->type is LE_CLEAN
     static_assert(4 == sizeof(leafentry::leafentry_clean), "leafentry_clean size is wrong");
-    static_assert(4 == __builtin_offsetof(leafentry::leafentry_clean, val), "val is in the wrong place");
+    static_assert(4 == toku_compiler_offsetof(leafentry::leafentry_clean, val), "val is in the wrong place");
     struct __attribute__ ((__packed__)) leafentry_mvcc {
         uint32_t num_cxrs; // number of committed transaction records
         uint8_t  num_pxrs; // number of provisional transaction records
@@ -172,7 +172,7 @@ struct leafentry {
                              //   (innermost data and length with insert/delete flag are stored above, cannot be a placeholder)
     }; // For the case where LEAFENTRY->type is LE_MVCC
     static_assert(5 == sizeof(leafentry::leafentry_mvcc), "leafentry_mvcc size is wrong");
-    static_assert(5 == __builtin_offsetof(leafentry::leafentry_mvcc, xrs), "xrs is in the wrong place");
+    static_assert(5 == toku_compiler_offsetof(leafentry::leafentry_mvcc, xrs), "xrs is in the wrong place");
 
     uint8_t  type;    // type is LE_CLEAN or LE_MVCC
     //uint32_t keylen;
@@ -182,7 +182,7 @@ struct leafentry {
     } u;
 };
 static_assert(6 == sizeof(leafentry), "leafentry size is wrong");
-static_assert(1 == __builtin_offsetof(leafentry, u), "union is in the wrong place");
+static_assert(1 == toku_compiler_offsetof(leafentry, u), "union is in the wrong place");
 
 #define LE_CLEAN_MEMSIZE(_vallen)                       \
     (sizeof(((LEAFENTRY)NULL)->type)            /* type */       \

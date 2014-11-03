@@ -4713,7 +4713,7 @@ int toku_ft_strerror_r(int error, char *buf, size_t buflen)
 int toku_keycompare(const void *key1, uint32_t key1len, const void *key2, uint32_t key2len) {
     int comparelen = key1len < key2len ? key1len : key2len;
     int c = memcmp(key1, key2, comparelen);
-    if (__builtin_expect(c != 0, 1)) {
+    if (toku_compiler_likely(c != 0)) {
         return c;
     } else {
         if (key1len < key2len) {

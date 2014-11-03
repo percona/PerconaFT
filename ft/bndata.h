@@ -103,12 +103,12 @@ struct klpair_struct {
 };
 
 static constexpr uint32_t keylen_from_klpair_len(const uint32_t klpair_len) {
-    return klpair_len - __builtin_offsetof(klpair_struct, key);
+    return klpair_len - toku_compiler_offsetof(klpair_struct, key);
 }
 
 
-static_assert(__builtin_offsetof(klpair_struct, key) == 1*sizeof(uint32_t), "klpair alignment issues");
-static_assert(__builtin_offsetof(klpair_struct, key) == sizeof(klpair_struct), "klpair size issues");
+static_assert(toku_compiler_offsetof(klpair_struct, key) == 1*sizeof(uint32_t), "klpair alignment issues");
+static_assert(toku_compiler_offsetof(klpair_struct, key) == sizeof(klpair_struct), "klpair size issues");
 
 // A wrapper for the heaviside function provided to dmt->find*.
 // Needed because the heaviside functions provided to bndata do not know about the internal types.

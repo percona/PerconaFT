@@ -166,13 +166,13 @@ namespace toku {
         }
 
         int operator()(const DBT *a, const DBT *b) const {
-            if (__builtin_expect(toku_dbt_is_infinite(a) || toku_dbt_is_infinite(b), 0)) {
+            if (toku_compiler_likely(toku_dbt_is_infinite(a) || toku_dbt_is_infinite(b))) {
                 return toku_dbt_infinite_compare(a, b);
             } else if (_memcmp_magic != MEMCMP_MAGIC_NONE
                        // If `a' has the memcmp magic..
                        && dbt_has_memcmp_magic(a)
                        // ..then we expect `b' to also have the memcmp magic
-                       && __builtin_expect(dbt_has_memcmp_magic(b), 1)) {
+                       && toku_compiler_likely(dbt_has_memcmp_magic(b))) {
                 return toku_builtin_compare_fun(nullptr, a, b);
             } else {
                 // yikes, const sadness here

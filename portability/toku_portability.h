@@ -333,3 +333,9 @@ void toku_portability_destroy(void);
 static inline uint64_t roundup_to_multiple(uint64_t alignment, uint64_t v) {
     return (v + alignment - 1) & ~(alignment - 1);
 }
+
+// TODO: This should probably go in its own file toku_compiler.h?
+#define toku_compiler_expect(_expr_, _value_)  __builtin_expect(_expr_, _value_)
+#define toku_compiler_likely(_expr_)           toku_compiler_expect(((_expr_) != 0), 1)
+#define toku_compiler_unlikely(_expr_)         toku_compiler_expect(((_expr_) != 0), 0)
+#define toku_compiler_offsetof(_type_, _member_)    __builtin_offsetof(_type_, _member_)

@@ -2360,7 +2360,7 @@ struct __attribute__ ((__packed__)) leafentry_13 {
         uint8_t key_val[0];     //Actual key, then actual val
     };
     static_assert(0 == sizeof(leafentry_committed_13), "wrong size");
-    static_assert(0 == __builtin_offsetof(leafentry_committed_13, key_val), "wrong offset");
+    static_assert(0 == toku_compiler_offsetof(leafentry_committed_13, key_val), "wrong offset");
     struct __attribute__ ((__packed__)) leafentry_provisional_13 {
         uint8_t innermost_type;
         TXNID    xid_outermost_uncommitted;
@@ -2369,7 +2369,7 @@ struct __attribute__ ((__packed__)) leafentry_13 {
         //then transaction records.
     };
     static_assert(9 == sizeof(leafentry_provisional_13), "wrong size");
-    static_assert(9 == __builtin_offsetof(leafentry_provisional_13, key_val_xrs), "wrong offset");
+    static_assert(9 == toku_compiler_offsetof(leafentry_provisional_13, key_val_xrs), "wrong offset");
 
     uint8_t  num_xrs;
     uint32_t keylen;
@@ -2380,7 +2380,7 @@ struct __attribute__ ((__packed__)) leafentry_13 {
     } u;
 };
 static_assert(18 == sizeof(leafentry_13), "wrong size");
-static_assert(9 == __builtin_offsetof(leafentry_13, u), "wrong offset");
+static_assert(9 == toku_compiler_offsetof(leafentry_13, u), "wrong offset");
 
 //Requires:
 //  Leafentry that ule represents should not be destroyed (is not just all deletes)

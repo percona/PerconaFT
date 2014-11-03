@@ -538,9 +538,9 @@ private:
     ENSURE_POD(subtree);
     static_assert(ALIGNMENT > 0, "ALIGNMENT <= 0");
     static_assert((ALIGNMENT & (ALIGNMENT - 1)) == 0, "ALIGNMENT not a power of 2");
-    static_assert(sizeof(dmt_node) - sizeof(dmtdata_t) == __builtin_offsetof(dmt_node, value), "value is not last field in node");
-    static_assert(4 * sizeof(uint32_t) == __builtin_offsetof(dmt_node, value), "dmt_node is padded");
-    static_assert(__builtin_offsetof(dmt_node, value) % ALIGNMENT == 0, "dmt_node requires padding for alignment");
+    static_assert(sizeof(dmt_node) - sizeof(dmtdata_t) == toku_compiler_offsetof(dmt_node, value), "value is not last field in node");
+    static_assert(4 * sizeof(uint32_t) == toku_compiler_offsetof(dmt_node, value), "dmt_node is padded");
+    static_assert(toku_compiler_offsetof(dmt_node, value) % ALIGNMENT == 0, "dmt_node requires padding for alignment");
     ENSURE_POD(dmt_node);
 
     struct dmt_array {

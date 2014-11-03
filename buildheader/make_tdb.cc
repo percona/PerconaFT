@@ -117,6 +117,7 @@ static int compare_fields (const void *av, const void *bv) {
     return +1;
 }				      
 
+// TODO: __builtin_offsetof here is not portable
 #define STRUCT_SETUP(typ, fname, fstring) ({            \
     assert(field_counter<FIELD_LIMIT);                  \
     fields[field_counter].decl_format_string = fstring; \

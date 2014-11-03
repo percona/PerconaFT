@@ -375,7 +375,7 @@ void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::convert_from_array_to_tree(void)
     }
 
     struct mempool old_mp = this->mp;
-    size_t mem_needed = num_values * align(this->value_length + __builtin_offsetof(dmt_node, value));
+    size_t mem_needed = num_values * align(this->value_length + toku_compiler_offsetof(dmt_node, value));
     toku_mempool_construct(&this->mp, mem_needed);
 
     for (uint32_t i = 0; i < num_values; i++) {
@@ -451,10 +451,10 @@ void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::verify(void) const {
     } else {
         if (this->values_same_size) {
             // We know exactly how much memory should be used.
-            invariant(pool_used == num_values * align(this->value_length + __builtin_offsetof(dmt_node, value)));
+            invariant(pool_used == num_values * align(this->value_length + toku_compiler_offsetof(dmt_node, value)));
         } else {
             // We can only do a lower bound on memory usage.
-            invariant(pool_used >= num_values * __builtin_offsetof(dmt_node, value));
+            invariant(pool_used >= num_values * toku_compiler_offsetof(dmt_node, value));
         }
         std::vector<bool> touched(pool_size, false);
         verify_internal(this->d.t.root, &touched);
@@ -481,7 +481,7 @@ void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::verify_internal(const subtree &s
     }
 
     size_t offset = toku_mempool_get_offset_from_pointer_and_base(&this->mp, &node);
-    size_t node_size = align(__builtin_offsetof(dmt_node, value) + node.value_length);
+    size_t node_size = align(toku_compiler_offsetof(dmt_node, value) + node.value_length);
     invariant(offset <= touched->size());
     invariant(offset+node_size <= touched->size());
     invariant(offset % ALIGNMENT == 0);
@@ -586,7 +586,7 @@ void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::node_set_value(dmt_node * n, con
 template<typename dmtdata_t, typename dmtdataout_t, typename dmtwriter_t>
 node_offset dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::node_malloc_and_set_value(const dmtwriter_t &value) {
     size_t val_size = value.get_size();
-    size_t size_to_alloc = __builtin_offsetof(dmt_node, value) + val_size;
+    size_t size_to_alloc = toku_compiler_offsetof(dmt_node, value) + val_size;
     size_to_alloc = align(size_to_alloc);
     void* np = toku_mempool_malloc(&this->mp, size_to_alloc);
     paranoid_invariant_notnull(np);
@@ -599,7 +599,7 @@ node_offset dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::node_malloc_and_set_value
 template<typename dmtdata_t, typename dmtdataout_t, typename dmtwriter_t>
 void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::node_free(const subtree &st) {
     dmt_node &n = get_node(st);
-    size_t size_to_free = __builtin_offsetof(dmt_node, value) + n.value_length;
+    size_t size_to_free = toku_compiler_offsetof(dmt_node, value) + n.value_length;
     size_to_free = align(size_to_free);
     toku_mempool_mfree(&this->mp, &n, size_to_free);
 }
@@ -611,7 +611,7 @@ void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::maybe_resize_tree(const dmtwrite
     const ssize_t curr_used = toku_mempool_get_used_size(&this->mp);
     ssize_t add_size = 0;
     if (value) {
-        add_size = __builtin_offsetof(dmt_node, value) + value->get_size();
+        add_size = toku_compiler_offsetof(dmt_node, value) + value->get_size();
         add_size = align(add_size);
     }
 
@@ -643,7 +643,7 @@ void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::maybe_resize_tree(const dmtwrite
             this->fill_array_with_subtree_offsets(tmp_array, this->d.t.root);
             for (node_offset i = 0; i < n.weight; i++) {
                 dmt_node &node = get_node(tmp_array[i]);
-                const size_t bytes_to_copy = __builtin_offsetof(dmt_node, value) + node.value_length;
+                const size_t bytes_to_copy = toku_compiler_offsetof(dmt_node, value) + node.value_length;
                 const size_t bytes_to_alloc = align(bytes_to_copy);
                 void* newdata = toku_mempool_malloc(&new_kvspace, bytes_to_alloc);
                 memcpy(newdata, &node, bytes_to_copy);
@@ -1193,7 +1193,7 @@ void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::builder::append(const dmtwriter_
         XMALLOC_N(this->max_values, this->sorted_node_offsets);
 
         // Include enough space for alignment padding
-        size_t mem_needed = (ALIGNMENT - 1 + __builtin_offsetof(dmt_node, value)) * max_values + max_value_bytes;
+        size_t mem_needed = (ALIGNMENT - 1 + toku_compiler_offsetof(dmt_node, value)) * max_values + max_value_bytes;
         struct mempool old_mp = this->temp.mp;
 
         const uint32_t num_values = this->temp.d.a.num_values;
