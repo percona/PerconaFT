@@ -97,19 +97,19 @@ PATENT RIGHTS GRANT:
 #include <util/omt.h>
 #include "ft/txn/txn.h"
 
-class dictionary_manager;
+class inmemory_dictionary_manager;
 
 class dictionary {
     char* m_dname;
     uint32_t m_refcount; // access protected by the mutex of dictionary_manager that is managing this dictionary
-    dictionary_manager* m_mgr;
+    inmemory_dictionary_manager* m_mgr;
 public:
-    void create(const char* dname, dictionary_manager* manager);
+    void create(const char* dname, inmemory_dictionary_manager* manager);
     void destroy();
     void release();
     char* get_dname() const;
 
-    friend class dictionary_manager;
+    friend class inmemory_dictionary_manager;
 };
 
 class persistent_dictionary_manager {
@@ -135,6 +135,29 @@ public:
     void destroy();
 };
 
+class inmemory_dictionary_manager {
+private:
+    // protects access the map
+    toku_mutex_t m_mutex;
+    toku::omt<dictionary *> m_dictionary_map;
+    static int find_by_dname(dictionary *const &dbi, const char* const &dname);
+    dictionary* find_locked(const char* dname);
+    void add_db(dictionary* dbi);
+    void remove_dictionary(dictionary* dbi);
+public:
+    dictionary* find(const char* dname) {
+        toku_mutex_lock(&m_mutex);
+        dictionary *ret = find_locked(dname);
+        toku_mutex_unlock(&m_mutex);
+        return ret;
+    }
+    bool release_dictionary(dictionary* dbi);
+    uint32_t num_open_dictionaries();
+    dictionary* get_dictionary(const char * dname);
+    void create();
+    void destroy();
+};
+
 class dictionary_manager {
     // persistent environment stuff, should be own class
 private:
@@ -147,10 +170,9 @@ private:
 public:
     int get_persistent_environment_cursor(DB_TXN* txn, DBC** c);
 
-
-
 private:
     persistent_dictionary_manager pdm;
+    inmemory_dictionary_manager idm;
     
     // used to open DBs that will be used internally
     // in the dictionary_manager
@@ -180,20 +202,8 @@ public:
     int remove(const char * dname, DB_ENV* env, DB_TXN* txn);
     void create();
     void destroy();
-
-    int open_db(DB* db, const char * dname, DB_TXN * txn, uint32_t flags);
-
-    
-private:
-    // protects access the map
-    toku_mutex_t m_mutex;
-    toku::omt<dictionary *> m_dictionary_map;
-    static int find_by_dname(dictionary *const &dbi, const char* const &dname);
-    dictionary* find(const char* dname);
-    void add_db(dictionary* dbi);
-    void remove_dictionary(dictionary* dbi);
-    dictionary* get_dictionary(const char * dname);
-public:
-    bool release_dictionary(dictionary* dbi);
-    uint32_t num_open_dictionaries();
+    int open_db(DB* db, const char * dname, DB_TXN * txn, uint32_t flags);    
+    uint32_t num_open_dictionaries() {
+        return idm.num_open_dictionaries();
+    }
 };

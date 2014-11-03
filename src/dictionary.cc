@@ -197,7 +197,7 @@ static int open_internal_db(DB* db, DB_TXN* txn, const char* dname, const char* 
     return r;
 }
 
-void dictionary::create(const char* dname, dictionary_manager* manager) {
+void dictionary::create(const char* dname, inmemory_dictionary_manager* manager) {
     if (dname) {
         m_dname = toku_strdup(dname);
     }
@@ -703,10 +703,8 @@ int dictionary_manager::rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, 
     // we can do perform the operation, namely,
     // make sure no open handles exist and make sure
     // we can grab a table lock on the dictionary
-    toku_mutex_lock(&m_mutex);
-    old_dict = find(old_dname);
-    new_dict = find(new_dname);
-    toku_mutex_unlock(&m_mutex);
+    old_dict = idm.find(old_dname);
+    new_dict = idm.find(new_dname);
     
     if (old_dict) {
         printf("Cannot rename dictionary with an open handle.\n");
@@ -750,9 +748,7 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
     }
     if (txn) {
         dictionary* old_dict = NULL;
-        toku_mutex_lock(&m_mutex);
-        old_dict = find(dname);
-        toku_mutex_unlock(&m_mutex);
+        old_dict = idm.find(dname);
         // Now that we have a writelock on dname, verify that there are still no handles open. (to prevent race conditions)
         if (old_dict) {
             r = toku_ydb_do_error(env, EINVAL, "Cannot remove dictionary with an open handle.\n");
@@ -819,7 +815,7 @@ int dictionary_manager::open_db(
         r = toku_db_open_iname(db, txn, iname, flags);
         if (r == 0) {
             // now that the directory has been updated, create the dictionary
-            db->i->dict = get_dictionary(dname);
+            db->i->dict = idm.get_dictionary(dname);
         }
     }
 
@@ -830,9 +826,7 @@ int dictionary_manager::open_db(
 }
 
 void dictionary_manager::create() {
-    ZERO_STRUCT(m_mutex);
-    toku_mutex_init(&m_mutex, nullptr);
-    m_dictionary_map.create();
+    idm.create();
 }
 
 void dictionary_manager::destroy() {
@@ -840,26 +834,41 @@ void dictionary_manager::destroy() {
         toku_db_close(m_persistent_environment);
     }
     pdm.destroy();
+    idm.destroy();
+}
+
+///////////////////////////////////////////////
+//
+// inmemory_dictionary_manager methods
+//
+
+void inmemory_dictionary_manager::create() {
+    ZERO_STRUCT(m_mutex);
+    toku_mutex_init(&m_mutex, nullptr);
+    m_dictionary_map.create();
+}
+
+void inmemory_dictionary_manager::destroy() {
     m_dictionary_map.destroy();
     toku_mutex_destroy(&m_mutex);
 }
 
-int dictionary_manager::find_by_dname(dictionary *const &dbi, const char* const &dname) {
+int inmemory_dictionary_manager::find_by_dname(dictionary *const &dbi, const char* const &dname) {
     return strcmp(dbi->get_dname(), dname);
 }
 
-dictionary* dictionary_manager::find(const char* dname) {
+dictionary* inmemory_dictionary_manager::find_locked(const char* dname) {
     dictionary *dbi;
     int r = m_dictionary_map.find_zero<const char *, find_by_dname>(dname, &dbi, nullptr);
     return r == 0 ? dbi : nullptr;
 }
 
-void dictionary_manager::add_db(dictionary* dbi) {
+void inmemory_dictionary_manager::add_db(dictionary* dbi) {
     int r = m_dictionary_map.insert<const char *, find_by_dname>(dbi, dbi->get_dname(), nullptr);
     invariant_zero(r);
 }
 
-void dictionary_manager::remove_dictionary(dictionary* dbi) {
+void inmemory_dictionary_manager::remove_dictionary(dictionary* dbi) {
     uint32_t idx;
     dictionary *found_dbi;
     const char* dname = dbi->get_dname();
@@ -874,7 +883,7 @@ void dictionary_manager::remove_dictionary(dictionary* dbi) {
     invariant_zero(r);
 }
 
-bool dictionary_manager::release_dictionary(dictionary* dbi) {
+bool inmemory_dictionary_manager::release_dictionary(dictionary* dbi) {
     bool do_destroy = false;
     toku_mutex_lock(&m_mutex);
     dbi->m_refcount--;
@@ -886,16 +895,16 @@ bool dictionary_manager::release_dictionary(dictionary* dbi) {
     return do_destroy;
 }
 
-uint32_t dictionary_manager::num_open_dictionaries() {
+uint32_t inmemory_dictionary_manager::num_open_dictionaries() {
     toku_mutex_lock(&m_mutex);
     uint32_t retval =  m_dictionary_map.size();
     toku_mutex_unlock(&m_mutex);
     return retval;    
 }
 
-dictionary* dictionary_manager::get_dictionary(const char * dname) {
+dictionary* inmemory_dictionary_manager::get_dictionary(const char * dname) {
     toku_mutex_lock(&m_mutex);
-    dictionary *dbi = find(dname);
+    dictionary *dbi = find_locked(dname);
     if (dbi == nullptr) {
         XCALLOC(dbi);
         dbi->create(dname, this);
