@@ -227,7 +227,7 @@ test_main(int argc, char *const argv[]) {
     parse_args(argc, argv);
   
 #define TFILE __FILE__ ".tktrace"
-    unlink(TFILE);
+    toku_os_unlink(TFILE);
     SET_TRACE_FILE(TFILE);
 
     test_insert_zero_length(32, 0, "test0");

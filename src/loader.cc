@@ -548,7 +548,7 @@ int toku_loader_cleanup_temp_files(DB_ENV *env) {
             char fname[fnamelen];
             int l = snprintf(fname, fnamelen, "%s/%s", dir, de->d_name);
             assert(l+1 == fnamelen);
-            r = unlink(fname);
+            r = toku_os_unlink(fname);
             if (r!=0) {
                 result = get_error_errno();
                 perror("Trying to delete a rolltmp file");

@@ -110,7 +110,7 @@ static void test_sub_block(int n) {
     FT_HANDLE ft;
     int i;
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 

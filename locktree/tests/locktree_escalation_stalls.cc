@@ -252,7 +252,7 @@ int main(int argc, const char *argv[]) {
 
     // wait for some escalations to occur
     while (get_escalation_count(mgr) < stalls) {
-        sleep(1);
+        toku_os_sleep(1);
     }
     killed = 1;
 

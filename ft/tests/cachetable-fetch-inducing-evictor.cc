@@ -117,7 +117,7 @@ cachetable_test (enum pin_evictor_test_type test_type, bool nonblocking) {
     evictor_test_helpers::set_hysteresis_limits(&ct->ev, test_limit, test_limit);
     evictor_test_helpers::disable_ev_thread(&ct->ev);
     const char *fname1 = TOKU_TEST_FILENAME;
-    unlink(fname1);
+    toku_os_unlink(fname1);
     CACHEFILE f1;
     r = toku_cachetable_openf(&f1, ct, fname1, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO); assert(r == 0);
   

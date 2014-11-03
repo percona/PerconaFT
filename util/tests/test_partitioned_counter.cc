@@ -155,15 +155,13 @@ static toku_pthread_key_t   counter_key;
 static void pc_lock (void)
 // Effect: Lock the pc mutex.  
 {
-    int r = toku_mutex_lock(&pc_mutex);
-    assert(r==0);
+    toku_mutex_lock(&pc_mutex);
 }
 
 static void pc_unlock (void)
 // Effect: Unlock the pc mutex.
 {
-    int r = toku_pthread_mutex_unlock(&pc_mutex);
-    assert(r==0);
+    toku_mutex_unlock(&pc_mutex);
 }
 
 static void destroy_counter (void *counterp)

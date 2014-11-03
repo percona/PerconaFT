@@ -149,13 +149,11 @@ time_many_fsyncs_one_file(int N, int bytes, int fds[/*N*/]) {
 
     r = gettimeofday(&begin, NULL);
     CKERR(r);
-    r = fsync(fds[0]);
-    CKERR(r);
+    toku_file_fsync(fds[0]);
     r = gettimeofday(&after_first, NULL);
     CKERR(r);
     for (i = 0; i < N; i++) {
-        r = fsync(fds[0]);
-        CKERR(r);
+        toku_file_fsync(fds[0]);
     }
     r = gettimeofday(&end, NULL);
     CKERR(r);
@@ -194,8 +192,7 @@ time_fsyncs_many_files(int N, int bytes, int fds[/*N*/]) {
     r = gettimeofday(&begin, NULL);
     CKERR(r);
     for (i = 0; i < N; i++) {
-        r = fsync(fds[i]);
-        CKERR(r);
+        toku_file_fsync(fds[i]);
         if (i==0) {
             r = gettimeofday(&after_first, NULL);
             CKERR(r);
@@ -242,7 +239,7 @@ time_sync_fsyncs_many_files(int N, int bytes, int fds[/*N*/]) {
     r = gettimeofday(&begin, NULL);
     CKERR(r);
 
-    sync();
+    toku_os_sync();
 
     r = gettimeofday(&after_sync, NULL);
     CKERR(r);
@@ -252,8 +249,7 @@ time_sync_fsyncs_many_files(int N, int bytes, int fds[/*N*/]) {
     }
 
     for (i = 0; i < N; i++) {
-        r = fsync(fds[i]);
-        CKERR(r);
+        toku_file_fsync(fds[i]);
         if (verbose>2) {
             printf("Done fsyncing %d\n", i);
             fflush(stdout);
@@ -309,7 +305,7 @@ int test_main(int argc, char *const argv[]) {
     toku_os_recursive_delete(TOKU_TEST_FILENAME);
     r = toku_os_mkdir(TOKU_TEST_FILENAME, S_IRWXU+S_IRWXG+S_IRWXO);
     CKERR(r);
-    r = chdir(TOKU_TEST_FILENAME);
+    r = toku_os_chdir(TOKU_TEST_FILENAME);
     CKERR(r);
 
     int fds[N];

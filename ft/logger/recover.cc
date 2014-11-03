@@ -828,7 +828,7 @@ static int toku_recover_fcreate (struct logtype_fcreate *l, RECOVER_ENV renv) {
     //unlink if it exists (recreate from scratch).
     char *iname = fixup_fname(&l->iname);
     char *iname_in_cwd = toku_cachetable_get_fname_in_cwd(renv->ct, iname);
-    r = unlink(iname_in_cwd);
+    r = toku_os_unlink(iname_in_cwd);
     if (r != 0) {
         int er = get_error_errno();
         if (er != ENOENT) {

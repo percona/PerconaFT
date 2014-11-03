@@ -520,7 +520,7 @@ toku_rollback_load (FILENUM    UU(old_filenum),
         // It's possible the new iname was never created, so just try to 
         // unlink it if it's there and ignore the error if it's not.
         char *fname_in_cwd = toku_cachetable_get_fname_in_cwd(ct, fname_in_env);
-        r = unlink(fname_in_cwd);
+        r = toku_os_unlink(fname_in_cwd);
         assert(r == 0 || get_error_errno() == ENOENT);
         toku_free(fname_in_cwd);
         r = 0;

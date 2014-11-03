@@ -907,7 +907,7 @@ env_open(DB_ENV * env, const char *home, uint32_t flags, int mode) {
         // and there is no value in upgrading it.  It is simpler to just create a new one.
         char* rollback_filename = toku_construct_full_name(2, env->i->dir, toku_product_name_strings.rollback_cachefile);
         assert(rollback_filename);
-        r = unlink(rollback_filename);
+        r = toku_os_unlink(rollback_filename);
         if (r != 0) {
             assert(get_error_errno() == ENOENT);
         }

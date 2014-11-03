@@ -184,8 +184,8 @@ doit (bool after_split) {
     toku_flusher_thread_set_callback(flusher_callback, &after_split);
     
     toku_cachetable_create(&ct, 500*1024*1024, ZERO_LSN, nullptr);
-    unlink("foo4.ft_handle");
-    unlink("bar4.ft_handle");
+    toku_os_unlink("foo4.ft_handle");
+    toku_os_unlink("bar4.ft_handle");
     // note the basement node size is 5 times the node size
     // this is done to avoid rebalancing when writing a leaf
     // node to disk

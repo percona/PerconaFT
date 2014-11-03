@@ -147,6 +147,14 @@ toku_portability_destroy(void) {
     toku_memory_shutdown();
 }
 
+void toku_os_sleep(uint64_t seconds) {
+    sleep(seconds);
+}
+
+void toku_os_usleep(uint64_t usecs) {
+    usleep(usecs);
+}
+
 int
 toku_os_getpid(void) {
     return getpid();
@@ -266,6 +274,23 @@ int
 toku_os_mkdir(const char *pathname, mode_t mode) {
     int r = mkdir(pathname, mode);
     return r;
+}
+
+int
+toku_os_chdir(const char *pathname) {
+    int r = chdir(pathname);
+    return r;
+}
+
+int
+toku_os_unlink(const char *pathname) {
+    int r = unlink(pathname);
+    return r;
+}
+
+void
+toku_os_sync() {
+    sync();
 }
 
 int

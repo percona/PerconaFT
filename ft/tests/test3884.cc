@@ -213,7 +213,7 @@ test_split_on_boundary(void)
         }
     }
 
-    unlink(fname);
+    toku_os_unlink(fname);
     CACHETABLE ct;
     FT_HANDLE ft;
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
@@ -280,7 +280,7 @@ test_split_with_everything_on_the_left(void)
         }
     }
 
-    unlink(fname);
+    toku_os_unlink(fname);
     CACHETABLE ct;
     FT_HANDLE ft;
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
@@ -349,7 +349,7 @@ test_split_on_boundary_of_last_node(void)
         }
     }
 
-    unlink(fname);
+    toku_os_unlink(fname);
     CACHETABLE ct;
     FT_HANDLE ft;
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
@@ -410,7 +410,7 @@ test_split_at_begin(void)
         totalbytes += LE_CLEAN_MEMSIZE(totalbytes + 3) + keylen + sizeof(uint32_t);
     }
 
-    unlink(fname);
+    toku_os_unlink(fname);
     CACHETABLE ct;
     FT_HANDLE ft;
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
@@ -467,7 +467,7 @@ test_split_at_end(void)
         }
     }
 
-    unlink(fname);
+    toku_os_unlink(fname);
     CACHETABLE ct;
     FT_HANDLE ft;
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
@@ -518,7 +518,7 @@ test_split_odd_nodes(void)
         }
     }
 
-    unlink(fname);
+    toku_os_unlink(fname);
     CACHETABLE ct;
     FT_HANDLE ft;
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);

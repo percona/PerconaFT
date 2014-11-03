@@ -239,7 +239,7 @@ run_test(const char *prog, const char *origft) {
     fraction = 1.0;
     r = with_open_tree(tempft, do_hot_optimize, &fraction);
     CKERR(r);
-    r = unlink(tempft);
+    r = toku_os_unlink(tempft);
     CKERR(r);
 
     return r;

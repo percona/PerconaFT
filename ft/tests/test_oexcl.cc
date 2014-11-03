@@ -93,7 +93,7 @@ PATENT RIGHTS GRANT:
 
 int
 test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
-    unlink(TOKU_TEST_FILENAME);
+    toku_os_unlink(TOKU_TEST_FILENAME);
     int fd0 = toku_os_open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_EXCL, S_IRWXU|S_IRWXG|S_IRWXO);
     assert(fd0>=0);
     int fd1 = toku_os_open(TOKU_TEST_FILENAME, O_RDWR|O_CREAT|O_EXCL, S_IRWXU|S_IRWXG|S_IRWXO);

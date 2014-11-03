@@ -104,9 +104,9 @@ static void dowork (void *idv) {
     int id = *idp;
     if (verbose) printf("s%d\n", id);
     assert(!done[id]);
-    sleep(1);
+    toku_os_sleep(1);
     done[id] = true;
-    sleep(1);
+    toku_os_sleep(1);
     if (verbose) printf("d%d\n", id);
 }
 
@@ -125,7 +125,7 @@ static void kibbutz_test (bool parent_finishes_first) {
 	toku_kibbutz_enq(k, dowork, &ids[i]);
     }
     if (!parent_finishes_first) {
-	sleep((ND+2*NT)/NT);
+	toku_os_sleep((ND+2*NT)/NT);
     }
     toku_kibbutz_destroy(k);
     for (int i=0; i<ND; i++) assert(done[i]);

@@ -116,7 +116,7 @@ static void test_multiple_ft_cursor_dbts(int n) {
     FT_HANDLE ft;
     FT_CURSOR cursors[n];
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 

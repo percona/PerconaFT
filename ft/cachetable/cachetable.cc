@@ -575,7 +575,7 @@ void toku_cachefile_close(CACHEFILE *cfp, bool oplsn_valid, LSN oplsn) {
     // Unlink the file if the bit was set
     if (cf->unlink_on_close) {
         char *fname_in_cwd = toku_cachetable_get_fname_in_cwd(cf->cachetable, cf->fname_in_env);
-        r = unlink(fname_in_cwd);
+        r = toku_os_unlink(fname_in_cwd);
         assert_zero(r);
         toku_free(fname_in_cwd);
     }

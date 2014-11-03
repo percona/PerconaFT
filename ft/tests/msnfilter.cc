@@ -194,7 +194,7 @@ test_msnfilter(int do_verify) {
 
     // cleanup
     const char *fname = TOKU_TEST_FILENAME;
-    r = unlink(fname);
+    r = toku_os_unlink(fname);
     if (r != 0) {
         assert(r == -1);
         assert(get_error_errno() == ENOENT);

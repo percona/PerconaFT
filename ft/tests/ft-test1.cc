@@ -101,7 +101,7 @@ static void test1 (void) {
     DBT k,v;
     
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     r = toku_open_ft_handle(fname, 1, &t, 1024, 256, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun);
     assert(r==0);
     toku_ft_insert(t, toku_fill_dbt(&k, "hello", 6), toku_fill_dbt(&v, "there", 6), null_txn);

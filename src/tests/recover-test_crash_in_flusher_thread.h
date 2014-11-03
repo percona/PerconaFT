@@ -96,9 +96,7 @@ PATENT RIGHTS GRANT:
 #include <stdlib.h>
 
 #include <toku_pthread.h>
-#include <unistd.h>
 #include <memory.h>
-#include <sys/stat.h>
 #include <db.h>
 
 #include "threaded_stress_test_helpers.h"

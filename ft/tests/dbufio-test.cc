@@ -155,7 +155,7 @@ static void test1 (size_t chars_per_file, size_t bytes_per_read) {
     }
     for (int i=0; i<N; i++) {
 	{
-	    int r = unlink(fnames[i]);
+	    int r = toku_os_unlink(fnames[i]);
 	    assert(r==0);
 	}
 	{

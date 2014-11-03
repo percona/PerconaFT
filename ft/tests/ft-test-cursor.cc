@@ -167,7 +167,7 @@ static void test_ft_cursor_first(int n) {
 
     if (verbose) printf("test_ft_cursor_first:%d\n", n);
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 
@@ -205,7 +205,7 @@ static void test_ft_cursor_last(int n) {
 
     if (verbose) printf("test_ft_cursor_last:%d\n", n);
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 
@@ -244,7 +244,7 @@ static void test_ft_cursor_first_last(int n) {
 
     if (verbose) printf("test_ft_cursor_first_last:%d\n", n);
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 
@@ -286,7 +286,7 @@ static void test_ft_cursor_rfirst(int n) {
 
     if (verbose) printf("test_ft_cursor_rfirst:%d\n", n);
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 
@@ -350,7 +350,7 @@ static void test_ft_cursor_walk(int n) {
 
     if (verbose) printf("test_ft_cursor_walk:%d\n", n);
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 
@@ -412,7 +412,7 @@ static void test_ft_cursor_rwalk(int n) {
 
     if (verbose) printf("test_ft_cursor_rwalk:%d\n", n);
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 
@@ -493,7 +493,7 @@ static void test_ft_cursor_rand(int n) {
 
     if (verbose) printf("test_ft_cursor_rand:%d\n", n);
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 
@@ -543,7 +543,7 @@ static void test_ft_cursor_split(int n) {
 
     if (verbose) printf("test_ft_cursor_split:%d\n", n);
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 
@@ -614,7 +614,7 @@ static void test_multiple_ft_cursors(int n) {
     FT_HANDLE ft;
     FT_CURSOR cursors[n];
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 
@@ -657,7 +657,7 @@ static void test_multiple_ft_cursor_walk(int n) {
     const int ncursors = n/cursor_gap;
     FT_CURSOR cursors[ncursors];
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     int nodesize = 1<<12;
     int h = log16(n);
@@ -733,7 +733,7 @@ static void test_ft_cursor_set(int n, int cursor_op) {
     FT_HANDLE ft;
     FT_CURSOR cursor=0;
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 
@@ -801,7 +801,7 @@ static void test_ft_cursor_set_range(int n) {
     FT_HANDLE ft;
     FT_CURSOR cursor=0;
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 
@@ -861,7 +861,7 @@ static void test_ft_cursor_delete(int n) {
     FT_HANDLE ft;
     FT_CURSOR cursor=0;
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 

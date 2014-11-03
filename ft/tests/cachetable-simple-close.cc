@@ -147,7 +147,7 @@ simple_test(bool unlink_on_close) {
     CACHETABLE ct;
     toku_cachetable_create(&ct, test_limit, ZERO_LSN, nullptr);
     const char *fname1 = TOKU_TEST_FILENAME;
-    unlink(fname1);
+    toku_os_unlink(fname1);
     CACHEFILE f1;
     r = toku_cachetable_openf(&f1, ct, fname1, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO); assert(r == 0);
     set_cf_userdata(f1);
@@ -216,7 +216,7 @@ static void test_pair_stays_in_cache(enum cachetable_dirty dirty) {
     CACHETABLE ct;
     toku_cachetable_create(&ct, test_limit, ZERO_LSN, nullptr);
     const char *fname1 = TOKU_TEST_FILENAME;
-    unlink(fname1);
+    toku_os_unlink(fname1);
     CACHEFILE f1;
 
     r = toku_cachetable_openf(&f1, ct, fname1, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO); assert(r == 0);
@@ -257,9 +257,9 @@ static void test_multiple_cachefiles(bool use_same_hash) {
         strcpy(fname3, TOKU_TEST_FILENAME);
         strncat(fname3, "_3", sizeof("_3"));
 
-        unlink(fname1);
-        unlink(fname2);
-        unlink(fname3);
+        toku_os_unlink(fname1);
+        toku_os_unlink(fname2);
+        toku_os_unlink(fname3);
         CACHEFILE f1;
         CACHEFILE f2;
         CACHEFILE f3;
@@ -342,8 +342,8 @@ static void test_evictor(void) {
     strcpy(fname2, TOKU_TEST_FILENAME);
     strncat(fname2, "_2", sizeof("_2"));
 
-    unlink(fname1);
-    unlink(fname2);
+    toku_os_unlink(fname1);
+    toku_os_unlink(fname2);
     CACHEFILE f1;
     CACHEFILE f2;
 

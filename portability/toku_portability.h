@@ -116,10 +116,6 @@ PATENT RIGHTS GRANT:
 #define DO_GCC_PRAGMA(x) _Pragma (#x)
 
 #include <toku_stdint.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/stat.h>
 #include <stdio.h>
 
 #if __FreeBSD__

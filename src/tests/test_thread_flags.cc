@@ -132,7 +132,7 @@ static void
 test_db_create (void) {
     int r;
 
-    unlink(dbfile);
+    toku_os_unlink(dbfile);
 
     DB_ENV *env;
     r = db_env_create(&env, 0); assert(r == 0);
@@ -153,7 +153,7 @@ static void
 test_db_thread (void) {
     int r;
 
-    unlink(dbfile);
+    toku_os_unlink(dbfile);
 
     DB_ENV *env;
     r = db_env_create(&env, 0); assert(r == 0);

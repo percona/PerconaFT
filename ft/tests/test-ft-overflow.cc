@@ -104,7 +104,7 @@ test_overflow (void) {
     CACHETABLE ct;
     uint32_t nodesize = 1<<20; 
     int r;
-    unlink(fname);
+    toku_os_unlink(fname);
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
     r = toku_open_ft_handle(fname, 1, &t, nodesize, nodesize / 8, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun); assert(r==0);
 

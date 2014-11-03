@@ -254,8 +254,8 @@ static void test_multi_filehandles (void) {
     toku_path_join(fname2, 2, TOKU_TEST_FILENAME, "test2_ct.dat");
     toku_path_join(fname3, 2, TOKU_TEST_FILENAME, "test3_ct.dat");
     void *v;
-    unlink(fname1);
-    unlink(fname2);
+    toku_os_unlink(fname1);
+    toku_os_unlink(fname2);
 
     toku_cachetable_create(&t, 4, ZERO_LSN, nullptr);
     r = toku_cachetable_openf(&f1, t, fname1, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);   assert(r==0);
@@ -458,7 +458,7 @@ static void test_size_resize(void) {
     toku_cachetable_create(&t, n*size, ZERO_LSN, nullptr);
 
     const char *fname = TOKU_TEST_FILENAME;
-    unlink(fname);
+    toku_os_unlink(fname);
     r = toku_cachetable_openf(&f, t, fname, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
     assert(r == 0);
 
@@ -512,7 +512,7 @@ static void test_size_flush(void) {
     toku_cachetable_create(&t, n*size, ZERO_LSN, nullptr);
 
     const char *fname = TOKU_TEST_FILENAME;
-    unlink(fname);
+    toku_os_unlink(fname);
     r = toku_cachetable_openf(&f, t, fname, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
     assert(r == 0);
 

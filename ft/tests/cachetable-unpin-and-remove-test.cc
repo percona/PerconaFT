@@ -118,7 +118,7 @@ cachetable_unpin_and_remove_test (int n) {
     CACHETABLE ct;
     toku_cachetable_create(&ct, table_limit, ZERO_LSN, nullptr);
     const char *fname1 = TOKU_TEST_FILENAME;
-    unlink(fname1);
+    toku_os_unlink(fname1);
     CACHEFILE f1;
     r = toku_cachetable_openf(&f1, ct, fname1, O_RDWR|O_CREAT, 0777); assert(r == 0);
     CACHETABLE_WRITE_CALLBACK wc = def_write_callback(NULL);
@@ -174,7 +174,7 @@ cachetable_put_evict_remove_test (int n) {
     CACHETABLE ct;
     toku_cachetable_create(&ct, table_limit, ZERO_LSN, nullptr);
     const char *fname1 = TOKU_TEST_FILENAME;
-    unlink(fname1);
+    toku_os_unlink(fname1);
     CACHEFILE f1;
     r = toku_cachetable_openf(&f1, ct, fname1, O_RDWR|O_CREAT, 0777); assert(r == 0);
     CACHETABLE_WRITE_CALLBACK wc = def_write_callback(NULL);

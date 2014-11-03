@@ -106,7 +106,7 @@ int
 test_main (int argc __attribute__((__unused__)), const char *argv[]  __attribute__((__unused__))) {
     int r;
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
     r = toku_open_ft_handle(fname, 1, &ft, 1<<12, 1<<9, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, test_ft_cursor_keycompare);   assert(r==0);

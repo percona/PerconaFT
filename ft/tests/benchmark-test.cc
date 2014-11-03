@@ -118,7 +118,7 @@ static FT_HANDLE t;
 
 static void setup (void) {
     int r;
-    unlink(fname);
+    toku_os_unlink(fname);
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
     r = toku_open_ft_handle(fname, 1, &t, nodesize, basementnodesize, compression_method, ct, nullptr, toku_builtin_compare_fun); assert(r==0);
 }
@@ -299,7 +299,7 @@ test_main (int argc, const char *argv[]) {
 	printf("Total time %9.6fs for %lld insertions = %8.0f/s\n", toku_tdiff(&t3, &t1), f*total_n_items, f*total_n_items/toku_tdiff(&t3, &t1));
         fflush(stdout);
     }
-    unlink(fname);
+    toku_os_unlink(fname);
 
     return 0;
 }

@@ -106,9 +106,9 @@ static void dowork (void *idv) {
         assert(done[i]);
     }
     assert(!done[id]);
-    sleep(1);
+    toku_os_sleep(1);
     done[id] = true;
-    sleep(1);
+    toku_os_sleep(1);
     if (verbose) printf("d%d\n", id);
 }
 

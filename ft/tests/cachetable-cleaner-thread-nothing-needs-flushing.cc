@@ -115,7 +115,7 @@ run_test (void) {
     toku_set_cleaner_period(ct, 1);
 
     const char *fname1 = TOKU_TEST_FILENAME;
-    unlink(fname1);
+    toku_os_unlink(fname1);
     CACHEFILE f1;
     r = toku_cachetable_openf(&f1, ct, fname1, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO); assert(r == 0);
     

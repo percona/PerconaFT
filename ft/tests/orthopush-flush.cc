@@ -1236,7 +1236,7 @@ test_main (int argc, const char *argv[]) {
     int r;
     CACHETABLE ct;
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     FT_HANDLE t;
     r = toku_open_ft_handle(fname, 1, &t, 128*1024, 4096, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun); assert(r==0);
     toku_ft_set_update(t, orthopush_flush_update_fun);

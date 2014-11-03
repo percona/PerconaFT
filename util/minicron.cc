@@ -88,11 +88,12 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
-#include <toku_portability.h>
 #include <errno.h>
 #include <string.h>
 
 #include "portability/toku_assert.h"
+#include "portability/toku_portability.h"
+#include "portability/toku_time.h"
 #include "util/minicron.h"
 
 static void
@@ -134,7 +135,7 @@ minicron_do (void *pv)
         } 
         else if (p->period_in_ms <= 1000) {
             toku_mutex_unlock(&p->mutex);
-            usleep(p->period_in_ms * 1000);
+            toku_os_usleep(p->period_in_ms * 1000);
             toku_mutex_lock(&p->mutex);
         }
         else {

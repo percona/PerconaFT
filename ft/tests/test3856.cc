@@ -123,7 +123,7 @@ test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute_
     FT_HANDLE t;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     int r = toku_open_ft_handle(fname, 1, &t, nodesize, basementnodesize, compression_method, ct, null_txn, string_cmp); assert(r==0);
 
     for (int i = 0; i < count; ++i) {

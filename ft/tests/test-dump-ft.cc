@@ -103,7 +103,7 @@ test_main(int argc, const char *argv[]) {
     FT_HANDLE t;
     CACHETABLE ct;
     FILE *f = fopen("test-dump-ft.out", "w");
-    unlink(n);
+    toku_os_unlink(n);
     assert(f);
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
     r = toku_open_ft_handle(n, 1, &t, 1<<12, 1<<9, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun); assert(r==0);

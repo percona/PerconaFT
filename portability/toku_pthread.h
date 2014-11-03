@@ -425,3 +425,5 @@ toku_pthread_setspecific(toku_pthread_key_t key, void *data) {
 #define toku_pthread_rwlockattr_init pthread_rwlockattr_init
 #define toku_pthread_rwlockattr_setkind_np pthread_rwlockattr_setkind_np
 #define toku_pthread_rwlockattr_destroy pthread_rwlockattr_destroy
+#define toku_pthread_equal pthread_equal
+#define toku_pthread_self pthread_self

@@ -97,7 +97,7 @@ cachetable_test (void) {
   CACHETABLE ct;
   toku_cachetable_create(&ct, test_limit, ZERO_LSN, nullptr);
   const char *fname1 = TOKU_TEST_FILENAME;
-  unlink(fname1);
+  toku_os_unlink(fname1);
   CACHEFILE f1;
   r = toku_cachetable_openf(&f1, ct, fname1, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO); assert(r == 0);
 

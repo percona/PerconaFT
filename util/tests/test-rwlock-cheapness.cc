@@ -156,7 +156,7 @@ static void launch_cheap_waiter(void) {
     int r = toku_pthread_create(&tid, NULL, do_cheap_wait, NULL); 
     assert_zero(r);
     toku_pthread_detach(tid);
-    sleep(1);
+    toku_os_sleep(1);
 }
 
 static void launch_expensive_waiter(void) {
@@ -164,7 +164,7 @@ static void launch_expensive_waiter(void) {
     int r = toku_pthread_create(&tid, NULL, do_expensive_wait, NULL); 
     assert_zero(r);
     toku_pthread_detach(tid);
-    sleep(1);
+    toku_os_sleep(1);
 }
 
 static void launch_reader(void) {
@@ -172,7 +172,7 @@ static void launch_reader(void) {
     int r = toku_pthread_create(&tid, NULL, do_read_wait, NULL); 
     assert_zero(r);
     toku_pthread_detach(tid);
-    sleep(1);
+    toku_os_sleep(1);
 }
 
 static bool locks_are_expensive(void) {
@@ -218,7 +218,7 @@ static void test_write_cheapness(void) {
     launch_cheap_waiter();
     assert(locks_are_expensive());
     release_write_lock();
-    sleep(1);
+    toku_os_sleep(1);
     assert(!locks_are_expensive());
 
     // cheap write lock and expensive writer waiter
@@ -226,21 +226,21 @@ static void test_write_cheapness(void) {
     launch_expensive_waiter();
     assert(locks_are_expensive());
     release_write_lock();
-    sleep(1);
+    toku_os_sleep(1);
 
     // expensive write lock and expensive waiter
     grab_write_lock(true);
     launch_expensive_waiter();
     assert(locks_are_expensive());
     release_write_lock();
-    sleep(1);
+    toku_os_sleep(1);
 
     // cheap write lock and cheap waiter
     grab_write_lock(false);
     launch_cheap_waiter();
     assert(!locks_are_expensive());
     release_write_lock();
-    sleep(1);
+    toku_os_sleep(1);
 
     // read lock held and cheap waiter
     grab_read_lock();
@@ -250,7 +250,7 @@ static void test_write_cheapness(void) {
     launch_expensive_waiter();
     assert(locks_are_expensive());
     release_read_lock();
-    sleep(1);
+    toku_os_sleep(1);
 
     // read lock held and expensive waiter
     grab_read_lock();
@@ -260,7 +260,7 @@ static void test_write_cheapness(void) {
     launch_cheap_waiter();
     assert(locks_are_expensive());
     release_read_lock();
-    sleep(1);
+    toku_os_sleep(1);
 
     // cheap write lock held and waiting read
     grab_write_lock(false);
@@ -275,7 +275,7 @@ static void test_write_cheapness(void) {
     assert(!w.read_lock_is_expensive());
     toku_mutex_unlock(&mutex);
     release_write_lock();
-    sleep(1);
+    toku_os_sleep(1);
 
     // expensive write lock held and waiting read
     grab_write_lock(true);
@@ -284,7 +284,7 @@ static void test_write_cheapness(void) {
     launch_cheap_waiter();
     assert(locks_are_expensive());
     release_write_lock();
-    sleep(1);
+    toku_os_sleep(1);
 
     w.deinit();
     toku_mutex_destroy(&mutex);

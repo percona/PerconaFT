@@ -101,7 +101,7 @@ static void test_dump_empty_db (void) {
     int r;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     r = toku_open_ft_handle(fname, 1, &t, 1024, 256, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun);
     assert(r==0);
     if (verbose) { r=toku_dump_ft(stdout, t); assert(r==0); }
@@ -182,7 +182,7 @@ static void test_multiple_ft_handles_one_db_one_file (void) {
     FT_HANDLE trees[MANYN];
     if (verbose) printf("test_multiple_ft_handles_one_db_one_file:");
     
-    unlink(fname);
+    toku_os_unlink(fname);
     toku_cachetable_create(&ct, 32, ZERO_LSN, nullptr);
     for (i=0; i<MANYN; i++) {
 	r = toku_open_ft_handle(fname, (i==0), &trees[i], 1<<12, 1<<9, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun);
@@ -219,7 +219,7 @@ static void  test_read_what_was_written (void) {
 
     if (verbose) printf("test_read_what_was_written(): "); fflush(stdout);
 
-    unlink(fname);
+    toku_os_unlink(fname);
     
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
@@ -337,7 +337,7 @@ static void test_cursor_last_empty(void) {
     FT_CURSOR cursor=0;
     int r;
     if (verbose) printf("%s", __FUNCTION__);
-    unlink(fname);
+    toku_os_unlink(fname);
     
     //printf("%s:%d %d alloced\n", __FILE__, __LINE__, toku_get_n_items_malloced()); toku_print_malloced_items();
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
@@ -372,7 +372,7 @@ static void test_cursor_next (void) {
     int r;
     DBT kbt, vbt;
 
-    unlink(fname);
+    toku_os_unlink(fname);
     
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
     //printf("%s:%d %d alloced\n", __FILE__, __LINE__, toku_get_n_items_malloced()); toku_print_malloced_items();
@@ -439,7 +439,7 @@ static void test_wrongendian_compare (int wrong_p, unsigned int N) {
     int r;
     unsigned int i;
 
-    unlink(fname);
+    toku_os_unlink(fname);
     
 
     {
@@ -548,7 +548,7 @@ static void test_large_kv(int bsize, int ksize, int vsize) {
     if (verbose) printf("test_large_kv: %d %d %d\n", bsize, ksize, vsize);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     r = toku_open_ft_handle(fname, 1, &t, bsize, bsize / 4, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun);
     assert(r==0);
 
@@ -592,7 +592,7 @@ static void test_ft_delete_empty(void) {
     CACHETABLE ct;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     r = toku_open_ft_handle(fname, 1, &t, 4096, 1024, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun);
     assert(r==0);
 
@@ -618,7 +618,7 @@ static void test_ft_delete_present(int n) {
     int i;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     r = toku_open_ft_handle(fname, 1, &t, 4096, 1024, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun);
     assert(r==0);
 
@@ -681,7 +681,7 @@ static void test_ft_delete_not_present(int n) {
     int i;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     r = toku_open_ft_handle(fname, 1, &t, 4096, 1024, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun);
     assert(r==0);
 
@@ -725,7 +725,7 @@ static void test_ft_delete_cursor_first(int n) {
     int i;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     r = toku_open_ft_handle(fname, 1, &t, 4096, 1024, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun);
     assert(r==0);
 
@@ -820,7 +820,7 @@ static void test_insert_delete_lookup(int n) {
     int i;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     r = toku_open_ft_handle(fname, 1, &t, 4096, 1024, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun);
     assert(r==0);
 
@@ -907,7 +907,7 @@ static void test_new_ft_cursor_first(int n) {
     int i;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     toku_ft_handle_create(&t);
     toku_ft_handle_set_nodesize(t, 4096);
     r = toku_ft_handle_open(t, fname, 1, 1, ct, null_txn); assert(r==0);
@@ -959,7 +959,7 @@ static void test_new_ft_cursor_last(int n) {
     int i;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     toku_ft_handle_create(&t);
     toku_ft_handle_set_nodesize(t, 4096);
     r = toku_ft_handle_open(t, fname, 1, 1, ct, null_txn); assert(r==0);
@@ -1012,7 +1012,7 @@ static void test_new_ft_cursor_next(int n) {
     int i;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     toku_ft_handle_create(&t);
     toku_ft_handle_set_nodesize(t, 4096);
     r = toku_ft_handle_open(t, fname, 1, 1, ct, null_txn); assert(r==0);
@@ -1055,7 +1055,7 @@ static void test_new_ft_cursor_prev(int n) {
     int i;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     toku_ft_handle_create(&t);
     toku_ft_handle_set_nodesize(t, 4096);
     r = toku_ft_handle_open(t, fname, 1, 1, ct, null_txn); assert(r==0);
@@ -1098,7 +1098,7 @@ static void test_new_ft_cursor_current(int n) {
     int i;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     toku_ft_handle_create(&t);
     toku_ft_handle_set_nodesize(t, 4096);
     r = toku_ft_handle_open(t, fname, 1, 1, ct, null_txn); assert(r==0);
@@ -1180,7 +1180,7 @@ static void test_new_ft_cursor_set_range(int n) {
     FT_CURSOR cursor=0;
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    unlink(fname);
+    toku_os_unlink(fname);
     toku_ft_handle_create(&ft);
     toku_ft_handle_set_nodesize(ft, 4096);
     r = toku_ft_handle_open(ft, fname, 1, 1, ct, null_txn); assert(r==0);
@@ -1238,7 +1238,7 @@ static void test_new_ft_cursor_set(int n, int cursor_op, DB *db) {
     FT_HANDLE ft;
     FT_CURSOR cursor=0;
 
-    unlink(fname);
+    toku_os_unlink(fname);
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
 

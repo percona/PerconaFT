@@ -237,7 +237,7 @@ void ft_loader_fi_destroy (struct file_infos *fi, bool is_error)
         }
         if (fi->file_infos[i].is_extant) {
             invariant(is_error);
-            unlink(fi->file_infos[i].fname);
+            toku_os_unlink(fi->file_infos[i].fname);
             toku_free(fi->file_infos[i].fname);
         }
         cleanup_big_buffer(&fi->file_infos[i]);
@@ -327,7 +327,7 @@ int ft_loader_fi_unlink (struct file_infos *fi, FIDX idx) {
         fi->n_files_extant--;
         invariant(!fi->file_infos[id].is_open); // must be closed before we unlink
         fi->file_infos[id].is_extant = false;
-        int r = unlink(fi->file_infos[id].fname);  
+        int r = toku_os_unlink(fi->file_infos[id].fname);  
         if (r != 0) 
             result = get_error_errno();
         toku_free(fi->file_infos[id].fname);
@@ -381,7 +381,7 @@ int ft_loader_open_temp_file (FTLOADER bl, FIDX *file_idx)
     if (result != 0) {
         if (fd >= 0) {
             toku_os_close(fd);
-            unlink(fname);
+            toku_os_unlink(fname);
         }
         if (f != NULL)
             toku_os_fclose(f);  // don't check for error because we're already in an error case

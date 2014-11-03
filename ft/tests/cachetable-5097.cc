@@ -176,9 +176,9 @@ cachetable_test (void) {
     r = toku_os_mkdir(TOKU_TEST_FILENAME, S_IRWXU);
     assert_zero(r);
     char fname1[TOKU_PATH_MAX + 1];
-    unlink(toku_path_join(fname1, 2, TOKU_TEST_FILENAME, "test1.dat"));
+    toku_os_unlink(toku_path_join(fname1, 2, TOKU_TEST_FILENAME, "test1.dat"));
     char fname2[TOKU_PATH_MAX + 1];
-    unlink(toku_path_join(fname2, 2, TOKU_TEST_FILENAME, "test2.dat"));
+    toku_os_unlink(toku_path_join(fname2, 2, TOKU_TEST_FILENAME, "test2.dat"));
 
     r = toku_cachetable_openf(&f1, ct, fname1, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO); 
     assert(r == 0);

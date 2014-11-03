@@ -122,7 +122,7 @@ static void blocking_first(DB_ENV *db_env, DB *db, uint64_t nrows, long sleeptim
         r = db->cursor(db, txn, &cursor, 0); assert(r == 0); // get a write lock on -inf +inf
         r = cursor->c_getf_first(cursor, DB_RMW, blocking_first_callback, &context); assert(r == DB_NOTFOUND);
 
-        usleep(sleeptime);
+        toku_os_usleep(sleeptime);
 
         r = cursor->c_close(cursor); assert(r == 0);
 

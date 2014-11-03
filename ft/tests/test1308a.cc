@@ -103,7 +103,7 @@ PATENT RIGHTS GRANT:
 int
 test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__)))
 {
-    unlink(FNAME);
+    toku_os_unlink(FNAME);
     
     int fd;
     {
@@ -136,6 +136,6 @@ test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute_
     assert(file_size==file_size2);
     toku_os_close(fd);
 
-    unlink(FNAME);
+    toku_os_unlink(FNAME);
     return 0;
 }

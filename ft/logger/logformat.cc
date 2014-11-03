@@ -835,10 +835,8 @@ int main (int argc, const char *const argv[]) {
     { int r = snprintf(codepath,   codepathlen,   "%s/%s", argv[1], codefile);    assert(r<(int)codepathlen); }
     { int r = snprintf(printpath,  printpathlen,  "%s/%s", argv[1], printfile);   assert(r<(int)printpathlen); }
     { int r = snprintf(headerpath, headerpathlen, "%s/%s", argv[1], headerfile);  assert(r<(int)headerpathlen); }
-    chmod(codepath, S_IRUSR|S_IWUSR);
-    chmod(headerpath, S_IRUSR|S_IWUSR);
-    unlink(codepath);
-    unlink(headerpath);
+    toku_os_unlink(codepath);
+    toku_os_unlink(headerpath);
     cf = toku_os_fopen(codepath, "w");
     if (cf==0) { int r = get_error_errno(); printf("toku_os_fopen of %s failed because of errno=%d (%s)\n", codepath, r, strerror(r)); } // sometimes this is failing, so let's make a better diagnostic
     assert(cf!=0);

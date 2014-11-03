@@ -97,6 +97,12 @@ PATENT RIGHTS GRANT:
 #include "toku_stdint.h"
 #include "toku_os_types.h"
 
+// Sleep for `seconds'
+void toku_os_sleep(uint64_t seconds);
+
+// Sleep for `usecs' (microseconds)
+void toku_os_usleep(uint64_t usecs);
+
 // Returns: the current process id
 int toku_os_getpid(void)   __attribute__((__visibility__("default")));
 
@@ -135,6 +141,14 @@ int toku_os_lock_file(const char *name);
 int toku_os_unlock_file(int fildes);
 
 int toku_os_mkdir(const char *pathname, mode_t mode) __attribute__((__visibility__("default")));
+
+int toku_os_chdir(const char *pathname) __attribute__((__visibility__("default")));
+
+// Unlink a file at the given path
+int toku_os_unlink(const char *pathname) __attribute__((__visibility__("default")));
+
+// Sync dirty OS buffer pages to storage.
+void toku_os_sync(void) __attribute__((__visibility__("default")));
 
 // Get the current process user and kernel use times
 int toku_os_get_process_times(struct timeval *usertime, struct timeval *kerneltime);
