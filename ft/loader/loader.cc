@@ -91,7 +91,6 @@ PATENT RIGHTS GRANT:
 
 #include <toku_portability.h>
 
-#include <arpa/inet.h>
 
 #include <stdio.h>
 #include <memory.h>

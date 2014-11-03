@@ -89,7 +89,6 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #include "test.h"
 // The helgrind2 test performs a DB->get() in two different concurrent threads.
-#include <arpa/inet.h>
 
 #include <db.h>
 #include <portability/toku_pthread.h>
