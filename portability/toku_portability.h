@@ -113,17 +113,11 @@ PATENT RIGHTS GRANT:
 #if defined(__GNUC__)
 // GCC linux
 
-#define DO_GCC_PRAGMA(x) _Pragma (#x)
-
 #include <toku_stdint.h>
 #include <stdio.h>
 
 #if __FreeBSD__
 #include <stdarg.h>
-#endif
-
-#if defined(HAVE_ALLOCA_H)
-# include <alloca.h>
 #endif
 
 #if defined(__cplusplus)
@@ -138,19 +132,6 @@ PATENT RIGHTS GRANT:
 
 #else // __GNUC__ was not defined, so...
 #  error "Must use a GNUC-compatible compiler."
-#endif
-
-// Define some constants for Yama in case the build-machine's software is too old.
-#if !defined(HAVE_PR_SET_PTRACER)
-/*
- * Set specific pid that is allowed to ptrace the current task.
- * A value of 0 mean "no process".
- */
-// Well defined ("Yama" in ascii)
-#define PR_SET_PTRACER 0x59616d61
-#endif
-#if !defined(HAVE_PR_SET_PTRACER_ANY)
-#define PR_SET_PTRACER_ANY ((unsigned long)-1)
 #endif
 
 #if defined(__cplusplus)
@@ -171,7 +152,14 @@ typedef int64_t toku_off_t;
 #include "toku_assert.h"
 #include "toku_crash.h"
 
-#define UU(x) x __attribute__((__unused__))
+#define UNUSED(x)           x __attribute__((__unused__))
+// TODO: Remove UU in favor of UNUSED
+#define UU(x) UNUSED(x)
+#define DEPRECATED          __attribute__((__deprecated__))
+#define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
+#define MALLOC_LIKE         __malloc_like
+#define THROW               __THROW
+#define NOINLINE            __attribute__((__noinline__))
 
 #if defined(__cplusplus)
 extern "C" {
@@ -179,54 +167,52 @@ extern "C" {
 
 // Deprecated functions.
 #if !defined(TOKU_ALLOW_DEPRECATED)
-int      open(const char *path, int flag, ...)      __attribute__((__deprecated__));
-int      close(int fd)                              __attribute__((__deprecated__));
-int      creat(const char *path, mode_t mode)       __attribute__((__deprecated__));
-int      fstat(int fd, struct stat *buf)            __attribute__((__deprecated__));
-int      stat(const char *path, struct stat *buf)   __attribute__((__deprecated__));
-int      getpid(void)                               __attribute__((__deprecated__));
+int      open(const char *path, int flag, ...)      DEPRECATED;
+int      close(int fd)                              DEPRECATED;
+int      creat(const char *pathname, mode_t mode)   DEPRECATED;
+int      fstat(int fd, struct stat *buf)            DEPRECATED;
+int      stat(const char *path, struct stat *buf)   DEPRECATED;
+int      getpid(void)                               DEPRECATED;
 #    if defined(__FreeBSD__) || defined(__APPLE__)
-int syscall(int __sysno, ...)             __attribute__((__deprecated__));
+int syscall(int sysno, ...)             DEPRECATED;
 #    else
-long int syscall(long int __sysno, ...)             __attribute__((__deprecated__));
+long int syscall(long int sysno, ...)             DEPRECATED;
 #    endif
- long int sysconf(int)                   __attribute__((__deprecated__));
-int      mkdir(const char *pathname, mode_t mode)   __attribute__((__deprecated__));
-int      dup2(int fd, int fd2)                      __attribute__((__deprecated__));
-int      _dup2(int fd, int fd2)                     __attribute__((__deprecated__));
+long int sysconf(int)                   DEPRECATED;
+int      mkdir(const char *pathname, mode_t mode)   DEPRECATED;
+int      dup2(int fd, int fd2)                      DEPRECATED;
+int      _dup2(int fd, int fd2)                     DEPRECATED;
 // strdup is a macro in some libraries.
 #undef strdup
 #    if defined(__FreeBSD__)
-char*    strdup(const char *)         __malloc_like __attribute__((__deprecated__));
+char*    strdup(const char *)         MALLOC_LIKE DEPRECATED;
 #    elif defined(__APPLE__)
-char*    strdup(const char *)         __attribute__((__deprecated__));
+char*    strdup(const char *)         DEPRECATED;
 #    else
-char*    strdup(const char *)         __THROW __attribute_malloc__ __nonnull ((1)) __attribute__((__deprecated__));
+//char*    strdup(const char *)         THROW __attribute_malloc__ __nonnull ((1)) DEPRECATED;
 #    endif
 #undef __strdup
-char*    __strdup(const char *)         __attribute__((__deprecated__));
+char*    __strdup(const char *)         DEPRECATED;
 #    ifndef DONT_DEPRECATE_WRITES
-ssize_t  write(int, const void *, size_t)           __attribute__((__deprecated__));
-ssize_t  pwrite(int, const void *, size_t, off_t)   __attribute__((__deprecated__));
+ssize_t  write(int, const void *, size_t)           DEPRECATED;
+ssize_t  pwrite(int, const void *, size_t, off_t)   DEPRECATED;
 #endif
 #    ifndef DONT_DEPRECATE_MALLOC
 #     if defined(__FreeBSD__)
-extern void *malloc(size_t)                    __malloc_like __attribute__((__deprecated__));
-extern void free(void*)                        __attribute__((__deprecated__));
-extern void *realloc(void*, size_t)            __malloc_like __attribute__((__deprecated__));
+extern void *malloc(size_t)                    MALLOC_LIKE DEPRECATED;
+extern void free(void*)                        DEPRECATED;
+extern void *realloc(void*, size_t)            MALLOC_LIKE DEPRECATED;
 #     elif defined(__APPLE__)
-extern void *malloc(size_t)                    __attribute__((__deprecated__));
-extern void free(void*)                        __attribute__((__deprecated__));
-extern void *realloc(void*, size_t)            __attribute__((__deprecated__));
+extern void *malloc(size_t)                    DEPRECATED;
+extern void free(void*)                        DEPRECATED;
+extern void *realloc(void*, size_t)            DEPRECATED;
 #     else
-extern void *malloc(size_t)                    __THROW __attribute__((__deprecated__));
-extern void free(void*)                        __THROW __attribute__((__deprecated__));
-extern void *realloc(void*, size_t)            __THROW __attribute__((__deprecated__));
+extern void *malloc(size_t)                    THROW DEPRECATED;
+extern void free(void*)                        THROW DEPRECATED;
+extern void *realloc(void*, size_t)            THROW DEPRECATED;
 #     endif
 #    endif
-#    ifndef DONT_DEPRECATE_ERRNO
-//extern int errno __attribute__((__deprecated__));
-#    endif
+extern int errno                               DEPRECATED;
 #if !defined(__APPLE__)
 // Darwin headers use these types, we should not poison them
 # pragma GCC poison u_int8_t
@@ -260,35 +246,35 @@ extern void *realloc(void*, size_t)            __THROW __attribute__((__deprecat
 };
 #endif
 
-void *os_malloc(size_t) __attribute__((__visibility__("default")));
+void *os_malloc(size_t) DEFAULT_VISIBILITY;
 // Effect: See man malloc(2)
 
-void *os_malloc_aligned(size_t /*alignment*/, size_t /*size*/) __attribute__((__visibility__("default")));
+void *os_malloc_aligned(size_t /*alignment*/, size_t /*size*/) DEFAULT_VISIBILITY;
 // Effect: Perform a malloc(size) with the additional property that the returned pointer is a multiple of ALIGNMENT.
 // Requires: alignment is a power of two.
 
 
-void *os_realloc(void*,size_t) __attribute__((__visibility__("default")));
+void *os_realloc(void*,size_t) DEFAULT_VISIBILITY;
 // Effect: See man realloc(2)
 
-void *os_realloc_aligned(size_t/*alignment*/, void*,size_t) __attribute__((__visibility__("default")));
+void *os_realloc_aligned(size_t/*alignment*/, void*,size_t) DEFAULT_VISIBILITY;
 // Effect: Perform a realloc(p, size) with the additional property that the returned pointer is a multiple of ALIGNMENT.
 // Requires: alignment is a power of two.
 
-void os_free(void*) __attribute__((__visibility__("default")));
+void os_free(void*) DEFAULT_VISIBILITY;
 // Effect: See man free(2)
 
-size_t os_malloc_usable_size(const void *p) __attribute__((__visibility__("default")));
+size_t os_malloc_usable_size(const void *p) DEFAULT_VISIBILITY;
 // Effect: Return an estimate of the usable size inside a pointer.  If this function is not defined the memory.cc will
 //  look for the jemalloc, libc, or darwin versions of the function for computing memory footprint.
 
 // full_pwrite and full_write performs a pwrite, and checks errors.  It doesn't return unless all the data was written. */
-void toku_os_full_pwrite (int fd, const void *buf, size_t len, toku_off_t off) __attribute__((__visibility__("default")));
-void toku_os_full_write (int fd, const void *buf, size_t len) __attribute__((__visibility__("default")));
+void toku_os_full_pwrite (int fd, const void *buf, size_t len, toku_off_t off) DEFAULT_VISIBILITY;
+void toku_os_full_write (int fd, const void *buf, size_t len) DEFAULT_VISIBILITY;
 
 // os_write returns 0 on success, otherwise an errno.
-ssize_t toku_os_pwrite (int fd, const void *buf, size_t len, toku_off_t off) __attribute__((__visibility__("default")));
-int toku_os_write (int fd, const void *buf, size_t len) __attribute__((__visibility__("default")));
+ssize_t toku_os_pwrite (int fd, const void *buf, size_t len, toku_off_t off) DEFAULT_VISIBILITY;
+int toku_os_write (int fd, const void *buf, size_t len) DEFAULT_VISIBILITY;
 
 // wrappers around file system calls
 //

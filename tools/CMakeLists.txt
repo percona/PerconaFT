@@ -1,4 +1,4 @@
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS _GNU_SOURCE DONT_DEPRECATE_ERRNO)
+set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS _GNU_SOURCE)
 
 set(tools tokudb_dump tokuftdump tdb_logprint tdb-recover ftverify ba_replay)
 foreach(tool ${tools})
