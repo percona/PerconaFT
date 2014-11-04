@@ -598,15 +598,6 @@ PAIR_ATTR make_invalid_pair_attr(void) {
 }
 
 
-// assign unique dictionary id
-static uint64_t dict_id_serial = 1;
-static DICTIONARY_ID
-next_dict_id(void) {
-    uint64_t i = toku_sync_fetch_and_add(&dict_id_serial, 1);
-    assert(i);        // guarantee unique dictionary id by asserting 64-bit counter never wraps
-    DICTIONARY_ID d = {.dictid = i};
-    return d;
-}
 
 // TODO: This isn't so pretty
 void ftnode_fetch_extra::_create_internal(FT ft_) {
@@ -2959,7 +2950,7 @@ toku_ft_handle_inherit_options(FT_HANDLE t, FT ft) {
 // The checkpointed version (checkpoint_lsn) of the dictionary must be no later than max_acceptable_lsn .
 // Requires: The multi-operation client lock must be held to prevent a checkpoint from occuring.
 static int
-ft_handle_open(FT_HANDLE ft_h, const char *fname_in_env, int is_create, int only_create, CACHETABLE cachetable, TOKUTXN txn, FILENUM use_filenum, DICTIONARY_ID use_dictionary_id, LSN max_acceptable_lsn) {
+ft_handle_open(FT_HANDLE ft_h, const char *fname_in_env, int is_create, int only_create, CACHETABLE cachetable, TOKUTXN txn, FILENUM use_filenum, LSN max_acceptable_lsn) {
     int r;
     bool txn_created = false;
     char *fname_in_cwd = NULL;
@@ -3042,27 +3033,7 @@ ft_handle_open(FT_HANDLE ft_h, const char *fname_in_env, int is_create, int only
             toku_logger_log_fopen(txn, fname_in_env, toku_cachefile_filenum(cf), ft_h->options.flags);
         }
     }
-    int use_reserved_dict_id;
-    use_reserved_dict_id = use_dictionary_id.dictid != DICTIONARY_ID_NONE.dictid;
-    if (!was_already_open) {
-        DICTIONARY_ID dict_id;
-        if (use_reserved_dict_id) {
-            dict_id = use_dictionary_id;
-        }
-        else {
-            dict_id = next_dict_id();
-        }
-        ft->dict_id = dict_id;
-    }
-    else {
-        // dict_id is already in header
-        if (use_reserved_dict_id) {
-            assert(ft->dict_id.dictid == use_dictionary_id.dictid);
-        }
-    }
     assert(ft);
-    assert(ft->dict_id.dictid != DICTIONARY_ID_NONE.dictid);
-    assert(ft->dict_id.dictid < dict_id_serial);
 
     // important note here,
     // after this point, where we associate the header
@@ -3119,7 +3090,7 @@ toku_ft_handle_open_recovery(FT_HANDLE t, const char *fname_in_env, int is_creat
     int r;
     assert(use_filenum.fileid != FILENUM_NONE.fileid);
     r = ft_handle_open(t, fname_in_env, is_create, only_create, cachetable,
-                 txn, use_filenum, DICTIONARY_ID_NONE, max_acceptable_lsn);
+                 txn, use_filenum, max_acceptable_lsn);
     return r;
 }
 
@@ -3128,7 +3099,7 @@ toku_ft_handle_open_recovery(FT_HANDLE t, const char *fname_in_env, int is_creat
 int
 toku_ft_handle_open(FT_HANDLE t, const char *fname_in_env, int is_create, int only_create, CACHETABLE cachetable, TOKUTXN txn) {
     int r;
-    r = ft_handle_open(t, fname_in_env, is_create, only_create, cachetable, txn, FILENUM_NONE, DICTIONARY_ID_NONE, MAX_LSN);
+    r = ft_handle_open(t, fname_in_env, is_create, only_create, cachetable, txn, FILENUM_NONE, MAX_LSN);
     return r;
 }
 
@@ -3169,7 +3140,7 @@ toku_ft_handle_open_with_dict_id(
     int only_create,
     CACHETABLE cachetable,
     TOKUTXN txn,
-    DICTIONARY_ID use_dictionary_id
+    DICTIONARY_ID use_dictionary_id UU()
     )
 {
     int r;
@@ -3181,16 +3152,9 @@ toku_ft_handle_open_with_dict_id(
         cachetable,
         txn,
         FILENUM_NONE,
-        use_dictionary_id,
         MAX_LSN
         );
     return r;
-}
-
-DICTIONARY_ID
-toku_ft_get_dictionary_id(FT_HANDLE ft_handle) {
-    FT ft = ft_handle->ft;
-    return ft->dict_id;
 }
 
 void toku_ft_set_flags(FT_HANDLE ft_handle, unsigned int flags) {

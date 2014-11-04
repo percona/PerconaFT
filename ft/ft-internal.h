@@ -207,8 +207,6 @@ struct ft {
     // These are (mostly) read-only.
 
     CACHEFILE cf;
-    // unique id for dictionary
-    DICTIONARY_ID dict_id;
 
     // protected by locktree
     DESCRIPTOR_S descriptor;

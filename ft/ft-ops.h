@@ -259,8 +259,6 @@ extern int toku_ft_debug_mode;
 int toku_verify_ft (FT_HANDLE ft_h)  __attribute__ ((warn_unused_result));
 int toku_verify_ft_with_progress (FT_HANDLE ft_h, int (*progress_callback)(void *extra, float progress), void *extra, int verbose, int keep_going)  __attribute__ ((warn_unused_result));
 
-DICTIONARY_ID toku_ft_get_dictionary_id(FT_HANDLE);
-
 enum ft_flags {
     //TOKU_DB_DUP             = (1<<0),  //Obsolete #2862
     //TOKU_DB_DUPSORT         = (1<<1),  //Obsolete #2862

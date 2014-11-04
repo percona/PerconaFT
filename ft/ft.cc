@@ -621,7 +621,6 @@ toku_ft_init(FT ft,
 static int
 ft_handle_open_for_redirect(FT_HANDLE *new_ftp, const char *fname_in_env, TOKUTXN txn, FT old_ft) {
     FT_HANDLE ft_handle;
-    assert(old_ft->dict_id.dictid != DICTIONARY_ID_NONE.dictid);
     // setting first two parameters to NULL, as proper values
     // will be set in functions below
     toku_ft_handle_create(NULL, NULL, &ft_handle);
@@ -632,11 +631,20 @@ ft_handle_open_for_redirect(FT_HANDLE *new_ftp, const char *fname_in_env, TOKUTX
     toku_ft_handle_set_compression_method(ft_handle, old_ft->h->compression_method);
     toku_ft_handle_set_fanout(ft_handle, old_ft->h->fanout);
     CACHETABLE ct = toku_cachefile_get_cachetable(old_ft->cf);
-    int r = toku_ft_handle_open_with_dict_id(ft_handle, fname_in_env, 0, 0, ct, txn, old_ft->dict_id);
+    DICTIONARY_ID dict_id = {
+        .dictid = 0
+    };
+    int r = toku_ft_handle_open(
+        ft_handle,
+        fname_in_env,
+        false,
+        false,
+        cachetable,
+        txn
+        );
     if (r != 0) {
         goto cleanup;
     }
-    assert(ft_handle->ft->dict_id.dictid == old_ft->dict_id.dictid);
     *new_ftp = ft_handle;
 
  cleanup:
