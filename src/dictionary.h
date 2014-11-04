@@ -104,6 +104,7 @@ class dictionary_info {
 public:
     char* dname;
     char* iname;
+    uint64_t id;
     dictionary_info() : dname(nullptr), iname(nullptr) {
     }
     void destroy() {
@@ -119,12 +120,14 @@ public:
 class dictionary {
     char* m_dname;
     uint32_t m_refcount; // access protected by the mutex of dictionary_manager that is managing this dictionary
+    uint64_t m_id;
     inmemory_dictionary_manager* m_mgr;
 public:
     void create(const dictionary_info* dinfo, inmemory_dictionary_manager* manager);
     void destroy();
     void release();
     char* get_dname() const;
+    uint64_t get_id() const;
 
     friend class inmemory_dictionary_manager;
 };
@@ -133,19 +136,22 @@ class persistent_dictionary_manager {
 private:
     DB* m_directory; // maps dname to dictionary id
     DB* m_inamedb; // maps dictionary id to iname
+    uint64_t m_next_id;
+    toku_mutex_t m_mutex;
     int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname);
     
 public:
     persistent_dictionary_manager() : 
         m_directory(nullptr),
-        m_inamedb(nullptr)
+        m_inamedb(nullptr),
+        m_next_id(0)
     {
     }
     int initialize(DB_ENV* env, DB_TXN* txn);
     int get_directory_cursor(DB_TXN* txn, DBC** c);
     int get_dinfo(const char* dname, DB_TXN* txn, dictionary_info* dinfo);
     int get_iname(const char* dname, DB_TXN* txn, char** iname);
-    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags);
+    int change_iname(DB_TXN* txn, uint64_t id, const char* new_iname, uint32_t put_flags);
     int pre_acquire_fileops_lock(DB_TXN* txn, char* dname);
     int create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo);
     int remove(const char * dname, DB_TXN* txn);
@@ -218,8 +224,8 @@ public:
     }
     int get_iname_in_dbt(DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt);
     // used in a part of bulk loading
-    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags) {
-        return pdm.change_iname(txn, dname, new_iname, put_flags);
+    int change_iname(DB_TXN* txn, uint64_t id, const char* new_iname, uint32_t put_flags) {
+        return pdm.change_iname(txn, id, new_iname, put_flags);
     }
     int pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
         return pdm.pre_acquire_fileops_lock(txn, dname);

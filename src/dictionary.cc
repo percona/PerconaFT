@@ -204,6 +204,7 @@ void dictionary::create(const dictionary_info* dinfo, inmemory_dictionary_manage
     else {
         m_dname = nullptr;
     }
+    m_id = dinfo->id;
     m_refcount = 0;
     m_mgr = manager;
 }
@@ -233,6 +234,11 @@ char* dictionary::get_dname() const {
     return m_dname;
 }
 
+uint64_t dictionary::get_id() const {
+    return m_id;
+}
+
+
 //////////////////////////////////////////
 // persistent_dictionary_manager methods
 //
@@ -252,51 +258,51 @@ int persistent_dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TX
 }
 
 int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn) {
+    toku_mutex_init(&m_mutex, nullptr);
     int r = setup_internal_db(&m_directory, env, txn, toku_product_name_strings.fileopsdirectory);
     if (r != 0) goto cleanup;
     r = setup_internal_db(&m_inamedb, env, txn, toku_product_name_strings.fileopsinames);
     if (r != 0) goto cleanup;
+    assert(false);
+    // TODO: initialize m_next_id to something sensible
+    // get the last entry in m_inamesdb, that has the current max used id
+    // set m_next_id to that value plus one
 cleanup:
     return r;
-}
-
-int persistent_dictionary_manager::get_directory_cursor(DB_TXN* txn, DBC** c) {
-    return toku_db_cursor(m_directory, txn, c, 0);
 }
 
 int persistent_dictionary_manager::get_dinfo(const char* dname, DB_TXN* txn, dictionary_info* dinfo) {
     DBT dname_dbt;
     DBT iname_dbt;
+    DBT id_dbt;
+    uint64_t id;
     toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
     toku_init_dbt_flags(&iname_dbt, DB_DBT_MALLOC);
+    toku_init_dbt(&id_dbt);
+    id_dbt.data = &id;
+    id_dbt.ulen = sizeof(id);
+    id_dbt.flags = DB_DBT_USERMEM;
+
+    // get id
+    int r = toku_db_get(m_directory, txn, &dname_dbt, &id_dbt, DB_SERIALIZABLE);
+    if (r != 0) goto cleanup;
+    dinfo->id = id;
 
     // get iname
-    int r = toku_db_get(m_directory, txn, &dname_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
-    if (r == 0) {
-        dinfo->iname = (char *) iname_dbt.data;
-        dinfo->dname = toku_strdup(dname);
+    r = toku_db_get(m_inamedb, txn, &id_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
+    if (r == DB_NOTFOUND) {
+        // we have an inconsistent state. This is a bad bug
+        printf("We found an id for the dname, but not the iname\n");
+        printf("dname %s\n", dname);
+        printf("id: %" PRIu64 "\n", id);
+        goto cleanup;
     }
-    return r;
-}
+    if (r != 0) goto cleanup;
 
-// get the iname for the given dname and set it in the variable iname
-// responsibility of caller to free iname
-int persistent_dictionary_manager::get_iname(const char* dname, DB_TXN* txn, char** iname) {
-    dictionary_info dinfo;
-    int r = get_dinfo(dname, txn, &dinfo);
-    if (r == 0) {
-        *iname = toku_strdup(dinfo.iname);
-    }
-    dinfo.destroy();
+    dinfo->iname = (char *) iname_dbt.data;
+    dinfo->dname = toku_strdup(dname);
+cleanup:
     return r;
-}
-
-int persistent_dictionary_manager::change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags) {
-    DBT dname_dbt;  // holds dname
-    toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
-    DBT iname_dbt;  // holds new iname
-    toku_fill_dbt(&iname_dbt, new_iname, strlen(new_iname) + 1);      // iname_in_env goes in directory
-    return toku_db_put(m_directory, txn, &dname_dbt, &iname_dbt, put_flags, true);
 }
 
 int persistent_dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
@@ -305,6 +311,14 @@ int persistent_dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* d
     return toku_db_get_range_lock(m_directory, txn,
             &key_in_directory, &key_in_directory,
             toku::lock_request::type::WRITE);
+}
+
+int persistent_dictionary_manager::change_iname(DB_TXN* txn, uint64_t id, const char* new_iname, uint32_t put_flags) {
+    DBT id_dbt;  // holds id
+    toku_fill_dbt(&id_dbt, &id, sizeof(id));
+    DBT iname_dbt;  // holds new iname
+    toku_fill_dbt(&iname_dbt, new_iname, strlen(new_iname) + 1);      // iname_in_env goes in directory
+    return toku_db_put(m_inamedb, txn, &id_dbt, &iname_dbt, put_flags, true);
 }
 
 int persistent_dictionary_manager::rename(DB_TXN* txn, const char *old_dname, const char *new_dname) {
@@ -331,11 +345,11 @@ int persistent_dictionary_manager::rename(DB_TXN* txn, const char *old_dname, co
     toku_fill_dbt(&old_dname_dbt, old_dname, strlen(old_dname)+1);
     DBT new_dname_dbt;
     toku_fill_dbt(&new_dname_dbt, new_dname, strlen(new_dname)+1);
-    DBT iname_dbt;
-    toku_fill_dbt(&iname_dbt, dinfo.iname, strlen(dinfo.iname)+1);
+    DBT id_dbt;
+    toku_fill_dbt(&id_dbt, &dinfo.id, sizeof(dinfo.id));
     r = toku_db_del(m_directory, txn, &old_dname_dbt, DB_DELETE_ANY, true);
     if (r != 0) { goto exit; }
-    r = toku_db_put(m_directory, txn, &new_dname_dbt, &iname_dbt, 0, true);
+    r = toku_db_put(m_directory, txn, &new_dname_dbt, &id_dbt, 0, true);
     if (r != 0) { goto exit; }
 
 exit:
@@ -359,11 +373,15 @@ int persistent_dictionary_manager::remove(const char * dname, DB_TXN* txn) {
     }
     DBT dname_dbt;
     toku_fill_dbt(&dname_dbt, dinfo.dname, strlen(dinfo.dname)+1);
-    // remove (dname,iname) from directory
+    DBT id_dbt;
+    toku_fill_dbt(&id_dbt, &dinfo.id, sizeof(dinfo.id));
+    // remove (dname,id) from directory
     r = toku_db_del(m_directory, txn, &dname_dbt, DB_DELETE_ANY, true);
-    if (r != 0) {
-        goto exit;
-    }
+    if (r != 0) { goto exit; }
+
+    r = toku_db_del(m_inamedb, txn, &id_dbt, DB_DELETE_ANY, true);
+    if (r != 0) { goto exit; }
+
 exit:
     dinfo.destroy();
     return r;
@@ -372,8 +390,28 @@ exit:
 int  persistent_dictionary_manager::create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo) {
     dinfo->dname = (dname) ? toku_strdup(dname) : nullptr;
     dinfo->iname = create_new_iname(dname, env, txn, NULL);
-    uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0); 
-    return change_iname(txn, dname, dinfo->iname, put_flags);
+    {
+        toku_mutex_lock(&m_mutex);
+        dinfo->id = m_next_id;
+        m_next_id++;
+        toku_mutex_unlock(&m_mutex);
+    }
+    uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0);
+
+    // set entry in directory
+    DBT dname_dbt;  // holds new iname
+    toku_fill_dbt(&dname_dbt, dname, strlen(dname) + 1);
+    DBT id_dbt;  // holds id
+    toku_fill_dbt(&id_dbt, &dinfo->id, sizeof(dinfo->id));
+    int r = toku_db_put(m_directory, txn, &dname_dbt, &id_dbt, put_flags, true);
+    if (r != 0) goto exit;
+
+    // set the iname
+    r = change_iname(txn, dinfo->id, dinfo->iname, put_flags);
+    if (r != 0) goto exit;
+    
+exit:
+    return r;
 }
 
 void persistent_dictionary_manager::destroy() {
@@ -383,6 +421,24 @@ void persistent_dictionary_manager::destroy() {
     if (m_inamedb) {
         toku_db_close(m_inamedb);
     }
+    toku_mutex_destroy(&m_mutex);
+}
+
+int persistent_dictionary_manager::get_directory_cursor(DB_TXN* txn, DBC** c) {
+    assert(false); // TODO: this will not work, need to rethink this API
+    return toku_db_cursor(m_directory, txn, c, 0);
+}
+
+// get the iname for the given dname and set it in the variable iname
+// responsibility of caller to free iname
+int persistent_dictionary_manager::get_iname(const char* dname, DB_TXN* txn, char** iname) {
+    dictionary_info dinfo;
+    int r = get_dinfo(dname, txn, &dinfo);
+    if (r == 0) {
+        *iname = toku_strdup(dinfo.iname);
+    }
+    dinfo.destroy();
+    return r;
 }
 
 int dictionary_manager::validate_metadata_db(DB_ENV* env, const char* iname, bool expect_newenv) {
