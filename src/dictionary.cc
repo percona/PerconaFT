@@ -726,7 +726,7 @@ int dictionary_manager::get_persistent_environment_cursor(DB_TXN* txn, DBC** c) 
 }
 
 // this is a test function, ONLY. Should not be used in production
-int dictionary_manager::get_iname_in_dbt(DB_ENV* env UU(), DBT* dname_dbt UU(), DBT* iname_dbt UU()) {
+int dictionary_manager::get_iname_in_dbt(DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt) {
     if (!iname_dbt->flags & DB_DBT_MALLOC) { // assuming all tests call with this
         return EINVAL;
     }
