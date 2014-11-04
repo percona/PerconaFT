@@ -259,15 +259,39 @@ int persistent_dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TX
 
 int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn) {
     toku_mutex_init(&m_mutex, nullptr);
+    DBC* c = NULL;
     int r = setup_internal_db(&m_directory, env, txn, toku_product_name_strings.fileopsdirectory);
     if (r != 0) goto cleanup;
     r = setup_internal_db(&m_inamedb, env, txn, toku_product_name_strings.fileopsinames);
     if (r != 0) goto cleanup;
-    assert(false);
-    // TODO: initialize m_next_id to something sensible
     // get the last entry in m_inamesdb, that has the current max used id
     // set m_next_id to that value plus one
+    r = m_inamedb->cursor(m_inamedb, txn, &c, DB_SERIALIZABLE);
+    if (r != 0) goto cleanup;
+    DBT key,val;
+    toku_init_dbt(&key);
+    toku_init_dbt(&val);
+    r = c->c_get(c, &key, &val, DB_LAST);
+    if (r == DB_NOTFOUND) {
+        // we have nothing in the directory,
+        // which is a valid case
+        m_next_id = 0;
+        r = 0;
+        goto cleanup;
+    }
+    if (r != 0) goto cleanup;
+    if (key.size != sizeof(uint64_t)) {
+        printf("Unexpected size found for last entry in m_inamedb %d\n", key.size);
+        r = EINVAL;
+        goto cleanup;
+    }
+    m_next_id = (*(uint64_t *)key.data) + 1;
+
 cleanup:
+    if (c) {
+        int chk = c->c_close(c);
+        assert_zero(chk);
+    }
     return r;
 }
 
