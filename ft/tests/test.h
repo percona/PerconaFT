@@ -126,9 +126,9 @@ PATENT RIGHTS GRANT:
 
 const uint32_t len_ignore = 0xFFFFFFFF;
 
-static const prepared_txn_callback_t NULL_prepared_txn_callback         __attribute__((__unused__)) = NULL;
-static const keep_cachetable_callback_t  NULL_keep_cachetable_callback  __attribute__((__unused__)) = NULL;
-static const TOKULOGGER NULL_logger                                     __attribute__((__unused__)) = NULL;
+static const prepared_txn_callback_t NULL_prepared_txn_callback         UNUSED = NULL;
+static const keep_cachetable_callback_t  NULL_keep_cachetable_callback  UNUSED = NULL;
+static const TOKULOGGER NULL_logger                                     UNUSED = NULL;
 
 // dummymsn needed to simulate msn because test messages are injected at a lower level than toku_ft_root_put_msg()
 #define MIN_DUMMYMSN ((MSN) {(uint64_t)1<<62})
@@ -218,17 +218,17 @@ static UU() void fake_ydb_unlock(void) {
 }
 
 static UU() void
-def_flush (CACHEFILE f __attribute__((__unused__)),
+def_flush (CACHEFILE f UNUSED,
        int UU(fd),
-       CACHEKEY k  __attribute__((__unused__)),
-       void *v     __attribute__((__unused__)),
-       void **dd     __attribute__((__unused__)),
-       void *e     __attribute__((__unused__)),
-       PAIR_ATTR s      __attribute__((__unused__)),
-       PAIR_ATTR* new_size      __attribute__((__unused__)),
-       bool w      __attribute__((__unused__)),
-       bool keep   __attribute__((__unused__)),
-       bool c      __attribute__((__unused__)),
+       CACHEKEY k  UNUSED,
+       void *v     UNUSED,
+       void **dd     UNUSED,
+       void *e     UNUSED,
+       PAIR_ATTR s      UNUSED,
+       PAIR_ATTR* new_size      UNUSED,
+       bool w      UNUSED,
+       bool keep   UNUSED,
+       bool c      UNUSED,
        bool UU(is_clone)
        ) {
 }
@@ -248,9 +248,9 @@ def_pe_est_callback(
 
 static UU() int 
 def_pe_callback(
-    void *ftnode_pv __attribute__((__unused__)), 
-    PAIR_ATTR bytes_to_free __attribute__((__unused__)), 
-    void* extraargs __attribute__((__unused__)),
+    void *ftnode_pv UNUSED, 
+    PAIR_ATTR bytes_to_free UNUSED, 
+    void* extraargs UNUSED,
     void (*finalize)(PAIR_ATTR bytes_freed, void *extra),
     void *finalize_extra
     )
@@ -272,16 +272,16 @@ static UU() bool def_pf_req_callback(void* UU(ftnode_pv), void* UU(read_extraarg
 }
 
 static UU() int
-def_fetch (CACHEFILE f        __attribute__((__unused__)),
+def_fetch (CACHEFILE f        UNUSED,
        PAIR UU(p),
        int UU(fd),
-       CACHEKEY k         __attribute__((__unused__)),
-       uint32_t fullhash __attribute__((__unused__)),
-       void **value       __attribute__((__unused__)),
-       void **dd     __attribute__((__unused__)),
-       PAIR_ATTR *sizep        __attribute__((__unused__)),
+       CACHEKEY k         UNUSED,
+       uint32_t fullhash UNUSED,
+       void **value       UNUSED,
+       void **dd     UNUSED,
+       PAIR_ATTR *sizep        UNUSED,
        int  *dirtyp,
-       void *extraargs    __attribute__((__unused__))
+       void *extraargs    UNUSED
        ) {
     *dirtyp = 0;
     *value = NULL;

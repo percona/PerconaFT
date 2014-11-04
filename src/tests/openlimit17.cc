@@ -93,7 +93,7 @@ PATENT RIGHTS GRANT:
 
 // try to open N databases when N > open file limit.  should fail gracefully.
 
-int test_main (int argc __attribute__((__unused__)), char *const argv[] __attribute__((__unused__))) {
+int test_main (int argc UNUSED, char *const argv[] UNUSED) {
     int r;
 
     const int N = 200;

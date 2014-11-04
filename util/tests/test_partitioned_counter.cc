@@ -313,7 +313,9 @@ static void* tl_doit_ptr (void *v) {
 static void timeit_with_thread_local_pointer (const char *description, void* (*f)(void*)) {
     struct timeval start, end;
     toku_pthread_t threads[T];
-    struct { uint64_t values[8] __attribute__((__aligned__(64))); } values[T]; // pad to different cache lines.
+    struct {
+        uint64_t values[8] ALIGNED(64);
+    } values[T]; // pad to different cache lines.
     gettimeofday(&start, 0);
     for (int i=0; i<T; i++) {
         values[i].values[0]=0;
@@ -384,7 +386,7 @@ static void *writer_test_fun (void *ta_v) {
 	if (i%1000 == 0) sched_yield();
 	increment_partitioned_counter(ta->pc, 1);
     }
-    uint64_t c __attribute__((__unused__)) = toku_sync_fetch_and_sub(&ta->unfinished_count, 1);
+    uint64_t c UNUSED = toku_sync_fetch_and_sub(&ta->unfinished_count, 1);
     return ta_v;
 }
     

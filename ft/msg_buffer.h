@@ -163,7 +163,7 @@ private:
     void _resize(size_t new_size);
 
     // If this isn't packged, the compiler aligns the xids array and we waste a lot of space
-    struct __attribute__((__packed__)) buffer_entry {
+    struct PACKED buffer_entry {
         unsigned int  keylen;
         unsigned int  vallen;
         unsigned char type;

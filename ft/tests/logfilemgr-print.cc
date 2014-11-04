@@ -91,7 +91,7 @@ PATENT RIGHTS GRANT:
 #include "ft/tests/test.h"
 #include "ft/logger/logfilemgr.h"
 
-int test_main(int argc __attribute__((unused)), const char *argv[] __attribute__((unused))) {
+int test_main(int argc UNUSED, const char *argv[] UNUSED) {
     int r;
 
     TOKULOGFILEMGR lfm = NULL;

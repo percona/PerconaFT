@@ -142,13 +142,13 @@ clone_callback(
 }
 
 static void
-flush (CACHEFILE f __attribute__((__unused__)),
+flush (CACHEFILE f UNUSED,
        int UU(fd),
-       CACHEKEY k  __attribute__((__unused__)),
-       void *v     __attribute__((__unused__)),
+       CACHEKEY k  UNUSED,
+       void *v     UNUSED,
        void** UU(dd),
-       void *e     __attribute__((__unused__)),
-       PAIR_ATTR s      __attribute__((__unused__)),
+       void *e     UNUSED,
+       PAIR_ATTR s      UNUSED,
        PAIR_ATTR* new_size,
        bool write_me,
        bool keep_me,
@@ -169,16 +169,16 @@ flush (CACHEFILE f __attribute__((__unused__)),
 }
 
 static int
-fetch (CACHEFILE f        __attribute__((__unused__)),
+fetch (CACHEFILE f        UNUSED,
        PAIR p,
        int UU(fd),
        CACHEKEY k,
-       uint32_t fullhash __attribute__((__unused__)),
+       uint32_t fullhash UNUSED,
        void **value,
        void** UU(dd),
        PAIR_ATTR *sizep,
        int  *dirtyp,
-       void *extraargs    __attribute__((__unused__))
+       void *extraargs    UNUSED
        ) {
     *dirtyp = 0;
     size_t data_index = (size_t)k.b;

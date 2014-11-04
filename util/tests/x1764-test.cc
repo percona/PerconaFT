@@ -178,7 +178,7 @@ test3 (void)
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     if (verbose) printf("0\n");
     test0();
     if (verbose) printf("1\n");

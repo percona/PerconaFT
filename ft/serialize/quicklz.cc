@@ -311,7 +311,7 @@ static __inline void memcpy_up(unsigned char *dst, const unsigned char *src, ui3
 #endif
 }
 
-__attribute__((unused))
+UNUSED
 static __inline void update_hash(qlz_state_decompress *state, const unsigned char *s)
 {
 #if QLZ_COMPRESSION_LEVEL == 1

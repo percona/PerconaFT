@@ -127,7 +127,7 @@ static void test_cachetable_reservation (long size) {
     
 }
 
-int test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+int test_main (int argc UNUSED, const char *argv[] UNUSED) {
     test_cachetable_reservation(1L<<28);
     test_cachetable_reservation(1LL<<33);
     test_cachetable_reservation(3L<<28);

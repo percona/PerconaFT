@@ -95,6 +95,7 @@ PATENT RIGHTS GRANT:
 /* This version will complain if NDEBUG is set. */
 /* It evaluates the argument and then calls a function  toku_do_assert() which takes all the hits for the branches not taken. */
 
+#include <portability/toku_compiler.h>
 #include <portability/toku_config.h>
 
 #include <stdint.h>
@@ -126,11 +127,11 @@ void toku_assert_set_fpointers(int (*toku_maybe_get_engine_status_text_pointer)(
 			       void (*toku_maybe_set_env_panic_pointer)(int, const char*),
                                uint64_t num_rows);
 
-void toku_do_assert(int /*expr*/,const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) __attribute__((__visibility__("default")));
+void toku_do_assert(int /*expr*/,const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) DEFAULT_VISIBILITY;
 
-void toku_do_assert_fail(const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) __attribute__((__visibility__("default"))) __attribute__((__noreturn__));
-void toku_do_assert_zero_fail(uintptr_t/*expr*/, const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) __attribute__((__visibility__("default"))) __attribute__((__noreturn__));
-void toku_do_assert_expected_fail(uintptr_t/*expr*/, uintptr_t /*expected*/, const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) __attribute__((__visibility__("default"))) __attribute__((__noreturn__));
+void toku_do_assert_fail(const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) DEFAULT_VISIBILITY __attribute__((__noreturn__));
+void toku_do_assert_zero_fail(uintptr_t/*expr*/, const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) DEFAULT_VISIBILITY __attribute__((__noreturn__));
+void toku_do_assert_expected_fail(uintptr_t/*expr*/, uintptr_t /*expected*/, const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) DEFAULT_VISIBILITY __attribute__((__noreturn__));
 
 // Define GCOV if you want to get test-coverage information that ignores the assert statements.
 // #define GCOV

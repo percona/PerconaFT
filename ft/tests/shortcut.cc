@@ -99,11 +99,11 @@ CACHETABLE ct;
 FT_HANDLE ft;
 FT_CURSOR cursor;
 
-static int test_ft_cursor_keycompare(DB *db __attribute__((unused)), const DBT *a, const DBT *b) {
+static int test_ft_cursor_keycompare(DB *db UNUSED, const DBT *a, const DBT *b) {
     return toku_keycompare(a->data, a->size, b->data, b->size);
 }
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[]  __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[]  UNUSED) {
     int r;
 
     toku_os_unlink(fname);

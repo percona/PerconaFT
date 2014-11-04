@@ -134,7 +134,7 @@ static void do_test1753 (int do_create_on_reopen) {
     }
 }
 
-int test_main (int argc __attribute__((__unused__)), char * const argv[] __attribute__((__unused__))) {
+int test_main (int argc UNUSED, char * const argv[] UNUSED) {
     do_test1753(1);
     do_test1753(0);
     return 0;

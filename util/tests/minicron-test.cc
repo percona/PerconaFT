@@ -109,7 +109,7 @@ static double elapsed (void) {
 
 static int 
 #ifndef GCOV
-__attribute__((__noreturn__))
+NORETURN
 #endif
 never_run (void *a) {
     assert(a==0);

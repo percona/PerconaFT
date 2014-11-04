@@ -99,7 +99,7 @@ PATENT RIGHTS GRANT:
 // TOKU_TEST_FILENAME is defined in the Makefile
 
 int
-test_main (int argc __attribute__((__unused__)), char *const argv[]  __attribute__((__unused__))) {
+test_main (int argc UNUSED, char *const argv[]  UNUSED) {
     DB_ENV *env;
     int r;
     toku_os_recursive_delete(TOKU_TEST_FILENAME);

@@ -144,7 +144,7 @@ static inline void wbuf_char (struct wbuf *w, unsigned char ch) {
 }
 
 //Write an int that MUST be in network order regardless of disk order
-static void wbuf_network_int (struct wbuf *w, int32_t i) __attribute__((__unused__));
+static void wbuf_network_int (struct wbuf *w, int32_t i) UNUSED;
 static void wbuf_network_int (struct wbuf *w, int32_t i) {
     assert(w->ndone + 4 <= w->size);
     *(uint32_t*)(&w->buf[w->ndone]) = toku_htonl(i);

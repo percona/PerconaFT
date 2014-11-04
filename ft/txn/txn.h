@@ -424,7 +424,7 @@ static inline void rbuf_ma_TXNID(struct rbuf *rb, memarena *UU(ma), TXNID *txnid
     rbuf_TXNID(rb, txnid);
 }
 
-static inline void rbuf_ma_TXNID_PAIR (struct rbuf *r, memarena *ma __attribute__((__unused__)), TXNID_PAIR *txnid) {
+static inline void rbuf_ma_TXNID_PAIR (struct rbuf *r, memarena *ma UNUSED, TXNID_PAIR *txnid) {
     rbuf_TXNID_PAIR(r, txnid);
 }
 

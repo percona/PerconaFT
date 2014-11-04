@@ -95,16 +95,16 @@ bool fetch_called;
 CACHEFILE f1;
 
 static int
-sleep_fetch (CACHEFILE f        __attribute__((__unused__)),
+sleep_fetch (CACHEFILE f        UNUSED,
        PAIR UU(p),
        int UU(fd),
-       CACHEKEY k         __attribute__((__unused__)),
-       uint32_t fullhash __attribute__((__unused__)),
-       void **value       __attribute__((__unused__)),
-       void **dd     __attribute__((__unused__)),
-       PAIR_ATTR *sizep        __attribute__((__unused__)),
+       CACHEKEY k         UNUSED,
+       uint32_t fullhash UNUSED,
+       void **value       UNUSED,
+       void **dd     UNUSED,
+       PAIR_ATTR *sizep        UNUSED,
        int  *dirtyp,
-       void *extraargs    __attribute__((__unused__))
+       void *extraargs    UNUSED
        ) {
     toku_os_sleep(2);
     *dirtyp = 0;

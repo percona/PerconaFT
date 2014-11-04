@@ -131,8 +131,8 @@ struct file_infos {
     toku_mutex_t lock; // must protect this data structure because current activity performs a REALLOC(fi->file_infos).
 };
 typedef struct fidx { int idx; } FIDX;
-static const FIDX FIDX_NULL __attribute__((__unused__)) = {-1};
-static int fidx_is_null (const FIDX f) __attribute__((__unused__));
+static const FIDX FIDX_NULL UNUSED = {-1};
+static int fidx_is_null (const FIDX f) UNUSED;
 static int fidx_is_null (const FIDX f) { return f.idx==-1; }
 FILE *toku_bl_fidx2file (FTLOADER bl, FIDX i);
 

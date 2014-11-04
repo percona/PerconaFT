@@ -91,8 +91,8 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 
 int
-test_main (int argc __attribute__((__unused__)),
-	  const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED,
+	  const char *argv[] UNUSED) {
     int r;
     long long lognum;
     char logname[TOKU_PATH_MAX+1];

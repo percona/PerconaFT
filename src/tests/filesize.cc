@@ -298,7 +298,7 @@ test_filesize (bool sequential)
     }
 }
 
-int test_main (int argc __attribute__((__unused__)), char * const argv[] __attribute__((__unused__))) {
+int test_main (int argc UNUSED, char * const argv[] UNUSED) {
     parse_args(argc, argv);
     setup();
     if (verbose) print_engine_status(env);

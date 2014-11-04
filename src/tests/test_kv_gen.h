@@ -168,13 +168,13 @@ pkey_for_val(int key, int i) {
 }
 
 
-static int __attribute__((unused))
+static int UNUSED
 dummy_progress(void *UU(extra), float UU(progress))
 {
     return 0;
 }
 
-static void __attribute__((unused))
+static void UNUSED
 do_hot_optimize_on_dbs(DB_ENV *UU(env), DB **dbs, int num_dbs)
 {
     for (int i = 0; i < num_dbs; ++i) {

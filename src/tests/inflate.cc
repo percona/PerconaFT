@@ -216,7 +216,7 @@ doit (void)
     reopen_em(); // now a node is 9143 bytes
 }
 
-int test_main (int argc __attribute__((__unused__)), char * const argv[] __attribute__((__unused__))) {
+int test_main (int argc UNUSED, char * const argv[] UNUSED) {
     setup();
     doit();
     close_em();

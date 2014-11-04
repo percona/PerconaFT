@@ -128,7 +128,7 @@ char *db_v7_dir_flat   = OLDDATADIR "env_preload.5.2.7.flat.cleanshutdown";
 
 
 // should put this in test.h:
-static __attribute__((__unused__)) int
+static UNUSED int
 char_dbt_cmp (const DBT *a, const DBT *b) {
     int rval = 0;  
     assert(a && b);

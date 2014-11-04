@@ -91,7 +91,7 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
-#include <toku_assert.h>
+#include "toku_assert.h"
 
 /* Readers/writers locks implementation
  *
@@ -220,7 +220,7 @@ static inline int rwlock_users(RWLOCK rwlock) {
 
 // initialize a read write lock
 
-static __attribute__((__unused__))
+static UNUSED
 void
 rwlock_init(RWLOCK rwlock) {
     rwlock->reader = rwlock->want_read = 0;
@@ -232,7 +232,7 @@ rwlock_init(RWLOCK rwlock) {
 
 // destroy a read write lock
 
-static __attribute__((__unused__))
+static UNUSED
 void
 rwlock_destroy(RWLOCK rwlock) {
     paranoid_invariant(rwlock->reader == 0);

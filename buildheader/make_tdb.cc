@@ -623,8 +623,9 @@ static void print_dbc_struct (void) {
 }
 
 
-int main (int argc, char *const argv[] __attribute__((__unused__))) {
+int main (int argc, char *const argv[]) {
     assert(argc==1);
+    (void) argv;
 
     printf("#ifndef _DB_H\n");
     printf("#define _DB_H\n");

@@ -117,7 +117,7 @@ found(uint32_t UU(keylen), const void *key, uint32_t UU(vallen), const void *UU(
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
 
     CACHETABLE ct;
     FT_HANDLE t;

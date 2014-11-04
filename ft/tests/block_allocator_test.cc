@@ -324,7 +324,7 @@ test_ba2 (void)
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     enum block_allocator::allocation_strategy strategies[] = {
         block_allocator::BA_STRATEGY_FIRST_FIT,
         block_allocator::BA_STRATEGY_BEST_FIT,

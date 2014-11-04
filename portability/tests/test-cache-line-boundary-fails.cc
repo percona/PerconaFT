@@ -113,7 +113,7 @@ struct unpackedsevenbytestruct {
     uint32_t i;
     char pad[3];
 };
-struct __attribute__((packed)) packedsevenbytestruct {
+struct PACKED packedsevenbytestruct {
     uint32_t i;
     char pad[3];
 };

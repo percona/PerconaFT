@@ -238,7 +238,7 @@ public:
     inline void disable_bit(void) {
         m_bitfield &= MASK_INDEX;
     }
-} __attribute__((__packed__)) ;
+} PACKED ;
 
 template<typename omtdata_t, bool subtree_supports_marks>
 class omt_node_templated {

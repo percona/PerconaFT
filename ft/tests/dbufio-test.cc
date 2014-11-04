@@ -168,7 +168,7 @@ static void test1 (size_t chars_per_file, size_t bytes_per_read) {
 
 				  
 
-int main (int argc __attribute__((__unused__)), char *argv[]__attribute__((__unused__))) {
+int main (int argc UNUSED, char *argv[]UNUSED) {
 //    test1(0, 1);
 //    test1(1, 1);
 //    test1(15, 1);

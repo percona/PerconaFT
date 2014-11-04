@@ -91,6 +91,8 @@ PATENT RIGHTS GRANT:
 
 #pragma once
 
+#include "portability/toku_attributes.h"
+
 // locking and unlocking functions to synchronize cursor position with
 // XXX_multiple APIs
 void toku_indexer_lock(DB_INDEXER* indexer);
@@ -129,7 +131,7 @@ int toku_indexer_create_indexer(DB_ENV *env,
                                 int N,
                                 DB *dest_dbs[/*N*/],
                                 uint32_t db_flags[/*N*/],
-                                uint32_t indexer_flags) __attribute__((__visibility__("default")));
+                                uint32_t indexer_flags) DEFAULT_VISIBILITY;
 
 // Set the indexer poll function
 int toku_indexer_set_poll_function(DB_INDEXER *indexer,
@@ -153,7 +155,7 @@ bool toku_indexer_should_insert_key(DB_INDEXER *indexer, const DBT *key);
 DB *toku_indexer_get_src_db(DB_INDEXER *indexer);
 
 // TEST set the indexer's test flags
-extern "C" void toku_indexer_set_test_only_flags(DB_INDEXER *indexer, int flags) __attribute__((__visibility__("default")));
+extern "C" void toku_indexer_set_test_only_flags(DB_INDEXER *indexer, int flags) DEFAULT_VISIBILITY;
 
 #define INDEXER_TEST_ONLY_ERROR_CALLBACK 1
 

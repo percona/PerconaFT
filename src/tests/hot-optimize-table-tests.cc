@@ -109,7 +109,7 @@ update_func(DB* UU(db),
             const DBT* key,
             const DBT* old_val,
             const DBT* extra,
-            void (*set_val)(const DBT* new_val, void* set_extra) __attribute__((unused)),
+            void (*set_val)(const DBT* new_val, void* set_extra) UNUSED,
             void* UU(set_extra))
 {
     unsigned int *x_results;

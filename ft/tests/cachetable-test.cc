@@ -136,24 +136,24 @@ static void maybe_flush(CACHETABLE t) {
 }
 
 
-static void flush_n (CACHEFILE f __attribute__((__unused__)), int UU(fd), CACHEKEY key __attribute__((__unused__)),
+static void flush_n (CACHEFILE f UNUSED, int UU(fd), CACHEKEY key UNUSED,
 		     void *value,
 		     void** UU(dd),
-		     void *extra  __attribute__((__unused__)),
-                     PAIR_ATTR size __attribute__((__unused__)),
-        PAIR_ATTR* new_size      __attribute__((__unused__)),
-		     bool write_me __attribute__((__unused__)),    bool keep_me __attribute__((__unused__)),
+		     void *extra  UNUSED,
+                     PAIR_ATTR size UNUSED,
+        PAIR_ATTR* new_size      UNUSED,
+		     bool write_me UNUSED,    bool keep_me UNUSED,
 		     bool for_checkpoint __attribute__ ((__unused__)),
         bool UU(is_clone)
 		     ) {
     int *CAST_FROM_VOIDP(v, value);
     assert(*v==0);
 }
-static int fetch_n (CACHEFILE f __attribute__((__unused__)), PAIR UU(p), int UU(fd), CACHEKEY key __attribute__((__unused__)),
-		    uint32_t fullhash  __attribute__((__unused__)),
+static int fetch_n (CACHEFILE f UNUSED, PAIR UU(p), int UU(fd), CACHEKEY key UNUSED,
+		    uint32_t fullhash  UNUSED,
                     void**value, 
 		    void** UU(dd),
-PAIR_ATTR *sizep __attribute__((__unused__)), 
+PAIR_ATTR *sizep UNUSED, 
 		    int * dirtyp, void*extraargs) {
     assert((long)extraargs==42);
     *value=0;
@@ -204,24 +204,24 @@ static void test_nested_pin (void) {
 }
 
 
-static void null_flush (CACHEFILE cf     __attribute__((__unused__)),
+static void null_flush (CACHEFILE cf     UNUSED,
                         int UU(fd),
-                        CACHEKEY k       __attribute__((__unused__)),
-                        void *v          __attribute__((__unused__)),
+                        CACHEKEY k       UNUSED,
+                        void *v          UNUSED,
 			void** UU(dd),
-                        void *extra      __attribute__((__unused__)),
-                        PAIR_ATTR size        __attribute__((__unused__)),
-        PAIR_ATTR* new_size      __attribute__((__unused__)),
-                        bool write_me    __attribute__((__unused__)),
-                        bool keep_me     __attribute__((__unused__)),
-                        bool for_checkpoint __attribute__((__unused__)),
+                        void *extra      UNUSED,
+                        PAIR_ATTR size        UNUSED,
+        PAIR_ATTR* new_size      UNUSED,
+                        bool write_me    UNUSED,
+                        bool keep_me     UNUSED,
+                        bool for_checkpoint UNUSED,
         bool UU(is_clone)
                         ) {
 }
 
 static int add123_fetch (CACHEFILE cf, PAIR UU(p), int UU(fd), CACHEKEY key, uint32_t fullhash, void **value, 
 			 void** UU(dd),
-PAIR_ATTR *sizep __attribute__((__unused__)), int * dirtyp, void*extraargs) {
+PAIR_ATTR *sizep UNUSED, int * dirtyp, void*extraargs) {
     assert(fullhash==toku_cachetable_hash(cf,key));
     assert((long)extraargs==123);
     *value = (void*)((unsigned long)key.b+123L);
@@ -232,7 +232,7 @@ PAIR_ATTR *sizep __attribute__((__unused__)), int * dirtyp, void*extraargs) {
 
 static int add222_fetch (CACHEFILE cf, PAIR UU(p), int UU(fd), CACHEKEY key, uint32_t fullhash, void **value, 
 			 void** UU(dd),
-PAIR_ATTR *sizep __attribute__((__unused__)), int * dirtyp, void*extraargs) {
+PAIR_ATTR *sizep UNUSED, int * dirtyp, void*extraargs) {
     assert(fullhash==toku_cachetable_hash(cf,key));
     assert((long)extraargs==222);
     *value = (void*)((unsigned long)key.b+222L);
@@ -294,12 +294,12 @@ static void test_dirty_flush(CACHEFILE f,
 			     CACHEKEY key,
 			     void *value,
 			     void** UU(dd),
-			     void *extra __attribute__((__unused__)),
+			     void *extra UNUSED,
 			     PAIR_ATTR size,
-        PAIR_ATTR* new_size      __attribute__((__unused__)),
+        PAIR_ATTR* new_size      UNUSED,
 			     bool do_write,
 			     bool keep,
-			     bool for_checkpoint __attribute__((__unused__)),
+			     bool for_checkpoint UNUSED,
         bool UU(is_clone)
 			     ) {
     if (verbose) printf("test_dirty_flush %p %" PRId64 " %p %ld %u %u\n", f, key.b, value, size.size, (unsigned)do_write, (unsigned)keep);
@@ -425,12 +425,12 @@ static void test_size_flush_callback(CACHEFILE f,
 				     CACHEKEY key,
 				     void *value,
 				     void** UU(dd),
-				     void *extra __attribute__((__unused__)),
+				     void *extra UNUSED,
 				     PAIR_ATTR size,
-        PAIR_ATTR* new_size      __attribute__((__unused__)),
+        PAIR_ATTR* new_size      UNUSED,
 				     bool do_write,
 				     bool keep,
-				     bool for_checkpoint __attribute__((__unused__)),
+				     bool for_checkpoint UNUSED,
         bool UU(is_clone)
 				     ) {
     if (test_size_debug && verbose) printf("test_size_flush %p %" PRId64 " %p %ld %u %u\n", f, key.b, value, size.size, (unsigned)do_write, (unsigned)keep);
@@ -499,7 +499,7 @@ static void test_size_resize(void) {
 
 static int min2(int a, int b) { return a < b ? a : b; }
 
-__attribute__((unused))
+UNUSED
 static void test_size_flush(void) {
     if (verbose) printf("test_size_flush\n");
 

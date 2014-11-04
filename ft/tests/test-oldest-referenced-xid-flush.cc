@@ -236,7 +236,7 @@ static void test_oldest_referenced_xid_gets_propogated(void) {
     toku_cachetable_close(&ct);
 }
 
-int test_main(int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+int test_main(int argc UNUSED, const char *argv[] UNUSED) {
     default_parse_args(argc, argv);
     test_oldest_referenced_xid_gets_propogated();
     return 0;

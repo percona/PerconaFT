@@ -92,8 +92,27 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 #include "toku_config.h"
+#include "toku_compiler.h"
 
 // Tokutek portability layer
+#define UNUSED(x)           x __attribute__((__unused__))
+#define DEPRECATED          __attribute__((__deprecated__))
+#define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
+#define NOINLINE            __attribute__((__noinline__))
+#define NORETURN            __attribute__((__noreturn__))
+#define ALIGNED(x)          __attribute__((__aligned__(x)))
+#define PACKED              __attribute__((__packed__))
+
+#define THROW               __THROW
+#define MALLOC_LIKE         __malloc_like
+
+// TODO: Deprecate me eventually
+#define UU(x)               UNUSED(x)
+
+#define toku_compiler_expect(_expr_, _value_)       __builtin_expect(_expr_, _value_)
+#define toku_compiler_likely(_expr_)                toku_compiler_expect(((_expr_) != 0), 1)
+#define toku_compiler_unlikely(_expr_)              toku_compiler_expect(((_expr_) != 0), 0)
+#define toku_compiler_offsetof(_type_, _member_)    __builtin_offsetof(_type_, _member_)
 
 #if defined(__clang__)
 #  define constexpr_static_assert(a, b)
@@ -153,13 +172,19 @@ typedef int64_t toku_off_t;
 #include "toku_crash.h"
 
 #define UNUSED(x)           x __attribute__((__unused__))
-// TODO: Remove UU in favor of UNUSED
-#define UU(x) UNUSED(x)
 #define DEPRECATED          __attribute__((__deprecated__))
 #define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
-#define MALLOC_LIKE         __malloc_like
-#define THROW               __THROW
 #define NOINLINE            __attribute__((__noinline__))
+#define NORETURN            __attribute__((__noreturn__))
+#define ALIGNED(x)          __attribute__((__aligned__(x)))
+#define PACKED              __attribute__((__packed__))
+
+// These are just used locally
+#define THROW               __THROW
+#define MALLOC_LIKE         __malloc_like
+
+// TODO: Deprecate me eventually
+#define UU(x)               UNUSED(x)
 
 #if defined(__cplusplus)
 extern "C" {

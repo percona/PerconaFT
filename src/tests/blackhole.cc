@@ -168,7 +168,7 @@ static void test_blackhole(void) {
     }
 }
 
-int test_main (int argc __attribute__((__unused__)), char *const argv[] __attribute__((__unused__))) {
+int test_main (int argc UNUSED, char *const argv[] UNUSED) {
     // without txns
     setup(false);
     test_blackhole();

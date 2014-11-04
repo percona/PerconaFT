@@ -1089,7 +1089,7 @@ int toku_fread_FILENUMS (FILE *f, FILENUMS *fs, struct x1764 *checksum, uint32_t
     return 0;
 }
 
-int toku_logprint_LSN (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format __attribute__((__unused__))) {
+int toku_logprint_LSN (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format UNUSED) {
     LSN v;
     int r = toku_fread_LSN(inf, &v, checksum, len);
     if (r!=0) return r;
@@ -1097,7 +1097,7 @@ int toku_logprint_LSN (FILE *outf, FILE *inf, const char *fieldname, struct x176
     return 0;
 }
 
-int toku_logprint_TXNID (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format __attribute__((__unused__))) {
+int toku_logprint_TXNID (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format UNUSED) {
     TXNID v;
     int r = toku_fread_TXNID(inf, &v, checksum, len);
     if (r!=0) return r;
@@ -1105,7 +1105,7 @@ int toku_logprint_TXNID (FILE *outf, FILE *inf, const char *fieldname, struct x1
     return 0;
 }
 
-int toku_logprint_TXNID_PAIR (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format __attribute__((__unused__))) {
+int toku_logprint_TXNID_PAIR (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format UNUSED) {
     TXNID_PAIR v;
     int r = toku_fread_TXNID_PAIR(inf, &v, checksum, len);
     if (r!=0) return r;
@@ -1113,7 +1113,7 @@ int toku_logprint_TXNID_PAIR (FILE *outf, FILE *inf, const char *fieldname, stru
     return 0;
 }
 
-int toku_logprint_XIDP (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format __attribute__((__unused__))) {
+int toku_logprint_XIDP (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format UNUSED) {
     XIDP vp;
     int r = toku_fread_XIDP(inf, &vp, checksum, len);
     if (r!=0) return r;
@@ -1154,7 +1154,7 @@ int toku_logprint_uint64_t (FILE *outf, FILE *inf, const char *fieldname, struct
     return 0;
 }
 
-int toku_logprint_bool (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format __attribute__((__unused__))) {
+int toku_logprint_bool (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format UNUSED) {
     bool v;
     int r = toku_fread_bool(inf, &v, checksum, len);
     if (r!=0) return r;
@@ -1170,7 +1170,7 @@ void toku_print_BYTESTRING (FILE *outf, uint32_t len, char *data) {
 
 }
 
-int toku_logprint_BYTESTRING (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format __attribute__((__unused__))) {
+int toku_logprint_BYTESTRING (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format UNUSED) {
     BYTESTRING bs;
     int r = toku_fread_BYTESTRING(inf, &bs, checksum, len);
     if (r!=0) return r;
@@ -1203,7 +1203,7 @@ toku_print_FILENUMS (FILE *outf, uint32_t num, FILENUM *filenums) {
 
 }
 
-int toku_logprint_FILENUMS (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format __attribute__((__unused__))) {
+int toku_logprint_FILENUMS (FILE *outf, FILE *inf, const char *fieldname, struct x1764 *checksum, uint32_t *len, const char *format UNUSED) {
     FILENUMS bs;
     int r = toku_fread_FILENUMS(inf, &bs, checksum, len);
     if (r!=0) return r;

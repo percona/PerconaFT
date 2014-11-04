@@ -101,9 +101,9 @@ CACHETABLE ct;
 
 static int 
 pe_callback (
-    void *ftnode_pv __attribute__((__unused__)), 
-    PAIR_ATTR bytes_to_free __attribute__((__unused__)), 
-    void* extraargs __attribute__((__unused__)),
+    void *ftnode_pv UNUSED, 
+    PAIR_ATTR bytes_to_free UNUSED, 
+    void* extraargs UNUSED,
     void (*finalize)(PAIR_ATTR bytes_freed, void *extra),
     void *finalize_extra
     ) 
@@ -117,17 +117,17 @@ pe_callback (
 }
 
 static void
-flush (CACHEFILE f __attribute__((__unused__)),
+flush (CACHEFILE f UNUSED,
        int UU(fd),
-       CACHEKEY k  __attribute__((__unused__)),
-       void *v     __attribute__((__unused__)),
-       void **dd     __attribute__((__unused__)),
-       void *e     __attribute__((__unused__)),
-       PAIR_ATTR s      __attribute__((__unused__)),
-       PAIR_ATTR* new_size      __attribute__((__unused__)),
-       bool w      __attribute__((__unused__)),
-       bool keep   __attribute__((__unused__)),
-       bool c      __attribute__((__unused__)),
+       CACHEKEY k  UNUSED,
+       void *v     UNUSED,
+       void **dd     UNUSED,
+       void *e     UNUSED,
+       PAIR_ATTR s      UNUSED,
+       PAIR_ATTR* new_size      UNUSED,
+       bool w      UNUSED,
+       bool keep   UNUSED,
+       bool c      UNUSED,
        bool UU(is_clone)
        ) {
     if (check_flush && w) {

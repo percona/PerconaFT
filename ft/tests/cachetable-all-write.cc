@@ -90,17 +90,17 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 
 static void
-flush (CACHEFILE f __attribute__((__unused__)),
+flush (CACHEFILE f UNUSED,
        int UU(fd),
-       CACHEKEY k  __attribute__((__unused__)),
-       void *v     __attribute__((__unused__)),
+       CACHEKEY k  UNUSED,
+       void *v     UNUSED,
        void** UU(dd),
-       void *e     __attribute__((__unused__)),
-       PAIR_ATTR s      __attribute__((__unused__)),
-        PAIR_ATTR* new_size      __attribute__((__unused__)),
-       bool w      __attribute__((__unused__)),
-       bool keep   __attribute__((__unused__)),
-       bool c      __attribute__((__unused__)),
+       void *e     UNUSED,
+       PAIR_ATTR s      UNUSED,
+        PAIR_ATTR* new_size      UNUSED,
+       bool w      UNUSED,
+       bool keep   UNUSED,
+       bool c      UNUSED,
         bool UU(is_clone)
        ) {
     /* Do nothing */

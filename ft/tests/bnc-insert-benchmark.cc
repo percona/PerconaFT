@@ -163,7 +163,7 @@ run_test(unsigned long eltsize, unsigned long nodesize, unsigned long repeat)
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     unsigned long eltsize, nodesize, repeat;
 
     initialize_dummymsn();

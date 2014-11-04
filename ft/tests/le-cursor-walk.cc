@@ -112,7 +112,7 @@ le_cursor_get_next(LE_CURSOR cursor, DBT *val) {
     return r;
 }
 
-static int test_ft_cursor_keycompare(DB *db __attribute__((unused)), const DBT *a, const DBT *b) {
+static int test_ft_cursor_keycompare(DB *db UNUSED, const DBT *a, const DBT *b) {
     return toku_keycompare(a->data, a->size, b->data, b->size);
 }
 

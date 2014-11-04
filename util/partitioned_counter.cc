@@ -88,14 +88,16 @@ PATENT RIGHTS GRANT:
 
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
-#include <toku_race_tools.h>
-#include <portability/toku_pthread.h>
 
-#include "memory.h"
-#include "partitioned_counter.h"
-#include "doubly_linked_list.h"
-#include "growable_array.h"
 #include <portability/toku_atomic.h>
+#include <portability/toku_compiler.h>
+#include <portability/memory.h>
+#include <portability/toku_pthread.h>
+#include <portability/toku_race_tools.h>
+
+#include "util/partitioned_counter.h"
+#include "util/doubly_linked_list.h"
+#include "util/growable_array.h"
 
 #ifdef __APPLE__
 // TODO(leif): The __thread declspec is broken in ways I don't understand
@@ -237,7 +239,7 @@ static DoublyLinkedList<GrowableArray<struct local_counter *> *> all_thread_loca
 static __thread LinkedListElement<GrowableArray<struct local_counter *> *> thread_local_ll_elt;
 
 static void destroy_thread_local_part_of_partitioned_counters (void *ignore_me);
-static void destroy_thread_local_part_of_partitioned_counters (void *ignore_me __attribute__((__unused__)))
+static void destroy_thread_local_part_of_partitioned_counters (void *ignore_me UNUSED)
 // Effect: This function is called whenever a thread terminates using the
 //  destructor of the thread_destructor_key (defined below).  First grab the
 //  lock, then go through all the partitioned counters and removes the part that

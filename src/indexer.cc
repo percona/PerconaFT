@@ -711,7 +711,7 @@ static int
 maybe_call_poll_func(DB_INDEXER *indexer, uint64_t loop_count) {
     int result = 0;
     if ( indexer->i->poll_func != NULL && ( loop_count % indexer->i->loop_mod ) == 0 ) {
-        int r __attribute__((unused)) = update_estimated_rows(indexer);
+        int r UNUSED = update_estimated_rows(indexer);
         // what happens if estimate_rows fails?
         //   - currently does not modify estimate, which is probably sufficient
         float progress;

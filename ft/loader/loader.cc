@@ -2769,7 +2769,7 @@ static int loader_do_i (FTLOADER bl,
 
             r = toku_pthread_create(bl->fractal_threads+which_db, NULL, fractal_thread, (void*)&fta);
             if (r) {
-                int r2 __attribute__((__unused__)) = toku_queue_destroy(bl->fractal_queues[which_db]);            
+                int r2 UNUSED = toku_queue_destroy(bl->fractal_queues[which_db]);            
                 // ignore r2, since we already have an error
                 bl->fractal_queues[which_db] = nullptr;
                 goto error;

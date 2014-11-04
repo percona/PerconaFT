@@ -121,7 +121,7 @@ typedef struct toku_mutex {
 } toku_mutex_t;
 
 typedef struct toku_mutex_aligned {
-    toku_mutex_t aligned_mutex __attribute__((__aligned__(64)));
+    toku_mutex_t aligned_mutex ALIGNED(64);
 } toku_mutex_aligned_t;
 
 // Different OSes implement mutexes as different amounts of nested structs.
@@ -343,7 +343,7 @@ toku_cond_broadcast(toku_cond_t *cond) {
 }
 
 int 
-toku_pthread_yield(void) __attribute__((__visibility__("default")));
+toku_pthread_yield(void) DEFAULT_VISIBILITY;
 
 static inline toku_pthread_t 
 toku_pthread_self(void) {

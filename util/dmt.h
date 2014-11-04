@@ -180,7 +180,7 @@ public:
         paranoid_invariant(index != NODE_NULL);
         m_index = index;
     }
-} __attribute__((__packed__,__aligned__(4)));
+} PACKED ALIGNED(4);
 
 template<typename dmtdata_t>
 class dmt_node_templated {
@@ -190,7 +190,7 @@ public:
     subtree right;
     uint32_t value_length;
     dmtdata_t value;
-} __attribute__((__aligned__(4)));  //NOTE: we cannot use attribute packed or dmtdata_t will call copy constructors (dmtdata_t might not be packed by default)
+} ALIGNED(4); // NOTE: we cannot use PACKED or else dmtdata_t will call copy constructors (dmtdata_t might not be packed by default)
 
 }
 

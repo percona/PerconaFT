@@ -93,7 +93,7 @@ PATENT RIGHTS GRANT:
 
 #include <toku_time.h>
 
-__attribute__((__unused__))
+UNUSED
 static long current_time_usec(void) {
     struct timeval t;
     gettimeofday(&t, NULL);

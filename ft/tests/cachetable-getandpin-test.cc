@@ -92,17 +92,17 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 
 static void
-flush (CACHEFILE cf     __attribute__((__unused__)),
+flush (CACHEFILE cf     UNUSED,
        int UU(fd),
-       CACHEKEY key     __attribute__((__unused__)),
-       void *v          __attribute__((__unused__)),
+       CACHEKEY key     UNUSED,
+       void *v          UNUSED,
        void** UU(dd),
-       void *extraargs  __attribute__((__unused__)),
-       PAIR_ATTR size        __attribute__((__unused__)),
-       PAIR_ATTR* new_size      __attribute__((__unused__)),
-       bool write_me    __attribute__((__unused__)),
-       bool keep_me     __attribute__((__unused__)),
-       bool for_checkpoint    __attribute__((__unused__)),
+       void *extraargs  UNUSED,
+       PAIR_ATTR size        UNUSED,
+       PAIR_ATTR* new_size      UNUSED,
+       bool write_me    UNUSED,
+       bool keep_me     UNUSED,
+       bool for_checkpoint    UNUSED,
         bool UU(is_clone)
        ) {
     assert((long) key.b == size.size);

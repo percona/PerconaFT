@@ -94,17 +94,17 @@ bool flush_may_occur;
 long expected_bytes_to_free;
 
 static void
-flush (CACHEFILE f __attribute__((__unused__)),
+flush (CACHEFILE f UNUSED,
        int UU(fd),
-       CACHEKEY k  __attribute__((__unused__)),
+       CACHEKEY k  UNUSED,
        void *v,
        void** UU(dd),
-       void *e     __attribute__((__unused__)),
-       PAIR_ATTR s      __attribute__((__unused__)),
-       PAIR_ATTR* new_size      __attribute__((__unused__)),
-       bool w      __attribute__((__unused__)),
+       void *e     UNUSED,
+       PAIR_ATTR s      UNUSED,
+       PAIR_ATTR* new_size      UNUSED,
+       bool w      UNUSED,
        bool keep,
-       bool c      __attribute__((__unused__)),
+       bool c      UNUSED,
         bool UU(is_clone)
        ) {
     assert(flush_may_occur);
@@ -116,16 +116,16 @@ flush (CACHEFILE f __attribute__((__unused__)),
 }
 
 static int
-fetch (CACHEFILE f        __attribute__((__unused__)),
+fetch (CACHEFILE f        UNUSED,
        PAIR UU(p),
        int UU(fd),
-       CACHEKEY k         __attribute__((__unused__)),
-       uint32_t fullhash __attribute__((__unused__)),
-       void **value       __attribute__((__unused__)),
+       CACHEKEY k         UNUSED,
+       uint32_t fullhash UNUSED,
+       void **value       UNUSED,
        void** UU(dd),
-       PAIR_ATTR *sizep        __attribute__((__unused__)),
+       PAIR_ATTR *sizep        UNUSED,
        int  *dirtyp,
-       void *extraargs    __attribute__((__unused__))
+       void *extraargs    UNUSED
        ) {
     *dirtyp = 0;
     int* XMALLOC(foo);
@@ -136,17 +136,17 @@ fetch (CACHEFILE f        __attribute__((__unused__)),
 }
 
 static void
-other_flush (CACHEFILE f __attribute__((__unused__)),
+other_flush (CACHEFILE f UNUSED,
        int UU(fd),
-       CACHEKEY k  __attribute__((__unused__)),
-       void *v     __attribute__((__unused__)),
+       CACHEKEY k  UNUSED,
+       void *v     UNUSED,
 	     void** UU(dd),
-       void *e     __attribute__((__unused__)),
-       PAIR_ATTR s      __attribute__((__unused__)),
-       PAIR_ATTR* new_size      __attribute__((__unused__)),
-       bool w      __attribute__((__unused__)),
-       bool keep   __attribute__((__unused__)),
-       bool c      __attribute__((__unused__)),
+       void *e     UNUSED,
+       PAIR_ATTR s      UNUSED,
+       PAIR_ATTR* new_size      UNUSED,
+       bool w      UNUSED,
+       bool keep   UNUSED,
+       bool c      UNUSED,
         bool UU(is_clone)
        ) {
 }
@@ -155,7 +155,7 @@ static int
 pe_callback (
     void *ftnode_pv, 
     PAIR_ATTR UU(bytes_to_free), 
-    void* extraargs __attribute__((__unused__)),
+    void* extraargs UNUSED,
     void (*finalize)(PAIR_ATTR bytes_freed, void *extra),
     void *finalize_extra
     ) 
@@ -170,9 +170,9 @@ pe_callback (
 
 static int 
 other_pe_callback (
-    void *ftnode_pv __attribute__((__unused__)), 
-    PAIR_ATTR bytes_to_free __attribute__((__unused__)), 
-    void* extraargs __attribute__((__unused__)),
+    void *ftnode_pv UNUSED, 
+    PAIR_ATTR bytes_to_free UNUSED, 
+    void* extraargs UNUSED,
     void (*finalize)(PAIR_ATTR bytes_freed, void *extra),
     void *finalize_extra
     ) 

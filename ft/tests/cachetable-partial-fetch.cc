@@ -99,16 +99,16 @@ uint32_t fetch_val = 0;
 bool pf_req_called;
 
 static int
-fetch (CACHEFILE f        __attribute__((__unused__)),
+fetch (CACHEFILE f        UNUSED,
        PAIR UU(p),
        int UU(fd),
-       CACHEKEY k         __attribute__((__unused__)),
-       uint32_t fullhash __attribute__((__unused__)),
-       void **value       __attribute__((__unused__)),
+       CACHEKEY k         UNUSED,
+       uint32_t fullhash UNUSED,
+       void **value       UNUSED,
        void** UU(dd),
-       PAIR_ATTR *sizep        __attribute__((__unused__)),
+       PAIR_ATTR *sizep        UNUSED,
        int  *dirtyp,
-       void *extraargs    __attribute__((__unused__))
+       void *extraargs    UNUSED
        ) {
   *dirtyp = 0;
   *value = &fetch_val;
@@ -117,16 +117,16 @@ fetch (CACHEFILE f        __attribute__((__unused__)),
 }
 
 static int
-err_fetch (CACHEFILE f        __attribute__((__unused__)),
+err_fetch (CACHEFILE f        UNUSED,
        PAIR UU(p),
        int UU(fd),
-       CACHEKEY k         __attribute__((__unused__)),
-       uint32_t fullhash __attribute__((__unused__)),
-       void **value       __attribute__((__unused__)),
+       CACHEKEY k         UNUSED,
+       uint32_t fullhash UNUSED,
+       void **value       UNUSED,
 	   void** UU(dd),
-       PAIR_ATTR *sizep        __attribute__((__unused__)),
+       PAIR_ATTR *sizep        UNUSED,
        int  *dirtyp,
-       void *extraargs    __attribute__((__unused__))
+       void *extraargs    UNUSED
        ) {
   assert(false);
   *dirtyp = 0;

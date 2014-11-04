@@ -108,14 +108,14 @@ struct nb_mutex {
 };
 
 // initialize an nb mutex
-static __attribute__((__unused__))
+static UNUSED
 void
 nb_mutex_init(NB_MUTEX nb_mutex) {
     rwlock_init(&nb_mutex->lock);
 }
 
 // destroy a read write lock
-static __attribute__((__unused__))
+static UNUSED
 void
 nb_mutex_destroy(NB_MUTEX nb_mutex) {
     rwlock_destroy(&nb_mutex->lock);

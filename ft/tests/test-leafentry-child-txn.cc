@@ -197,7 +197,7 @@ run_test(void) {
 
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     run_test();
     return 0;
 }

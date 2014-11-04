@@ -137,7 +137,7 @@ void increment_partitioned_counter(PARTITIONED_COUNTER, uint64_t amount);
 // Effect: Increment the counter by amount.
 // Requires: No overflows.  This is a 64-bit unsigned counter.
 
-uint64_t read_partitioned_counter(PARTITIONED_COUNTER) __attribute__((__visibility__("default")));
+uint64_t read_partitioned_counter(PARTITIONED_COUNTER) DEFAULT_VISIBILITY;
 // Effect: Return the current value of the counter.
 
 void partitioned_counters_init(void);

@@ -91,6 +91,7 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 
 #include "toku_config.h"
+#include "toku_compiler.h"
 
 #include <time.h>
 #include <sys/time.h>
@@ -108,7 +109,7 @@ typedef int clockid_t;
 // without a real clock_gettime()
 #define CLOCK_REALTIME 0x01867234
 #endif
-int toku_clock_gettime(clockid_t clk_id, struct timespec *ts) __attribute__((__visibility__("default")));
+int toku_clock_gettime(clockid_t clk_id, struct timespec *ts) DEFAULT_VISIBILITY;
 
 // *************** Performance timers ************************
 // What do you really want from a performance timer:
@@ -146,7 +147,7 @@ typedef uint64_t tokutime_t;             // Time type used in by tokutek timers.
 // A double can hold numbers up to about 53 bits.  RDTSC which uses about 33 bits every second, so that leaves
 // 2^20 seconds from booting (about 2 weeks) before the RDTSC value cannot be represented accurately as a double.
 //
-double tokutime_to_seconds(tokutime_t)  __attribute__((__visibility__("default"))); // Convert tokutime to seconds.
+double tokutime_to_seconds(tokutime_t)  DEFAULT_VISIBILITY; // Convert tokutime to seconds.
 
 // Get the value of tokutime for right now.  We want this to be fast, so we expose the implementation as RDTSC.
 static inline tokutime_t toku_time_now(void) {

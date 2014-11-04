@@ -99,15 +99,15 @@ int toku_ydb_init(void);
 void toku_ydb_destroy(void);
 
 // db_env_create for the trace library
-int db_env_create_toku10(DB_ENV **, uint32_t) __attribute__((__visibility__("default")));
+int db_env_create_toku10(DB_ENV **, uint32_t) DEFAULT_VISIBILITY;
 
 // db_create for the trace library
-int db_create_toku10(DB **, DB_ENV *, uint32_t) __attribute__((__visibility__("default")));
+int db_create_toku10(DB **, DB_ENV *, uint32_t) DEFAULT_VISIBILITY;
 
 // test only function
-extern "C" int toku_test_db_redirect_dictionary(DB * db, const char * dname_of_new_file, DB_TXN *dbtxn) __attribute__((__visibility__("default")));
+extern "C" int toku_test_db_redirect_dictionary(DB * db, const char * dname_of_new_file, DB_TXN *dbtxn) DEFAULT_VISIBILITY;
 
-extern "C" uint64_t toku_test_get_latest_lsn(DB_ENV *env) __attribute__((__visibility__("default")));
+extern "C" uint64_t toku_test_get_latest_lsn(DB_ENV *env) DEFAULT_VISIBILITY;
 
 // test-only function
-extern "C" int toku_test_get_checkpointing_user_data_status(void) __attribute__((__visibility__("default")));
+extern "C" int toku_test_get_checkpointing_user_data_status(void) DEFAULT_VISIBILITY;

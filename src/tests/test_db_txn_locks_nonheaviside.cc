@@ -272,7 +272,7 @@ close_dbs(void) {
 }
 
 
-static __attribute__((__unused__))
+static UNUSED
 void
 test_abort (void) {
     /* ********************************************************************** */
@@ -609,9 +609,9 @@ struct int_pair {
 
 int got_r_h;
 
-static __attribute__((__unused__))
+static UNUSED
 void
-ignore (void *ignore __attribute__((__unused__))) {
+ignore (void *ignore UNUSED) {
 }
 #define TOKU_IGNORE(x) ignore((void*)x)
 

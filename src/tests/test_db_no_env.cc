@@ -94,7 +94,7 @@ PATENT RIGHTS GRANT:
 #include <db.h>
 #include <signal.h>
 
-static __attribute__((__noreturn__)) void catch_abort (int sig __attribute__((__unused__))) {
+static NORETURN void catch_abort (int sig UNUSED) {
     exit(1);
 }
 

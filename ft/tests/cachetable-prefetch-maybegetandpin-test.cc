@@ -93,16 +93,16 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 
 static int
-fetch (CACHEFILE f        __attribute__((__unused__)),
+fetch (CACHEFILE f        UNUSED,
        PAIR UU(p),
        int UU(fd),
-       CACHEKEY k         __attribute__((__unused__)),
-       uint32_t fullhash __attribute__((__unused__)),
-       void **value       __attribute__((__unused__)),
+       CACHEKEY k         UNUSED,
+       uint32_t fullhash UNUSED,
+       void **value       UNUSED,
        void** UU(dd),
-       PAIR_ATTR *sizep        __attribute__((__unused__)),
-       int  *dirtyp       __attribute__((__unused__)),
-       void *extraargs    __attribute__((__unused__))
+       PAIR_ATTR *sizep        UNUSED,
+       int  *dirtyp       UNUSED,
+       void *extraargs    UNUSED
        ) {
 
     toku_os_sleep(10);

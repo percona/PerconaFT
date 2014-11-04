@@ -115,8 +115,8 @@ namespace test {
     typedef omt<int> int_omt_t;
 
     static int intiter_magic = 0xdeadbeef;
-    inline int intiter(const int &value __attribute__((__unused__)), const uint32_t idx __attribute__((__unused__)), int *const extra);
-    inline int intiter(const int &value __attribute__((__unused__)), const uint32_t idx __attribute__((__unused__)), int *const extra) {
+    inline int intiter(const int &value UNUSED, const uint32_t idx UNUSED, int *const extra);
+    inline int intiter(const int &value UNUSED, const uint32_t idx UNUSED, int *const extra) {
         invariant(*extra == intiter_magic);
         return 0;
     }
@@ -125,8 +125,8 @@ namespace test {
         int count;
         int last;
     };
-    inline int intiter2(const int &value, const uint32_t idx __attribute__((__unused__)), struct intiter2extra *const extra);
-    inline int intiter2(const int &value, const uint32_t idx __attribute__((__unused__)), struct intiter2extra *const extra) {
+    inline int intiter2(const int &value, const uint32_t idx UNUSED, struct intiter2extra *const extra);
+    inline int intiter2(const int &value, const uint32_t idx UNUSED, struct intiter2extra *const extra) {
         extra->count++;
         invariant(extra->last < value);
         extra->last = value;

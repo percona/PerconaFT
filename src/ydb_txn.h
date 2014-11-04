@@ -109,4 +109,4 @@ bool toku_is_big_txn(DB_TXN *txn);
 bool toku_is_big_tokutxn(TOKUTXN tokutxn);
 
 // Test-only function
-extern "C" void toku_increase_last_xid(DB_ENV *env, uint64_t increment) __attribute__((__visibility__("default")));
+extern "C" void toku_increase_last_xid(DB_ENV *env, uint64_t increment) DEFAULT_VISIBILITY;

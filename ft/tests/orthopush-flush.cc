@@ -1210,7 +1210,7 @@ parse_args(int argc, const char *argv[]) {
     }
 }
 
-static int cmp_fn(DB *db __attribute__((unused)),
+static int cmp_fn(DB *db UNUSED,
                      const DBT *a, const DBT *b) {
     int c;
     if (a->size > b->size) {

@@ -189,7 +189,7 @@ public:
 };
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     bndata_bugfix_test t;
     t.run_test();
     return 0;

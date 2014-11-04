@@ -177,7 +177,7 @@ void sequential_consistency (void) {
 // That's probably good enough for us, since we'll have a barrier instruction anywhere it matters.
 volatile int val = 0;
 
-static void time_nop (void) __attribute((__noinline__)); // don't want it inline, because it messes up timing.
+static void time_nop (void) NOINLINE; // don't want it inline, because it messes up timing.
 static void time_nop (void) {
     struct timeval start,end;
     for (int t=0; t<T; t++) {
@@ -198,12 +198,12 @@ static void time_nop (void) {
 }
 
 // This function is defined so we can measure the cost of a function call.
-int fcall_nop (int i) __attribute__((__noinline__));
+int fcall_nop (int i) NOINLINE;
 int fcall_nop (int i) {
     return i;
 }
 
-void time_fcall (void) __attribute((__noinline__));
+void time_fcall (void) NOINLINE;
 void time_fcall (void) {
     struct timeval start,end;
     for (int t=0; t<T; t++) {
@@ -219,7 +219,7 @@ void time_fcall (void) {
     }
 }
 
-void time_cas (void) __attribute__((__noinline__));
+void time_cas (void) NOINLINE;
 void time_cas (void) {
     volatile int64_t tval = 0;
     struct timeval start,end;
@@ -238,7 +238,7 @@ void time_cas (void) {
 }
 
 
-void time_pthread_mutex (void) __attribute__((__noinline__));
+void time_pthread_mutex (void) NOINLINE;
 void time_pthread_mutex (void) {
     toku_mutex_t mutex;
     toku_mutex_init(&mutex, NULL);
@@ -260,7 +260,7 @@ void time_pthread_mutex (void) {
     toku_mutex_destroy(&mutex);
 }
 
-void time_pthread_rwlock (void) __attribute__((__noinline__));
+void time_pthread_rwlock (void) NOINLINE;
 void time_pthread_rwlock (void) {
     toku_pthread_rwlock_t mutex;
     toku_pthread_rwlock_init(&mutex, NULL);
@@ -295,7 +295,7 @@ static void util_rwlock_unlock (RWLOCK rwlock, toku_mutex_t *mutex) {
 }
 
 // Time the read lock that's in util/rwlock.h
-void time_util_rwlock (void) __attribute((__noinline__));
+void time_util_rwlock (void) NOINLINE;
 void time_util_rwlock (void) {
     struct rwlock rwlock;
     toku_mutex_t external_mutex;
@@ -322,7 +322,7 @@ void time_util_rwlock (void) {
 }
 
 // Time the read lock that's in util/rwlock.h, assuming the mutex is already held.
-void time_util_prelocked_rwlock (void) __attribute__((__noinline__));
+void time_util_prelocked_rwlock (void) NOINLINE;
 void time_util_prelocked_rwlock (void) {
     struct rwlock rwlock;
     toku_mutex_t external_mutex;
@@ -350,7 +350,7 @@ void time_util_prelocked_rwlock (void) {
     toku_mutex_destroy(&external_mutex);
 }
 
-void time_frwlock_prelocked(void) __attribute__((__noinline__));
+void time_frwlock_prelocked(void) NOINLINE;
 void time_frwlock_prelocked(void) {
     toku_mutex_t external_mutex;
     toku_mutex_init(&external_mutex, NULL);
@@ -387,7 +387,7 @@ void time_frwlock_prelocked(void) {
     toku_mutex_destroy(&external_mutex);
 }
 
-void time_frwlock(void) __attribute__((__noinline__));
+void time_frwlock(void) NOINLINE;
 void time_frwlock(void) {
     toku_mutex_t external_mutex;
     toku_mutex_init(&external_mutex, NULL);

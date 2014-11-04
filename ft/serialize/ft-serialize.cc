@@ -578,7 +578,7 @@ int deserialize_ft_from_fd_into_rbuf(int fd,
     }
 
     //build_id MUST be in network order regardless of disk order.
-    uint32_t build_id __attribute__((__unused__));
+    uint32_t build_id UNUSED;
     build_id = rbuf_network_int(rb);
     int64_t min_header_size;
     min_header_size = serialize_ft_min_size(version);

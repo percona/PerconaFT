@@ -606,7 +606,7 @@ generate_log_reader (void) {
 
     DO_LOGTYPES(lt, ({
             fprintf(cf, "static void toku_log_free_log_entry_%s_resources (struct logtype_%s *data", lt->name, lt->name);
-            if (!lt->fields->type) fprintf(cf, " __attribute__((__unused__))");
+            if (!lt->fields->type) fprintf(cf, " UNUSED");
             fprintf(cf, ") {\n");
             DO_FIELDS(field_type, lt,
                       fprintf(cf, "    toku_free_%s(data->%s);\n", field_type->type, field_type->name);

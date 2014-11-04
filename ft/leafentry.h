@@ -145,7 +145,7 @@ struct leafentry {
     }; // For the case where LEAFENTRY->type is LE_CLEAN
     static_assert(4 == sizeof(leafentry::leafentry_clean), "leafentry_clean size is wrong");
     static_assert(4 == toku_compiler_offsetof(leafentry::leafentry_clean, val), "val is in the wrong place");
-    struct __attribute__ ((__packed__)) leafentry_mvcc {
+    struct PACKED leafentry_mvcc {
         uint32_t num_cxrs; // number of committed transaction records
         uint8_t  num_pxrs; // number of provisional transaction records
         uint8_t xrs[0];      //then TXNIDs of XRs relevant for reads:
@@ -176,7 +176,7 @@ struct leafentry {
 
     uint8_t  type;    // type is LE_CLEAN or LE_MVCC
     //uint32_t keylen;
-    union __attribute__ ((__packed__)) {
+    union PACKED {
         struct leafentry_clean clean;
         struct leafentry_mvcc mvcc;
     } u;

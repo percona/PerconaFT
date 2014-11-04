@@ -244,7 +244,7 @@ run_test(const char *prog, const char *origft) {
 }
 
 int
-test_main(int argc __attribute__((__unused__)), const char *argv[])
+test_main(int argc UNUSED, const char *argv[])
 {
     int r;
 

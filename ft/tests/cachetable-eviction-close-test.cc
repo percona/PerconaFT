@@ -97,17 +97,17 @@ bool expect_full_flush;
 bool expect_pe;
 
 static void
-flush (CACHEFILE f __attribute__((__unused__)),
+flush (CACHEFILE f UNUSED,
        int UU(fd),
-       CACHEKEY k  __attribute__((__unused__)),
-       void *v     __attribute__((__unused__)),
+       CACHEKEY k  UNUSED,
+       void *v     UNUSED,
        void** UU(dd),
-       void *e     __attribute__((__unused__)),
-       PAIR_ATTR s      __attribute__((__unused__)),
-       PAIR_ATTR* new_size      __attribute__((__unused__)),
-       bool w      __attribute__((__unused__)),
-       bool keep   __attribute__((__unused__)),
-       bool c      __attribute__((__unused__)),
+       void *e     UNUSED,
+       PAIR_ATTR s      UNUSED,
+       PAIR_ATTR* new_size      UNUSED,
+       bool w      UNUSED,
+       bool keep   UNUSED,
+       bool c      UNUSED,
         bool UU(is_clone)
        ) {
     assert(expect_full_flush);
@@ -117,16 +117,16 @@ flush (CACHEFILE f __attribute__((__unused__)),
 static int fetch_calls = 0;
 
 static int
-fetch (CACHEFILE f        __attribute__((__unused__)),
+fetch (CACHEFILE f        UNUSED,
        PAIR UU(p),
        int UU(fd),
-       CACHEKEY k         __attribute__((__unused__)),
-       uint32_t fullhash __attribute__((__unused__)),
-       void **value       __attribute__((__unused__)),
+       CACHEKEY k         UNUSED,
+       uint32_t fullhash UNUSED,
+       void **value       UNUSED,
        void** UU(dd),
-       PAIR_ATTR *sizep        __attribute__((__unused__)),
-       int  *dirtyp       __attribute__((__unused__)),
-       void *extraargs    __attribute__((__unused__))
+       PAIR_ATTR *sizep        UNUSED,
+       int  *dirtyp       UNUSED,
+       void *extraargs    UNUSED
        ) {
 
     fetch_calls++;

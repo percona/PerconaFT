@@ -159,7 +159,7 @@ static int check_is_in(int v, int deadbeef) {
     return 0;
 }
 static int quit_count=0;
-static int quit_early(int v __attribute__((__unused__)), int beefbeef) {
+static int quit_early(int v UNUSED, int beefbeef) {
     assert(beefbeef=0xdeadbeef);
     quit_count++;
     if (quit_count==check_count) return check_count;

@@ -122,17 +122,17 @@ static inline unsigned char rbuf_char (struct rbuf *r) {
     return r->buf[r->ndone++];
 }
 
-static inline void rbuf_ma_uint8_t (struct rbuf *r, memarena *ma __attribute__((__unused__)), uint8_t *num) {
+static inline void rbuf_ma_uint8_t (struct rbuf *r, memarena *ma UNUSED, uint8_t *num) {
     *num = rbuf_char(r);
 }
 
-static inline void rbuf_ma_bool (struct rbuf *r, memarena *ma __attribute__((__unused__)), bool *b) {
+static inline void rbuf_ma_bool (struct rbuf *r, memarena *ma UNUSED, bool *b) {
     uint8_t n = rbuf_char(r);
     *b = (n!=0);
 }
 
 //Read an int that MUST be in network order regardless of disk order
-static unsigned int rbuf_network_int (struct rbuf *r) __attribute__((__unused__));
+static unsigned int rbuf_network_int (struct rbuf *r) UNUSED;
 static unsigned int rbuf_network_int (struct rbuf *r) {
     assert(r->ndone+4 <= r->size);
     uint32_t result = toku_ntohl(*(uint32_t*)(r->buf+r->ndone)); // This only works on machines where unaligned loads are OK.
@@ -181,11 +181,11 @@ static inline signed long long rbuf_longlong (struct rbuf *r) {
     return (signed long long)rbuf_ulonglong(r);
 }
 
-static inline void rbuf_ma_uint32_t (struct rbuf *r, memarena *ma __attribute__((__unused__)), uint32_t *num) {
+static inline void rbuf_ma_uint32_t (struct rbuf *r, memarena *ma UNUSED, uint32_t *num) {
     *num = rbuf_int(r);
 }
 
-static inline void rbuf_ma_uint64_t (struct rbuf *r, memarena *ma __attribute__((__unused__)), uint64_t *num) {
+static inline void rbuf_ma_uint64_t (struct rbuf *r, memarena *ma UNUSED, uint64_t *num) {
     *num = rbuf_ulonglong(r);
 }
 

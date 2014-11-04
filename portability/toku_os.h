@@ -104,10 +104,10 @@ void toku_os_sleep(uint64_t seconds);
 void toku_os_usleep(uint64_t usecs);
 
 // Returns: the current process id
-int toku_os_getpid(void) __attribute__((__visibility__("default")));
+int toku_os_getpid(void) DEFAULT_VISIBILITY;
 
 // Returns: the current thread id
-int toku_os_gettid(void) __attribute__((__visibility__("default")));
+int toku_os_gettid(void) DEFAULT_VISIBILITY;
 
 // Effect: Forks the current process, returning r == 0 for the child process
 // and r > 0 for the parent process, where r == child_pid
@@ -127,7 +127,7 @@ int toku_os_get_number_active_processors(void);
 int toku_os_get_pagesize(void);
 
 // Returns: the size of physical memory (in bytes)
-uint64_t toku_os_get_phys_memory_size(void) __attribute__((__visibility__("default")));
+uint64_t toku_os_get_phys_memory_size(void) DEFAULT_VISIBILITY;
 
 // Returns the processor frequency in Hz
 // Returns 0 if success
@@ -135,7 +135,7 @@ int toku_os_get_processor_frequency(uint64_t *hz);
 
 // Returns: 0 on success
 // sets fsize to the number of bytes in a file
-int toku_os_get_file_size(int fildes, int64_t *fsize)   __attribute__((__visibility__("default")));
+int toku_os_get_file_size(int fildes, int64_t *fsize)   DEFAULT_VISIBILITY;
 
 // Returns: 0 on success
 // Initializes id as a unique fileid for fildes on success.
@@ -148,15 +148,15 @@ int toku_os_lock_file(const char *name);
 //Unlocks and closes a file locked by toku_os_lock_on_file
 int toku_os_unlock_file(int fildes);
 
-int toku_os_mkdir(const char *pathname, mode_t mode) __attribute__((__visibility__("default")));
+int toku_os_mkdir(const char *pathname, mode_t mode) DEFAULT_VISIBILITY;
 
-int toku_os_chdir(const char *pathname) __attribute__((__visibility__("default")));
+int toku_os_chdir(const char *pathname) DEFAULT_VISIBILITY;
 
 // Unlink a file at the given path
-int toku_os_unlink(const char *pathname) __attribute__((__visibility__("default")));
+int toku_os_unlink(const char *pathname) DEFAULT_VISIBILITY;
 
 // Sync dirty OS buffer pages to storage.
-void toku_os_sync(void) __attribute__((__visibility__("default")));
+void toku_os_sync(void) DEFAULT_VISIBILITY;
 
 // Get the current process user and kernel use times
 int toku_os_get_process_times(struct timeval *usertime, struct timeval *kerneltime);
@@ -164,17 +164,17 @@ int toku_os_get_process_times(struct timeval *usertime, struct timeval *kernelti
 // Get the maximum size of the process data size (in bytes)
 // Success: returns 0 and sets *maxdata to the data size
 // Fail: returns an error number
-int toku_os_get_max_process_data_size(uint64_t *maxdata) __attribute__((__visibility__("default")));
+int toku_os_get_max_process_data_size(uint64_t *maxdata) DEFAULT_VISIBILITY;
 
-int toku_os_initialize_settings(int verbosity)  __attribute__((__visibility__("default")));
+int toku_os_initialize_settings(int verbosity)  DEFAULT_VISIBILITY;
 
-bool toku_os_is_absolute_name(const char* path)  __attribute__((__visibility__("default")));
+bool toku_os_is_absolute_name(const char* path)  DEFAULT_VISIBILITY;
 
 // Return true if huge pages are enabled. See portability/huge_page_detection.cc for methodology.
-bool toku_os_huge_pages_enabled(void) __attribute__((__visibility__("default")));
+bool toku_os_huge_pages_enabled(void) DEFAULT_VISIBILITY;
 
 // Set whether or not writes assert when ENOSPC is returned or they wait for space
-void toku_set_assert_on_write_enospc(int do_assert) __attribute__((__visibility__("default")));
+void toku_set_assert_on_write_enospc(int do_assert) DEFAULT_VISIBILITY;
 
 // Get file system write information
 // *enospc_last_time is the last time ENOSPC was returned by write or pwrite
@@ -194,9 +194,9 @@ int toku_fsync_dir_by_name_without_accounting(const char *dir_name);
 int toku_get_filesystem_sizes(const char *path, uint64_t *avail_size, uint64_t *free_size, uint64_t *total_size);
 
 // Portable linux 'stat'
-int toku_stat(const char *name, toku_struct_stat *statbuf) __attribute__((__visibility__("default")));
+int toku_stat(const char *name, toku_struct_stat *statbuf) DEFAULT_VISIBILITY;
 // Portable linux 'fstat'
-int toku_fstat(int fd, toku_struct_stat *statbuf) __attribute__((__visibility__("default")));
+int toku_fstat(int fd, toku_struct_stat *statbuf) DEFAULT_VISIBILITY;
 
 // Portable linux 'dup2'
-int toku_dup2(int fd, int fd2) __attribute__((__visibility__("default")));
+int toku_dup2(int fd, int fd2) DEFAULT_VISIBILITY;

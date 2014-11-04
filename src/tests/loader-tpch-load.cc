@@ -102,8 +102,8 @@ static int COMPRESS=0;
 static int USE_REGION=0;
 static const char *envdir = TOKU_TEST_FILENAME;
 
-static int generate_rows_for_region(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_val) __attribute__((unused)); 
-static int generate_rows_for_lineitem(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_val) __attribute__((unused));
+static int generate_rows_for_region(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_val) UNUSED; 
+static int generate_rows_for_lineitem(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_val) UNUSED;
 
 // linenumber,orderkey form a unique, primary key
 // key is a potentially duplicate secondary key
@@ -113,7 +113,7 @@ struct tpch_key {
     uint32_t key;
 };
 
-static __attribute__((__unused__)) int
+static UNUSED int
 tpch_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
     assert(db && a && b);
     assert(a->size == sizeof(struct tpch_key));

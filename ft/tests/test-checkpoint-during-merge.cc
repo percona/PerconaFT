@@ -410,7 +410,7 @@ doit (int state) {
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     default_parse_args(argc, argv);
     doit(flt_flush_before_merge);
     doit(flt_flush_before_pin_second_node_for_merge);

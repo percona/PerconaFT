@@ -109,9 +109,9 @@ static struct random_data random_data[NUM_DBS];
 char random_buf[NUM_DBS][8];
 
 static int put_multiple_generate(DB *dest_db,
-				 DB *src_db __attribute__((__unused__)),
+				 DB *src_db UNUSED,
 				 DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals,
-				 const DBT *src_key, const DBT *src_val __attribute__((__unused__))) {
+				 const DBT *src_key, const DBT *src_val UNUSED) {
     toku_dbt_array_resize(dest_keys, 1);
     toku_dbt_array_resize(dest_vals, 1);
     DBT *dest_key = &dest_keys->dbts[0];
@@ -159,7 +159,7 @@ struct error_extra {
     int error_count;
 };
 
-static void error_callback (DB *db __attribute__((__unused__)), int which_db, int err, DBT *key __attribute__((__unused__)), DBT *val __attribute__((__unused__)), void *extra) {
+static void error_callback (DB *db UNUSED, int which_db, int err, DBT *key UNUSED, DBT *val UNUSED, void *extra) {
     struct error_extra *e =(struct error_extra *)extra;
     assert(which_db==(int)which_db_to_fail);
     assert(err==EINVAL);

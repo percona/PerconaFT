@@ -140,7 +140,7 @@ static void finish (void) {
     r = env->close(env, 0); assert(r==0);
 }
 
-static void *starta(void* ignore __attribute__((__unused__))) {
+static void *starta(void* ignore UNUSED) {
     DB_TXN *txn = 0;
     DBT key, val;
     memset(&key, 0, sizeof(key));
@@ -154,7 +154,7 @@ static void *starta(void* ignore __attribute__((__unused__))) {
     toku_free(val.data);
     return 0;
 }
-static void *startb(void* ignore __attribute__((__unused__))) {
+static void *startb(void* ignore UNUSED) {
     DB_TXN *txn = 0;
     DBT key, val;
     memset(&key, 0, sizeof(key));

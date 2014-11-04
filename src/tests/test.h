@@ -120,7 +120,7 @@ PATENT RIGHTS GRANT:
 
 int verbose=0;
 
-#define UU(x) x __attribute__((__unused__))
+#define UU(x) x UNUSED
 
 #define CKERR(r) ({ int __r = r; if (__r!=0) fprintf(stderr, "%s:%d error %d %s\n", __FILE__, __LINE__, __r, db_strerror(r)); assert(__r==0); })
 #define CKERR2(r,r2) do { if (r!=r2) fprintf(stderr, "%s:%d error %d %s, expected %d\n", __FILE__, __LINE__, r, db_strerror(r), r2); assert(r==r2); } while (0)
@@ -139,7 +139,7 @@ int verbose=0;
     fflush(stderr); \
 } while (0)
 
-static __attribute__((__unused__)) void
+static UNUSED void
 parse_args (int argc, char * const argv[]) {
     const char *argv0=argv[0];
     while (argc>1) {
@@ -162,7 +162,7 @@ parse_args (int argc, char * const argv[]) {
     }
 }
 
-static __attribute__((__unused__)) void 
+static UNUSED void 
 print_engine_status(DB_ENV * UU(env)) {
     if (verbose) {  // verbose declared statically in this file
         uint64_t nrows;
@@ -175,7 +175,7 @@ print_engine_status(DB_ENV * UU(env)) {
     }
 }
 
-static __attribute__((__unused__)) uint64_t
+static UNUSED uint64_t
 get_engine_status_val(DB_ENV * UU(env), const char * keyname) {
     uint64_t rval = 0;
     uint64_t nrows;
@@ -199,7 +199,7 @@ get_engine_status_val(DB_ENV * UU(env), const char * keyname) {
     return rval;
 }
 
-static __attribute__((__unused__)) DBT *
+static UNUSED DBT *
 dbt_init(DBT *dbt, const void *data, uint32_t size) {
     memset(dbt, 0, sizeof *dbt);
     dbt->data = (void*)data;
@@ -207,14 +207,14 @@ dbt_init(DBT *dbt, const void *data, uint32_t size) {
     return dbt;
 }
 
-static __attribute__((__unused__)) DBT *
+static UNUSED DBT *
 dbt_init_malloc (DBT *dbt) {
     memset(dbt, 0, sizeof *dbt);
     dbt->flags = DB_DBT_MALLOC;
     return dbt;
 }
 
-static __attribute__((__unused__)) DBT *
+static UNUSED DBT *
 dbt_init_realloc (DBT *dbt) {
     memset(dbt, 0, sizeof *dbt);
     dbt->flags = DB_DBT_REALLOC;
@@ -231,7 +231,7 @@ static inline uint32_t myrandom (void) {
     return rstate;
 }
 
-static __attribute__((__unused__)) int
+static UNUSED int
 int64_dbt_cmp (DB *db UU(), const DBT *a, const DBT *b) {
 //    assert(db && a && b);
     assert(a);
@@ -249,7 +249,7 @@ int64_dbt_cmp (DB *db UU(), const DBT *a, const DBT *b) {
     return 0;
 }
 
-static __attribute__((__unused__)) int
+static UNUSED int
 int_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
   assert(db && a && b);
   assert(a->size == sizeof(int));
@@ -263,7 +263,7 @@ int_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
     return 0;
 }
 
-static __attribute__((__unused__)) int
+static UNUSED int
 uint_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
   assert(db && a && b);
   assert(a->size == sizeof(unsigned int));
@@ -282,7 +282,7 @@ uint_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
 
 #include <memory.h>
 
-static uint64_t __attribute__((__unused__))
+static uint64_t UNUSED
 random64(void) {
     const unsigned int seed = 0xFEEDFACE;
     static int seeded = 0;
@@ -298,7 +298,7 @@ random64(void) {
     return ret;
 }
 
-static __attribute__((__unused__))
+static UNUSED
 double get_tdiff(void) {
     static struct timeval prev={0,0};
     if (prev.tv_sec==0) {
@@ -313,7 +313,7 @@ double get_tdiff(void) {
     }
 }
 
-static __attribute__((__unused__))
+static UNUSED
 void format_time(const time_t *timer, char *buf) {
     ctime_r(timer, buf);
     size_t len = strlen(buf);
@@ -330,7 +330,7 @@ void format_time(const time_t *timer, char *buf) {
     }
 }
 
-static __attribute__((__unused__))
+static UNUSED
 void print_time_now(void) {
     char timestr[80];
     time_t now = time(NULL);

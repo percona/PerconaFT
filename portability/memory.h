@@ -104,28 +104,28 @@ void toku_memory_shutdown(void) __attribute__((destructor));
 
 // Everything should call toku_malloc() instead of malloc(), and toku_calloc() instead of calloc()
 // That way the tests can can, e.g.,  replace the malloc function using toku_set_func_malloc().
-void *toku_calloc(size_t nmemb, size_t size)  __attribute__((__visibility__("default")));
-void *toku_xcalloc(size_t nmemb, size_t size)  __attribute__((__visibility__("default")));
-void *toku_malloc(size_t size)  __attribute__((__visibility__("default")));
-void *toku_malloc_aligned(size_t alignment, size_t size)  __attribute__((__visibility__("default")));
+void *toku_calloc(size_t nmemb, size_t size)  DEFAULT_VISIBILITY;
+void *toku_xcalloc(size_t nmemb, size_t size)  DEFAULT_VISIBILITY;
+void *toku_malloc(size_t size)  DEFAULT_VISIBILITY;
+void *toku_malloc_aligned(size_t alignment, size_t size)  DEFAULT_VISIBILITY;
 
 // xmalloc aborts instead of return NULL if we run out of memory
-void *toku_xmalloc(size_t size)  __attribute__((__visibility__("default")));
-void *toku_xrealloc(void*, size_t size) __attribute__((__visibility__("default")));
-void *toku_xmalloc_aligned(size_t alignment, size_t size) __attribute__((__visibility__("default")));
+void *toku_xmalloc(size_t size)  DEFAULT_VISIBILITY;
+void *toku_xrealloc(void*, size_t size) DEFAULT_VISIBILITY;
+void *toku_xmalloc_aligned(size_t alignment, size_t size) DEFAULT_VISIBILITY;
 // Effect: Perform a os_malloc_aligned(size) with the additional property that the returned pointer is a multiple of ALIGNMENT.
 //  Fail with a resource_assert if the allocation fails (don't return an error code).
 //  If the alloc_aligned function has been set then call it instead.
 // Requires: alignment is a power of two.
 
-void toku_free(void*) __attribute__((__visibility__("default")));
-void *toku_realloc(void *, size_t size)  __attribute__((__visibility__("default")));
-void *toku_realloc_aligned(size_t alignment, void *p, size_t size) __attribute__((__visibility__("default")));
+void toku_free(void*) DEFAULT_VISIBILITY;
+void *toku_realloc(void *, size_t size)  DEFAULT_VISIBILITY;
+void *toku_realloc_aligned(size_t alignment, void *p, size_t size) DEFAULT_VISIBILITY;
 // Effect: Perform a os_realloc_aligned(alignment, p, size) which has the additional property that the returned pointer is a multiple of ALIGNMENT.
 //  If the malloc_aligned function has been set then call it instead.
 // Requires: alignment is a power of two.
 
-size_t toku_malloc_usable_size(void *p) __attribute__((__visibility__("default")));
+size_t toku_malloc_usable_size(void *p) DEFAULT_VISIBILITY;
 
 /* MALLOC is a macro that helps avoid a common error:
  * Suppose I write
@@ -177,12 +177,12 @@ size_t toku_malloc_usable_size(void *p) __attribute__((__visibility__("default")
 /* Copy memory.  Analogous to strdup() */
 void *toku_memdup (const void *v, size_t len);
 /* Toku-version of strdup.  Use this so that it calls toku_malloc() */
-char *toku_strdup (const char *s)   __attribute__((__visibility__("default")));
+char *toku_strdup (const char *s)   DEFAULT_VISIBILITY;
 
 /* Copy memory.  Analogous to strdup() Crashes instead of returning NULL */
-void *toku_xmemdup (const void *v, size_t len) __attribute__((__visibility__("default")));
+void *toku_xmemdup (const void *v, size_t len) DEFAULT_VISIBILITY;
 /* Toku-version of strdup.  Use this so that it calls toku_xmalloc()  Crashes instead of returning NULL */
-char *toku_xstrdup (const char *s)   __attribute__((__visibility__("default")));
+char *toku_xstrdup (const char *s)   DEFAULT_VISIBILITY;
 
 void toku_malloc_cleanup (void); /* Before exiting, call this function to free up any internal data structures from toku_malloc.  Otherwise valgrind will complain of memory leaks. */
 

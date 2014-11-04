@@ -108,9 +108,9 @@ pe_est_callback(
 
 static int 
 pe_callback (
-    void *ftnode_pv __attribute__((__unused__)), 
-    PAIR_ATTR bytes_to_free __attribute__((__unused__)), 
-    void* extraargs __attribute__((__unused__)),
+    void *ftnode_pv UNUSED, 
+    PAIR_ATTR bytes_to_free UNUSED, 
+    void* extraargs UNUSED,
     void (*finalize)(PAIR_ATTR new_attr, void *extra),
     void *finalize_extra
     ) 

@@ -105,16 +105,16 @@ PATENT RIGHTS GRANT:
 
 struct roll_entry;
 
-static inline void toku_free_TXNID(TXNID txnid __attribute__((__unused__))) {}
-static inline void toku_free_TXNID_PAIR(TXNID_PAIR txnid __attribute__((__unused__))) {}
+static inline void toku_free_TXNID(TXNID txnid UNUSED) {}
+static inline void toku_free_TXNID_PAIR(TXNID_PAIR txnid UNUSED) {}
 
-static inline void toku_free_LSN(LSN lsn __attribute__((__unused__))) {}
-static inline void toku_free_uint64_t(uint64_t u __attribute__((__unused__))) {}
-static inline void toku_free_uint32_t(uint32_t u __attribute__((__unused__))) {}
-static inline void toku_free_uint8_t(uint8_t u __attribute__((__unused__))) {}
-static inline void toku_free_FILENUM(FILENUM u __attribute__((__unused__))) {}
-static inline void toku_free_BLOCKNUM(BLOCKNUM u __attribute__((__unused__))) {}
-static inline void toku_free_bool(bool u __attribute__((__unused__))) {}
+static inline void toku_free_LSN(LSN lsn UNUSED) {}
+static inline void toku_free_uint64_t(uint64_t u UNUSED) {}
+static inline void toku_free_uint32_t(uint32_t u UNUSED) {}
+static inline void toku_free_uint8_t(uint8_t u UNUSED) {}
+static inline void toku_free_FILENUM(FILENUM u UNUSED) {}
+static inline void toku_free_BLOCKNUM(BLOCKNUM u UNUSED) {}
+static inline void toku_free_bool(bool u UNUSED) {}
 static inline void toku_free_XIDP(XIDP xidp) { toku_free(xidp); }
 static inline void toku_free_BYTESTRING(BYTESTRING val) { toku_free(val.data); }
 static inline void toku_free_FILENUMS(FILENUMS val) { toku_free(val.filenums); }

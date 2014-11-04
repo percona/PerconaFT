@@ -99,7 +99,7 @@ extern void * checkpoint_callback2_extra;
 extern bool engine_status_enable;
 
 // Called to use dlmalloc functions.
-void setup_dlmalloc(void) __attribute__((__visibility__("default")));
+void setup_dlmalloc(void) DEFAULT_VISIBILITY;
 
 // Test-only function
 void toku_env_increase_last_xid(DB_ENV *env, uint64_t increment);

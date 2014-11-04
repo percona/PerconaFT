@@ -128,7 +128,7 @@ FT_HANDLE t;
 const char *fname = TOKU_TEST_FILENAME;
 
 static void
-doit (int ksize __attribute__((__unused__))) {
+doit (int ksize UNUSED) {
     BLOCKNUM cnodes[16], bnode, anode;
 
     char *keys[16-1];
@@ -218,7 +218,7 @@ doit (int ksize __attribute__((__unused__))) {
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     doit(53);
 #if 0
     //Skip remaining tests. 

@@ -1036,7 +1036,7 @@ destroy_xids(void) {
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     srandom(7); //Arbitrary seed.
     init_xids();
     test_le_offsets();

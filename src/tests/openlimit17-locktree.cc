@@ -94,7 +94,7 @@ PATENT RIGHTS GRANT:
 // create 200 databases and close them.  set the open file limit to 100 and try to open all of them.
 // eventually, the locktree can not clone fractal tree, and the db open fails.
 
-int test_main (int argc __attribute__((__unused__)), char *const argv[] __attribute__((__unused__))) {
+int test_main (int argc UNUSED, char *const argv[] UNUSED) {
     int r;
 
     const int N = 200;

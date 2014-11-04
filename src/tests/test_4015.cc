@@ -111,7 +111,7 @@ DB     *db;
 const char   *env_dir = TOKU_TEST_FILENAME;
 volatile int done = 0;
 
-static void *startA (void *ignore __attribute__((__unused__))) {
+static void *startA (void *ignore UNUSED) {
     for (int i=0;i<999; i++) {
 	DBT k,v;
 	int a = (random()<<16) + i;
@@ -131,7 +131,7 @@ static void *startA (void *ignore __attribute__((__unused__))) {
 	}
 	{ int chk_r = txn->commit(txn, 0); CKERR(chk_r); }
     }
-    int r __attribute__((__unused__)) = toku_sync_fetch_and_add(&done, 1);
+    int r UNUSED = toku_sync_fetch_and_add(&done, 1);
     return NULL;
 }
 static void change_descriptor (DB_TXN *txn, int i) {

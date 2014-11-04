@@ -134,7 +134,7 @@ const char *toku_copyright_string = "Copyright (c) 2007-2013 Tokutek Inc.  All r
 #else
  #define DB_ENV_CREATE_FUN db_env_create
  #define DB_CREATE_FUN db_create
- int toku_set_trace_file (const char *fname __attribute__((__unused__))) { return 0; }
+ int toku_set_trace_file (const char *fname UNUSED) { return 0; }
  int toku_close_trace_file (void) { return 0; } 
 #endif
 
@@ -1236,7 +1236,7 @@ env_log_archive(DB_ENV * env, char **list[], uint32_t flags) {
 }
 
 static int 
-env_log_flush(DB_ENV * env, const DB_LSN * lsn __attribute__((__unused__))) {
+env_log_flush(DB_ENV * env, const DB_LSN * lsn UNUSED) {
     HANDLE_PANICKED_ENV(env);
     // do nothing if no logger
     if (env->i->logger) {
@@ -1480,7 +1480,7 @@ env_set_verbose(DB_ENV * env, uint32_t UU(which), int UU(onoff)) {
 }
 
 static int 
-toku_env_txn_checkpoint(DB_ENV * env, uint32_t kbyte __attribute__((__unused__)), uint32_t min __attribute__((__unused__)), uint32_t flags __attribute__((__unused__))) {
+toku_env_txn_checkpoint(DB_ENV * env, uint32_t kbyte UNUSED, uint32_t min UNUSED, uint32_t flags UNUSED) {
     CHECKPOINTER cp = toku_cachetable_get_checkpointer(env->i->cachetable);
     int r = toku_checkpoint(cp, env->i->logger,
                             checkpoint_callback_f,  checkpoint_callback_extra,

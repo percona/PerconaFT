@@ -97,8 +97,8 @@ DB_ENV *env;
 // the commands are: byte 1 is "nop" "add" or "del".  Byte 2 is the amount to add.
 enum cmd { CNOP, CADD, CDEL };
 
-static int increment_update (DB *db __attribute__((__unused__)),
-                             const DBT *key __attribute__((__unused__)),
+static int increment_update (DB *db UNUSED,
+                             const DBT *key UNUSED,
                              const DBT *old_val, const DBT *extra,
                              void (*set_val)(const DBT *new_val,
                                              void *set_extra),
@@ -135,7 +135,7 @@ static void cleanup (void) {
     { int r = env->close(env, 0);                             CKERR(r); }
 }
 
-int test_main (int argc __attribute__((__unused__)), char *const argv[] __attribute__((__unused__))) {
+int test_main (int argc UNUSED, char *const argv[] UNUSED) {
 
     setup();
     cleanup();

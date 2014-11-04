@@ -541,7 +541,7 @@ test_split_odd_nodes(void)
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
 
     test_split_on_boundary();
     test_split_with_everything_on_the_left();

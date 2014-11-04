@@ -423,7 +423,7 @@ test_serialize_nonleaf(int valsize, int nelts, double entropy, int ser_runs, int
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     const int DEFAULT_RUNS = 5;
     long valsize, nelts, ser_runs = DEFAULT_RUNS, deser_runs = DEFAULT_RUNS;
     double entropy = 0.3;

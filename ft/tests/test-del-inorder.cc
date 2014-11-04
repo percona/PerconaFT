@@ -144,7 +144,7 @@ doit (void) {
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     doit();
     return 0;
 }

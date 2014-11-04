@@ -94,7 +94,7 @@ PATENT RIGHTS GRANT:
 
 // try to open the environment with a small number of unused file descriptors
 
-int test_main (int argc __attribute__((__unused__)), char *const argv[] __attribute__((__unused__))) {
+int test_main (int argc UNUSED, char *const argv[] UNUSED) {
     int r;
 
     toku_os_recursive_delete(TOKU_TEST_FILENAME);

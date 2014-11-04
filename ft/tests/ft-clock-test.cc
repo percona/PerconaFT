@@ -474,7 +474,7 @@ test_serialize_leaf(void) {
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     initialize_dummymsn();
     test_serialize_nonleaf();
     test_serialize_leaf();

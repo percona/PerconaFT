@@ -97,7 +97,7 @@ PATENT RIGHTS GRANT:
 static DB *db;
 static DB_ENV *env;
 
-static __attribute__((__unused__)) int
+static UNUSED int
 length_int_dbt_cmp (DB *db_compare, const DBT *a, const DBT *b) {
     assert(db_compare && a && b);
     assert(a->size > sizeof(int));

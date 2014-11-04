@@ -101,7 +101,7 @@ typedef int (*ft_compare_func)(DB *db, const DBT *a, const DBT *b);
 
 int toku_keycompare(const void *key1, uint32_t key1len, const void *key2, uint32_t key2len);
 
-int toku_builtin_compare_fun (DB *, const DBT *, const DBT*) __attribute__((__visibility__("default")));
+int toku_builtin_compare_fun (DB *, const DBT *, const DBT*) DEFAULT_VISIBILITY;
 
 namespace toku {
 

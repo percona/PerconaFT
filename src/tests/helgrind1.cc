@@ -93,12 +93,12 @@ PATENT RIGHTS GRANT:
 #include <portability/toku_pthread.h>
 int x;
 
-static void *starta(void* ignore __attribute__((__unused__))) {
+static void *starta(void* ignore UNUSED) {
     if (verbose) printf("%s %d\n", __FUNCTION__, x);
     x++;
     return 0;
 }
-static void *startb(void* ignore __attribute__((__unused__))) {
+static void *startb(void* ignore UNUSED) {
     if (verbose) printf("%s %d\n", __FUNCTION__, x);
     x++;
     return 0;

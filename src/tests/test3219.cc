@@ -186,7 +186,7 @@ volatile int finished = false;
 
 // Thread A performs checkpoints
 static void*
-start_a (void *arg __attribute__((__unused__))) {
+start_a (void *arg UNUSED) {
     //r=env->txn_checkpoint(env, 0, 0, 0);                                              CKERR(r);
     while (!finished) {
 	int r;
@@ -198,7 +198,7 @@ start_a (void *arg __attribute__((__unused__))) {
 
 // Thread B performs insertions (eventually they start overwriting the same record).
 static void*
-start_b (void *arg __attribute__((__unused__))) {
+start_b (void *arg UNUSED) {
     int r;
     for (int j=0; j<N_TXNS; j++) {
 	if (verbose) {
@@ -218,7 +218,7 @@ start_b (void *arg __attribute__((__unused__))) {
 
 // Thread C performs lookups
 static void*
-start_c (void *arg __attribute__((__unused__))) {
+start_c (void *arg UNUSED) {
     int r;
     while (!finished) {
 	DB_TXN *txn;

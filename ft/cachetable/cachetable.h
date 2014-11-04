@@ -583,7 +583,7 @@ void toku_cachefile_verify (CACHEFILE cf);
 void toku_cachetable_verify (CACHETABLE t);
 
 // Not for use in production, but useful for testing.
-void toku_cachetable_print_hash_histogram (void) __attribute__((__visibility__("default")));
+void toku_cachetable_print_hash_histogram (void) DEFAULT_VISIBILITY;
 
 void toku_cachetable_maybe_flush_some(CACHETABLE ct);
 

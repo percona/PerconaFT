@@ -374,7 +374,7 @@ doit (bool keep_other_bn_in_memory) {
 }
 
 int
-test_main (int argc __attribute__((__unused__)), const char *argv[] __attribute__((__unused__))) {
+test_main (int argc UNUSED, const char *argv[] UNUSED) {
     default_parse_args(argc, argv);
     doit(false);
     doit(true);

@@ -101,7 +101,7 @@ CACHETABLE ct;
 FT_HANDLE t;
 int keysize = 9;
 
-static int dont_allow_prefix (DB *db __attribute__((__unused__)), const DBT *a, const DBT *b) {
+static int dont_allow_prefix (DB *db UNUSED, const DBT *a, const DBT *b) {
     assert(a->size==9 && b->size==9);
     return toku_keycompare(a->data, a->size, b->data, b->size);
 }
