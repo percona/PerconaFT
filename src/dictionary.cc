@@ -243,12 +243,13 @@ uint64_t dictionary::get_id() const {
 // persistent_dictionary_manager methods
 //
 
-int persistent_dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname) {
+int persistent_dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname, uint64_t id) {
     int r = toku_db_create(db, env, 0);
     assert_zero(r);
     toku_db_use_builtin_key_cmp(*db);
     dictionary_info dinfo;
     dinfo.iname = toku_strdup(iname);
+    dinfo.id = id;
     r = open_internal_db(*db, txn, &dinfo, DB_CREATE);
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open %s\n", iname);
@@ -260,9 +261,9 @@ int persistent_dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TX
 int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn) {
     toku_mutex_init(&m_mutex, nullptr);
     DBC* c = NULL;
-    int r = setup_internal_db(&m_directory, env, txn, toku_product_name_strings.fileopsdirectory);
+    int r = setup_internal_db(&m_directory, env, txn, toku_product_name_strings.fileopsdirectory, DIRECTORY_ID);
     if (r != 0) goto cleanup;
-    r = setup_internal_db(&m_inamedb, env, txn, toku_product_name_strings.fileopsinames);
+    r = setup_internal_db(&m_inamedb, env, txn, toku_product_name_strings.fileopsinames, INAME_ID);
     if (r != 0) goto cleanup;
     // get the last entry in m_inamesdb, that has the current max used id
     // set m_next_id to that value plus one
@@ -275,7 +276,7 @@ int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn) {
     if (r == DB_NOTFOUND) {
         // we have nothing in the directory,
         // which is a valid case
-        m_next_id = 0;
+        m_next_id = m_min_user_id;
         r = 0;
         goto cleanup;
     }
@@ -286,6 +287,11 @@ int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn) {
         goto cleanup;
     }
     m_next_id = (*(uint64_t *)key.data) + 1;
+    if (m_next_id < m_min_user_id) {
+        printf("Unexpected low id found in last entry in m_inamedb %" PRIu64 "\n", m_next_id - 1);
+        r = EINVAL;
+        goto cleanup;
+    }
 
 cleanup:
     if (c) {
@@ -656,6 +662,7 @@ int dictionary_manager::setup_persistent_environment(
     // don't need to destroy it because we are not copying data into it
     dictionary_info dinfo;
     dinfo.iname = toku_product_name_strings.environmentdictionary;
+    dinfo.id = ENV_ID;
     r = open_internal_db(m_persistent_environment, txn, &dinfo, DB_CREATE);
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open persistent env\n");

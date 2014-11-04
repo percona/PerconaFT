@@ -132,13 +132,22 @@ public:
     friend class inmemory_dictionary_manager;
 };
 
+typedef enum {
+    ENV_ID = 0,
+    DIRECTORY_ID,
+    INAME_ID
+} RESERVED_DICTIONARY_ID;
+
 class persistent_dictionary_manager {
 private:
+    // first 1000 possible ids are saved for possible
+    // internal dictionaries (such as environment and directory
+    static const uint64_t m_min_user_id = 1000;
     DB* m_directory; // maps dname to dictionary id
     DB* m_inamedb; // maps dictionary id to iname
     uint64_t m_next_id;
     toku_mutex_t m_mutex;
-    int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname);
+    int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname, uint64_t id);
     
 public:
     persistent_dictionary_manager() : 
