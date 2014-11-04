@@ -883,16 +883,22 @@ toku_db_cursor_internal(DB * db, DB_TXN * txn, DBC *c, uint32_t flags, int is_te
         dbc_struct_i(c)->iso = txn ? db_txn_struct_i(txn)->iso : TOKU_ISO_SERIALIZABLE;
     }
     dbc_struct_i(c)->rmw = (flags & DB_RMW) != 0;
-    bool is_snapshot_read = false;
+    enum cursor_read_type read_type = C_READ_ANY; // default, used in serializable and read uncommitted
     if (txn) {
-        is_snapshot_read = (dbc_struct_i(c)->iso == TOKU_ISO_READ_COMMITTED || 
-                            dbc_struct_i(c)->iso == TOKU_ISO_SNAPSHOT);
+        if (dbc_struct_i(c)->iso == TOKU_ISO_READ_COMMITTED ||
+            dbc_struct_i(c)->iso == TOKU_ISO_SNAPSHOT)
+        {
+            read_type = C_READ_SNAPSHOT;
+        }
+        else if (dbc_struct_i(c)->iso == TOKU_ISO_READ_COMMITTED_ALWAYS) {
+            read_type = C_READ_COMMITTED;
+        }
     }
     int r = toku_ft_cursor_create(
         db->i->ft_handle, 
         dbc_ftcursor(c),
         txn ? db_txn_struct_i(txn)->tokutxn : NULL,
-        is_snapshot_read,
+        read_type,
         ((flags & DBC_DISABLE_PREFETCHING) != 0),
         is_temporary_cursor != 0
         );

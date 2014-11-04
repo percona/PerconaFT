@@ -754,7 +754,7 @@ static int toku_recover_xcommit (struct logtype_xcommit *l, RECOVER_ENV renv) {
     assert(txn!=NULL);
 
     // commit the transaction
-    int r = toku_txn_commit_with_lsn(txn, true, l->lsn,
+    int r = toku_txn_commit_with_lsn(txn, true, l->lsn, false,
                                  NULL, NULL);
     assert(r == 0);
 
