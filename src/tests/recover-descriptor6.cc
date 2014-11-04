@@ -133,32 +133,33 @@ static void run_test(void)
     IN_TXN_COMMIT(env, NULL, txn_1, 0, {
             { int chk_r = db_create(&db, env, 0); CKERR(chk_r); }
             { int chk_r = db->open(db, txn_1, "foo.db", NULL, DB_BTREE, DB_CREATE, 0666); CKERR(chk_r); }
+            { int chk_r = db->close(db, 0); assert_zero(chk_r);}
         });
     IN_TXN_COMMIT(env, NULL, txn_2, 0, {
             { int chk_r = db_create(&db2, env, 0); CKERR(chk_r); }
             { int chk_r = db2->open(db2, txn_2, "foo2.db", NULL, DB_BTREE, DB_CREATE, 0666); CKERR(chk_r); }
-            { int chk_r = db2->change_descriptor(db2, txn_2, &other_desc, 0); CKERR(chk_r); }
-            assert_desc_eight(db2);
+            { int chk_r = db2->close(db2, 0); assert_zero(chk_r);}
+            { int chk_r = env->db_change_descriptor(env, txn_2, "foo2.db", &other_desc); CKERR(chk_r); }
         });
     IN_TXN_COMMIT(env, NULL, txn_3, 0, {
             { int chk_r = db_create(&db3, env, 0); CKERR(chk_r); }
             { int chk_r = db3->open(db3, txn_3, "foo3.db", NULL, DB_BTREE, DB_CREATE, 0666); CKERR(chk_r); }
-            { int chk_r = db3->change_descriptor(db3, txn_3, &other_desc, 0); CKERR(chk_r); }
-            assert_desc_eight(db3);
+            { int chk_r = db3->close(db3, 0); assert_zero(chk_r);}
+            { int chk_r = env->db_change_descriptor(env, txn_3, "foo3.db", &other_desc); CKERR(chk_r); }
         });
     
     { int chk_r = env->txn_checkpoint(env,0,0,0); CKERR(chk_r); }
 
     { int chk_r = env->txn_begin(env, NULL, &txn, 0); CKERR(chk_r); }
-    { int chk_r = db->change_descriptor(db, txn, &desc, 0); CKERR(chk_r); }
+    { int chk_r = env->db_change_descriptor(env, txn, "foo.db", &desc); CKERR(chk_r); }
     { int chk_r = txn->commit(txn,0); CKERR(chk_r); }
 
     { int chk_r = env->txn_begin(env, NULL, &txn2, 0); CKERR(chk_r); }
-    { int chk_r = db2->change_descriptor(db2, txn2, &desc, 0); CKERR(chk_r); }
+    { int chk_r = env->db_change_descriptor(env, txn2, "foo2.db", &desc); CKERR(chk_r); }
     { int chk_r = txn2->abort(txn2); CKERR(chk_r); }
 
     { int chk_r = env->txn_begin(env, NULL, &txn3, 0); CKERR(chk_r); }
-    { int chk_r = db3->change_descriptor(db3, txn3, &desc, 0); CKERR(chk_r); }
+    { int chk_r = env->db_change_descriptor(env, txn3, "foo3.db", &desc); CKERR(chk_r); }
 
     toku_hard_crash_on_purpose();
 }

@@ -314,8 +314,6 @@ const char *env_dir = TOKU_TEST_FILENAME; // the default env_dir
 
 static void create_and_open_dbs(DB **dbs, const char *suffix, int *idx) {
     int r;
-    DBT desc;
-    dbt_init(&desc, "foo", sizeof("foo"));
     enum {MAX_NAME=128};
     char name[MAX_NAME*2];
 
@@ -325,9 +323,6 @@ static void create_and_open_dbs(DB **dbs, const char *suffix, int *idx) {
         dbs[i]->app_private = &idx[i];
         snprintf(name, sizeof(name), "db_%04x_%s", i, suffix);
         r = dbs[i]->open(dbs[i], NULL, name, NULL, DB_BTREE, DB_CREATE, 0666);                                CKERR(r);
-        IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-                { int chk_r = dbs[i]->change_descriptor(dbs[i], txn_desc, &desc, 0); CKERR(chk_r); }
-        });
     }
 }
 

@@ -313,50 +313,6 @@ int toku_db_pre_acquire_fileops_lock(DB *db, DB_TXN *txn) {
     return r;
 }
 
-//
-// This function is used both to set an initial descriptor of a DB and to
-// change a descriptor. (only way to set a descriptor of a DB)
-//
-// Requires:
-//  - The caller must not call put_multiple, del_multiple, or update_multiple concurrently
-//  - The caller must not have a hot index running concurrently on db
-//  - If the caller has passed DB_UPDATE_CMP_DESCRIPTOR as a flag, then he is calling this function
-//     ONLY immediately after creating the dictionary and before doing any actual work on the dictionary.
-//
-static int 
-toku_db_change_descriptor(DB *db, DB_TXN* txn, const DBT* descriptor, uint32_t flags) {
-    HANDLE_PANICKED_DB(db);
-    HANDLE_READ_ONLY_TXN(txn);
-    HANDLE_DB_ILLEGAL_WORKING_PARENT_TXN(db, txn);
-    int r = 0;
-    TOKUTXN ttxn = txn ? db_txn_struct_i(txn)->tokutxn : NULL;
-    bool is_db_hot_index  = ((flags & DB_IS_HOT_INDEX) != 0);
-    bool update_cmp_descriptor = ((flags & DB_UPDATE_CMP_DESCRIPTOR) != 0);
-
-    DBT old_descriptor_dbt;
-    toku_init_dbt(&old_descriptor_dbt);
-
-    if (!db_opened(db) || !descriptor || (descriptor->size>0 && !descriptor->data)){
-        r = EINVAL;
-        goto cleanup;
-    }
-    // For a hot index, this is an initial descriptor.
-    // We do not support (yet) hcad with hot index concurrently on a single table, which
-    // would require changing a descriptor for a hot index.
-    if (!is_db_hot_index) {
-        r = toku_db_pre_acquire_table_lock(db, txn);
-        if (r != 0) { goto cleanup; }    
-    }
-
-    toku_clone_dbt(&old_descriptor_dbt, db->descriptor->dbt);
-    toku_ft_change_descriptor(db->i->ft_handle, &old_descriptor_dbt, descriptor, 
-                              true, ttxn, update_cmp_descriptor);
-
-cleanup:
-    toku_destroy_dbt(&old_descriptor_dbt);
-    return r;
-}
-
 static int 
 toku_db_set_flags(DB *db, uint32_t flags) {
     HANDLE_PANICKED_DB(db);
@@ -635,24 +591,6 @@ locked_db_open(DB *db, DB_TXN *txn, const char *fname, const char *dbname, DBTYP
     return r;
 }
 
-static int 
-locked_db_change_descriptor(DB *db, DB_TXN *txn, const DBT *descriptor, uint32_t flags) {
-    // cannot begin a checkpoint
-    toku_multi_operation_client_lock();
-    int r = toku_db_change_descriptor(db, txn, descriptor, flags);
-    toku_multi_operation_client_unlock();
-    return r;
-}
-
-static int
-autotxn_db_change_descriptor(DB *db, DB_TXN *txn, const DBT *descriptor, uint32_t flags) {
-    bool changed; int r;
-    r = toku_db_construct_autotxn(db, &txn, &changed, false);
-    if (r != 0) { return r; }
-    r = locked_db_change_descriptor(db, txn, descriptor, flags);
-    return toku_db_destruct_autotxn(txn, r, changed);
-}
-
 static void 
 toku_db_set_errfile (DB *db, FILE *errfile) {
     db->dbenv->set_errfile(db->dbenv, errfile);
@@ -901,7 +839,6 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     result->put = autotxn_db_put;
     result->update = autotxn_db_update;
     result->update_broadcast = autotxn_db_update_broadcast;
-    result->change_descriptor = autotxn_db_change_descriptor;
     result->get_last_key = autotxn_db_get_last_key;
     
     // unlocked methods

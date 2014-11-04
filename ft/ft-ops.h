@@ -152,7 +152,6 @@ typedef int (*ft_update_func)(DB *db, const DBT *key, const DBT *old_val, const 
 // - can only update cmp descriptor immidiately after opening the FIRST ft handle for this ft and before 
 //   ANY operations. to update the cmp descriptor after any operations have already happened, all handles 
 //   and transactions must close and reopen before the change, then you can update the cmp descriptor
-void toku_ft_change_descriptor(FT_HANDLE t, const DBT* old_descriptor, const DBT* new_descriptor, bool do_log, TOKUTXN txn, bool update_cmp_descriptor);
 uint32_t toku_serialize_descriptor_size(DESCRIPTOR desc);
 
 void toku_ft_handle_create(ft_compare_func cmp_func, ft_update_func update_func, FT_HANDLE *ft);
@@ -231,11 +230,6 @@ void toku_ft_load_recovery(TOKUTXN txn, FILENUM old_filenum, char const * new_in
 void toku_ft_load(FT_HANDLE ft_h, TOKUTXN txn, char const * new_iname, int do_fsync, LSN *get_lsn);
 void toku_ft_hot_index_recovery(TOKUTXN txn, FILENUMS filenums, int do_fsync, int do_log, LSN *hot_index_lsn);
 void toku_ft_hot_index(FT_HANDLE ft_h, TOKUTXN txn, FILENUMS filenums, int do_fsync, LSN *lsn);
-
-void toku_ft_log_put_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val);
-void toku_ft_log_put (TOKUTXN txn, FT_HANDLE ft_h, const DBT *key, const DBT *val);
-void toku_ft_log_del_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val);
-void toku_ft_log_del (TOKUTXN txn, FT_HANDLE ft_h, const DBT *key);
 
 // Effect: Delete a key from an ft
 void toku_ft_delete (FT_HANDLE ft_h, DBT *k, TOKUTXN txn);

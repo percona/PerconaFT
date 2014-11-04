@@ -141,13 +141,6 @@ static void print_item(const void *val, uint32_t len) {
     printf("\"");
 }
 
-static void simple_hex_dump(unsigned char *vp, uint64_t size) {
-    for (uint64_t i = 0; i < size; i++) {
-        unsigned char c = vp[i];
-        printf("%2.2X", c);
-    }
-}
-
 static void hex_dump(unsigned char *vp, uint64_t offset, uint64_t size) {
     uint64_t n = size / 32;
     for (uint64_t i = 0; i < n; i++) {
@@ -176,12 +169,6 @@ static void hex_dump(unsigned char *vp, uint64_t offset, uint64_t size) {
         if (((i+1) % 32) == 0)
             printf("\n");
     }
-    printf("\n");
-}
-
-static void dump_descriptor(DESCRIPTOR d) {
-    printf(" descriptor size %u ", d->dbt.size);
-    simple_hex_dump((unsigned char*) d->dbt.data, d->dbt.size);
     printf("\n");
 }
 
@@ -218,7 +205,6 @@ static void dump_header(FT ft) {
     printf(" compression_method=%u\n", (unsigned) ft->h->compression_method);
     printf(" unnamed_root=%" PRId64 "\n", ft->h->root_blocknum.b);
     printf(" flags=%u\n", ft->h->flags);
-    dump_descriptor(&ft->descriptor);
     printf(" estimated numrows=%" PRId64 "\n", ft->in_memory_stats.numrows);
     printf(" estimated numbytes=%" PRId64 "\n", ft->in_memory_stats.numbytes);
 }

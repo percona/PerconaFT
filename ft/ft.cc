@@ -123,7 +123,6 @@ ft_destroy(FT ft) {
     assert(ft->h->type == FT_CURRENT);
     ft->blocktable.destroy();
     ft->cmp.destroy();
-    toku_destroy_dbt(&ft->descriptor.dbt);
     toku_destroy_dbt(&ft->cmp_descriptor.dbt);
     toku_ft_destroy_reflock(ft);
     toku_free(ft->h);
@@ -882,47 +881,6 @@ int toku_ft_iterate_fractal_tree_block_map(FT ft, int (*iter)(uint64_t,int64_t,i
     return ft->blocktable.iterate_translation_tables(this_checkpoint_count, iter, iter_extra);
 }
 
-void 
-toku_ft_update_descriptor(FT ft, DESCRIPTOR desc) 
-// Effect: Changes the descriptor in a tree (log the change, make sure it makes it to disk eventually).
-// requires: the ft is fully user-opened with a valid cachefile.
-//           descriptor updates cannot happen in parallel for an FT 
-//           (ydb layer uses a row lock to enforce this)
-{
-    assert(ft->cf);
-    int fd = toku_cachefile_get_fd(ft->cf);
-    toku_ft_update_descriptor_with_fd(ft, desc, fd);
-}
-
-// upadate the descriptor for an ft and serialize it using
-// the given descriptor instead of reading the descriptor
-// from the ft's cachefile. we do this so serialize code can
-// update a descriptor before the ft is fully opened and has
-// a valid cachefile.
-void
-toku_ft_update_descriptor_with_fd(FT ft, DESCRIPTOR desc, int fd) {
-    // the checksum is four bytes, so that's where the magic number comes from
-    // make space for the new descriptor and write it out to disk
-    DISKOFF offset, size;
-    size = toku_serialize_descriptor_size(desc) + 4;
-    ft->blocktable.realloc_descriptor_on_disk(size, &offset, ft, fd);
-    toku_serialize_descriptor_contents_to_fd(fd, desc, offset);
-
-    // cleanup the old descriptor and set the in-memory descriptor to the new one
-    toku_destroy_dbt(&ft->descriptor.dbt);
-    toku_clone_dbt(&ft->descriptor.dbt, desc->dbt);
-}
-
-void toku_ft_update_cmp_descriptor(FT ft) {
-    // cleanup the old cmp descriptor and clone it as the in-memory descriptor
-    toku_destroy_dbt(&ft->cmp_descriptor.dbt);
-    toku_clone_dbt(&ft->cmp_descriptor.dbt, ft->descriptor.dbt);
-}
-
-DESCRIPTOR toku_ft_get_descriptor(FT_HANDLE ft_handle) {
-    return &ft_handle->ft->descriptor;
-}
-
 DESCRIPTOR toku_ft_get_cmp_descriptor(FT_HANDLE ft_handle) {
     return &ft_handle->ft->cmp_descriptor;
 }
@@ -1124,6 +1082,13 @@ void tokuft_update_product_name_strings(void) {
                          "%s.inames", toku_product_name);
         assert(n >= 0);
         assert((unsigned)n < sizeof(toku_product_name_strings.fileopsinames));
+    }
+    {
+        int n = snprintf(toku_product_name_strings.fileopsdesc,
+                         sizeof(toku_product_name_strings.fileopsdesc),
+                         "%s.descriptors", toku_product_name);
+        assert(n >= 0);
+        assert((unsigned)n < sizeof(toku_product_name_strings.fileopsdesc));
     }
     {
         int n = snprintf(toku_product_name_strings.environmentdictionary,

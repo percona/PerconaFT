@@ -425,20 +425,9 @@ int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ftp, uint32_t version)
     }
 
     invariant((uint32_t) ft->layout_version_read_from_disk == version);
-    r = deserialize_descriptor_from(fd, &ft->blocktable, &ft->descriptor, version);
+    r = deserialize_descriptor_from(fd, &ft->blocktable, &ft->cmp_descriptor, version);
     if (r != 0) {
         goto exit;
-    }
-
-    // initialize for svn #4541
-    toku_clone_dbt(&ft->cmp_descriptor.dbt, ft->descriptor.dbt);
-
-    // Version 13 descriptors had an extra 4 bytes that we don't read
-    // anymore.  Since the header is going to think it's the current
-    // version if it gets written out, we need to write the descriptor in
-    // the new format (without those bytes) before that happens.
-    if (version <= FT_LAYOUT_VERSION_13) {
-        toku_ft_update_descriptor_with_fd(ft, &ft->cmp_descriptor, fd);
     }
     r = 0;
 exit:

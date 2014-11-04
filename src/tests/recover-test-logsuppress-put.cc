@@ -235,9 +235,6 @@ do_x1_shutdown (void) {
     r=env->open(env, TOKU_TEST_FILENAME, DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN|DB_CREATE|DB_PRIVATE|DB_THREAD, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(r);
     r = env->checkpointing_set_period(env, 0);                                 CKERR(r);
 
-    DBT desc;
-    dbt_init(&desc, "foo", sizeof("foo"));
-
     char name[128];
 
     DB **dbs = (DB**)toku_malloc(sizeof(DB*) * NUM_DBS);
@@ -249,9 +246,6 @@ do_x1_shutdown (void) {
         dbs[i]->app_private = &idx[i];
         snprintf(name, sizeof(name), "db_%04x", i);
         r = dbs[i]->open(dbs[i], NULL, name, NULL, DB_BTREE, DB_CREATE, 0666);                                CKERR(r);
-        IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-                { int chk_r = dbs[i]->change_descriptor(dbs[i], txn_desc, &desc, 0); CKERR(chk_r); }
-        });
     }
 
     load(dbs);

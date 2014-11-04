@@ -250,8 +250,6 @@ static void run_test(void)
     env->set_errfile(env, stderr);
     r = env->checkpointing_set_period(env, 0);                                   CKERR(r);
 
-    DBT desc;
-    dbt_init(&desc, "foo", sizeof("foo"));
     int ids[MAX_DBS];
     DB *dbs[MAX_DBS];
     for (int i = 0; i < NUM_DBS; i++) {
@@ -261,9 +259,6 @@ static void run_test(void)
         char key_name[32]; 
         sprintf(key_name, "key%d", i);
         r = dbs[i]->open(dbs[i], NULL, key_name, NULL, DB_BTREE, DB_AUTO_COMMIT|DB_CREATE, 0666);   CKERR(r);
-        IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-                { int chk_r = dbs[i]->change_descriptor(dbs[i], txn_desc, &desc, 0); CKERR(chk_r); }
-        });
     }
 
     // generate the src DB (do not use put_multiple)

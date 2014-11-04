@@ -107,7 +107,9 @@ public:
     char* dname;
     char* iname;
     uint64_t id;
+    DBT descriptor;
     dictionary_info() : dname(nullptr), iname(nullptr) {
+        toku_init_dbt(&descriptor);
     }
     void destroy() {
         if (dname) {
@@ -116,6 +118,7 @@ public:
         if (iname) {
             toku_free(iname);
         }
+        toku_destroy_dbt(&descriptor);
     }
 };
 
@@ -126,6 +129,7 @@ class dictionary {
     inmemory_dictionary_manager* m_mgr;
     toku::locktree *m_lt;
     toku::locktree_manager *m_ltm;
+    DESCRIPTOR_S m_descriptor;
 public:
     void create(
         const dictionary_info* dinfo,
@@ -139,6 +143,7 @@ public:
     char* get_dname() const;
     uint64_t get_id() const;
     toku::locktree* get_lt() const;
+    DESCRIPTOR_S* get_descriptor();
 
     friend class inmemory_dictionary_manager;
 };
@@ -146,7 +151,8 @@ public:
 typedef enum {
     ENV_ID = 0,
     DIRECTORY_ID,
-    INAME_ID
+    INAME_ID,
+    DESC_ID
 } RESERVED_DICTIONARY_ID;
 
 class persistent_dictionary_manager {
@@ -156,6 +162,7 @@ private:
     static const uint64_t m_min_user_id = 1000;
     DB* m_directory; // maps dname to dictionary id
     DB* m_inamedb; // maps dictionary id to iname
+    DB* m_descriptordb; // maps dictionary id to descriptor
     uint64_t m_next_id;
     toku_mutex_t m_mutex;
     int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname, uint64_t id, toku::locktree_manager &ltm);
@@ -164,6 +171,7 @@ public:
     persistent_dictionary_manager() : 
         m_directory(nullptr),
         m_inamedb(nullptr),
+        m_descriptordb(nullptr),
         m_next_id(0)
     {
     }
@@ -176,6 +184,7 @@ public:
     int create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo);
     int remove(const char * dname, DB_TXN* txn);
     int rename(DB_TXN* txn, const char *old_dname, const char *new_dname);
+    int change_descriptor(const char *dname, DB_TXN* txn, DBT *descriptor);
     void destroy();
 };
 
@@ -258,6 +267,7 @@ public:
     }
     int rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname);
     int remove(const char * dname, DB_ENV* env, DB_TXN* txn);
+    int change_descriptor(const char *dname, DB_TXN* txn, DBT *descriptor);
     void create();
     void destroy();
     int open_db(DB* db, const char * dname, DB_TXN * txn, uint32_t flags);    

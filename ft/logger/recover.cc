@@ -162,7 +162,6 @@ static void file_map_tuple_init(struct file_map_tuple *tuple, FILENUM filenum, F
     // use a fake DB for comparisons, using the ft's cmp descriptor
     memset(&tuple->fake_db, 0, sizeof(tuple->fake_db));
     tuple->fake_db.cmp_descriptor = &tuple->ft_handle->ft->cmp_descriptor;
-    tuple->fake_db.descriptor = &tuple->ft_handle->ft->descriptor;
 }
 
 static void file_map_tuple_destroy(struct file_map_tuple *tuple) {
@@ -879,42 +878,6 @@ static int toku_recover_backward_fopen (struct logtype_fopen *UU(l), RECOVER_ENV
     return 0;
 }
 
-static int toku_recover_change_fdescriptor (struct logtype_change_fdescriptor *l, RECOVER_ENV renv) {
-    int r;
-    struct file_map_tuple *tuple = NULL;
-    r = file_map_find(&renv->fmap, l->filenum, &tuple);
-    if (r==0) {
-        TOKUTXN txn = NULL;
-        //Maybe do the descriptor (lsn filter)
-        toku_txnid2txn(renv->logger, l->xid, &txn);
-        DBT old_descriptor, new_descriptor;
-        toku_fill_dbt(
-            &old_descriptor, 
-            l->old_descriptor.data, 
-            l->old_descriptor.len
-            );
-        toku_fill_dbt(
-            &new_descriptor, 
-            l->new_descriptor.data, 
-            l->new_descriptor.len
-            );
-        toku_ft_change_descriptor(
-            tuple->ft_handle, 
-            &old_descriptor, 
-            &new_descriptor, 
-            false, 
-            txn,
-            l->update_cmp_descriptor
-            );
-    }    
-    return 0;
-}
-
-static int toku_recover_backward_change_fdescriptor (struct logtype_change_fdescriptor *UU(l), RECOVER_ENV UU(renv)) {
-    return 0;
-}
-
-
 // if file referred to in l is open, close it
 static int toku_recover_fclose (struct logtype_fclose *l, RECOVER_ENV renv) {
     struct file_map_tuple *tuple = NULL;
@@ -1023,129 +986,6 @@ static int toku_recover_enq_delete_any (struct logtype_enq_delete_any *l, RECOVE
 }
 
 static int toku_recover_backward_enq_delete_any (struct logtype_enq_delete_any *UU(l), RECOVER_ENV UU(renv)) {
-    // nothing
-    return 0;
-}
-
-static int toku_recover_enq_insert_multiple (struct logtype_enq_insert_multiple *l, RECOVER_ENV renv) {
-    int r;
-    TOKUTXN txn = NULL;
-    toku_txnid2txn(renv->logger, l->xid, &txn);
-    assert(txn!=NULL);
-    DB *src_db = NULL;
-    bool do_inserts = true;
-    {
-        struct file_map_tuple *tuple = NULL;
-        r = file_map_find(&renv->fmap, l->src_filenum, &tuple);
-        if (l->src_filenum.fileid == FILENUM_NONE.fileid)
-            assert(r==DB_NOTFOUND);
-        else {
-            if (r == 0)
-                src_db = &tuple->fake_db;
-            else
-                do_inserts = false; // src file was probably deleted, #3129
-        }
-    }
-    
-    if (do_inserts) {
-        DBT src_key, src_val;
-
-        toku_fill_dbt(&src_key, l->src_key.data, l->src_key.len);
-        toku_fill_dbt(&src_val, l->src_val.data, l->src_val.len);
-
-        for (uint32_t file = 0; file < l->dest_filenums.num; file++) {
-            struct file_map_tuple *tuple = NULL;
-            r = file_map_find(&renv->fmap, l->dest_filenums.filenums[file], &tuple);
-            if (r==0) {
-                // We found the cachefile.  (maybe) Do the insert.
-                DB *db = &tuple->fake_db;
-
-                DBT_ARRAY key_array;
-                DBT_ARRAY val_array;
-                if (db != src_db) {
-                    r = renv->generate_row_for_put(db, src_db, &renv->dest_keys, &renv->dest_vals, &src_key, &src_val);
-                    assert(r==0);
-                    invariant(renv->dest_keys.size <= renv->dest_keys.capacity);
-                    invariant(renv->dest_vals.size <= renv->dest_vals.capacity);
-                    invariant(renv->dest_keys.size == renv->dest_vals.size);
-                    key_array = renv->dest_keys;
-                    val_array = renv->dest_vals;
-                } else {
-                    key_array.size = key_array.capacity = 1;
-                    key_array.dbts = &src_key;
-
-                    val_array.size = val_array.capacity = 1;
-                    val_array.dbts = &src_val;
-                }
-                for (uint32_t i = 0; i < key_array.size; i++) {
-                    toku_ft_maybe_insert(tuple->ft_handle, &key_array.dbts[i], &val_array.dbts[i], txn, true, l->lsn, false, FT_INSERT);
-                }
-            }
-        }
-    }
-
-    return 0;
-}
-
-static int toku_recover_backward_enq_insert_multiple (struct logtype_enq_insert_multiple *UU(l), RECOVER_ENV UU(renv)) {
-    // nothing
-    return 0;
-}
-
-static int toku_recover_enq_delete_multiple (struct logtype_enq_delete_multiple *l, RECOVER_ENV renv) {
-    int r;
-    TOKUTXN txn = NULL;
-    toku_txnid2txn(renv->logger, l->xid, &txn);
-    assert(txn!=NULL);
-    DB *src_db = NULL;
-    bool do_deletes = true;
-    {
-        struct file_map_tuple *tuple = NULL;
-        r = file_map_find(&renv->fmap, l->src_filenum, &tuple);
-        if (l->src_filenum.fileid == FILENUM_NONE.fileid)
-            assert(r==DB_NOTFOUND);
-        else {
-            if (r == 0) {
-                src_db = &tuple->fake_db;
-            } else {
-                do_deletes = false; // src file was probably deleted, #3129
-            }
-        }
-    }
-
-    if (do_deletes) {
-        DBT src_key, src_val;
-        toku_fill_dbt(&src_key, l->src_key.data, l->src_key.len);
-        toku_fill_dbt(&src_val, l->src_val.data, l->src_val.len);
-
-        for (uint32_t file = 0; file < l->dest_filenums.num; file++) {
-            struct file_map_tuple *tuple = NULL;
-            r = file_map_find(&renv->fmap, l->dest_filenums.filenums[file], &tuple);
-            if (r==0) {
-                // We found the cachefile.  (maybe) Do the delete.
-                DB *db = &tuple->fake_db;
-
-                DBT_ARRAY key_array;
-                if (db != src_db) {
-                    r = renv->generate_row_for_del(db, src_db, &renv->dest_keys, &src_key, &src_val);
-                    assert(r==0);
-                    invariant(renv->dest_keys.size <= renv->dest_keys.capacity);
-                    key_array = renv->dest_keys;
-                } else {
-                    key_array.size = key_array.capacity = 1;
-                    key_array.dbts = &src_key;
-                }
-                for (uint32_t i = 0; i < key_array.size; i++) {
-                    toku_ft_maybe_delete(tuple->ft_handle, &key_array.dbts[i], txn, true, l->lsn, false);
-                }
-            }
-        }
-    }
-
-    return 0;
-}
-
-static int toku_recover_backward_enq_delete_multiple (struct logtype_enq_delete_multiple *UU(l), RECOVER_ENV UU(renv)) {
     // nothing
     return 0;
 }

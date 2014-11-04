@@ -325,10 +325,12 @@ static DB *iibench_set_descriptor_after_db_opens(DB_ENV *env, DB *db, int idx, r
     desc_dbt.size = sizeof(idx);
     desc_dbt.ulen = 0;
     desc_dbt.flags = 0;
-    r = db->change_descriptor(db, nullptr, &desc_dbt, 0); CKERR(r);
+    char * dname_str = toku_strdup(db->get_dname(db));
     r = db->close(db, 0); CKERR(r);
+    r = env->db_change_descriptor(env, nullptr, dname_str, &desc_dbt); CKERR(r);
     r = db_create(&db, env, 0); CKERR(r);
     reopen(db, idx, cli_args);
+    toku_free(dname_str);
     return db;
 }
 

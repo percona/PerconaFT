@@ -165,8 +165,6 @@ static void upgrade_test_1(DB **dbs) {
     int r;
     // open the DBS
     {
-        DBT desc;
-        dbt_init(&desc, "foo", sizeof("foo"));
         char name[MAX_NAME*2];
 
         int idx[MAX_DBS];
@@ -176,9 +174,6 @@ static void upgrade_test_1(DB **dbs) {
             dbs[i]->app_private = &idx[i];
             snprintf(name, sizeof(name), "db_%04x", i);
             r = dbs[i]->open(dbs[i], NULL, name, NULL, DB_BTREE, DB_CREATE, 0666);                                CKERR(r);
-            IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-                    { int chk_r = dbs[i]->change_descriptor(dbs[i], txn_desc, &desc, 0); CKERR(chk_r); }
-            });
         }
     }
 

@@ -435,7 +435,10 @@ run_test(int ndbs, int nrows) {
         r = db[dbnum]->open(db[dbnum], NULL, dbname, NULL, DB_BTREE, DB_AUTO_COMMIT|DB_CREATE, 0666);    
         assert_zero(r);
         IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-                { int chk_r = db[dbnum]->change_descriptor(db[dbnum], txn_desc, &dbt_dbnum, 0); CKERR(chk_r); }
+            r = db[dbnum]->close(db[dbnum], 0); assert_zero(r);
+            { int chk_r = env->db_change_descriptor(env, txn_desc, dbname, &dbt_dbnum); CKERR(chk_r); }
+            r = db_create(&db[dbnum], env, 0); assert_zero(r);
+            r = db[dbnum]->open(db[dbnum], txn_desc, dbname, NULL, DB_BTREE, DB_AUTO_COMMIT+DB_CREATE, S_IRWXU+S_IRWXG+S_IRWXO); assert_zero(r);
         });
     }
 

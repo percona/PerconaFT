@@ -145,8 +145,6 @@ typedef enum {insert, delete} test_type;
 static void
 open_dbs(DB **dbs) {
     int r;
-    DBT desc;
-    dbt_init(&desc, "foo", sizeof("foo"));
     char name[MAX_NAME*2];
     
     for(int i=0;i<NUM_DBS;i++) {
@@ -155,9 +153,6 @@ open_dbs(DB **dbs) {
 	dbs[i]->app_private = &idx[i];
 	snprintf(name, sizeof(name), "db_%04x", i);
 	r = dbs[i]->open(dbs[i], NULL, name, NULL, DB_BTREE, DB_CREATE, 0666);                                CKERR(r);
-    IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-            { int chk_r = dbs[i]->change_descriptor(dbs[i], txn_desc, &desc, 0); CKERR(chk_r); }
-    });
     }
 }
 

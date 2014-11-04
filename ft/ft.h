@@ -160,22 +160,10 @@ void toku_ft_stat64 (FT ft, struct ftstat64_s *s);
 void toku_ft_get_fractal_tree_info64 (FT ft, struct ftinfo64 *s);
 int toku_ft_iterate_fractal_tree_block_map(FT ft, int (*iter)(uint64_t,int64_t,int64_t,int64_t,int64_t,void*), void *iter_extra);
 
-// unconditionally set the descriptor for an open FT. can't do this when
-// any operation has already occurred on the ft.
-// see toku_ft_change_descriptor(), which is the transactional version
-// used by the ydb layer. it better describes the client contract.
-void toku_ft_update_descriptor(FT ft, DESCRIPTOR desc);
-// use this version if the FT is not fully user-opened with a valid cachefile.
-// this is a clean hack to get deserialization code to update a descriptor
-// while the FT and cf are in the process of opening, for upgrade purposes
-void toku_ft_update_descriptor_with_fd(FT ft, DESCRIPTOR desc, int fd);
-void toku_ft_update_cmp_descriptor(FT ft);
-
 // get the descriptor for a ft. safe to read as long as clients honor the
 // strict contract put forth by toku_ft_update_descriptor/toku_ft_change_descriptor
 // essentially, there should never be a reader while there is a writer, enforced
 // by the client, not the FT.
-DESCRIPTOR toku_ft_get_descriptor(FT_HANDLE ft_handle);
 DESCRIPTOR toku_ft_get_cmp_descriptor(FT_HANDLE ft_handle);
 
 typedef struct {
@@ -228,6 +216,7 @@ struct toku_product_name_strings_struct {
     char environmentdictionary[sizeof(toku_product_name) + sizeof(".environment")];
     char fileopsdirectory[sizeof(toku_product_name) + sizeof(".directory")];
     char fileopsinames[sizeof(toku_product_name) + sizeof(".inames")];
+    char fileopsdesc[sizeof(toku_product_name) + sizeof(".descriptors")];
     char single_process_lock[sizeof(toku_product_name) + sizeof("___lock_dont_delete_me")];
     char rollback_cachefile[sizeof(toku_product_name) + sizeof(".rollback")];
 };

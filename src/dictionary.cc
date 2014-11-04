@@ -102,16 +102,6 @@ PATENT RIGHTS GRANT:
 #include "ydb_row_lock.h"
 #include "iname_helpers.h"
 
-
-// set the descriptor and cmp_descriptor to the
-// descriptors from the given ft, updating the
-// locktree's descriptor pointer if necessary
-static void
-db_set_descriptors(DB *db, FT_HANDLE ft_handle) {
-    db->descriptor = toku_ft_get_descriptor(ft_handle);
-    db->cmp_descriptor = toku_ft_get_cmp_descriptor(ft_handle);
-}
-
 static int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags) {
     //Set comparison functions if not yet set.
     HANDLE_READ_ONLY_TXN(txn);
@@ -148,7 +138,7 @@ static int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, u
 
     // now that the handle has successfully opened, a valid descriptor
     // is in the ft. we need to set the db's descriptor pointers
-    db_set_descriptors(db, ft_handle);
+    db->cmp_descriptor = toku_ft_get_cmp_descriptor(ft_handle);
     r = 0;
  
 out:
@@ -189,6 +179,7 @@ void dictionary::create(
     m_refcount = 0;
     m_mgr = manager;
     m_ltm = &ltm;
+    toku_clone_dbt(&m_descriptor.dbt, dinfo->descriptor);
     if (need_locktree) {
         DICTIONARY_ID dict_id = {
             .dictid = m_id
@@ -234,6 +225,11 @@ toku::locktree* dictionary::get_lt() const {
     return m_lt;
 }
 
+DESCRIPTOR_S* dictionary::get_descriptor() {
+    return &m_descriptor;
+}
+
+
 
 //////////////////////////////////////////
 // persistent_dictionary_manager methods
@@ -260,6 +256,8 @@ int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn, toku::lo
     int r = setup_internal_db(&m_directory, env, txn, toku_product_name_strings.fileopsdirectory, DIRECTORY_ID, ltm);
     if (r != 0) goto cleanup;
     r = setup_internal_db(&m_inamedb, env, txn, toku_product_name_strings.fileopsinames, INAME_ID, ltm);
+    if (r != 0) goto cleanup;
+    r = setup_internal_db(&m_descriptordb, env, txn, toku_product_name_strings.fileopsdesc, DESC_ID, ltm);
     if (r != 0) goto cleanup;
     // get the last entry in m_inamesdb, that has the current max used id
     // set m_next_id to that value plus one
@@ -324,8 +322,17 @@ int persistent_dictionary_manager::get_dinfo(const char* dname, DB_TXN* txn, dic
         goto cleanup;
     }
     if (r != 0) goto cleanup;
-
     dinfo->iname = (char *) iname_dbt.data;
+
+    // get descriptor
+    toku_init_dbt_flags(&dinfo->descriptor, DB_DBT_MALLOC);
+    r = toku_db_get(m_descriptordb, txn, &id_dbt, &dinfo->descriptor, DB_SERIALIZABLE);  // allocates memory for iname
+    if (r == DB_NOTFOUND) {
+        // it's ok for a descriptor to not exist
+        r = 0;
+    }
+    if (r != 0) goto cleanup;
+    
     dinfo->dname = toku_strdup(dname);
 cleanup:
     return r;
@@ -413,6 +420,25 @@ exit:
     return r;
 }
 
+int persistent_dictionary_manager::change_descriptor(const char *dname, DB_TXN* txn, DBT *descriptor) {
+    dictionary_info dinfo;
+    int r = get_dinfo(dname, txn, &dinfo);
+    if (r != 0) {
+        if (r == DB_NOTFOUND) {
+            r = ENOENT;
+        }
+        goto exit;
+    }
+    DBT id_dbt;
+    toku_fill_dbt(&id_dbt, &dinfo.id, sizeof(dinfo.id));
+    r = toku_db_put(m_descriptordb, txn, &id_dbt, descriptor, 0, true);
+    if (r != 0) { goto exit; }
+
+exit:
+    dinfo.destroy();
+    return r;
+}
+
 int  persistent_dictionary_manager::create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo) {
     dinfo->dname = (dname) ? toku_strdup(dname) : nullptr;
     dinfo->iname = create_new_iname(dname, env, txn, NULL);
@@ -446,6 +472,9 @@ void persistent_dictionary_manager::destroy() {
     }
     if (m_inamedb) {
         toku_db_close(m_inamedb);
+    }
+    if (m_descriptordb) {
+        toku_db_close(m_descriptordb);
     }
     toku_mutex_destroy(&m_mutex);
 }
@@ -527,6 +556,8 @@ int dictionary_manager::validate_environment(DB_ENV* env, bool* valid_newenv) {
     r = validate_metadata_db(env, toku_product_name_strings.fileopsdirectory, expect_newenv);
     if (r != 0) goto cleanup;
     r = validate_metadata_db(env, toku_product_name_strings.fileopsinames, expect_newenv);
+    if (r != 0) goto cleanup;
+    r = validate_metadata_db(env, toku_product_name_strings.fileopsdesc, expect_newenv);
     if (r != 0) goto cleanup;
 
     *valid_newenv = expect_newenv;
@@ -873,6 +904,25 @@ exit:
     return r;
 }
 
+int dictionary_manager::change_descriptor(const char *dname, DB_TXN* txn, DBT *descriptor) {
+    dictionary_info dinfo;
+    dictionary* old_dict = NULL;
+    int r = pdm.get_dinfo(dname, txn, &dinfo);
+    if (r != 0) goto exit;
+    r = pdm.change_descriptor(dname, txn, descriptor);
+    if (r != 0) goto exit;
+    old_dict = idm.find(dname);
+    if (old_dict) {
+        r = EINVAL;
+        printf("Cannot change descriptor of dictionary with an open handle.\n");
+        goto exit;
+    }
+
+exit:
+    dinfo.destroy();
+    return r;
+}
+
 int dictionary_manager::open_db(
     DB* db,
     const char * dname,
@@ -902,6 +952,7 @@ int dictionary_manager::open_db(
         if (r == 0) {
             // now that the directory has been updated, create the dictionary
             db->i->dict = idm.get_dictionary(&dinfo, toku_ft_get_comparator(db->i->ft_handle));
+            db->descriptor = db->i->dict->get_descriptor();
         }
     }
     

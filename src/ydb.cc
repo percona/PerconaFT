@@ -352,6 +352,41 @@ locked_env_dbrename(DB_ENV *env, DB_TXN *txn, const char *fname, const char *dbn
     return r;
 }
 
+static int
+locked_env_db_change_descriptor(DB_ENV *env, DB_TXN *txn, const char *dname, DBT* descriptor) {
+    int ret, r;
+    HANDLE_PANICKED_ENV(env);
+    if (!env_opened(env)) {
+        return EINVAL;
+    }
+    HANDLE_READ_ONLY_TXN(txn);
+    HANDLE_ILLEGAL_WORKING_PARENT_TXN(env, txn);
+
+    DB_TXN *child_txn = NULL;
+    int using_txns = env->i->open_flags & DB_INIT_TXN;
+    if (!using_txns) {
+        r = toku_ydb_do_error(env, EINVAL, "Must be using transactions to change the descriptor\n");
+        goto exit;
+    }
+    ret = toku_txn_begin(env, txn, &child_txn, 0);
+    lazy_assert_zero(ret);
+
+    // cannot begin a checkpoint
+    toku_multi_operation_client_lock();
+    r = env->i->dict_manager.change_descriptor(dname, child_txn, descriptor);
+    toku_multi_operation_client_unlock();
+
+    if (r == 0) {
+        ret = locked_txn_commit(child_txn, 0);
+        lazy_assert_zero(ret);
+    } else {
+        ret = locked_txn_abort(child_txn);
+        lazy_assert_zero(ret);
+    }
+exit:
+    return r;
+}
+
 #if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3
 
 static int 
@@ -1558,6 +1593,7 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
 #define SENV(name) result->name = locked_env_ ## name
     SENV(dbremove);
     SENV(dbrename);
+    SENV(db_change_descriptor);
     //SENV(set_noticecall);
 #undef SENV
 #define USENV(name) result->name = env_ ## name

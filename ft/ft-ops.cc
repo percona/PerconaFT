@@ -2461,37 +2461,6 @@ void toku_ft_hot_index(FT_HANDLE ft_handle __attribute__ ((unused)), TOKUTXN txn
     toku_ft_hot_index_recovery(txn, filenums, do_fsync, do_log, lsn);
 }
 
-void
-toku_ft_log_put (TOKUTXN txn, FT_HANDLE ft_handle, const DBT *key, const DBT *val) {
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        BYTESTRING valbs = {.len=val->size, .data=(char *) val->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        toku_log_enq_insert(logger, (LSN*)0, 0, txn, toku_cachefile_filenum(ft_handle->ft->cf), xid, keybs, valbs);
-    }
-}
-
-void
-toku_ft_log_put_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val) {
-    assert(txn);
-    assert(num_fts > 0);
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        FILENUM         fnums[num_fts];
-        uint32_t i;
-        for (i = 0; i < num_fts; i++) {
-            fnums[i] = toku_cachefile_filenum(fts[i]->ft->cf);
-        }
-        FILENUMS filenums = {.num = num_fts, .filenums = fnums};
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        BYTESTRING valbs = {.len=val->size, .data=(char *) val->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        FILENUM src_filenum = src_ft ? toku_cachefile_filenum(src_ft->ft->cf) : FILENUM_NONE;
-        toku_log_enq_insert_multiple(logger, (LSN*)0, 0, txn, src_filenum, filenums, xid, keybs, valbs);
-    }
-}
-
 TXN_MANAGER toku_ft_get_txn_manager(FT_HANDLE ft_h) {
     TOKULOGGER logger = toku_cachefile_logger(ft_h->ft->cf);
     return logger != nullptr ? toku_logger_get_txn_manager(logger) : nullptr;
@@ -2655,36 +2624,6 @@ void toku_ft_send_commit_any(FT_HANDLE ft_handle, DBT *key, XIDS xids, txn_gc_in
 
 void toku_ft_delete(FT_HANDLE ft_handle, DBT *key, TOKUTXN txn) {
     toku_ft_maybe_delete(ft_handle, key, txn, false, ZERO_LSN, true);
-}
-
-void
-toku_ft_log_del(TOKUTXN txn, FT_HANDLE ft_handle, const DBT *key) {
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        toku_log_enq_delete_any(logger, (LSN*)0, 0, txn, toku_cachefile_filenum(ft_handle->ft->cf), xid, keybs);
-    }
-}
-
-void
-toku_ft_log_del_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val) {
-    assert(txn);
-    assert(num_fts > 0);
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        FILENUM         fnums[num_fts];
-        uint32_t i;
-        for (i = 0; i < num_fts; i++) {
-            fnums[i] = toku_cachefile_filenum(fts[i]->ft->cf);
-        }
-        FILENUMS filenums = {.num = num_fts, .filenums = fnums};
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        BYTESTRING valbs = {.len=val->size, .data=(char *) val->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        FILENUM src_filenum = src_ft ? toku_cachefile_filenum(src_ft->ft->cf) : FILENUM_NONE;
-        toku_log_enq_delete_multiple(logger, (LSN*)0, 0, txn, src_filenum, filenums, xid, keybs, valbs);
-    }
 }
 
 void toku_ft_maybe_delete(FT_HANDLE ft_h, DBT *key, TOKUTXN txn, bool oplsn_valid, LSN oplsn, bool do_logging) {
@@ -2874,59 +2813,6 @@ verify_builtin_comparisons_consistent(FT_HANDLE t, uint32_t flags) {
         return EINVAL;
     }
     return 0;
-}
-
-//
-// See comments in toku_db_change_descriptor to understand invariants 
-// in the system when this function is called
-//
-void toku_ft_change_descriptor(
-    FT_HANDLE ft_h,
-    const DBT* old_descriptor,
-    const DBT* new_descriptor,
-    bool do_log,
-    TOKUTXN txn,
-    bool update_cmp_descriptor
-    )
-{
-    DESCRIPTOR_S new_d;
-
-    // if running with txns, save to rollback + write to recovery log
-    if (txn) {
-        // put information into rollback file
-        BYTESTRING old_desc_bs = { old_descriptor->size, (char *) old_descriptor->data };
-        BYTESTRING new_desc_bs = { new_descriptor->size, (char *) new_descriptor->data };
-        toku_logger_save_rollback_change_fdescriptor(
-            txn,
-            toku_cachefile_filenum(ft_h->ft->cf),
-            &old_desc_bs
-            );
-        toku_txn_maybe_note_ft(txn, ft_h->ft);
-
-        if (do_log) {
-            TOKULOGGER logger = toku_txn_logger(txn);
-            TXNID_PAIR xid = toku_txn_get_txnid(txn);
-            toku_log_change_fdescriptor(
-                logger, NULL, 0,
-                txn,
-                toku_cachefile_filenum(ft_h->ft->cf),
-                xid,
-                old_desc_bs,
-                new_desc_bs,
-                update_cmp_descriptor
-                );
-        }
-    }
-
-    // write new_descriptor to header
-    new_d.dbt = *new_descriptor;
-    toku_ft_update_descriptor(ft_h->ft, &new_d);
-    // very infrequent operation, worth precise threadsafe count
-    STATUS_INC(FT_DESCRIPTOR_SET, 1);
-
-    if (update_cmp_descriptor) {
-        toku_ft_update_cmp_descriptor(ft_h->ft);
-    }
 }
 
 static void

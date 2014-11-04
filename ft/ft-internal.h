@@ -208,9 +208,6 @@ struct ft {
 
     CACHEFILE cf;
 
-    // protected by locktree
-    DESCRIPTOR_S descriptor;
-
     // protected by locktree and user.
     // User makes sure this is only changed when no activity on tree
     DESCRIPTOR_S cmp_descriptor;

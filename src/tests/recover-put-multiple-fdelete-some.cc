@@ -158,15 +158,22 @@ static void run_test (void) {
     r = db_create(&dba, env, 0);                                                        CKERR(r);
     r = db_create(&dbb, env, 0);                                                        CKERR(r);
     r = dba->open(dba, NULL, namea, NULL, DB_BTREE, DB_AUTO_COMMIT|DB_CREATE, 0666);    CKERR(r);
+    r = dba->close(dba, 0); CKERR(r);
     which = 0;
     IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-            { int chk_r = dba->change_descriptor(dba, txn_desc, &descriptor, 0); CKERR(chk_r); }
+            { int chk_r = env->db_change_descriptor(env, txn_desc, namea, &descriptor); CKERR(chk_r); }
     });
     r = dbb->open(dbb, NULL, nameb, NULL, DB_BTREE, DB_AUTO_COMMIT|DB_CREATE, 0666);    CKERR(r);
+    r = dbb->close(dbb, 0); CKERR(r);
     which = 1;
     IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-            { int chk_r = dbb->change_descriptor(dbb, txn_desc, &descriptor, 0); CKERR(chk_r); }
+            { int chk_r = env->db_change_descriptor(env, txn_desc, nameb, &descriptor); CKERR(chk_r); }
     });
+    r = db_create(&dba, env, 0);                                                        CKERR(r);
+    r = db_create(&dbb, env, 0);                                                        CKERR(r);
+    r = dba->open(dba, NULL, namea, NULL, DB_BTREE, DB_AUTO_COMMIT, 0666);    CKERR(r);
+    r = dbb->open(dbb, NULL, nameb, NULL, DB_BTREE, DB_AUTO_COMMIT, 0666);    CKERR(r);
+
 
     DB *dbs[num_dbs] = {dba, dbb};
     uint32_t flags[num_dbs] = {0, 0};

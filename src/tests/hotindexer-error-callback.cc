@@ -186,8 +186,6 @@ static void run_test(void)
     r = generate_initial_table(src_db, txn, NUM_ROWS);                           CKERR(r);
     r = txn->commit(txn, DB_TXN_SYNC);                                           CKERR(r);
 
-    DBT desc;
-    dbt_init(&desc, "foo", sizeof("foo"));
 
     DB *dbs[NUM_DBS];
     int idx[MAX_DBS];
@@ -198,9 +196,6 @@ static void run_test(void)
         char key_name[32]; 
         sprintf(key_name, "key%d", i);
         r = dbs[i]->open(dbs[i], NULL, key_name, NULL, DB_BTREE, DB_AUTO_COMMIT|DB_CREATE, 0666);   CKERR(r);
-        IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-                { int chk_r = dbs[i]->change_descriptor(dbs[i], txn_desc, &desc, 0); CKERR(chk_r); }
-        });
     }
 
     // -------------------------- //

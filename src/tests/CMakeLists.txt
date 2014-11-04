@@ -177,8 +177,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
   add_ydb_helgrind_test(test_groupcommit_count.tdb -n 1)
   add_ydb_drd_test(test_groupcommit_count.tdb -n 1)
 
-  add_ydb_drd_test(test_4015.tdb)
-
   # We link the locktree so that stress test 0 can call some
   # functions (ie: lock escalation) directly.
   target_link_libraries(test_stress0.tdb locktree)
@@ -466,7 +464,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
   set_tests_properties(${long_tests} PROPERTIES TIMEOUT 3600)
   ## some take even longer, with valgrind
   set(extra_long_tests
-    ydb/drd_test_4015.tdb
     ydb/hotindexer-with-queries.tdb
     ydb/hot-optimize-table-tests.tdb
     ydb/loader-cleanup-test2.tdb

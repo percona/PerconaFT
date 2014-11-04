@@ -104,10 +104,6 @@ static void assert_desc_four (DB* db) {
     assert(db->descriptor->dbt.size == sizeof(four_byte_desc));
     assert(*(uint32_t *)(db->descriptor->dbt.data) == four_byte_desc);
 }
-static void assert_desc_eight (DB* db) {
-    assert(db->descriptor->dbt.size == sizeof(eight_byte_desc));
-    assert(*(uint32_t *)(db->descriptor->dbt.data) == eight_byte_desc);
-}
 
 static void checkpoint_callback_1(void * extra) {
     assert(extra == NULL);
@@ -121,10 +117,14 @@ static void checkpoint_callback_1(void * extra) {
     { int chk_r = db_create(&db, env, 0); CKERR(chk_r); }
     { int chk_r = db->open(db, NULL, "foo.db", NULL, DB_BTREE, 0, 0666); CKERR(chk_r); }
     assert_desc_four(db);
+
+    { int chk_r = db->close(db, 0); assert_zero(chk_r);}
     IN_TXN_ABORT(env, NULL, txn_change, 0, {
-            { int chk_r = db->change_descriptor(db, txn_change, &change_descriptor, 0); CKERR(chk_r); }
-            assert_desc_eight(db);
+            { int chk_r = env->db_change_descriptor(env, txn_change, "foo.db", &change_descriptor); CKERR(chk_r); }
         });
+    { int chk_r = db_create(&db, env, 0); CKERR(chk_r); }
+    { int chk_r = db->open(db, NULL, "foo.db", NULL, DB_BTREE, 0, 0666); CKERR(chk_r); }
+
     assert_desc_four(db);
     { int chk_r = db->close(db,0); CKERR(chk_r); }
 }
@@ -154,7 +154,10 @@ static void run_test(void) {
             { int chk_r = db_create(&db, env, 0); CKERR(chk_r); }
             assert(db->descriptor == NULL);
             { int chk_r = db->open(db, txn_create, "foo.db", NULL, DB_BTREE, DB_CREATE, 0666); CKERR(chk_r); }
-            { int chk_r = db->change_descriptor(db, txn_create, &orig_desc, 0); CKERR(chk_r); }
+            { int chk_r = db->close(db, 0); assert_zero(chk_r);}
+            { int chk_r = env->db_change_descriptor(env, txn_create, "foo.db", &orig_desc); CKERR(chk_r); }
+            { int chk_r = db_create(&db, env, 0); CKERR(chk_r); }
+            { int chk_r = db->open(db, txn_create, "foo.db", NULL, DB_BTREE, 0, 0666); CKERR(chk_r); }
             assert_desc_four(db);
         });
     assert_desc_four(db);

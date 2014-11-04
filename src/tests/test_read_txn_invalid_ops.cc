@@ -188,7 +188,7 @@ static void test_invalid_ops(uint32_t iso_flags) {
     r = env->create_loader(env, txn, &loader, NULL, 1, &db, &put_flags, &dbt_flags, 0); 
     CKERR2(r, EINVAL);
 
-    r = db->change_descriptor(db, txn, &key, 0);
+    r = env->db_change_descriptor(env, txn, "foo.db", &key);
     CKERR2(r, EINVAL);
     
     //
