@@ -936,7 +936,6 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     result->get = autotxn_db_get;
     result->getf_set = autotxn_db_getf_set;
     
-    result->i->dict_id = DICTIONARY_ID_NONE;
     result->i->opened = 0;
     result->i->indexer = NULL;
     *db = result;

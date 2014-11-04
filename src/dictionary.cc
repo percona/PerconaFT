@@ -156,12 +156,14 @@ static int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, u
     db_set_descriptors(db, ft_handle);
 
     if (need_locktree) {
-        db->i->dict_id = toku_ft_get_dictionary_id(db->i->ft_handle);
         struct lt_on_create_callback_extra on_create_extra = {
             .txn = txn,
             .ft_handle = db->i->ft_handle,
         };
-        db->i->lt = db->dbenv->i->ltm.get_lt(db->i->dict_id,
+        DICTIONARY_ID dict_id = {
+            .dictid = db->i->dict->get_id()
+        };
+        db->i->lt = db->dbenv->i->ltm.get_lt(dict_id,
                                              toku_ft_get_comparator(db->i->ft_handle),
                                              &on_create_extra);
         if (db->i->lt == nullptr) {
@@ -176,7 +178,6 @@ static int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, u
  
 out:
     if (r != 0) {
-        db->i->dict_id = DICTIONARY_ID_NONE;
         db->i->opened = 0;
         if (db->i->lt) {
             db->dbenv->i->ltm.release_lt(db->i->lt);
