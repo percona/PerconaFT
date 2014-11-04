@@ -211,7 +211,7 @@ query_context_base_init(QUERY_CONTEXT_BASE context, DBC *c, uint32_t flag, bool 
     if (context->is_write_op) {
         lock_flags &= DB_PRELOCKED_WRITE; // Only care about whether already locked for write
     }
-    context->do_locking = (context->db->i->lt != nullptr && !(lock_flags & (DB_PRELOCKED | DB_PRELOCKED_WRITE)));
+    context->do_locking = (context->db->i->dict->get_lt() != nullptr && !(lock_flags & (DB_PRELOCKED | DB_PRELOCKED_WRITE)));
     context->r_user_callback = 0;
     context->request.create();
 }
@@ -749,7 +749,7 @@ c_set_bounds(DBC *dbc, const DBT *left_key, const DBT *right_key, bool pre_acqui
                                    (left_key == toku_dbt_negative_infinity()),
                                    (right_key == toku_dbt_positive_infinity()),
                                    out_of_range_error);
-    if (!db->i->lt || !txn || !pre_acquire)
+    if (!db->i->dict->get_lt() || !txn || !pre_acquire)
         return 0;
     //READ_UNCOMMITTED and READ_COMMITTED transactions do not need read locks.
     if (!dbc_struct_i(dbc)->rmw && dbc_struct_i(dbc)->iso != TOKU_ISO_SERIALIZABLE)

@@ -467,7 +467,7 @@ env_set_lk_max_memory(DB_ENV *env, uint64_t lock_memory_limit) {
     if (env_opened(env)) {
         r = EINVAL;
     } else {
-        r = env->i->ltm.set_max_lock_memory(lock_memory_limit);
+        r = env->i->dict_manager.get_ltm().set_max_lock_memory(lock_memory_limit);
     }
     return r;
 }
@@ -475,7 +475,7 @@ env_set_lk_max_memory(DB_ENV *env, uint64_t lock_memory_limit) {
 static int 
 env_get_lk_max_memory(DB_ENV *env, uint64_t *lk_maxp) {
     HANDLE_PANICKED_ENV(env);
-    uint32_t max_lock_memory = env->i->ltm.get_max_lock_memory();
+    uint32_t max_lock_memory = env->i->dict_manager.get_ltm().get_max_lock_memory();
     *lk_maxp = max_lock_memory;
     return 0;
 }
@@ -1033,7 +1033,7 @@ env_get_engine_status (DB_ENV * env, TOKU_ENGINE_STATUS_ROW engstat, uint64_t ma
         }
         {
             LTM_STATUS_S ltmstat;
-            env->i->ltm.get_status(&ltmstat);
+            env->i->dict_manager.get_ltm().get_status(&ltmstat);
             for (int i = 0; i < LTM_STATUS_NUM_ROWS && row < maxrows; i++) {
                 if (ltmstat.status[i].include & include_flags) {
                     engstat[row++] = ltmstat.status[i];
@@ -1412,7 +1412,7 @@ env_iterate_pending_lock_requests(DB_ENV *env,
         return EINVAL;
     }
 
-    toku::locktree_manager *mgr = &env->i->ltm;
+    toku::locktree_manager *mgr = &env->i->dict_manager.get_ltm();
     ltm_iterate_requests_callback_extra e(env, callback, extra);
     return mgr->iterate_pending_lock_requests(ltm_iterate_requests_callback, &e);
 }
@@ -1654,7 +1654,6 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     // Create the locktree manager, passing in the create/destroy/escalate callbacks.
     // The extra parameter for escalation is simply a pointer to this environment.
     // The escalate callback will need it to translate txnids to DB_TXNs
-    result->i->ltm.create(toku_db_lt_on_create_callback, toku_db_lt_on_destroy_callback, toku_db_txn_escalate_callback, result);
     result->i->dict_manager.create();
 
     *envp = result;

@@ -96,10 +96,10 @@ namespace toku {
 // test simple, non-overlapping read locks and then write locks
 void locktree_unit_test::test_simple_lock(void) {
     locktree_manager mgr;
-    mgr.create(nullptr, nullptr, nullptr, nullptr);
+    mgr.create(nullptr, nullptr);
 
     DICTIONARY_ID dict_id = { .dictid = 1 };
-    locktree *lt = mgr.get_lt(dict_id, dbt_comparator, nullptr);
+    locktree *lt = mgr.get_lt(dict_id, dbt_comparator);
 
     int r;
     TXNID txnid_a = 1001;

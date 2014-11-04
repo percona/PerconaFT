@@ -95,7 +95,6 @@ namespace toku {
 
 static DBT *expected_a;
 static DBT *expected_b;
-static DESCRIPTOR expected_descriptor;
 static int expected_comparison_magic = 55;
 
 static int my_compare_dbts(const DBT *a, const DBT *b) {
@@ -119,7 +118,6 @@ void locktree_unit_test::test_misc(void) {
     lt.set_userdata(nullptr);
     invariant(lt.get_userdata() == nullptr);
 
-    int r;
     DBT dbt_a, dbt_b;
     DESCRIPTOR_S d1, d2;
     expected_a = &dbt_a;
@@ -128,17 +126,6 @@ void locktree_unit_test::test_misc(void) {
     toku::comparator cmp_d1, cmp_d2;
     cmp_d1.create(my_compare_dbts, &d1);
     cmp_d2.create(my_compare_dbts, &d2);
-
-    // make sure the comparator object has the correct
-    // descriptor when we set the locktree's descriptor
-    lt.set_comparator(cmp_d1);
-    expected_descriptor = &d1;
-    r = lt.m_cmp(&dbt_a, &dbt_b);
-    invariant(r == expected_comparison_magic);
-    lt.set_comparator(cmp_d2);
-    expected_descriptor = &d2;
-    r = lt.m_cmp(&dbt_a, &dbt_b);
-    invariant(r == expected_comparison_magic);
 
     lt.release_reference();
     lt.destroy();

@@ -110,9 +110,12 @@ namespace toku {
     // that points may be positive or negative infinity.
 
     class comparator {
-        void init(ft_compare_func cmp, DESCRIPTOR desc, uint8_t memcmp_magic) {
+        void init(ft_compare_func cmp, const DESCRIPTOR_S* desc, uint8_t memcmp_magic) {
             _cmp = cmp;
-            _fake_db->cmp_descriptor = desc;
+            toku_init_dbt(&_desc.dbt);
+            if (desc->dbt.data) {
+                toku_clone_dbt(&_desc.dbt, desc->dbt);
+            }
             _memcmp_magic = memcmp_magic;
         }
 
@@ -121,32 +124,30 @@ namespace toku {
         static const uint8_t MEMCMP_MAGIC_NONE = 0;
 
         void create(ft_compare_func cmp, DESCRIPTOR desc, uint8_t memcmp_magic = MEMCMP_MAGIC_NONE) {
-            XCALLOC(_fake_db);
             init(cmp, desc, memcmp_magic);
         }
 
         // inherit the attributes of another comparator, but keep our own
         // copy of fake_db that is owned separately from the one given.
         void inherit(const comparator &cmp) {
-            invariant_notnull(_fake_db);
             invariant_notnull(cmp._cmp);
-            invariant_notnull(cmp._fake_db);
-            init(cmp._cmp, cmp._fake_db->cmp_descriptor, cmp._memcmp_magic);
+            init(cmp._cmp, &cmp._desc, cmp._memcmp_magic);
         }
 
         // like inherit, but doesn't require that the this comparator
         // was already created
         void create_from(const comparator &cmp) {
-            XCALLOC(_fake_db);
             inherit(cmp);
         }
 
         void destroy() {
-            toku_free(_fake_db);
+            if (_desc.dbt.data) {
+                toku_free(_desc.dbt.data);
+            }
         }
 
         const DESCRIPTOR_S *get_descriptor() const {
-            return _fake_db->cmp_descriptor;
+            return &_desc;
         }
 
         ft_compare_func get_compare_func() const {
@@ -180,7 +181,7 @@ namespace toku {
         }
 
     private:
-        DB *_fake_db;
+        DESCRIPTOR_S _desc;
         ft_compare_func _cmp;
         uint8_t _memcmp_magic;
     };

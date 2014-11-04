@@ -96,6 +96,8 @@ PATENT RIGHTS GRANT:
 
 #include <util/omt.h>
 #include "ft/txn/txn.h"
+#include <ft/comparator.h>
+#include <locktree/locktree.h>
 
 class inmemory_dictionary_manager;
 
@@ -122,12 +124,21 @@ class dictionary {
     uint32_t m_refcount; // access protected by the mutex of dictionary_manager that is managing this dictionary
     uint64_t m_id;
     inmemory_dictionary_manager* m_mgr;
+    toku::locktree *m_lt;
+    toku::locktree_manager *m_ltm;
 public:
-    void create(const dictionary_info* dinfo, inmemory_dictionary_manager* manager);
+    void create(
+        const dictionary_info* dinfo,
+        inmemory_dictionary_manager* manager,
+        bool need_locktree,
+        const toku::comparator &cmp,
+        toku::locktree_manager &ltm
+        );
     void destroy();
     void release();
     char* get_dname() const;
     uint64_t get_id() const;
+    toku::locktree* get_lt() const;
 
     friend class inmemory_dictionary_manager;
 };
@@ -147,7 +158,7 @@ private:
     DB* m_inamedb; // maps dictionary id to iname
     uint64_t m_next_id;
     toku_mutex_t m_mutex;
-    int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname, uint64_t id);
+    int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname, uint64_t id, toku::locktree_manager &ltm);
     
 public:
     persistent_dictionary_manager() : 
@@ -156,7 +167,7 @@ public:
         m_next_id(0)
     {
     }
-    int initialize(DB_ENV* env, DB_TXN* txn);
+    int initialize(DB_ENV* env, DB_TXN* txn, toku::locktree_manager &ltm);
     int get_directory_cursor(DB_TXN* txn, DBC** c);
     int get_dinfo(const char* dname, DB_TXN* txn, dictionary_info* dinfo);
     int get_iname(const char* dname, DB_TXN* txn, char** iname);
@@ -173,6 +184,8 @@ private:
     // protects access the map
     toku_mutex_t m_mutex;
     toku::omt<dictionary *> m_dictionary_map;
+    bool m_need_locktree; // information used for creating dictionaries
+    toku::locktree_manager m_ltm;
     static int find_by_dname(dictionary *const &dbi, const char* const &dname);
     dictionary* find_locked(const char* dname);
     void add_db(dictionary* dbi);
@@ -186,9 +199,13 @@ public:
     }
     bool release_dictionary(dictionary* dbi);
     uint32_t num_open_dictionaries();
-    dictionary* get_dictionary(const dictionary_info* dinfo);
+    dictionary* get_dictionary(const dictionary_info* dinfo, const toku::comparator &cmp);
+    void initialize(bool need_locktree, DB_ENV* env);
     void create();
     void destroy();
+    toku::locktree_manager &get_ltm() {
+        return m_ltm;
+    }
 };
 
 class dictionary_manager {
@@ -246,5 +263,8 @@ public:
     int open_db(DB* db, const char * dname, DB_TXN * txn, uint32_t flags);    
     uint32_t num_open_dictionaries() {
         return idm.num_open_dictionaries();
+    }
+    toku::locktree_manager &get_ltm() {
+        return idm.get_ltm();
     }
 };

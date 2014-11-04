@@ -100,13 +100,11 @@ PATENT RIGHTS GRANT:
 
 namespace toku {
 
-void locktree_manager::create(lt_create_cb create_cb, lt_destroy_cb destroy_cb, lt_escalate_cb escalate_cb, void *escalate_extra) {
+void locktree_manager::create(lt_escalate_cb escalate_cb, void *escalate_extra) {
     m_max_lock_memory = DEFAULT_MAX_LOCK_MEMORY;
     m_current_lock_memory = 0;
 
     m_locktree_map.create();
-    m_lt_create_callback = create_cb;
-    m_lt_destroy_callback = destroy_cb;
     m_lt_escalate_callback = escalate_cb;
     m_lt_escalate_callback_extra = escalate_extra;
 
@@ -184,7 +182,7 @@ void locktree_manager::locktree_map_remove(locktree *lt) {
 }
 
 locktree *locktree_manager::get_lt(DICTIONARY_ID dict_id,
-                                   const comparator &cmp, void *on_create_extra) {
+                                   const comparator &cmp) {
 
     // hold the mutex around searching and maybe
     // inserting into the locktree map
@@ -195,17 +193,6 @@ locktree *locktree_manager::get_lt(DICTIONARY_ID dict_id,
         XCALLOC(lt);
         lt->create(this, dict_id, cmp);
 
-        // new locktree created - call the on_create callback
-        // and put it in the locktree map
-        if (m_lt_create_callback) {
-            int r = m_lt_create_callback(lt, on_create_extra);
-            if (r != 0) {
-                lt->release_reference();
-                lt->destroy();
-                toku_free(lt);
-                lt = nullptr;
-            }
-        }
         if (lt) {
             locktree_map_put(lt);
         }
@@ -288,9 +275,6 @@ void locktree_manager::release_lt(locktree *lt) {
 
     // if necessary, do the destroy without holding the mutex
     if (do_destroy) {
-        if (m_lt_destroy_callback) {
-            m_lt_destroy_callback(lt);
-        }
         lt->destroy();
         toku_free(lt);
     }

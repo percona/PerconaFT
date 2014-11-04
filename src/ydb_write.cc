@@ -222,7 +222,7 @@ toku_db_del(DB *db, DB_TXN *txn, DBT *key, uint32_t flags, bool holds_mo_lock) {
     unchecked_flags &= ~DB_DELETE_ANY;
     uint32_t lock_flags = get_prelocked_flags(flags);
     unchecked_flags &= ~lock_flags;
-    bool do_locking = (bool)(db->i->lt && !(lock_flags&DB_PRELOCKED_WRITE));
+    bool do_locking = (bool)(db->i->dict->get_lt() && !(lock_flags&DB_PRELOCKED_WRITE));
 
     int r = 0;
     if (unchecked_flags!=0) {
@@ -291,7 +291,7 @@ toku_db_put(DB *db, DB_TXN *txn, DBT *key, DBT *val, uint32_t flags, bool holds_
     r = db_put_check_size_constraints(db, key, val);
 
     //Do locking if necessary.
-    bool do_locking = (bool)(db->i->lt && !(lock_flags&DB_PRELOCKED_WRITE));
+    bool do_locking = (bool)(db->i->dict->get_lt() && !(lock_flags&DB_PRELOCKED_WRITE));
     if (r == 0 && do_locking) {
         r = toku_db_get_point_write_lock(db, txn, key);
     }
@@ -331,7 +331,7 @@ toku_db_update(DB *db, DB_TXN *txn,
     if (r != 0) { goto cleanup; }
 
     bool do_locking;
-    do_locking = (db->i->lt && !(lock_flags & DB_PRELOCKED_WRITE));
+    do_locking = (db->i->dict->get_lt() && !(lock_flags & DB_PRELOCKED_WRITE));
     if (do_locking) {
         r = toku_db_get_point_write_lock(db, txn, key);
         if (r != 0) { goto cleanup; }
@@ -389,7 +389,7 @@ toku_db_update_broadcast(DB *db, DB_TXN *txn,
     }
 
     bool do_locking;
-    do_locking = (db->i->lt && !(lock_flags & DB_PRELOCKED_WRITE));
+    do_locking = (db->i->dict->get_lt() && !(lock_flags & DB_PRELOCKED_WRITE));
     if (do_locking) {
         r = toku_db_pre_acquire_table_lock(db, txn);
         if (r != 0) { goto cleanup; }
@@ -603,7 +603,7 @@ env_del_multiple(
                 //Grabs a write lock
                 r = db_getf_set(db, txn, lock_flags[which_db]|DB_SERIALIZABLE|DB_RMW, del_key, ydb_getf_do_nothing, NULL);
                 if (r != 0) goto cleanup;
-            } else if (db->i->lt && !(lock_flags[which_db] & DB_PRELOCKED_WRITE)) {  //Do locking if necessary.
+            } else if (db->i->dict->get_lt() && !(lock_flags[which_db] & DB_PRELOCKED_WRITE)) {  //Do locking if necessary.
                 //Needs locking
                 r = toku_db_get_point_write_lock(db, txn, del_key);
                 if (r != 0) goto cleanup;
@@ -783,7 +783,7 @@ env_put_multiple_internal(
             }
 
             //Do locking if necessary.
-            if (db->i->lt && !(lock_flags[which_db] & DB_PRELOCKED_WRITE)) {
+            if (db->i->dict->get_lt() && !(lock_flags[which_db] & DB_PRELOCKED_WRITE)) {
                 //Needs locking
                 r = toku_db_get_point_write_lock(db, txn, &put_key);
                 if (r != 0) goto cleanup;
@@ -979,7 +979,7 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
                 } else if (cmp < 0) {
                     // lock old key only when it does not exist in new array
                     // otherwise locking new key takes care of this
-                    if (db->i->lt && !(lock_flags[which_db] & DB_PRELOCKED_WRITE)) {
+                    if (db->i->dict->get_lt() && !(lock_flags[which_db] & DB_PRELOCKED_WRITE)) {
                         r = toku_db_get_point_write_lock(db, txn, curr_old_key);
                         if (r != 0) goto cleanup;
                     }
@@ -1000,7 +1000,7 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
                     if (r != 0) goto cleanup;
 
                     // lock new key unless already locked
-                    if (db->i->lt && !(lock_flags[which_db] & DB_PRELOCKED_WRITE) && !locked_new_key) {
+                    if (db->i->dict->get_lt() && !(lock_flags[which_db] & DB_PRELOCKED_WRITE) && !locked_new_key) {
                         r = toku_db_get_point_write_lock(db, txn, curr_new_key);
                         if (r != 0) goto cleanup;
                     }

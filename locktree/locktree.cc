@@ -790,10 +790,6 @@ struct lt_lock_request_info *locktree::get_lock_request_info(void) {
     return &m_lock_request_info;
 }
 
-void locktree::set_comparator(const comparator &cmp) {
-    m_cmp.inherit(cmp);
-}
-
 locktree_manager *locktree::get_manager(void) const {
     return m_mgr;
 }

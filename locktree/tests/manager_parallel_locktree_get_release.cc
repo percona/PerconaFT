@@ -104,7 +104,7 @@ static void my_test(locktree_manager *mgr) {
     my_comparator.create(my_cmp, nullptr);
     DICTIONARY_ID a = { 42 };
     for (int i=0; i<100000; i++) {
-        locktree *alt = mgr->get_lt(a, my_comparator, nullptr);
+        locktree *alt = mgr->get_lt(a, my_comparator);
         invariant_notnull(alt);
         mgr->release_lt(alt);
     }
@@ -120,7 +120,7 @@ static void *my_tester(void *arg) {
 void manager_unit_test::test_reference_release_lt(void) {
     int r;
     locktree_manager mgr;
-    mgr.create(nullptr, nullptr, nullptr, nullptr);
+    mgr.create(nullptr, nullptr);
     const int nthreads = 2;
     pthread_t ids[nthreads];
     for (int i = 0; i < nthreads; i++) {

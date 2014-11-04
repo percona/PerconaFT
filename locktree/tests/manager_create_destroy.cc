@@ -95,11 +95,9 @@ namespace toku {
 
 void manager_unit_test::test_create_destroy(void) {
     locktree_manager mgr;
-    lt_create_cb create_callback = (lt_create_cb) (long) 1;
-    lt_destroy_cb destroy_callback = (lt_destroy_cb) (long) 2;
     lt_escalate_cb escalate_callback = (lt_escalate_cb) (long) 3;
     void *extra = (void *) (long) 4;
-    mgr.create(create_callback, destroy_callback, escalate_callback, extra);
+    mgr.create(escalate_callback, extra);
 
     invariant(mgr.m_max_lock_memory == locktree_manager::DEFAULT_MAX_LOCK_MEMORY);
     invariant(mgr.m_current_lock_memory == 0);
@@ -108,8 +106,6 @@ void manager_unit_test::test_create_destroy(void) {
     invariant(mgr.m_escalation_latest_result == 0);
 
     invariant(mgr.m_locktree_map.size() == 0);
-    invariant(mgr.m_lt_create_callback == create_callback);
-    invariant(mgr.m_lt_destroy_callback == destroy_callback);
     invariant(mgr.m_lt_escalate_callback == escalate_callback);
     invariant(mgr.m_lt_escalate_callback_extra == extra);
 

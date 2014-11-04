@@ -108,10 +108,8 @@ PATENT RIGHTS GRANT:
 // locktree's descriptor pointer if necessary
 static void
 db_set_descriptors(DB *db, FT_HANDLE ft_handle) {
-    const toku::comparator &cmp = toku_ft_get_comparator(ft_handle);
     db->descriptor = toku_ft_get_descriptor(ft_handle);
     db->cmp_descriptor = toku_ft_get_cmp_descriptor(ft_handle);
-    invariant(db->cmp_descriptor == cmp.get_descriptor());
 }
 
 static int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags) {
@@ -120,9 +118,6 @@ static int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, u
     // we should always have SOME environment comparison function
     // set, even if it is the default one set in toku_env_create
     invariant(db->dbenv->i->bt_compare);
-    bool need_locktree = (bool)((db->dbenv->i->open_flags & DB_INIT_LOCK) &&
-                                (db->dbenv->i->open_flags & DB_INIT_TXN));
-
     int is_db_excl    = flags & DB_EXCL;    flags&=~DB_EXCL;
     int is_db_create  = flags & DB_CREATE;  flags&=~DB_CREATE;
      // unknown or conflicting flags are bad
@@ -154,51 +149,36 @@ static int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, u
     // now that the handle has successfully opened, a valid descriptor
     // is in the ft. we need to set the db's descriptor pointers
     db_set_descriptors(db, ft_handle);
-
-    if (need_locktree) {
-        struct lt_on_create_callback_extra on_create_extra = {
-            .txn = txn,
-            .ft_handle = db->i->ft_handle,
-        };
-        DICTIONARY_ID dict_id = {
-            .dictid = db->i->dict->get_id()
-        };
-        db->i->lt = db->dbenv->i->ltm.get_lt(dict_id,
-                                             toku_ft_get_comparator(db->i->ft_handle),
-                                             &on_create_extra);
-        if (db->i->lt == nullptr) {
-            r = errno;
-            if (r == 0) {
-                r = EINVAL;
-            }
-            goto out;
-        }
-    }
     r = 0;
  
 out:
     if (r != 0) {
         db->i->opened = 0;
-        if (db->i->lt) {
-            db->dbenv->i->ltm.release_lt(db->i->lt);
-            db->i->lt = nullptr;
-        }
     }
     return r;
 }
 
-static int open_internal_db(DB* db, DB_TXN* txn, const dictionary_info* dinfo, uint32_t flags) {    
+static int open_internal_db(DB* db, DB_TXN* txn, const dictionary_info* dinfo, uint32_t flags, toku::locktree_manager &ltm) {
+    bool need_locktree = (bool)((db->dbenv->i->open_flags & DB_INIT_LOCK) &&
+                                (db->dbenv->i->open_flags & DB_INIT_TXN));
     int r = toku_db_open_iname(db, txn, dinfo->iname, flags);
     if (r == 0) {
         dictionary *dbi = NULL;
         XCALLOC(dbi);
-        dbi->create(dinfo, NULL);
+        dbi->create(dinfo, NULL, need_locktree, toku_ft_get_comparator(db->i->ft_handle), ltm);
         db->i->dict = dbi;
     }
     return r;
 }
 
-void dictionary::create(const dictionary_info* dinfo, inmemory_dictionary_manager* manager) {
+void dictionary::create(
+    const dictionary_info* dinfo,
+    inmemory_dictionary_manager* manager,
+    bool need_locktree,
+    const toku::comparator &cmp,
+    toku::locktree_manager &ltm
+    )
+{
     if (dinfo->dname) {
         m_dname = toku_strdup(dinfo->dname);
     }
@@ -208,10 +188,21 @@ void dictionary::create(const dictionary_info* dinfo, inmemory_dictionary_manage
     m_id = dinfo->id;
     m_refcount = 0;
     m_mgr = manager;
+    m_ltm = &ltm;
+    if (need_locktree) {
+        DICTIONARY_ID dict_id = {
+            .dictid = m_id
+        };
+        m_lt = ltm.get_lt(dict_id, cmp);
+    }
 }
 
 void dictionary::destroy(){
     invariant(m_refcount == 0);
+    if (m_lt) {
+        m_ltm->release_lt(m_lt);
+        m_lt = nullptr;
+    }
     if (m_dname) {
         toku_free(m_dname);
     }
@@ -239,19 +230,23 @@ uint64_t dictionary::get_id() const {
     return m_id;
 }
 
+toku::locktree* dictionary::get_lt() const {
+    return m_lt;
+}
+
 
 //////////////////////////////////////////
 // persistent_dictionary_manager methods
 //
 
-int persistent_dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname, uint64_t id) {
+int persistent_dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname, uint64_t id, toku::locktree_manager &ltm) {
     int r = toku_db_create(db, env, 0);
     assert_zero(r);
     toku_db_use_builtin_key_cmp(*db);
     dictionary_info dinfo;
     dinfo.iname = toku_strdup(iname);
     dinfo.id = id;
-    r = open_internal_db(*db, txn, &dinfo, DB_CREATE);
+    r = open_internal_db(*db, txn, &dinfo, DB_CREATE, ltm);
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open %s\n", iname);
     }
@@ -259,12 +254,12 @@ int persistent_dictionary_manager::setup_internal_db(DB** db, DB_ENV* env, DB_TX
     return r;
 }
 
-int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn) {
+int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn, toku::locktree_manager &ltm) {
     toku_mutex_init(&m_mutex, nullptr);
     DBC* c = NULL;
-    int r = setup_internal_db(&m_directory, env, txn, toku_product_name_strings.fileopsdirectory, DIRECTORY_ID);
+    int r = setup_internal_db(&m_directory, env, txn, toku_product_name_strings.fileopsdirectory, DIRECTORY_ID, ltm);
     if (r != 0) goto cleanup;
-    r = setup_internal_db(&m_inamedb, env, txn, toku_product_name_strings.fileopsinames, INAME_ID);
+    r = setup_internal_db(&m_inamedb, env, txn, toku_product_name_strings.fileopsinames, INAME_ID, ltm);
     if (r != 0) goto cleanup;
     // get the last entry in m_inamesdb, that has the current max used id
     // set m_next_id to that value plus one
@@ -664,7 +659,7 @@ int dictionary_manager::setup_persistent_environment(
     dictionary_info dinfo;
     dinfo.iname = toku_product_name_strings.environmentdictionary;
     dinfo.id = ENV_ID;
-    r = open_internal_db(m_persistent_environment, txn, &dinfo, DB_CREATE);
+    r = open_internal_db(m_persistent_environment, txn, &dinfo, DB_CREATE, idm.get_ltm());
     if (r != 0) {
         r = toku_ydb_do_error(env, r, "Cant open persistent env\n");
         goto cleanup;
@@ -707,6 +702,12 @@ int dictionary_manager::setup_metadata(
     )
 {
     int r = 0;
+    // this creates the locktree manager used while
+    // opening the metadata dictionaries below,
+    // Therefore, it must be done first
+    bool need_locktree = (bool)((env->i->open_flags & DB_INIT_LOCK) &&
+                                (env->i->open_flags & DB_INIT_TXN));
+    idm.initialize(need_locktree, env);
     r = setup_persistent_environment(
         env,
         newenv,
@@ -714,7 +715,8 @@ int dictionary_manager::setup_metadata(
         last_lsn_of_clean_shutdown_read_from_log
         );
     if (r != 0) goto cleanup;
-    r = pdm.initialize(env, txn);
+
+    r = pdm.initialize(env, txn, idm.get_ltm());
     if (r != 0) goto cleanup;
     
 cleanup:
@@ -756,7 +758,7 @@ dictionary_manager::can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const dicti
 
     r = toku_db_create(&db, env, 0);
     assert_zero(r);
-    r = open_internal_db(db, txn, dinfo, 0);
+    r = open_internal_db(db, txn, dinfo, 0, idm.get_ltm());
     assert_zero(r);
     r = toku_db_pre_acquire_table_lock(db, txn);
     if (r == 0) {
@@ -824,7 +826,7 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
 
     r = toku_db_create(&db, env, 0);
     lazy_assert_zero(r);
-    r = open_internal_db(db, txn, &dinfo, 0);
+    r = open_internal_db(db, txn, &dinfo, 0, idm.get_ltm());
     if (txn && r) {
         if (r == EMFILE || r == ENFILE)
             r = toku_ydb_do_error(env, r, "toku dbremove failed because open file limit reached\n");
@@ -899,7 +901,7 @@ int dictionary_manager::open_db(
         r = toku_db_open_iname(db, txn, dinfo.iname, flags);
         if (r == 0) {
             // now that the directory has been updated, create the dictionary
-            db->i->dict = idm.get_dictionary(&dinfo);
+            db->i->dict = idm.get_dictionary(&dinfo, toku_ft_get_comparator(db->i->ft_handle));
         }
     }
     
@@ -916,7 +918,7 @@ void dictionary_manager::destroy() {
         toku_db_close(m_persistent_environment);
     }
     pdm.destroy();
-    idm.destroy();
+    idm.destroy(); // needs to be done last, as it holds the lock tree manager
 }
 
 ///////////////////////////////////////////////
@@ -930,7 +932,13 @@ void inmemory_dictionary_manager::create() {
     m_dictionary_map.create();
 }
 
+void inmemory_dictionary_manager::initialize(bool need_locktree, DB_ENV* env) {
+    m_need_locktree = need_locktree;
+    m_ltm.create(toku_db_txn_escalate_callback, env);
+}
+
 void inmemory_dictionary_manager::destroy() {
+    m_ltm.destroy();
     m_dictionary_map.destroy();
     toku_mutex_destroy(&m_mutex);
 }
@@ -984,12 +992,12 @@ uint32_t inmemory_dictionary_manager::num_open_dictionaries() {
     return retval;    
 }
 
-dictionary* inmemory_dictionary_manager::get_dictionary(const dictionary_info* dinfo) {
+dictionary* inmemory_dictionary_manager::get_dictionary(const dictionary_info* dinfo, const toku::comparator &cmp) {
     toku_mutex_lock(&m_mutex);
     dictionary *dbi = find_locked(dinfo->dname);
     if (dbi == nullptr) {
         XCALLOC(dbi);
-        dbi->create(dinfo, this);
+        dbi->create(dinfo, this, m_need_locktree, cmp, m_ltm);
         add_db(dbi);
     }
     dbi->m_refcount++;

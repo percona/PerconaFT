@@ -113,7 +113,6 @@ PATENT RIGHTS GRANT:
 struct __toku_db_internal {
     int opened;
     FT_HANDLE ft_handle;
-    toku::locktree *lt;
     dictionary* dict;
     struct simple_dbt skey, sval; // static key and value
     DB_INDEXER *indexer;
@@ -151,7 +150,6 @@ struct __toku_db_env_internal {
     unsigned long cachetable_size;
     CACHETABLE cachetable;
     TOKULOGGER logger;
-    toku::locktree_manager ltm;
     dictionary_manager dict_manager;
     lock_timeout_callback lock_wait_timeout_callback;   // Called when a lock request times out waiting for a lock.
 
@@ -185,7 +183,7 @@ struct __toku_db_env_internal {
 
 // test-only environment function for running lock escalation
 static inline void toku_env_run_lock_escalation_for_test(DB_ENV *env) {
-    toku::locktree_manager *mgr = &env->i->ltm;
+    toku::locktree_manager *mgr = &env->i->dict_manager.get_ltm();
     mgr->run_escalation_for_test();
 }
 

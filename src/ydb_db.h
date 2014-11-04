@@ -114,17 +114,6 @@ typedef struct {
 
 void ydb_db_layer_get_status(YDB_DB_LAYER_STATUS statp);
 
-//
-// export the following locktree create/destroy callbacks so
-// the environment can pass them to the locktree manager.
-//
-struct lt_on_create_callback_extra {
-    DB_TXN *txn;
-    FT_HANDLE ft_handle;
-};
-int toku_db_lt_on_create_callback(toku::locktree *lt, void *extra);
-void toku_db_lt_on_destroy_callback(toku::locktree *lt);
-
 /* db methods */
 static inline int db_opened(DB *db) {
     return db->i->opened != 0;

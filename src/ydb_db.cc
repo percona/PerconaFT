@@ -151,9 +151,6 @@ toku_db_close(DB * db) {
     }
     // close the ft handle, and possibly close the locktree
     toku_ft_handle_close(db->i->ft_handle);
-    if (db->i->lt) {
-        db->dbenv->i->ltm.release_lt(db->i->lt);
-    }
     toku_sdbt_cleanup(&db->i->skey);
     toku_sdbt_cleanup(&db->i->sval);
     toku_free(db->i);
@@ -279,31 +276,6 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
         }
     }
     return r;
-}
-
-// when a locktree is created, clone a ft handle and store it
-// as userdata so we can close it later.
-int toku_db_lt_on_create_callback(toku::locktree *lt, void *extra) {
-    int r;
-    struct lt_on_create_callback_extra *info = (struct lt_on_create_callback_extra *) extra;
-    TOKUTXN ttxn = info->txn ? db_txn_struct_i(info->txn)->tokutxn : NULL;
-    FT_HANDLE ft_handle = info->ft_handle;
-
-    FT_HANDLE cloned_ft_handle;
-    r = toku_ft_handle_clone(&cloned_ft_handle, ft_handle, ttxn);
-    if (r == 0) {
-        assert(lt->get_userdata() == NULL);
-        lt->set_userdata(cloned_ft_handle);
-    }
-    return r;
-}
-
-// when a locktree is about to be destroyed, 
-// close the ft handle stored as userdata.
-void toku_db_lt_on_destroy_callback(toku::locktree *lt) {
-    FT_HANDLE ft_handle = (FT_HANDLE) lt->get_userdata();
-    assert(ft_handle);
-    toku_ft_handle_close(ft_handle);
 }
 
 // Instruct db to use the default (built-in) key comparison function
@@ -591,7 +563,7 @@ static int toku_db_get_key_after_bytes(DB *db, DB_TXN *txn, const DBT *start_key
 int 
 toku_db_pre_acquire_table_lock(DB *db, DB_TXN *txn) {
     HANDLE_PANICKED_DB(db);
-    if (!db->i->lt || !txn) return 0;
+    if (!db->i->dict->get_lt() || !txn) return 0;
     int r;
     r = toku_db_get_range_lock(db, txn, 
             toku_dbt_negative_infinity(), toku_dbt_positive_infinity(),

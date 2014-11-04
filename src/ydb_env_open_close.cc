@@ -787,7 +787,6 @@ env_close(DB_ENV * env, uint32_t flags) {
     }
 
     env_fs_destroy(env);
-    env->i->ltm.destroy();
     if (env->i->data_dir)
         toku_free(env->i->data_dir);
     if (env->i->lg_dir)
