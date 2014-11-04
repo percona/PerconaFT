@@ -353,10 +353,13 @@ int persistent_dictionary_manager::remove(const char * dname, DB_TXN* txn) {
         }
         goto exit;
     }
-    // remove (dname,iname) from directory
-    // TODO: verify that dnames match between what we found
+    // verify that dname is what we expect it to be
+    if (strcmp(dname, dinfo.dname) != 0) {
+        printf("Error in remove, different dname found expected: %s, actual: %s", dname, dinfo.dname);
+    }
     DBT dname_dbt;
     toku_fill_dbt(&dname_dbt, dinfo.dname, strlen(dinfo.dname)+1);
+    // remove (dname,iname) from directory
     r = toku_db_del(m_directory, txn, &dname_dbt, DB_DELETE_ANY, true);
     if (r != 0) {
         goto exit;
