@@ -631,15 +631,12 @@ ft_handle_open_for_redirect(FT_HANDLE *new_ftp, const char *fname_in_env, TOKUTX
     toku_ft_handle_set_compression_method(ft_handle, old_ft->h->compression_method);
     toku_ft_handle_set_fanout(ft_handle, old_ft->h->fanout);
     CACHETABLE ct = toku_cachefile_get_cachetable(old_ft->cf);
-    DICTIONARY_ID dict_id = {
-        .dictid = 0
-    };
     int r = toku_ft_handle_open(
         ft_handle,
         fname_in_env,
         false,
         false,
-        cachetable,
+        ct,
         txn
         );
     if (r != 0) {
