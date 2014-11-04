@@ -75,6 +75,7 @@ namespace ftcxx {
         uint32_t _cleaner_period;
         uint32_t _cleaner_iterations;
         uint32_t _checkpointing_period;
+        uint32_t _fsync_log_period_msec;
 
         uint64_t _lk_max_memory;
         uint64_t _lock_wait_time_msec;
@@ -102,6 +103,7 @@ namespace ftcxx {
               _cleaner_period(0),
               _cleaner_iterations(0),
               _checkpointing_period(0),
+              _fsync_log_period_msec(0),
               _lk_max_memory(0),
               _lock_wait_time_msec(0),
               _get_lock_wait_time_cb(nullptr),
@@ -199,6 +201,10 @@ namespace ftcxx {
                 handle_ft_retval(r);
             }
 
+            if (_fsync_log_period_msec) {
+                env->change_fsync_log_period(env, _fsync_log_period_msec);
+            }
+
             return DBEnv(env, true);
         }
 
@@ -244,6 +250,11 @@ namespace ftcxx {
 
         DBEnvBuilder& checkpointing_set_period(uint32_t period) {
             _checkpointing_period = period;
+            return *this;
+        }
+
+        DBEnvBuilder& change_fsync_log_period(uint32_t period) {
+            _fsync_log_period_msec = period;
             return *this;
         }
 
