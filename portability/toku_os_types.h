@@ -117,8 +117,8 @@ static inline int toku_fileid_cmp(const struct fileid &a, const struct fileid &b
     }
 }
 
-__attribute__((const, nonnull, warn_unused_result))
-static inline bool toku_fileids_are_equal(struct fileid *a, struct fileid *b) {
+WARN_UNUSED_RESULT
+static inline bool toku_fileids_are_equal(const struct fileid *a, const struct fileid *b) {
     return toku_fileid_cmp(*a, *b) == 0;
 }
 

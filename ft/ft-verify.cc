@@ -116,7 +116,7 @@ compare_pair_to_key (FT_HANDLE ft_handle, const DBT *a, const void *key, uint32_
 
 static int
 verify_msg_in_child_buffer(FT_HANDLE ft_handle, enum ft_msg_type type, MSN msn, const void *key, uint32_t keylen, const void *UU(data), uint32_t UU(datalen), XIDS UU(xids), const DBT *lesser_pivot, const DBT *greatereq_pivot)
-    __attribute__((warn_unused_result));
+    WARN_UNUSED_RESULT;
 
 UU()
 static int

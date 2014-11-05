@@ -103,7 +103,7 @@ PATENT RIGHTS GRANT:
 
 typedef struct ft_handle *FT_HANDLE;
 
-int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int nodesize, int basementnodesize, enum toku_compression_method compression_method, CACHETABLE, TOKUTXN, int(*)(DB *,const DBT*,const DBT*)) __attribute__ ((warn_unused_result));
+int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int nodesize, int basementnodesize, enum toku_compression_method compression_method, CACHETABLE, TOKUTXN, int(*)(DB *,const DBT*,const DBT*)) WARN_UNUSED_RESULT;
 
 // effect: changes the descriptor for the ft of the given handle.
 // requires: 
@@ -176,9 +176,9 @@ typedef int (*ft_update_func)(DB *db, const DBT *key, const DBT *old_val, const 
 void toku_ft_set_update(FT_HANDLE ft_h, ft_update_func update_fun);
 
 int toku_ft_handle_open(FT_HANDLE, const char *fname_in_env,
-		  int is_create, int only_create, CACHETABLE ct, TOKUTXN txn)  __attribute__ ((warn_unused_result));
+		  int is_create, int only_create, CACHETABLE ct, TOKUTXN txn)  WARN_UNUSED_RESULT;
 int toku_ft_handle_open_recovery(FT_HANDLE, const char *fname_in_env, int is_create, int only_create, CACHETABLE ct, TOKUTXN txn, 
-			   FILENUM use_filenum, LSN max_acceptable_lsn)  __attribute__ ((warn_unused_result));
+			   FILENUM use_filenum, LSN max_acceptable_lsn)  WARN_UNUSED_RESULT;
 
 // clone an ft handle. the cloned handle has a new dict_id but refers to the same fractal tree
 int toku_ft_handle_clone(FT_HANDLE *cloned_ft_handle, FT_HANDLE ft_handle, TOKUTXN txn);
@@ -206,7 +206,7 @@ toku_ft_handle_open_with_dict_id(
     CACHETABLE cachetable, 
     TOKUTXN txn, 
     DICTIONARY_ID use_dictionary_id
-    )  __attribute__ ((warn_unused_result));
+    )  WARN_UNUSED_RESULT;
 
 // Effect: Insert a key and data pair into an ft
 void toku_ft_insert (FT_HANDLE ft_h, DBT *k, DBT *v, TOKUTXN txn);
@@ -252,13 +252,13 @@ void toku_ft_send_insert(FT_HANDLE ft_h, DBT *key, DBT *val, XIDS xids, enum ft_
 void toku_ft_send_delete(FT_HANDLE ft_h, DBT *key, XIDS xids, txn_gc_info *gc_info);
 void toku_ft_send_commit_any(FT_HANDLE ft_h, DBT *key, XIDS xids, txn_gc_info *gc_info);
 
-int toku_close_ft_handle_nolsn (FT_HANDLE, char **error_string)  __attribute__ ((warn_unused_result));
+int toku_close_ft_handle_nolsn (FT_HANDLE, char **error_string)  WARN_UNUSED_RESULT;
 
-int toku_dump_ft (FILE *,FT_HANDLE ft_h)  __attribute__ ((warn_unused_result));
+int toku_dump_ft (FILE *,FT_HANDLE ft_h)  WARN_UNUSED_RESULT;
 
 extern int toku_ft_debug_mode;
-int toku_verify_ft (FT_HANDLE ft_h)  __attribute__ ((warn_unused_result));
-int toku_verify_ft_with_progress (FT_HANDLE ft_h, int (*progress_callback)(void *extra, float progress), void *extra, int verbose, int keep_going)  __attribute__ ((warn_unused_result));
+int toku_verify_ft (FT_HANDLE ft_h)  WARN_UNUSED_RESULT;
+int toku_verify_ft_with_progress (FT_HANDLE ft_h, int (*progress_callback)(void *extra, float progress), void *extra, int verbose, int keep_going)  WARN_UNUSED_RESULT;
 
 DICTIONARY_ID toku_ft_get_dictionary_id(FT_HANDLE);
 
@@ -298,7 +298,7 @@ void toku_ft_handle_get_fractal_tree_info64(FT_HANDLE, struct ftinfo64 *);
 
 int toku_ft_handle_iterate_fractal_tree_block_map(FT_HANDLE, int (*)(uint64_t,int64_t,int64_t,int64_t,int64_t,void*), void *);
 
-int toku_ft_layer_init(void) __attribute__ ((warn_unused_result));
+int toku_ft_layer_init(void) WARN_UNUSED_RESULT;
 void toku_ft_open_close_lock(void);
 void toku_ft_open_close_unlock(void);
 void toku_ft_layer_destroy(void);
@@ -312,9 +312,9 @@ void toku_maybe_preallocate_in_file (int fd, int64_t size, int64_t expected_size
 // Effect: make the file bigger by either doubling it or growing by 16MiB whichever is less, until it is at least size
 // Return 0 on success, otherwise an error number.
 
-int toku_ft_get_fragmentation(FT_HANDLE ft_h, TOKU_DB_FRAGMENTATION report) __attribute__ ((warn_unused_result));
+int toku_ft_get_fragmentation(FT_HANDLE ft_h, TOKU_DB_FRAGMENTATION report) WARN_UNUSED_RESULT;
 
-bool toku_ft_is_empty_fast (FT_HANDLE ft_h) __attribute__ ((warn_unused_result));
+bool toku_ft_is_empty_fast (FT_HANDLE ft_h) WARN_UNUSED_RESULT;
 // Effect: Return true if there are no messages or leaf entries in the tree.  If so, it's empty.  If there are messages  or leaf entries, we say it's not empty
 // even though if we were to optimize the tree it might turn out that they are empty.
 

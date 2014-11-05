@@ -144,7 +144,7 @@ toku_ft_init(
     uint32_t fanout
     );
 
-int toku_dictionary_redirect_abort(FT old_h, FT new_h, TOKUTXN txn) __attribute__ ((warn_unused_result));
+int toku_dictionary_redirect_abort(FT old_h, FT new_h, TOKUTXN txn) WARN_UNUSED_RESULT;
 int toku_dictionary_redirect (const char *dst_fname_in_env, FT_HANDLE old_ft, TOKUTXN txn);
 void toku_reset_root_xid_that_created(FT ft, TXNID new_root_xid_that_created);
 // Reset the root_xid_that_created field to the given value.
@@ -155,7 +155,7 @@ void toku_ft_remove_txn_ref(FT ft);
 
 void toku_calculate_root_offset_pointer (FT ft, CACHEKEY* root_key, uint32_t *roothash);
 void toku_ft_set_new_root_blocknum(FT ft, CACHEKEY new_root_key);
-LSN toku_ft_checkpoint_lsn(FT ft)  __attribute__ ((warn_unused_result));
+LSN toku_ft_checkpoint_lsn(FT ft)  WARN_UNUSED_RESULT;
 void toku_ft_stat64 (FT ft, struct ftstat64_s *s);
 void toku_ft_get_fractal_tree_info64 (FT ft, struct ftinfo64 *s);
 int toku_ft_iterate_fractal_tree_block_map(FT ft, int (*iter)(uint64_t,int64_t,int64_t,int64_t,int64_t,void*), void *iter_extra);

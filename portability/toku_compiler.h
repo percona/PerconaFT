@@ -89,6 +89,7 @@ PATENT RIGHTS GRANT:
 #pragma once
 
 #define UNUSED              __attribute__((__unused__))
+#define WARN_UNUSED_RESULT  __attribute__((__warn_unused_result__))
 #define DEPRECATED          __attribute__((__deprecated__))
 #define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
 #define NOINLINE            __attribute__((__noinline__))

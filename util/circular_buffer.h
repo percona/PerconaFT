@@ -146,7 +146,7 @@ public:
     //  Doesn't block.
     // Returns:
     //  true iff elt was appended
-    bool trypush(const T &elt) __attribute__((warn_unused_result));
+    bool trypush(const T &elt) WARN_UNUSED_RESULT;
 
     // Effect:
     //  Append elt to the end of the queue if there's room before abstime.
@@ -154,13 +154,13 @@ public:
     //  Blocks until at most abstime waiting for room in the queue.  See toku_pthread_cond_timedwait(3) for an example of how to use abstime.
     // Returns:
     //  true iff elt was appended
-    bool timedpush(const T &elt, toku_timespec_t *abstime) __attribute__((nonnull, warn_unused_result));
+    bool timedpush(const T &elt, toku_timespec_t *abstime) WARN_UNUSED_RESULT;
 
     // Effect:
     //  Remove the first item from the queue and return it.
     // Notes:
     //  Blocks until there is something to return.
-    T pop(void) __attribute__((warn_unused_result));
+    T pop(void) WARN_UNUSED_RESULT;
 
     // Effect:
     //  Remove the first item from the queue and return it, if one exists.
@@ -169,7 +169,7 @@ public:
     //  Returns the element in *eltp.
     // Returns:
     //  true iff *eltp was set
-    bool trypop(T * const eltp) __attribute__((nonnull, warn_unused_result));
+    bool trypop(T * const eltp) WARN_UNUSED_RESULT;
 
     // Effect:
     //  Remove the first item from the queue and return it, if one exists before abstime
@@ -178,7 +178,7 @@ public:
     //  Returns the element in *eltp.
     // Returns:
     //  true iff *eltp was set
-    bool timedpop(T * const eltp, toku_timespec_t *abstime) __attribute__((nonnull, warn_unused_result));
+    bool timedpop(T * const eltp, toku_timespec_t *abstime) WARN_UNUSED_RESULT;
 
 private:
     void lock(void);

@@ -470,9 +470,9 @@ toku_verify_ftnode (FT_HANDLE ft_h,
                      const DBT *greatereq_pivot,            // Everything in the subtree should be <= lesser_pivot.  (lesser_pivot==NULL if there is no lesser pivot.)
                      int (*progress_callback)(void *extra, float progress), void *progress_extra,
                      int recurse, int verbose, int keep_going_on_failure)
-    __attribute__ ((warn_unused_result));
+    WARN_UNUSED_RESULT;
 
-int toku_db_badformat(void) __attribute__((__warn_unused_result__));
+int toku_db_badformat(void) WARN_UNUSED_RESULT;
 
 typedef enum {
     FT_UPGRADE_FOOTPRINT = 0,
