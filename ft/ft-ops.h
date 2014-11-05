@@ -233,11 +233,6 @@ void toku_ft_load(FT_HANDLE ft_h, TOKUTXN txn, char const * new_iname, int do_fs
 void toku_ft_hot_index_recovery(TOKUTXN txn, FILENUMS filenums, int do_fsync, int do_log, LSN *hot_index_lsn);
 void toku_ft_hot_index(FT_HANDLE ft_h, TOKUTXN txn, FILENUMS filenums, int do_fsync, LSN *lsn);
 
-void toku_ft_log_put_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val);
-void toku_ft_log_put (TOKUTXN txn, FT_HANDLE ft_h, const DBT *key, const DBT *val);
-void toku_ft_log_del_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val);
-void toku_ft_log_del (TOKUTXN txn, FT_HANDLE ft_h, const DBT *key);
-
 // Effect: Delete a key from an ft
 void toku_ft_delete (FT_HANDLE ft_h, DBT *k, TOKUTXN txn);
 

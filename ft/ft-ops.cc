@@ -2470,37 +2470,6 @@ void toku_ft_hot_index(FT_HANDLE ft_handle __attribute__ ((unused)), TOKUTXN txn
     toku_ft_hot_index_recovery(txn, filenums, do_fsync, do_log, lsn);
 }
 
-void
-toku_ft_log_put (TOKUTXN txn, FT_HANDLE ft_handle, const DBT *key, const DBT *val) {
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        BYTESTRING valbs = {.len=val->size, .data=(char *) val->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        toku_log_enq_insert(logger, (LSN*)0, 0, txn, toku_cachefile_filenum(ft_handle->ft->cf), xid, keybs, valbs);
-    }
-}
-
-void
-toku_ft_log_put_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val) {
-    assert(txn);
-    assert(num_fts > 0);
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        FILENUM         fnums[num_fts];
-        uint32_t i;
-        for (i = 0; i < num_fts; i++) {
-            fnums[i] = toku_cachefile_filenum(fts[i]->ft->cf);
-        }
-        FILENUMS filenums = {.num = num_fts, .filenums = fnums};
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        BYTESTRING valbs = {.len=val->size, .data=(char *) val->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        FILENUM src_filenum = src_ft ? toku_cachefile_filenum(src_ft->ft->cf) : FILENUM_NONE;
-        toku_log_enq_insert_multiple(logger, (LSN*)0, 0, txn, src_filenum, filenums, xid, keybs, valbs);
-    }
-}
-
 TXN_MANAGER toku_ft_get_txn_manager(FT_HANDLE ft_h) {
     TOKULOGGER logger = toku_cachefile_logger(ft_h->ft->cf);
     return logger != nullptr ? toku_logger_get_txn_manager(logger) : nullptr;
@@ -2664,36 +2633,6 @@ void toku_ft_send_commit_any(FT_HANDLE ft_handle, DBT *key, XIDS xids, txn_gc_in
 
 void toku_ft_delete(FT_HANDLE ft_handle, DBT *key, TOKUTXN txn) {
     toku_ft_maybe_delete(ft_handle, key, txn, false, ZERO_LSN, true);
-}
-
-void
-toku_ft_log_del(TOKUTXN txn, FT_HANDLE ft_handle, const DBT *key) {
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        toku_log_enq_delete_any(logger, (LSN*)0, 0, txn, toku_cachefile_filenum(ft_handle->ft->cf), xid, keybs);
-    }
-}
-
-void
-toku_ft_log_del_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val) {
-    assert(txn);
-    assert(num_fts > 0);
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        FILENUM         fnums[num_fts];
-        uint32_t i;
-        for (i = 0; i < num_fts; i++) {
-            fnums[i] = toku_cachefile_filenum(fts[i]->ft->cf);
-        }
-        FILENUMS filenums = {.num = num_fts, .filenums = fnums};
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        BYTESTRING valbs = {.len=val->size, .data=(char *) val->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        FILENUM src_filenum = src_ft ? toku_cachefile_filenum(src_ft->ft->cf) : FILENUM_NONE;
-        toku_log_enq_delete_multiple(logger, (LSN*)0, 0, txn, src_filenum, filenums, xid, keybs, valbs);
-    }
 }
 
 void toku_ft_maybe_delete(FT_HANDLE ft_h, DBT *key, TOKUTXN txn, bool oplsn_valid, LSN oplsn, bool do_logging) {

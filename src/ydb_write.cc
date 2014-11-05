@@ -410,42 +410,6 @@ cleanup:
     return r;
 }
 
-static void
-log_del_single(DB_TXN *txn, FT_HANDLE ft_handle, const DBT *key) {
-    TOKUTXN ttxn = db_txn_struct_i(txn)->tokutxn;
-    toku_ft_log_del(ttxn, ft_handle, key);
-}
-
-static uint32_t
-sum_size(uint32_t num_arrays, DBT_ARRAY keys[], uint32_t overhead) {
-    uint32_t sum = 0;
-    for (uint32_t i = 0; i < num_arrays; i++) {
-        for (uint32_t j = 0; j < keys[i].size; j++) {
-            sum += keys[i].dbts[j].size + overhead;
-        }
-    }
-    return sum;
-}
-
-static void
-log_del_multiple(DB_TXN *txn, DB *src_db, const DBT *key, const DBT *val, uint32_t num_dbs, FT_HANDLE fts[], DBT_ARRAY keys[]) {
-    if (num_dbs > 0) {
-        TOKUTXN ttxn = db_txn_struct_i(txn)->tokutxn;
-        FT_HANDLE src_ft  = src_db ? src_db->i->ft_handle : NULL;
-        uint32_t del_multiple_size = key->size + val->size + num_dbs*sizeof (uint32_t) + toku_log_enq_delete_multiple_overhead;
-        uint32_t del_single_sizes = sum_size(num_dbs, keys, toku_log_enq_delete_any_overhead);
-        if (del_single_sizes < del_multiple_size) {
-            for (uint32_t i = 0; i < num_dbs; i++) {
-                for (uint32_t j = 0; j < keys[i].size; j++) {
-                    log_del_single(txn, fts[i], &keys[i].dbts[j]);
-                }
-            }
-        } else {
-            toku_ft_log_del_multiple(ttxn, src_ft, fts, num_dbs, key, val);
-        }
-    }
-}
-
 static uint32_t 
 lookup_src_db(uint32_t num_dbs, DB *db_array[], DB *src_db) {
     uint32_t which_db;
@@ -486,7 +450,7 @@ do_del_multiple(DB_TXN *txn, uint32_t num_dbs, DB *db_array[], DBT_ARRAY keys[],
         }
         if (do_delete) {
             for (uint32_t i = 0; i < keys[which_db].size; i++) {
-                toku_ft_maybe_delete(db->i->ft_handle, &keys[which_db].dbts[i], ttxn, false, ZERO_LSN, false);
+                toku_ft_maybe_delete(db->i->ft_handle, &keys[which_db].dbts[i], ttxn, false, ZERO_LSN, true);
             }
         }
     }
@@ -554,7 +518,6 @@ env_del_multiple(
 
     uint32_t lock_flags[num_dbs];
     uint32_t remaining_flags[num_dbs];
-    FT_HANDLE fts[num_dbs];
     bool indexer_lock_taken = false;
     bool src_same = false;
     bool indexer_shortcut = false;
@@ -609,7 +572,6 @@ env_del_multiple(
                 if (r != 0) goto cleanup;
             }
         }
-        fts[which_db] = db->i->ft_handle;
     }
 
     if (indexer) {
@@ -626,7 +588,6 @@ env_del_multiple(
         }
     }
     toku_multi_operation_client_lock();
-    log_del_multiple(txn, src_db, src_key, src_val, num_dbs, fts, del_keys);
     r = do_del_multiple(txn, num_dbs, db_array, del_keys, src_db, src_key, indexer_shortcut);
     toku_multi_operation_client_unlock();
     if (indexer_lock_taken) {
@@ -639,15 +600,6 @@ cleanup:
     else
         STATUS_VALUE(YDB_LAYER_NUM_MULTI_DELETES_FAIL) += num_dbs;  // accountability 
     return r;
-}
-
-static void
-log_put_multiple(DB_TXN *txn, DB *src_db, const DBT *src_key, const DBT *src_val, uint32_t num_dbs, FT_HANDLE fts[]) {
-    if (num_dbs > 0) {
-        TOKUTXN ttxn = db_txn_struct_i(txn)->tokutxn;
-        FT_HANDLE src_ft  = src_db ? src_db->i->ft_handle : NULL;
-        toku_ft_log_put_multiple(ttxn, src_ft, fts, num_dbs, src_key, src_val);
-    }
 }
 
 // Requires: If remaining_flags is non-null, this function performs any required uniqueness checks
@@ -688,7 +640,7 @@ do_put_multiple(DB_TXN *txn, uint32_t num_dbs, DB *db_array[], DBT_ARRAY keys[],
                         flags = remaining_flags[which_db];
                         invariant(!(flags & DB_NOOVERWRITE_NO_ERROR));
                     }
-                    r = db_put(db, txn, &keys[which_db].dbts[i], &vals[which_db].dbts[i], flags, false);
+                    r = db_put(db, txn, &keys[which_db].dbts[i], &vals[which_db].dbts[i], flags, true);
                     if (r != 0) {
                         goto done;
                     }
@@ -723,7 +675,6 @@ env_put_multiple_internal(
 
     uint32_t lock_flags[num_dbs];
     uint32_t remaining_flags[num_dbs];
-    FT_HANDLE fts[num_dbs];
     bool indexer_shortcut = false;
     bool indexer_lock_taken = false;
     bool src_same = false;
@@ -789,7 +740,6 @@ env_put_multiple_internal(
                 if (r != 0) goto cleanup;
             }
         }
-        fts[which_db] = db->i->ft_handle;
     }
     
     if (indexer) {
@@ -807,9 +757,6 @@ env_put_multiple_internal(
     }
     toku_multi_operation_client_lock();
     r = do_put_multiple(txn, num_dbs, db_array, put_keys, put_vals, remaining_flags, src_db, src_key, indexer_shortcut);
-    if (r == 0) {
-        log_put_multiple(txn, src_db, src_key, src_val, num_dbs, fts);
-    }
     toku_multi_operation_client_unlock();
     if (indexer_lock_taken) {
         toku_indexer_unlock(indexer);
@@ -873,12 +820,10 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
     {
         uint32_t n_del_dbs = 0;
         DB *del_dbs[num_dbs];
-        FT_HANDLE del_fts[num_dbs];
         DBT_ARRAY del_key_arrays[num_dbs];
 
         uint32_t n_put_dbs = 0;
         DB *put_dbs[num_dbs];
-        FT_HANDLE put_fts[num_dbs];
         DBT_ARRAY put_key_arrays[num_dbs];
         DBT_ARRAY put_val_arrays[num_dbs];
 
@@ -1051,7 +996,6 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
 
             if (num_del > 0) {
                 del_dbs[n_del_dbs] = db;
-                del_fts[n_del_dbs] = db->i->ft_handle;
                 del_key_arrays[n_del_dbs] = old_keys;
                 n_del_dbs++;
             }
@@ -1060,7 +1004,6 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
             // do_put_multiple will be a no-op for this db.
             if (num_put > 0 || (num_del > 0 && num_skip > 0)) {
                 put_dbs[n_put_dbs] = db;
-                put_fts[n_put_dbs] = db->i->ft_handle;
                 put_key_arrays[n_put_dbs] = new_keys;
                 put_val_arrays[n_put_dbs] = new_vals;
                 n_put_dbs++;
@@ -1083,7 +1026,6 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
         }
         toku_multi_operation_client_lock();
         if (r == 0 && n_del_dbs > 0) {
-            log_del_multiple(txn, src_db, old_src_key, old_src_data, n_del_dbs, del_fts, del_key_arrays);
             r = do_del_multiple(txn, n_del_dbs, del_dbs, del_key_arrays, src_db, old_src_key, indexer_shortcut);
         }
 
@@ -1092,7 +1034,6 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
             // we (may) delete ALL the keys for a given DB.  Therefore we must put ALL the keys during
             // recovery so we don't end up losing data.
             // So unlike env->put_multiple, we ONLY log a 'put_multiple' log entry.
-            log_put_multiple(txn, src_db, new_src_key, new_src_data, n_put_dbs, put_fts);
             r = do_put_multiple(txn, n_put_dbs, put_dbs, put_key_arrays, put_val_arrays, nullptr, src_db, new_src_key, indexer_shortcut);
         }
         toku_multi_operation_client_unlock();
