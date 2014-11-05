@@ -99,6 +99,7 @@ PATENT RIGHTS GRANT:
 
 // 1.5.0 final
 
+#include "toku_compiler.h"
 #include "quicklz.h"
 
 #if QLZ_VERSION_MAJOR != 1 || QLZ_VERSION_MINOR != 5 || QLZ_VERSION_REVISION != 0

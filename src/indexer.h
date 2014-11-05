@@ -91,7 +91,7 @@ PATENT RIGHTS GRANT:
 
 #pragma once
 
-#include "portability/toku_attributes.h"
+#include "portability/toku_compiler.h"
 
 // locking and unlocking functions to synchronize cursor position with
 // XXX_multiple APIs

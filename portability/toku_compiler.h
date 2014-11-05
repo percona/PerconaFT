@@ -88,7 +88,7 @@ PATENT RIGHTS GRANT:
 
 #pragma once
 
-#define UNUSED(x)           x __attribute__((__unused__))
+#define UNUSED              __attribute__((__unused__))
 #define DEPRECATED          __attribute__((__deprecated__))
 #define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
 #define NOINLINE            __attribute__((__noinline__))
@@ -99,8 +99,8 @@ PATENT RIGHTS GRANT:
 #define THROW               __THROW
 #define MALLOC_LIKE         __malloc_like
 
-// TODO: Deprecate me eventually
-#define UU(x)               UNUSED(x)
+// TODO: Prefer UNUSED x over UU(x)
+#define UU(x)               x __attribute__((__unused__))
 
 #define toku_compiler_expect(_expr_, _value_)       __builtin_expect(_expr_, _value_)
 #define toku_compiler_likely(_expr_)                toku_compiler_expect(((_expr_) != 0), 1)
