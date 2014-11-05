@@ -92,6 +92,7 @@ PATENT RIGHTS GRANT:
 #define DEPRECATED          __attribute__((__deprecated__))
 #define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
 #define NOINLINE            __attribute__((__noinline__))
+#define ALWAYS_INLINE       __attribute__((__always_inline__))
 #define NORETURN            __attribute__((__noreturn__))
 #define ALIGNED(x)          __attribute__((__aligned__(x)))
 #define PACKED              __attribute__((__packed__))
