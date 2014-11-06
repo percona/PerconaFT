@@ -3086,16 +3086,6 @@ db_version(int *major, int *minor, int *patch) {
         *patch = DB_VERSION_PATCH;
     return toku_product_name_strings.db_version;
 }
- 
-// HACK: To ensure toku_pthread_yield gets included in the .so
-// non-static would require a prototype in a header
-// static (since unused) would give a warning
-// static + unused would not actually help toku_pthread_yield get in the .so
-// static + used avoids all the warnings and makes sure toku_pthread_yield is in the .so
-static void __attribute__((__used__))
-include_toku_pthread_yield (void) {
-    toku_pthread_yield();
-}
 
 // For test purposes only, translate dname to iname
 // YDB lock is NOT held when this function is called,

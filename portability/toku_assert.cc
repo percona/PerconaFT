@@ -193,7 +193,7 @@ void db_env_do_backtrace(FILE *outf) {
     }
 }
 
-__attribute__((noreturn))
+NORETURN
 static void toku_do_backtrace_abort(void) {
     db_env_do_backtrace(stderr);
     abort();
