@@ -173,8 +173,7 @@ struct count_msgs_extra {
 };
 
 // template-only function, but must be extern
-int count_msgs(const int32_t &offset, const uint32_t UU(idx), struct count_msgs_extra *const e)
-    __attribute__((nonnull(3)));
+int count_msgs(const int32_t &offset, const uint32_t UU(idx), struct count_msgs_extra *const e);
 int count_msgs(const int32_t &offset, const uint32_t UU(idx), struct count_msgs_extra *const e)
 {
     MSN msn;
@@ -196,7 +195,7 @@ struct verify_message_tree_extra {
     bool messages_have_been_moved;
 };
 
-int verify_message_tree(const int32_t &offset, const uint32_t UU(idx), struct verify_message_tree_extra *const e) __attribute__((nonnull(3)));
+int verify_message_tree(const int32_t &offset, const uint32_t UU(idx), struct verify_message_tree_extra *const e);
 int verify_message_tree(const int32_t &offset, const uint32_t UU(idx), struct verify_message_tree_extra *const e)
 {
     int verbose = e->verbose;
@@ -231,7 +230,7 @@ int error_on_iter(const int32_t &UU(offset), const uint32_t UU(idx), void *UU(e)
     return TOKUDB_NEEDS_REPAIR;
 }
 
-int verify_marked_messages(const int32_t &offset, const uint32_t UU(idx), struct verify_message_tree_extra *const e) __attribute__((nonnull(3)));
+int verify_marked_messages(const int32_t &offset, const uint32_t UU(idx), struct verify_message_tree_extra *const e);
 int verify_marked_messages(const int32_t &offset, const uint32_t UU(idx), struct verify_message_tree_extra *const e)
 {
     int verbose = e->verbose;

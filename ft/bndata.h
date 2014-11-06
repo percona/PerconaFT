@@ -257,21 +257,19 @@ public:
     }
 
     // Fetch leafentry by index
-    __attribute__((__nonnull__))
     int fetch_le(uint32_t idx, LEAFENTRY *le);
+
     // Fetch (leafentry, key, keylen) by index
-    __attribute__((__nonnull__))
     int fetch_klpair(uint32_t idx, LEAFENTRY *le, uint32_t *len, void** key);
+
     // Fetch (serialized size of leafentry, key, and keylen) by index
-    __attribute__((__nonnull__))
     int fetch_klpair_disksize(uint32_t idx, size_t *size);
+
     // Fetch (key, keylen) by index
-    __attribute__((__nonnull__))
     int fetch_key_and_len(uint32_t idx, uint32_t *len, void** key);
 
     // Move leafentries (and associated key/keylens) from this basement node to dest_bd
     // Moves indexes [lbi-ube)
-    __attribute__((__nonnull__))
     void split_klpairs(bn_data* dest_bd, uint32_t first_index_for_dest);
 
     // Destroy this basement node and free memory.
@@ -303,14 +301,12 @@ public:
 
     // Allocates space in the mempool to store a new leafentry.
     // This may require reorganizing the mempool and updating the dmt.
-    __attribute__((__nonnull__))
     void get_space_for_overwrite(uint32_t idx, const void* keyp, uint32_t keylen, uint32_t old_keylen, uint32_t old_size,
                                  uint32_t new_size, LEAFENTRY* new_le_space, void **const maybe_free);
 
     // Allocates space in the mempool to store a new leafentry
     // and inserts a new key into the dmt
     // This may require reorganizing the mempool and updating the dmt.
-    __attribute__((__nonnull__))
     void get_space_for_insert(uint32_t idx, const void* keyp, uint32_t keylen, size_t size, LEAFENTRY* new_le_space, void **const maybe_free);
 
     // Gets a leafentry given a klpair from this basement node.

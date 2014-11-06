@@ -1775,7 +1775,6 @@ static void inject_message_at_this_blocknum(FT ft, CACHEKEY cachekey, uint32_t f
     inject_message_in_locked_node(ft, node, -1, msg, flow_deltas, gc_info);
 }
 
-__attribute__((const))
 static inline bool should_inject_in_node(seqinsert_loc loc, int height, int depth)
 // We should inject directly in a node if:
 //  - it's a leaf, or

@@ -256,7 +256,6 @@ public:
      *               If the N values are known in advance, are sorted, and
      *               the structure is empty, we can batch insert them much faster.
      */
-    __attribute__((nonnull))
     void create_from_sorted_memory_of_fixed_size_elements(
             const void *mem,
             const uint32_t numvalues,
@@ -625,7 +624,6 @@ private:
     // leftmod to the left subtree and rightmod to the right subtree
     bool will_need_rebalance(const subtree &st, const int leftmod, const int rightmod) const;
 
-    __attribute__((nonnull))
     void insert_internal(subtree *const subtreep, const dmtwriter_t &value, const uint32_t idx, subtree **const rebalance_subtree);
 
     template<bool with_resize>
@@ -641,7 +639,6 @@ private:
 
     void convert_from_tree_to_array(void);
 
-    __attribute__((nonnull(2,5)))
     void delete_internal(subtree *const subtreep, const uint32_t idx, subtree *const subtree_replace, subtree **const rebalance_subtree);
 
     template<typename iterate_extra_t,
@@ -670,25 +667,18 @@ private:
 
     void fetch_internal(const subtree &subtree, const uint32_t i, uint32_t *const value_len, dmtdataout_t *const value) const;
 
-    __attribute__((nonnull))
     void fill_array_with_subtree_offsets(node_offset *const array, const subtree &subtree) const;
 
-    __attribute__((nonnull))
     void rebuild_subtree_from_offsets(subtree *const subtree, const node_offset *const offsets, const uint32_t numvalues);
 
-    __attribute__((nonnull))
     void rebalance(subtree *const subtree);
 
-    __attribute__((nonnull))
     static void copyout(uint32_t *const outlen, dmtdata_t *const out, const dmt_node *const n);
 
-    __attribute__((nonnull))
     static void copyout(uint32_t *const outlen, dmtdata_t **const out, dmt_node *const n);
 
-    __attribute__((nonnull))
     static void copyout(uint32_t *const outlen, dmtdata_t *const out, const uint32_t len, const dmtdata_t *const stored_value_ptr);
 
-    __attribute__((nonnull))
     static void copyout(uint32_t *const outlen, dmtdata_t **const out, const uint32_t len, dmtdata_t *const stored_value_ptr);
 
     template<typename dmtcmp_t,

@@ -638,8 +638,8 @@ void toku_ft_get_status(FT_STATUS);
 void toku_flusher_thread_set_callback(void (*callback_f)(int, void*), void* extra);
 
 // For upgrade
-int toku_upgrade_subtree_estimates_to_stat64info(int fd, FT ft) __attribute__((nonnull));
-int toku_upgrade_msn_from_root_to_header(int fd, FT ft) __attribute__((nonnull));
+int toku_upgrade_subtree_estimates_to_stat64info(int fd, FT ft);
+int toku_upgrade_msn_from_root_to_header(int fd, FT ft);
 
 // A callback function is invoked with the key, and the data.
 // The pointers (to the bytevecs) must not be modified.  The data must be copied out before the callback function returns.

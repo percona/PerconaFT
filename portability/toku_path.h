@@ -95,7 +95,6 @@ PATENT RIGHTS GRANT:
 #include <limits.h>
 #include <sys/types.h>
 
-__attribute__((nonnull))
 const char *toku_test_filename(const char *default_filename);
 
 #define TOKU_TEST_FILENAME toku_test_filename(__FILE__)

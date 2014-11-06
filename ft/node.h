@@ -405,7 +405,7 @@ long toku_bnc_memory_used(NONLEAF_CHILDINFO bnc);
 void toku_bnc_insert_msg(NONLEAF_CHILDINFO bnc, const void *key, uint32_t keylen, const void *data, uint32_t datalen, enum ft_msg_type type, MSN msn, XIDS xids, bool is_fresh, const toku::comparator &cmp);
 void toku_bnc_empty(NONLEAF_CHILDINFO bnc);
 void toku_bnc_flush_to_child(FT ft, NONLEAF_CHILDINFO bnc, FTNODE child, TXNID parent_oldest_referenced_xid_known);
-bool toku_bnc_should_promote(FT ft, NONLEAF_CHILDINFO bnc) __attribute__((const, nonnull));
+bool toku_bnc_should_promote(FT ft, NONLEAF_CHILDINFO bnc);
 
 bool toku_ftnode_nonleaf_is_gorged(FTNODE node, uint32_t nodesize);
 uint32_t toku_ftnode_leaf_num_entries(FTNODE node);

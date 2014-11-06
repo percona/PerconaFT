@@ -447,8 +447,7 @@ find_tuple_by_xid (const struct referenced_xid_tuple &tuple, const TXNID &xidfin
 }
 
 // template-only function, but must be extern
-int referenced_xids_note_snapshot_txn_end_iter(const TXNID &live_xid, const uint32_t UU(index), rx_omt_t *const referenced_xids)
-    __attribute__((nonnull(3)));
+int referenced_xids_note_snapshot_txn_end_iter(const TXNID &live_xid, const uint32_t UU(index), rx_omt_t *const referenced_xids);
 int referenced_xids_note_snapshot_txn_end_iter(const TXNID &live_xid, const uint32_t UU(index), rx_omt_t *const referenced_xids)
 {
     int r;
@@ -485,8 +484,7 @@ typedef struct snapshot_iter_extra {
 } SNAPSHOT_ITER_EXTRA;
 
 // template-only function, but must be extern
-int note_snapshot_txn_end_by_txn_live_list_iter(referenced_xid_tuple* tuple, const uint32_t index, SNAPSHOT_ITER_EXTRA *const sie)
-    __attribute__((nonnull(3)));
+int note_snapshot_txn_end_by_txn_live_list_iter(referenced_xid_tuple* tuple, const uint32_t index, SNAPSHOT_ITER_EXTRA *const sie);
 int note_snapshot_txn_end_by_txn_live_list_iter(
     referenced_xid_tuple* tuple, 
     const uint32_t index, 

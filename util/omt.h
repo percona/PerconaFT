@@ -321,7 +321,6 @@ public:
      *               If the N values are known in advance, are sorted, and
      *               the structure is empty, we can batch insert them much faster.
      */
-    __attribute__((nonnull))
     void create_from_sorted_array(const omtdata_t *const values, const uint32_t numvalues);
 
     /**
@@ -338,7 +337,6 @@ public:
      *               By taking ownership of the array, we save a malloc and memcpy,
      *               and possibly a free (if the caller is done with the array).
      */
-    __attribute__((nonnull))
     void create_steal_sorted_array(omtdata_t **const values, const uint32_t numvalues, const uint32_t new_capacity);
 
     /**
@@ -353,7 +351,6 @@ public:
      * Rationale:  We don't need a split-evenly operation.  We need to split items so that their total sizes
      *  are even, and other similar splitting criteria.  It's easy to split evenly by calling size(), and dividing by two.
      */
-    __attribute__((nonnull))
     int split_at(omt *const newomt, const uint32_t idx);
 
     /**
@@ -362,7 +359,6 @@ public:
      *  leftomt and rightomt are destroyed.
      * Performance: time=O(n) is acceptable, but one can imagine implementations that are O(\log n) worst-case.
      */
-    __attribute__((nonnull))
     void merge(omt *const leftomt, omt *const rightomt);
 
     /**
@@ -685,7 +681,6 @@ private:
         struct omt_tree t;
     } d;
 
-    __attribute__((nonnull))
     void unmark(const subtree &subtree, const uint32_t index, GrowableArray<node_idx> *const indexes);
 
     void create_internal_no_array(const uint32_t new_capacity);
@@ -700,12 +695,10 @@ private:
 
     void maybe_resize_array(const uint32_t n);
 
-    __attribute__((nonnull))
     void fill_array_with_subtree_values(omtdata_t *const array, const subtree &subtree) const;
 
     void convert_to_array(void);
 
-    __attribute__((nonnull))
     void rebuild_from_sorted_array(subtree *const subtree, const omtdata_t *const values, const uint32_t numvalues);
 
     void convert_to_tree(void);
@@ -714,14 +707,12 @@ private:
 
     bool will_need_rebalance(const subtree &subtree, const int leftmod, const int rightmod) const;
 
-    __attribute__((nonnull))
     void insert_internal(subtree *const subtreep, const omtdata_t &value, const uint32_t idx, subtree **const rebalance_subtree);
 
     void set_at_internal_array(const omtdata_t &value, const uint32_t idx);
 
     void set_at_internal(const subtree &subtree, const omtdata_t &value, const uint32_t idx);
 
-    __attribute__((nonnull(2,5)))
     void delete_internal(subtree *const subtreep, const uint32_t idx, omt_node *const copyn, subtree **const rebalance_subtree);
 
     template<typename iterate_extra_t,
@@ -763,25 +754,18 @@ private:
 
     void fetch_internal(const subtree &subtree, const uint32_t i, omtdataout_t *const value) const;
 
-    __attribute__((nonnull))
     void fill_array_with_subtree_idxs(node_idx *const array, const subtree &subtree) const;
 
-    __attribute__((nonnull))
     void rebuild_subtree_from_idxs(subtree *const subtree, const node_idx *const idxs, const uint32_t numvalues);
 
-    __attribute__((nonnull))
     void rebalance(subtree *const subtree);
 
-    __attribute__((nonnull))
     static void copyout(omtdata_t *const out, const omt_node *const n);
 
-    __attribute__((nonnull))
     static void copyout(omtdata_t **const out, omt_node *const n);
 
-    __attribute__((nonnull))
     static void copyout(omtdata_t *const out, const omtdata_t *const stored_value_ptr);
 
-    __attribute__((nonnull))
     static void copyout(omtdata_t **const out, omtdata_t *const stored_value_ptr);
 
     template<typename omtcmp_t,

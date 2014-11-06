@@ -144,8 +144,7 @@ namespace toku {
     }
 
     template<typename N>
-    __attribute__((const))
-    static inline N mod(N a, N b) {
+    static inline N mod(N a, N b) const {
         return ((a % b) + a) % b;
     }
 

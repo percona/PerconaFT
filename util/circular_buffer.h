@@ -125,7 +125,7 @@ public:
     //  Initialize the circular buffer with an array of elements to manage.
     // Requires:
     //  array must remain valid until deinit() is called.
-    void init(T * const array, size_t cap) __attribute__((nonnull));
+    void init(T * const array, size_t cap);
 
     // Effect:
     //  Deinitialize the circular buffer.  Destroys mutex and condition variables, checks for errors.

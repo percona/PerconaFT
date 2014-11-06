@@ -645,5 +645,4 @@ void toku_pair_list_set_lock_size(uint32_t num_locks);
 // Used by ft-ops.cc to figure out if it has the write lock on a pair.
 // Pretty hacky and not accurate enough, should be improved at the frwlock
 // layer.
-__attribute__((const,nonnull))
 bool toku_ctpair_is_write_locked(PAIR pair);
