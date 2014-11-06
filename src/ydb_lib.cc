@@ -98,12 +98,14 @@ PATENT RIGHTS GRANT:
 
 #if defined(__GNUC__)
 
-static void __attribute__((constructor)) libtokuft_init(void) {
+LIB_CONSTRUCTOR 
+static void libtokuft_init(void) {
     int r = toku_ydb_init();
-    assert(r==0);
+    assert(r == 0);
 }
 
-static void __attribute__((destructor)) libtokuft_destroy(void) {
+LIB_DESTRUCTOR
+static void libtokuft_destroy(void) {
     toku_ydb_destroy();
 }
 

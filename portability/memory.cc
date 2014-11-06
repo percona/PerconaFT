@@ -473,8 +473,8 @@ toku_set_func_free(free_fun_t f) {
 }
 
 #include <toku_race_tools.h>
-void __attribute__((constructor)) toku_memory_helgrind_ignore(void);
-void
-toku_memory_helgrind_ignore(void) {
+LIB_CONSTRUCTOR
+void toku_memory_helgrind_ignore(void);
+void toku_memory_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&status, sizeof status);
 }

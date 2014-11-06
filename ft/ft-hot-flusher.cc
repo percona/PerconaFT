@@ -426,7 +426,7 @@ toku_ft_hot_optimize(FT_HANDLE ft_handle, DBT* left, DBT* right,
 }
 
 #include <toku_race_tools.h>
-void __attribute__((__constructor__)) toku_hot_helgrind_ignore(void);
+void LIB_CONSTRUCTOR toku_hot_helgrind_ignore(void);
 void
 toku_hot_helgrind_ignore(void) {
     // incremented only while lock is held, but read by engine status asynchronously.

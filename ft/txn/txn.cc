@@ -813,7 +813,7 @@ int toku_txn_discard_txn(TOKUTXN txn) {
 }
 
 #include <toku_race_tools.h>
-void __attribute__((__constructor__)) toku_txn_status_helgrind_ignore(void);
+void LIB_CONSTRUCTOR toku_txn_status_helgrind_ignore(void);
 void toku_txn_status_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&txn_status, sizeof txn_status);
 }

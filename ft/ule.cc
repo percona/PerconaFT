@@ -2570,7 +2570,7 @@ toku_le_upgrade_13_14(LEAFENTRY_13 old_leafentry,
 }
 
 #include <toku_race_tools.h>
-void __attribute__((__constructor__)) toku_ule_helgrind_ignore(void);
+void LIB_CONSTRUCTOR toku_ule_helgrind_ignore(void);
 void
 toku_ule_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&le_status, sizeof le_status);

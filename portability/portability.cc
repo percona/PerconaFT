@@ -501,9 +501,9 @@ double tokutime_to_seconds(tokutime_t t) {
 }
 
 #include <toku_race_tools.h>
-void __attribute__((constructor)) toku_portability_helgrind_ignore(void);
-void
-toku_portability_helgrind_ignore(void) {
+LIB_CONSTRUCTOR
+void toku_portability_helgrind_ignore(void);
+void toku_portability_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&toku_cached_hz, sizeof toku_cached_hz);
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&toku_cached_pagesize, sizeof toku_cached_pagesize);
 }

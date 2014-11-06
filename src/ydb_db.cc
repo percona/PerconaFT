@@ -920,13 +920,11 @@ toku_db_fd(DB * UU(db), int * UU(fdp)) {
     return 0;
 }
 
-static const DBT* toku_db_dbt_pos_infty(void) __attribute__((pure));
 static const DBT*
 toku_db_dbt_pos_infty(void) {
     return toku_dbt_positive_infinity();
 }
 
-static const DBT* toku_db_dbt_neg_infty(void) __attribute__((pure));
 static const DBT* 
 toku_db_dbt_neg_infty(void) {
     return toku_dbt_negative_infinity();
@@ -1257,7 +1255,7 @@ locked_load_inames(DB_ENV * env, DB_TXN * txn, int N, DB * dbs[/*N*/], char * ne
 #undef STATUS_VALUE
 
 #include <toku_race_tools.h>
-void __attribute__((constructor)) toku_ydb_db_helgrind_ignore(void);
+void LIB_CONSTRUCTOR toku_ydb_db_helgrind_ignore(void);
 void
 toku_ydb_db_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&ydb_db_layer_status, sizeof ydb_db_layer_status);

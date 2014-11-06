@@ -162,12 +162,12 @@ namespace toku {
 
     UNUSED comparator dbt_comparator;
 
-    __attribute__((__constructor__))
+    LIB_CONSTRUCTOR
     static void construct_dbt_comparator(void) {
         dbt_comparator.create(compare_dbts, nullptr); 
     }
 
-    __attribute__((__destructor__))
+    LIB_DESTRUCTOR
     static void destruct_dbt_comparator(void) {
         dbt_comparator.destroy();
     }

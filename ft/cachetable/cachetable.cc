@@ -4959,7 +4959,7 @@ void cachefile_list::free_stale_data(evictor* ev) {
     write_unlock();
 }
 
-void __attribute__((__constructor__)) toku_cachetable_helgrind_ignore(void);
+void LIB_CONSTRUCTOR toku_cachetable_helgrind_ignore(void);
 void
 toku_cachetable_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&cachetable_miss, sizeof cachetable_miss);

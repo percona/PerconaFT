@@ -132,7 +132,7 @@ typedef struct {
     TOKU_ENGINE_STATUS_ROW_S status[FT_FLUSHER_STATUS_NUM_ROWS];
 } FT_FLUSHER_STATUS_S, *FT_FLUSHER_STATUS;
 
-void toku_ft_flusher_status_init(void) __attribute__((__constructor__));
+void toku_ft_flusher_status_init(void) LIB_CONSTRUCTOR;
 void toku_ft_flusher_get_status(FT_FLUSHER_STATUS);
 
 /**
@@ -239,7 +239,7 @@ typedef struct {
     TOKU_ENGINE_STATUS_ROW_S status[FT_HOT_STATUS_NUM_ROWS];
 } FT_HOT_STATUS_S, *FT_HOT_STATUS;
 
-void toku_ft_hot_status_init(void) __attribute__((__constructor__));
+void toku_ft_hot_status_init(void) LIB_CONSTRUCTOR;
 void toku_ft_hot_get_status(FT_HOT_STATUS);
 
 /**

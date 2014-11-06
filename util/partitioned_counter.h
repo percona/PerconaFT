@@ -121,7 +121,7 @@ PATENT RIGHTS GRANT:
 // This version does not use constructors, essentially reverrting to the google C++ style guide.
 //
 
-// The old C interface.  This required a bunch of explicit ___attribute__((__destructor__)) functions to remember to destroy counters at the end.
+// The old C interface.  This required a bunch of explicit _LIB_DESTRUCTOR functions to remember to destroy counters at the end.
 #if defined(__cplusplus)
 extern "C" {
 #endif

@@ -391,7 +391,7 @@ toku_checkpoint(CHECKPOINTER cp, TOKULOGGER logger,
 }
 
 #include <toku_race_tools.h>
-void __attribute__((__constructor__)) toku_checkpoint_helgrind_ignore(void);
+void LIB_CONSTRUCTOR toku_checkpoint_helgrind_ignore(void);
 void
 toku_checkpoint_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&cp_status, sizeof cp_status);

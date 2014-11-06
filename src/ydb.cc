@@ -3143,7 +3143,7 @@ toku_test_get_checkpointing_user_data_status (void) {
 #undef PERSISTENT_UPGRADE_STATUS_VALUE
 
 #include <toku_race_tools.h>
-void __attribute__((constructor)) toku_ydb_helgrind_ignore(void);
+void LIB_CONSTRUCTOR toku_ydb_helgrind_ignore(void);
 void
 toku_ydb_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&ydb_layer_status, sizeof ydb_layer_status);

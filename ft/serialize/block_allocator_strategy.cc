@@ -187,7 +187,7 @@ static uint64_t padded_fit_alignment = 4096;
 
 // TODO: These compiler specific directives should be abstracted in a portability header
 //       portability/toku_compiler.h?
-__attribute__((__constructor__))
+LIB_CONSTRUCTOR
 static void determine_padded_fit_alignment_from_env(void) {
     // TODO: Should be in portability as 'toku_os_getenv()?'
     const char *s = getenv("TOKU_BA_PADDED_FIT_ALIGNMENT");
@@ -218,7 +218,7 @@ static double hot_zone_threshold = 0.85;
 
 // TODO: These compiler specific directives should be abstracted in a portability header
 //       portability/toku_compiler.h?
-__attribute__((__constructor__))
+LIB_CONSTRUCTOR
 static void determine_hot_zone_threshold_from_env(void) {
     // TODO: Should be in portability as 'toku_os_getenv()?'
     const char *s = getenv("TOKU_BA_HOT_ZONE_THRESHOLD");

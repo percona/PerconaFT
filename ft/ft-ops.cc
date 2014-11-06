@@ -4730,7 +4730,7 @@ int toku_builtin_compare_fun(DB *db UNUSED, const DBT *a, const DBT*b) {
 }
 
 #include <toku_race_tools.h>
-void __attribute__((__constructor__)) toku_ft_helgrind_ignore(void);
+void LIB_CONSTRUCTOR toku_ft_helgrind_ignore(void);
 void
 toku_ft_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&ft_status, sizeof ft_status);

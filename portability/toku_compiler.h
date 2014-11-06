@@ -98,6 +98,9 @@ PATENT RIGHTS GRANT:
 #define ALIGNED(x)          __attribute__((__aligned__(x)))
 #define PACKED              __attribute__((__packed__))
 
+#define LIB_CONSTRUCTOR     __attribute__((__constructor__))
+#define LIB_DESTRUCTOR      __attribute__((__destructor__))
+
 #define THROW               __THROW
 #define MALLOC_LIKE         __malloc_like
 

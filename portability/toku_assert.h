@@ -120,7 +120,7 @@ set_errno(int new_errno)
     errno = new_errno;
 }
 
-void toku_assert_init(void) __attribute__((constructor));
+void toku_assert_init(void) LIB_CONSTRUCTOR;
 
 void toku_assert_set_fpointers(int (*toku_maybe_get_engine_status_text_pointer)(char*, int),
                                int (*toku_maybe_err_engine_status_pointer)(void),

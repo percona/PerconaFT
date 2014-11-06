@@ -97,8 +97,8 @@ PATENT RIGHTS GRANT:
 /* Tokutek memory allocation functions and macros.
  * These are functions for malloc and free */
 
-int toku_memory_startup(void) __attribute__((constructor));
-void toku_memory_shutdown(void) __attribute__((destructor));
+int toku_memory_startup(void) LIB_CONSTRUCTOR;
+void toku_memory_shutdown(void) LIB_DESTRUCTOR;
 
 /* Generally: errno is set to 0 or a value to indicate problems. */
 
