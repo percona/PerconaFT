@@ -158,6 +158,7 @@ typedef uint32_t node_offset;
 
 namespace dmt_internal {
 
+#pragma pack(1)
 class subtree {
 private:
     uint32_t m_index;
@@ -180,7 +181,8 @@ public:
         paranoid_invariant(index != NODE_NULL);
         m_index = index;
     }
-} PACKED ALIGNED(4);
+} ALIGNED(4);
+#pragma pack()
 
 template<typename dmtdata_t>
 class dmt_node_templated {
@@ -190,7 +192,7 @@ public:
     subtree right;
     uint32_t value_length;
     dmtdata_t value;
-} ALIGNED(4); // NOTE: we cannot use PACKED or else dmtdata_t will call copy constructors (dmtdata_t might not be packed by default)
+} ALIGNED(4); // NOTE: we cannot use `pack' or else dmtdata_t will call copy constructors (dmtdata_t might not be packed by default)
 
 }
 

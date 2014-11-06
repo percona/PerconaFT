@@ -88,6 +88,8 @@ PATENT RIGHTS GRANT:
 
 #pragma once
 
+#ifdef __GNUC__
+
 #define UNUSED              __attribute__((__unused__))
 #define WARN_UNUSED_RESULT  __attribute__((__warn_unused_result__))
 #define DEPRECATED          __attribute__((__deprecated__))
@@ -96,7 +98,6 @@ PATENT RIGHTS GRANT:
 #define ALWAYS_INLINE       __attribute__((__always_inline__))
 #define NORETURN            __attribute__((__noreturn__))
 #define ALIGNED(x)          __attribute__((__aligned__(x)))
-#define PACKED              __attribute__((__packed__))
 #define PRINTF_FORMAT(x, y) __attribute__((__format__(__printf__, x, y)))
 
 #define LIB_CONSTRUCTOR     __attribute__((__constructor__))
@@ -113,3 +114,32 @@ PATENT RIGHTS GRANT:
 #define toku_compiler_likely(_expr_)                toku_compiler_expect(((_expr_) != 0), 1)
 #define toku_compiler_unlikely(_expr_)              toku_compiler_expect(((_expr_) != 0), 0)
 #define toku_compiler_offsetof(_type_, _member_)    __builtin_offsetof(_type_, _member_)
+
+#else // !__GNUC__
+
+#define UNUSED              __attribute__((__unused__))
+#define WARN_UNUSED_RESULT  __attribute__((__warn_unused_result__))
+#define DEPRECATED          __attribute__((__deprecated__))
+#define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
+#define NOINLINE            __attribute__((__noinline__))
+#define ALWAYS_INLINE       __attribute__((__always_inline__))
+#define NORETURN            __attribute__((__noreturn__))
+#define ALIGNED(x)          __declspec(align(x))
+#define PRINTF_FORMAT(x, y) __attribute__((__format__(__printf__, x, y)))
+
+#define LIB_CONSTRUCTOR     // TODO: !
+#define LIB_DESTRUCTOR      // TODO: !
+
+#define THREAD_LOCAL        __declspec(thread)
+#define THROW               __declspec(nothrow)
+#define MALLOC_LIKE         
+
+// TODO: Prefer UNUSED x over UU(x)
+#define UU(x)               ((void) x)
+
+#define toku_compiler_expect(_expr_, _value_)       _expr_
+#define toku_compiler_likely(_expr_)                _expr_
+#define toku_compiler_unlikely(_expr_)              _expr_
+#define toku_compiler_offsetof(_type_, _member_)    offsetof(_type_, _member_)
+
+#endif

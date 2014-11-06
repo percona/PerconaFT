@@ -92,6 +92,12 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 #include "toku_config.h"
+
+// Need to check for windows first before including anything other than toku_config.h
+#if defined(_MSC_VER)
+# define TOKU_WINDOWS 1
+#endif
+
 #include "toku_compiler.h"
 
 #if defined(__clang__)
@@ -100,17 +106,14 @@ PATENT RIGHTS GRANT:
 #  define constexpr_static_assert(a, b) static_assert(a, b)
 #endif
 
-#if defined(_MSC_VER)
-#  error "Windows is not supported."
+#if TOKU_WINDOWS
+# define DEV_NULL_FILE "/dev/null"
+#else
+# define DEV_NULL_FILE "nul"
 #endif
-
-#define DEV_NULL_FILE "/dev/null"
 
 // include here, before they get deprecated
 #include <toku_atomic.h>
-
-#if defined(__GNUC__)
-// GCC linux
 
 #include <toku_stdint.h>
 #include <stdio.h>
@@ -127,10 +130,6 @@ PATENT RIGHTS GRANT:
 # define cast_to_typeof(v) (decltype(v))
 #else
 # define cast_to_typeof(v) (__typeof__(v))
-#endif
-
-#else // __GNUC__ was not defined, so...
-#  error "Must use a GNUC-compatible compiler."
 #endif
 
 #if defined(__cplusplus)
@@ -309,9 +308,3 @@ void toku_portability_destroy(void);
 static inline uint64_t roundup_to_multiple(uint64_t alignment, uint64_t v) {
     return (v + alignment - 1) & ~(alignment - 1);
 }
-
-// TODO: This should probably go in its own file toku_compiler.h?
-#define toku_compiler_expect(_expr_, _value_)  __builtin_expect(_expr_, _value_)
-#define toku_compiler_likely(_expr_)           toku_compiler_expect(((_expr_) != 0), 1)
-#define toku_compiler_unlikely(_expr_)         toku_compiler_expect(((_expr_) != 0), 0)
-#define toku_compiler_offsetof(_type_, _member_)    __builtin_offsetof(_type_, _member_)

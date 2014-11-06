@@ -113,10 +113,12 @@ struct unpackedsevenbytestruct {
     uint32_t i;
     char pad[3];
 };
-struct PACKED packedsevenbytestruct {
+#pragma pack(1)
+struct packedsevenbytestruct {
     uint32_t i;
     char pad[3];
 };
+#pragma pack()
 
 struct packedsevenbytestruct *psevenbytestructs;
 static NORETURN void catch_abort (int sig UNUSED) {

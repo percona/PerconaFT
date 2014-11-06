@@ -124,11 +124,13 @@ enum {
 // Should only be accessed by accessor functions toku_xids_xxx, not directly.
 
 // If the xids struct is unpacked, the compiler aligns the ids[] and we waste a lot of space
-struct PACKED XIDS_S {
+#pragma pack(1)
+struct XIDS_S {
     // maximum value of MAX_TRANSACTION_RECORDS - 1 because transaction 0 is implicit
     uint8_t num_xids; 
     TXNID ids[];
 };
+#pragma pack()
 typedef struct XIDS_S *XIDS;
 
 // Retrieve an XIDS representing the root transaction.

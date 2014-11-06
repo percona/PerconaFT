@@ -159,6 +159,7 @@ namespace toku {
 
 namespace omt_internal {
 
+#pragma pack(1)
 template<bool subtree_supports_marks>
 class subtree_templated {
 private:
@@ -181,8 +182,10 @@ public:
         paranoid_invariant(index != NODE_NULL);
         m_index = index;
     }
-} PACKED ALIGNED(4);
+};
+#pragma pack()
 
+#pragma pack(1)
 template<>
 class subtree_templated<true> {
 private:
@@ -238,8 +241,10 @@ public:
     inline void disable_bit(void) {
         m_bitfield &= MASK_INDEX;
     }
-} PACKED ;
+};
+#pragma pack()
 
+#pragma pack(1)
 template<typename omtdata_t, bool subtree_supports_marks>
 class omt_node_templated {
 public:
@@ -251,8 +256,10 @@ public:
     // this needs to be in both implementations because we don't have
     // a "static if" the caller can use
     inline void clear_stolen_bits(void) {}
-} PACKED ALIGNED(4);
+} ALIGNED(4);
+#pragma pack()
 
+#pragma pack(1)
 template<typename omtdata_t>
 class omt_node_templated<omtdata_t, true> {
 public:
@@ -288,7 +295,8 @@ public:
         this->unset_marked_bit();
         this->unset_marks_below_bit();
     }
-} PACKED ALIGNED(4);
+} ALIGNED(4);
+#pragma pack()
 
 }
 

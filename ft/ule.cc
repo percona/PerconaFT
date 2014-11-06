@@ -2355,13 +2355,14 @@ void le_extract_val(LEAFENTRY le,
 }
 
 // This is an on-disk format.  static_asserts verify everything is packed and aligned correctly.
-struct PACKED leafentry_13 {
+#pragma pack(1)
+struct leafentry_13 {
     struct leafentry_committed_13 {
         uint8_t key_val[0];     //Actual key, then actual val
     };
     static_assert(0 == sizeof(leafentry_committed_13), "wrong size");
     static_assert(0 == toku_compiler_offsetof(leafentry_committed_13, key_val), "wrong offset");
-    struct PACKED leafentry_provisional_13 {
+    struct leafentry_provisional_13 {
         uint8_t innermost_type;
         TXNID    xid_outermost_uncommitted;
         uint8_t key_val_xrs[0];  //Actual key,
@@ -2374,11 +2375,12 @@ struct PACKED leafentry_13 {
     uint8_t  num_xrs;
     uint32_t keylen;
     uint32_t innermost_inserted_vallen;
-    union PACKED {
+    union {
         struct leafentry_committed_13 comm;
         struct leafentry_provisional_13 prov;
     } u;
 };
+#pragma pack()
 static_assert(18 == sizeof(leafentry_13), "wrong size");
 static_assert(9 == toku_compiler_offsetof(leafentry_13, u), "wrong offset");
 

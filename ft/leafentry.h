@@ -145,7 +145,8 @@ struct leafentry {
     }; // For the case where LEAFENTRY->type is LE_CLEAN
     static_assert(4 == sizeof(leafentry::leafentry_clean), "leafentry_clean size is wrong");
     static_assert(4 == toku_compiler_offsetof(leafentry::leafentry_clean, val), "val is in the wrong place");
-    struct PACKED leafentry_mvcc {
+#pragma pack(1)
+    struct leafentry_mvcc {
         uint32_t num_cxrs; // number of committed transaction records
         uint8_t  num_pxrs; // number of provisional transaction records
         uint8_t xrs[0];      //then TXNIDs of XRs relevant for reads:
@@ -171,15 +172,17 @@ struct leafentry {
                              //   8 bytes: TXNID
                              //   (innermost data and length with insert/delete flag are stored above, cannot be a placeholder)
     }; // For the case where LEAFENTRY->type is LE_MVCC
+#pragma pack()
     static_assert(5 == sizeof(leafentry::leafentry_mvcc), "leafentry_mvcc size is wrong");
     static_assert(5 == toku_compiler_offsetof(leafentry::leafentry_mvcc, xrs), "xrs is in the wrong place");
 
     uint8_t  type;    // type is LE_CLEAN or LE_MVCC
-    //uint32_t keylen;
-    union PACKED {
+#pragma pack(1)
+    union {
         struct leafentry_clean clean;
         struct leafentry_mvcc mvcc;
     } u;
+#pragma pack()
 };
 static_assert(6 == sizeof(leafentry), "leafentry size is wrong");
 static_assert(1 == toku_compiler_offsetof(leafentry, u), "union is in the wrong place");

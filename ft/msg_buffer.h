@@ -163,7 +163,8 @@ private:
     void _resize(size_t new_size);
 
     // If this isn't packged, the compiler aligns the xids array and we waste a lot of space
-    struct PACKED buffer_entry {
+#pragma pack(1)
+    struct buffer_entry {
         unsigned int  keylen;
         unsigned int  vallen;
         unsigned char type;
@@ -171,6 +172,7 @@ private:
         MSN           msn;
         XIDS_S        xids_s;
     };
+#pragma pack()
 
     struct buffer_entry *get_buffer_entry(int32_t offset) const;
 

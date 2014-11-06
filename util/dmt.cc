@@ -111,7 +111,7 @@ void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::create(void) {
  * Note: create_from_sorted_memory_of_fixed_size_elements does not take ownership of 'mem'.
  * Owner is still responsible for freeing it.
  * While in the OMT a similar function would steal ownership, this doesn't make sense for the DMT because
- * we (usually) have to add padding for alignment (mem has all of the elements PACKED).
+ * we (usually) have to add padding for alignment (mem has all of the elements packed).
  * Also all current uses (as of Jan 12, 2014) of this function would require mallocing a new array
  * in order to allow stealing.
  */
