@@ -140,7 +140,7 @@ struct counter_s {
     struct counter_s *prev, *next;
     int myid;
 };
-static __thread struct counter_s counter = {false,0, NULL,NULL,0};
+static THREAD_LOCAL struct counter_s counter = {false,0, NULL,NULL,0};
 
 static int finished_counter=0; // counter for all threads that are done.
 
@@ -262,7 +262,7 @@ static void* old_doit_nonatomic (void* v) {
     return v;
 }
 
-static __thread volatile int thread_local_counter=0;
+static THREAD_LOCAL volatile int thread_local_counter=0;
 static void* tl_doit (void *v) {
     for (int i=0; i<N; i++) {
 	thread_local_counter++;

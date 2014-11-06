@@ -301,6 +301,12 @@ toku_os_unlink(const char *pathname) {
     return r;
 }
 
+toku_off_t
+toku_os_lseek(int fd, off_t offset, int whence) {
+    off_t r = lseek(fd, offset, whence);
+    return r;
+}
+
 void
 toku_os_sync() {
     sync();

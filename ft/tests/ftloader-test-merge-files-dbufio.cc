@@ -194,7 +194,7 @@ bad_fopen(const char *filename, const char *mode) {
 	errno = EINVAL;
 	rval  = NULL;
     } else {
-	rval = toku_os_fopen_native(filename, mode);
+	rval = fopen(filename, mode);
     }
     return rval;
 }
@@ -380,7 +380,7 @@ static void test (const char *directory, bool is_error) {
 	n_records_in_fd[fdi]++;
     }
     for (int i=0; i<N_SOURCES; i++) {
-	toku_off_t r = lseek(fds[i], 0, SEEK_SET);
+	toku_off_t r = toku_os_lseek(fds[i], 0, SEEK_SET);
 	assert(r==0);
     }
 

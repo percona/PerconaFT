@@ -96,7 +96,7 @@ PATENT RIGHTS GRANT:
 
 namespace toku {
 
-static __thread int thread_local_tid = -1;
+static THREAD_LOCAL int thread_local_tid = -1;
 static int get_local_tid() {
     if (thread_local_tid == -1) {
         thread_local_tid = toku_os_gettid();

@@ -188,7 +188,7 @@ static void read_tempfile(const char *testdir, const char *tempfile, int **tempk
 
     char fname[strlen(testdir) + 1 + strlen(tempfile) + 1];
     sprintf(fname, "%s/%s", testdir, tempfile);
-    FILE *f = toku_os_7(fname, "r");
+    FILE *f = fopen(fname, "r");
     if (f) {
         DBT key;
         toku_init_dbt_flags(&key, DB_DBT_REALLOC);
@@ -244,14 +244,14 @@ static void merge_file_destroy(struct merge_file *mf) {
 static char *merge(char **tempfiles, int ntempfiles, const char *testdir) {
     char fname[strlen(testdir) + 1 + strlen("result") + 1];
     sprintf(fname, "%s/%s", testdir, "result");
-    FILE *mergef = toku_os_7(fname, "w"); assert(mergef != NULL);
+    FILE *mergef = fopen(fname, "w"); assert(mergef != NULL);
 
     struct merge_file f[ntempfiles];
     for (int i = 0; i < ntempfiles; i++) {
         merge_file_init(&f[i]);
         char tname[strlen(testdir) + 1 + strlen(tempfiles[i]) + 1];
         sprintf(tname, "%s/%s", testdir, tempfiles[i]);
-        f[i].f = toku_os_7(tname, "r"); 
+        f[i].f = fopen(tname, "r"); 
 	if (f[i].f == NULL) {
 	    int error = errno;
 	    fprintf(stderr, "%s:%d errno=%d %s\n", __FILE__, __LINE__, error, strerror(error));

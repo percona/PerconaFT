@@ -119,7 +119,7 @@ static void test1 (size_t chars_per_file, size_t bytes_per_read) {
 	    assert(r==0);
 	}
 	{
-	    int r = lseek(fds[i], 0, SEEK_SET);
+	    int r = toku_os_lseek(fds[i], 0, SEEK_SET);
 	    assert(r==0);
 	}
 	

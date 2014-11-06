@@ -93,7 +93,7 @@ PATENT RIGHTS GRANT:
 
 #include <util/scoped_malloc.h>
 
-// The __thread storage class modifier isn't well supported on osx, but we
+// The THREAD_LOCAL storage class modifier isn't well supported on osx, but we
 // aren't worried about the performance on osx, so we provide a
 // pass-through implementation of scoped mallocs.
 #ifdef __APPLE__
@@ -206,7 +206,7 @@ namespace toku {
     };
 
     // Each thread has its own local stack.
-    static __thread tl_stack local_stack;
+    static THREAD_LOCAL tl_stack local_stack;
 
     // Memory is allocated from thread-local storage if available, otherwise from malloc(1).
     scoped_malloc::scoped_malloc(const size_t size) :

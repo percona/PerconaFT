@@ -96,7 +96,7 @@ PATENT RIGHTS GRANT:
 namespace toku {
 
     static const context default_context(CTX_DEFAULT);
-    static __thread const context *tl_current_context = &default_context;
+    static THREAD_LOCAL const context *tl_current_context = &default_context;
 
     // save the old context, set the current context
     context::context(const context_id id) :

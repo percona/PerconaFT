@@ -100,7 +100,7 @@ PATENT RIGHTS GRANT:
 #include "util/growable_array.h"
 
 #ifdef __APPLE__
-// TODO(leif): The __thread declspec is broken in ways I don't understand
+// TODO(leif): The THREAD_LOCAL declspec is broken in ways I don't understand
 // on Darwin.  Partitioned counters use them and it would be prohibitive
 // to tease them apart before a week after 6.5.0, so instead, we're just
 // not going to use them in the most brutal way possible.  This is a
@@ -232,11 +232,11 @@ struct local_counter {
 };
 
 // Try to get it it into one cache line by aligning it.
-static __thread GrowableArray<struct local_counter *> thread_local_array;
-static __thread bool                                  thread_local_array_inited = false;
+static THREAD_LOCAL GrowableArray<struct local_counter *> thread_local_array;
+static THREAD_LOCAL bool                                  thread_local_array_inited = false;
 
 static DoublyLinkedList<GrowableArray<struct local_counter *> *> all_thread_local_arrays;
-static __thread LinkedListElement<GrowableArray<struct local_counter *> *> thread_local_ll_elt;
+static THREAD_LOCAL LinkedListElement<GrowableArray<struct local_counter *> *> thread_local_ll_elt;
 
 static void destroy_thread_local_part_of_partitioned_counters (void *ignore_me);
 static void destroy_thread_local_part_of_partitioned_counters (void *ignore_me UNUSED)

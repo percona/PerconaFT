@@ -2256,7 +2256,7 @@ static void seek_align_locked(struct dbout *out) {
     int alignment = 4096;
     out->current_off += alignment-1;
     out->current_off &= ~(alignment-1);
-    toku_off_t r = lseek(out->fd, out->current_off, SEEK_SET);
+    toku_off_t r = toku_os_lseek(out->fd, out->current_off, SEEK_SET);
     invariant(r==out->current_off);
     invariant(out->current_off >= old_current_off);
     invariant(out->current_off < old_current_off+alignment);

@@ -113,7 +113,7 @@ struct toku_cv_fair_rwlock_waiter_state {
     toku_cond_t cond;
 };
 
-static __thread struct toku_cv_fair_rwlock_waiter_state waitstate = {0, NULL, {PTHREAD_COND_INITIALIZER} };
+static THREAD_LOCAL struct toku_cv_fair_rwlock_waiter_state waitstate = {0, NULL, {PTHREAD_COND_INITIALIZER} };
 
 void toku_cv_fair_rwlock_init (toku_cv_fair_rwlock_t *rwlock) {
     rwlock->state=0;

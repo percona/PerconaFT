@@ -101,6 +101,7 @@ PATENT RIGHTS GRANT:
 #define LIB_CONSTRUCTOR     __attribute__((__constructor__))
 #define LIB_DESTRUCTOR      __attribute__((__destructor__))
 
+#define THREAD_LOCAL        __thread
 #define THROW               __THROW
 #define MALLOC_LIKE         __malloc_like
 

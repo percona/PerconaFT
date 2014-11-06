@@ -155,6 +155,9 @@ int toku_os_chdir(const char *pathname) DEFAULT_VISIBILITY;
 // Unlink a file at the given path
 int toku_os_unlink(const char *pathname) DEFAULT_VISIBILITY;
 
+// Seek a file descriptor (see man(2) lseek on a unix system)
+int64_t toku_os_lseek(int fd, int64_t offset, int whence);
+
 // Sync dirty OS buffer pages to storage.
 void toku_os_sync(void) DEFAULT_VISIBILITY;
 
