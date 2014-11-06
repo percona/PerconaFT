@@ -143,7 +143,7 @@ static void flush_n (CACHEFILE f UNUSED, int UU(fd), CACHEKEY key UNUSED,
                      PAIR_ATTR size UNUSED,
         PAIR_ATTR* new_size      UNUSED,
 		     bool write_me UNUSED,    bool keep_me UNUSED,
-		     bool for_checkpoint __attribute__ ((__unused__)),
+		     bool for_checkpoint UNUSED,
         bool UU(is_clone)
 		     ) {
     int *CAST_FROM_VOIDP(v, value);

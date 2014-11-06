@@ -247,7 +247,7 @@ toku_mutex_assert_locked(const toku_mutex_t *mutex) {
 }
 #else
 static inline void
-toku_mutex_assert_locked(const toku_mutex_t *mutex __attribute__((unused))) {
+toku_mutex_assert_locked(const toku_mutex_t *UU(mutex)) {
 }
 #endif
 
@@ -267,7 +267,7 @@ toku_mutex_assert_unlocked(toku_mutex_t *mutex) {
 }
 #else
 static inline void
-toku_mutex_assert_unlocked(toku_mutex_t *mutex __attribute__((unused))) {
+toku_mutex_assert_unlocked(toku_mutex_t *UU(mutex)) {
 }
 #endif
 

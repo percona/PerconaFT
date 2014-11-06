@@ -112,7 +112,8 @@ PATENT RIGHTS GRANT:
 //
 //raise(SIGABRT) has the downside that perhaps it could be caught?
 //I'm choosing raise(SIGABRT), followed by divide by 0, followed by null dereference, followed by all the others just in case one gets caught.
-static void __attribute__((unused, noreturn))
+UNUSED NORETURN
+static void
 toku_hard_crash_on_purpose(void) {
     raise(SIGKILL); //Does not flush buffers on linux; cannot be caught.
     {
@@ -156,7 +157,8 @@ toku_hard_crash_on_purpose(void) {
 //
 // We'll raise these in some sequence (common ones first), then try emulating the things that would cause these signals to be raised, then eventually just try to die normally and then loop like abort does.
 // Start with a toku assert because that hopefully prints a stacktrace.
-static void __attribute__((unused, noreturn))
+UNUSED NORETURN
+static void
 toku_crash_and_dump_core_on_purpose(void) {
     assert(false);
     invariant(0);

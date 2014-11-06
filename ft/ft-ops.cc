@@ -2465,7 +2465,7 @@ void toku_ft_load(FT_HANDLE ft_handle, TOKUTXN txn, char const * new_iname, int 
 }
 
 // ft actions for logging hot index filenums
-void toku_ft_hot_index(FT_HANDLE ft_handle __attribute__ ((unused)), TOKUTXN txn, FILENUMS filenums, int do_fsync, LSN *lsn) {
+void toku_ft_hot_index(FT_HANDLE ft_handle UNUSED, TOKUTXN txn, FILENUMS filenums, int do_fsync, LSN *lsn) {
     int do_log = 1;
     toku_ft_hot_index_recovery(txn, filenums, do_fsync, do_log, lsn);
 }

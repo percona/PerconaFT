@@ -129,9 +129,9 @@ void toku_assert_set_fpointers(int (*toku_maybe_get_engine_status_text_pointer)(
 
 void toku_do_assert(int /*expr*/,const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) DEFAULT_VISIBILITY;
 
-void toku_do_assert_fail(const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) DEFAULT_VISIBILITY __attribute__((__noreturn__));
-void toku_do_assert_zero_fail(uintptr_t/*expr*/, const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) DEFAULT_VISIBILITY __attribute__((__noreturn__));
-void toku_do_assert_expected_fail(uintptr_t/*expr*/, uintptr_t /*expected*/, const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) DEFAULT_VISIBILITY __attribute__((__noreturn__));
+void toku_do_assert_fail(const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) DEFAULT_VISIBILITY NORETURN;
+void toku_do_assert_zero_fail(uintptr_t/*expr*/, const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) DEFAULT_VISIBILITY NORETURN;
+void toku_do_assert_expected_fail(uintptr_t/*expr*/, uintptr_t /*expected*/, const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/) DEFAULT_VISIBILITY NORETURN;
 
 // Define GCOV if you want to get test-coverage information that ignores the assert statements.
 // #define GCOV

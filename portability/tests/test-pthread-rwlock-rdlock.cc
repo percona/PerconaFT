@@ -95,7 +95,7 @@ PATENT RIGHTS GRANT:
 #include <toku_pthread.h>
 #include "test.h"
 
-int test_main(int argc __attribute__((__unused__)), char *const argv[] __attribute__((__unused__))) {
+int test_main(int argc UNUSED, char *const argv[] UNUSED) {
     toku_pthread_rwlock_t rwlock;
     ZERO_STRUCT(rwlock);
 

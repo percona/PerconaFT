@@ -119,7 +119,7 @@ struct PACKED packedsevenbytestruct {
 };
 
 struct packedsevenbytestruct *psevenbytestructs;
-static __attribute__((__noreturn__)) void catch_abort (int sig __attribute__((__unused__))) {
+static NORETURN void catch_abort (int sig UNUSED) {
     toku_free(psevenbytestructs);
 #ifdef TOKU_DEBUG_PARANOID
     exit(EXIT_SUCCESS);  // with paranoid asserts, we expect to assert and reach this handler
