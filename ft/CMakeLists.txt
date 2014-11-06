@@ -1,28 +1,28 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 ## generate log_code.cc, log_print.cc, log_header.cc
-set_source_files_properties(
-  "${CMAKE_CURRENT_BINARY_DIR}/log_code"
-  "${CMAKE_CURRENT_BINARY_DIR}/log_print"
-  "${CMAKE_CURRENT_BINARY_DIR}/log_header.h"
-  PROPERTIES GENERATED TRUE)
+#set_source_files_properties(
+#  "${CMAKE_CURRENT_BINARY_DIR}/log_code"
+#  "${CMAKE_CURRENT_BINARY_DIR}/log_print"
+#  "${CMAKE_CURRENT_BINARY_DIR}/log_header.h"
+#  PROPERTIES GENERATED TRUE)
 
-add_executable(logformat logger/logformat.cc)
-target_link_libraries(logformat ${LIBTOKUPORTABILITY}_static)
-add_space_separated_property(TARGET logformat LINK_FLAGS --coverage)
+#add_executable(logformat logger/logformat.cc)
+#target_link_libraries(logformat ${LIBTOKUPORTABILITY}_static)
+#add_space_separated_property(TARGET logformat LINK_FLAGS --coverage)
 
 
-add_custom_command(
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_code.cc"
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_print.cc"
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_header.h"
-  COMMAND $<TARGET_FILE:logformat> .
-  DEPENDS logger/logformat
-  )
-add_custom_target(
-  generate_log_code
-  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/log_code.cc" "${CMAKE_CURRENT_BINARY_DIR}/log_print.cc" "${CMAKE_CURRENT_BINARY_DIR}/log_header.h"
-  )
+#add_custom_command(
+#  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_code.cc"
+#  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_print.cc"
+#  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_header.h"
+#  COMMAND $<TARGET_FILE:logformat> .
+#  DEPENDS logger/logformat
+#  )
+#add_custom_target(
+#  generate_log_code
+#  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/log_code.cc" "${CMAKE_CURRENT_BINARY_DIR}/log_print.cc" "${CMAKE_CURRENT_BINARY_DIR}/log_header.h"
+#  )
 
 set(FT_SOURCES
   bndata
@@ -71,23 +71,23 @@ set(FT_SOURCES
   txn/txn_manager
   txn/xids
   ule
-  "${CMAKE_CURRENT_BINARY_DIR}/log_code"
-  "${CMAKE_CURRENT_BINARY_DIR}/log_print"
+#  "${CMAKE_CURRENT_BINARY_DIR}/log_code"
+#  "${CMAKE_CURRENT_BINARY_DIR}/log_print"
   )
 
 add_library(ft SHARED ${FT_SOURCES})
 add_library(ft_static STATIC ${FT_SOURCES})
 ## we're going to link this into libtokudb.so so it needs to have PIC
-set_target_properties(ft_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
-maybe_add_gcov_to_libraries(ft ft_static)
+#set_target_properties(ft_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+#maybe_add_gcov_to_libraries(ft ft_static)
 
 ## depend on other generated targets
-add_dependencies(ft install_tdb_h generate_log_code build_lzma)
-add_dependencies(ft_static install_tdb_h generate_log_code build_lzma)
+#add_dependencies(ft install_tdb_h generate_log_code build_lzma)
+#add_dependencies(ft_static install_tdb_h generate_log_code build_lzma)
 
 ## link with lzma (which should be static) and link dependers with zlib
-target_link_libraries(ft LINK_PRIVATE util_static lzma ${LIBTOKUPORTABILITY})
-target_link_libraries(ft LINK_PUBLIC z)
-target_link_libraries(ft_static LINK_PRIVATE lzma)
+#target_link_libraries(ft LINK_PRIVATE util_static lzma ${LIBTOKUPORTABILITY})
+#target_link_libraries(ft LINK_PUBLIC z)
+#target_link_libraries(ft_static LINK_PRIVATE lzma)
 
-add_subdirectory(tests)
+#add_subdirectory(tests)
