@@ -223,21 +223,21 @@ static inline void toku_env_run_lock_escalation_for_test(DB_ENV *env) {
 
 int toku_ydb_check_avail_fs_space(DB_ENV *env);
 
+PRINTF_FORMAT(5, 0)
 void toku_ydb_error_all_cases(const DB_ENV * env, 
                               int error, 
                               bool include_stderrstring, 
                               bool use_stderr_if_nothing_else, 
-                              const char *fmt, va_list ap)
-    __attribute__((format (printf, 5, 0)))
-    DEFAULT_VISIBILITY; // this is needed by the C++ interface. 
+                              const char *fmt, va_list ap) DEFAULT_VISIBILITY;
 
-int toku_ydb_do_error (const DB_ENV *dbenv, int error, const char *string, ...)
-                       __attribute__((__format__(__printf__, 3, 4)));
+PRINTF_FORMAT(3, 4)
+int toku_ydb_do_error (const DB_ENV *dbenv, int error, const char *string, ...);
 
 /* Environment related errors */
 int toku_env_is_panicked(DB_ENV *dbenv);
-void toku_env_err(const DB_ENV * env, int error, const char *fmt, ...) 
-                         __attribute__((__format__(__printf__, 3, 4)));
+
+PRINTF_FORMAT(3, 4)
+void toku_env_err(const DB_ENV * env, int error, const char *fmt, ...) ;
 
 typedef enum __toku_isolation_level { 
     TOKU_ISO_SERIALIZABLE=0,

@@ -338,7 +338,8 @@ const struct logtype logtypes[] = {
     } } while (0)
 
 
-static void __attribute__((format (printf, 3, 4))) fprintf2 (FILE *f1, FILE *f2, const char *format, ...) {
+PRINTF_FORMAT(3, 4)
+static void fprintf2 (FILE *f1, FILE *f2, const char *format, ...) {
     va_list ap;
     int r;
     va_start(ap, format);

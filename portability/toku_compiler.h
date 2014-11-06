@@ -97,6 +97,7 @@ PATENT RIGHTS GRANT:
 #define NORETURN            __attribute__((__noreturn__))
 #define ALIGNED(x)          __attribute__((__aligned__(x)))
 #define PACKED              __attribute__((__packed__))
+#define PRINTF_FORMAT(x, y) __attribute__((__format__(__printf__, x, y)))
 
 #define LIB_CONSTRUCTOR     __attribute__((__constructor__))
 #define LIB_DESTRUCTOR      __attribute__((__destructor__))
