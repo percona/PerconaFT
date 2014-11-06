@@ -3800,9 +3800,6 @@ void evictor::remove_cloned_data_size(long size) {
 uint64_t evictor::reserve_memory(double fraction, uint64_t upper_bound) {
     toku_mutex_lock(&m_ev_thread_lock);
     uint64_t reserved_memory = fraction * (m_low_size_watermark - m_size_reserved);
-    if (0) { // debug
-        fprintf(stderr, "%s %" PRIu64 " %" PRIu64 "\n", __PRETTY_FUNCTION__, reserved_memory, upper_bound);
-    }
     if (upper_bound > 0 && reserved_memory > upper_bound) {
         reserved_memory = upper_bound;
     }
