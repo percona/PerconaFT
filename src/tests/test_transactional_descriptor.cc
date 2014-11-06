@@ -130,11 +130,15 @@ static void run_test(void) {
     memset(&orig_desc, 0, sizeof(orig_desc));
     orig_desc.size = sizeof(four_byte_desc);
     orig_desc.data = &four_byte_desc;
+
+    { int chk_r = env->db_change_descriptor(env, NULL, "foo.db", &orig_desc); CKERR2(chk_r, DB_NOTFOUND); }
+
     // verify we can only set a descriptor with version 1
     IN_TXN_COMMIT(env, NULL, txn_create, 0, {
             { int chk_r = db_create(&db, env, 0); CKERR(chk_r); }
             assert(db->descriptor == NULL);
             { int chk_r = db->open(db, txn_create, "foo.db", NULL, DB_BTREE, DB_CREATE, 0666); CKERR(chk_r); }
+            { int chk_r = env->db_change_descriptor(env, txn_create, "foo.db", &orig_desc); CKERR2(chk_r, EINVAL); }
             { int chk_r = db->close(db, 0); CKERR(chk_r); db = NULL; }
             { int chk_r = env->db_change_descriptor(env, txn_create, "foo.db", &orig_desc); CKERR(chk_r); }
         });
