@@ -174,7 +174,7 @@ pe_callback (
     void *finalize_extra
     ) 
 {
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
     if (verbose) printf("calling pe_callback\n");
     expected_bytes_to_free--;
     int* CAST_FROM_VOIDP(foo, ftnode_pv);
@@ -263,7 +263,7 @@ cachetable_test (void) {
     // whereas in reality, only 1 byte will be freed
     // we measure that only 1 byte gets freed (which leaves cachetable
     // oversubscrubed)
-    usleep(3*1024*1024);
+    toku_os_usleep(3*1024*1024);
     assert(expected_bytes_to_free == 3);
 
 

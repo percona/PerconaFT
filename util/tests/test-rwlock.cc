@@ -181,7 +181,7 @@ static void time_nop (void) NOINLINE; // don't want it inline, because it messes
 static void time_nop (void) {
     struct timeval start,end;
     for (int t=0; t<T; t++) {
-	gettimeofday(&start, NULL);
+	toku_os_gettimeofday(&start, NULL);
 	for (int i=0; i<N; i++) {
 	    if (val!=0) abort();
 	    val=1;
@@ -189,7 +189,7 @@ static void time_nop (void) {
 	    val=0;
 	    //__asm__ volatile ("" : : : "memory");
 	}
-	gettimeofday(&end,   NULL);
+	toku_os_gettimeofday(&end,   NULL);
 	double diff = 1e9*toku_tdiff(&end, &start)/N;
 	if (verbose>1)
 	    fprintf(stderr, "nop               = %.6fns/(lock+unlock)\n", diff);
@@ -207,11 +207,11 @@ void time_fcall (void) NOINLINE;
 void time_fcall (void) {
     struct timeval start,end;
     for (int t=0; t<T; t++) {
-	gettimeofday(&start, NULL);
+	toku_os_gettimeofday(&start, NULL);
 	for (int i=0; i<N; i++) {
 	    fcall_nop(i);
 	}
-	gettimeofday(&end,   NULL);
+	toku_os_gettimeofday(&end,   NULL);
 	double diff = 1e9*toku_tdiff(&end, &start)/N;
 	if (verbose>1)
 	    fprintf(stderr, "fcall             = %.6fns/(lock+unlock)\n", diff);
@@ -224,12 +224,12 @@ void time_cas (void) {
     volatile int64_t tval = 0;
     struct timeval start,end;
     for (int t=0; t<T; t++) {
-	gettimeofday(&start, NULL);
+	toku_os_gettimeofday(&start, NULL);
 	for (int i=0; i<N; i++) {
 	    { int r = toku_sync_val_compare_and_swap(&tval, 0, 1);  assert(r==0); }
 	    { int r = toku_sync_val_compare_and_swap(&tval, 1, 0);  assert(r==1); }
 	}
-	gettimeofday(&end,   NULL);
+	toku_os_gettimeofday(&end,   NULL);
 	double diff = 1e9*toku_tdiff(&end, &start)/N;
 	if (verbose>1)
 	    fprintf(stderr, "cas           = %.6fns/(lock+unlock)\n", diff);
@@ -246,12 +246,12 @@ void time_pthread_mutex (void) {
     toku_mutex_lock(&mutex);
     toku_mutex_unlock(&mutex);
     for (int t=0; t<T; t++) {
-	gettimeofday(&start, NULL);
+	toku_os_gettimeofday(&start, NULL);
 	for (int i=0; i<N; i++) {
 	    toku_mutex_lock(&mutex);
 	    toku_mutex_unlock(&mutex);
 	}
-	gettimeofday(&end,   NULL);
+	toku_os_gettimeofday(&end,   NULL);
 	double diff = 1e9*toku_tdiff(&end, &start)/N;
 	if (verbose>1)
 	    fprintf(stderr, "pthread_mutex     = %.6fns/(lock+unlock)\n", diff);
@@ -268,12 +268,12 @@ void time_pthread_rwlock (void) {
     toku_pthread_rwlock_rdlock(&mutex);
     toku_pthread_rwlock_rdunlock(&mutex);
     for (int t=0; t<T; t++) {
-	gettimeofday(&start, NULL);
+	toku_os_gettimeofday(&start, NULL);
 	for (int i=0; i<N; i++) {
 	    toku_pthread_rwlock_rdlock(&mutex);
 	    toku_pthread_rwlock_rdunlock(&mutex);
 	}
-	gettimeofday(&end,   NULL);
+	toku_os_gettimeofday(&end,   NULL);
 	double diff = 1e9*toku_tdiff(&end, &start)/N;
 	if (verbose>1)
 	    fprintf(stderr, "pthread_rwlock(r) = %.6fns/(lock+unlock)\n", diff);
@@ -306,12 +306,12 @@ void time_util_rwlock (void) {
     util_rwlock_lock(&rwlock, &external_mutex);
     util_rwlock_unlock(&rwlock, &external_mutex);
     for (int t=0; t<T; t++) {
-	gettimeofday(&start, NULL);
+	toku_os_gettimeofday(&start, NULL);
 	for (int i=0; i<N; i++) {
 	    util_rwlock_lock(&rwlock, &external_mutex);
 	    util_rwlock_unlock(&rwlock, &external_mutex);
 	}
-	gettimeofday(&end,   NULL);
+	toku_os_gettimeofday(&end,   NULL);
 	double diff = 1e9*toku_tdiff(&end, &start)/N;
 	if (verbose>1)
 	    fprintf(stderr, "util_rwlock(r) = %.6fns/(lock+unlock)\n", diff);
@@ -334,12 +334,12 @@ void time_util_prelocked_rwlock (void) {
     rwlock_read_lock(&rwlock, &external_mutex);
     rwlock_read_unlock(&rwlock);
     for (int t=0; t<T; t++) {
-	gettimeofday(&start, NULL);
+	toku_os_gettimeofday(&start, NULL);
 	for (int i=0; i<N; i++) {
 	    rwlock_read_lock(&rwlock, &external_mutex);
 	    rwlock_read_unlock(&rwlock);
 	}
-	gettimeofday(&end,   NULL);
+	toku_os_gettimeofday(&end,   NULL);
 	double diff = 1e9*toku_tdiff(&end, &start)/N;
 	if (verbose>1)
 	    fprintf(stderr, "pre_util_rwlock(r) = %.6fns/(lock+unlock)\n", diff);
@@ -371,12 +371,12 @@ void time_frwlock_prelocked(void) {
     invariant(got_lock);
     x.write_unlock();
     for (int t=0; t<T; t++) {
-	gettimeofday(&start, NULL);
+	toku_os_gettimeofday(&start, NULL);
 	for (int i=0; i<N; i++) {
 	    x.read_lock();
 	    x.read_unlock();
 	}
-	gettimeofday(&end,   NULL);
+	toku_os_gettimeofday(&end,   NULL);
 	double diff = 1e9*toku_tdiff(&end, &start)/N;
 	if (verbose>1)
 	    fprintf(stderr, "frwlock_prelocked = %.6fns/(lock+unlock)\n", diff);
@@ -399,7 +399,7 @@ void time_frwlock(void) {
     x.read_unlock();
     toku_mutex_unlock(&external_mutex);
     for (int t=0; t<T; t++) {
-	gettimeofday(&start, NULL);
+	toku_os_gettimeofday(&start, NULL);
         for (int i=0; i<N; i++) {
             toku_mutex_lock(&external_mutex);
             x.read_lock();
@@ -409,7 +409,7 @@ void time_frwlock(void) {
             x.read_unlock();
             toku_mutex_unlock(&external_mutex);
         }
-	gettimeofday(&end,   NULL);
+	toku_os_gettimeofday(&end,   NULL);
 	double diff = 1e9*toku_tdiff(&end, &start)/N;
 	if (verbose>1)
 	    fprintf(stderr, "frwlock           = %.6fns/(lock+unlock)\n", diff);

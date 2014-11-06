@@ -102,7 +102,7 @@ static void test4 (int nodesize, int count) {
     struct timeval t0,t1;
     int i;
     CACHETABLE ct;
-    gettimeofday(&t0, 0);
+    toku_os_gettimeofday(&t0, 0);
     toku_os_unlink(fname);
     
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
@@ -119,7 +119,7 @@ static void test4 (int nodesize, int count) {
     r = toku_close_ft_handle_nolsn(t, 0);        assert(r==0);
     toku_cachetable_close(&ct);
     
-    gettimeofday(&t1, 0);
+    toku_os_gettimeofday(&t1, 0);
     {
 	double diff = toku_tdiff(&t1, &t0);
 	if (verbose) printf("random insertions: blocksize=%d %d insertions in %.3f seconds, %.2f insertions/second\n", nodesize, count, diff, count/diff);

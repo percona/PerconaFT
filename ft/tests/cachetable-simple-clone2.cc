@@ -162,7 +162,7 @@ test_clean (enum cachetable_dirty dirty, bool cloneable) {
     
     // at this point, there should be no more dirty writes
     r = toku_test_cachetable_unpin(f1, make_blocknum(1), 1, dirty, make_pair_attr(8));
-    usleep(2*1024*1024);
+    toku_os_usleep(2*1024*1024);
     toku_cachetable_end_checkpoint(
         cp, 
         NULL, 

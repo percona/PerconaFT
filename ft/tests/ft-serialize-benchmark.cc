@@ -223,12 +223,12 @@ test_serialize_leaf(int valsize, int nelts, double entropy, int ser_runs, int de
     struct timeval t[2];
     FTNODE_DISK_DATA ndd = NULL;
     for (int i = 0; i < ser_runs; i++) {
-        gettimeofday(&t[0], NULL);
+        toku_os_gettimeofday(&t[0], NULL);
         ndd = NULL;
         sn->dirty = 1;
         r = toku_serialize_ftnode_to(fd, make_blocknum(20), sn, &ndd, true, ft->ft, false);
         assert(r==0);
-        gettimeofday(&t[1], NULL);
+        toku_os_gettimeofday(&t[1], NULL);
         total_start.tv_sec += t[0].tv_sec;
         total_start.tv_usec += t[0].tv_usec;
         total_end.tv_sec += t[1].tv_sec;
@@ -248,11 +248,11 @@ test_serialize_leaf(int valsize, int nelts, double entropy, int ser_runs, int de
     ftnode_fetch_extra bfe;
     for (int i = 0; i < deser_runs; i++) {
         bfe.create_for_full_read(ft_h);
-        gettimeofday(&t[0], NULL);
+        toku_os_gettimeofday(&t[0], NULL);
         FTNODE_DISK_DATA ndd2 = NULL;
         r = toku_deserialize_ftnode_from(fd, make_blocknum(20), 0/*pass zero for hash*/, &dn, &ndd2, &bfe);
         assert(r==0);
-        gettimeofday(&t[1], NULL);
+        toku_os_gettimeofday(&t[1], NULL);
 
         total_start.tv_sec += t[0].tv_sec;
         total_start.tv_usec += t[0].tv_usec;
@@ -380,11 +380,11 @@ test_serialize_nonleaf(int valsize, int nelts, double entropy, int ser_runs, int
     }
 
     struct timeval t[2];
-    gettimeofday(&t[0], NULL);
+    toku_os_gettimeofday(&t[0], NULL);
     FTNODE_DISK_DATA ndd = NULL;
     r = toku_serialize_ftnode_to(fd, make_blocknum(20), &sn, &ndd, true, ft->ft, false);
     assert(r==0);
-    gettimeofday(&t[1], NULL);
+    toku_os_gettimeofday(&t[1], NULL);
     double dt;
     dt = (t[1].tv_sec - t[0].tv_sec) + ((t[1].tv_usec - t[0].tv_usec) / USECS_PER_SEC);
     dt *= 1000;
@@ -392,11 +392,11 @@ test_serialize_nonleaf(int valsize, int nelts, double entropy, int ser_runs, int
 
     ftnode_fetch_extra bfe;
     bfe.create_for_full_read(ft_h);
-    gettimeofday(&t[0], NULL);
+    toku_os_gettimeofday(&t[0], NULL);
     FTNODE_DISK_DATA ndd2 = NULL;
     r = toku_deserialize_ftnode_from(fd, make_blocknum(20), 0/*pass zero for hash*/, &dn, &ndd2, &bfe);
     assert(r==0);
-    gettimeofday(&t[1], NULL);
+    toku_os_gettimeofday(&t[1], NULL);
     dt = (t[1].tv_sec - t[0].tv_sec) + ((t[1].tv_usec - t[0].tv_usec) / USECS_PER_SEC);
     dt *= 1000;
     printf("deserialize nonleaf(ms): %0.05lf (IGNORED RUNS=%d)\n", dt, deser_runs);

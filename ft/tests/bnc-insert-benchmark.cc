@@ -133,7 +133,7 @@ run_test(unsigned long eltsize, unsigned long nodesize, unsigned long repeat)
     NONLEAF_CHILDINFO bnc;
     long long unsigned nbytesinserted = 0;
     struct timeval t[2];
-    gettimeofday(&t[0], NULL);
+    toku_os_gettimeofday(&t[0], NULL);
 
     toku::comparator cmp;
     cmp.create(long_key_cmp, nullptr);
@@ -151,7 +151,7 @@ run_test(unsigned long eltsize, unsigned long nodesize, unsigned long repeat)
         destroy_nonleaf_childinfo(bnc);
     }
 
-    gettimeofday(&t[1], NULL);
+    toku_os_gettimeofday(&t[1], NULL);
     double dt;
     dt = (t[1].tv_sec - t[0].tv_sec) + ((t[1].tv_usec - t[0].tv_usec) / USECS_PER_SEC);
     double mbrate = ((double) nbytesinserted / (1 << 20)) / dt;

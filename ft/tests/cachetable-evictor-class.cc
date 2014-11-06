@@ -160,7 +160,7 @@ void evictor_unit_test::disable_ev_thread() {
     m_ev.signal_eviction_thread();
     toku_mutex_unlock(&m_ev.m_ev_thread_lock);
     // sleep for one second to ensure eviction thread picks up new period
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
 }
 
 // test that verifies that counts, such as m_size_current
@@ -243,7 +243,7 @@ void evictor_unit_test::verify_ev_m_size_reserved() {
     assert(m_ev.m_size_reserved == 100+150); //100 original, 150 from last call
     assert(m_ev.m_size_current == 150);
     assert(m_ev.m_size_evicting == 0);
-    usleep(1*1024*1024); // sleep to give eviction thread a chance to wake up
+    toku_os_usleep(1*1024*1024); // sleep to give eviction thread a chance to wake up
     assert(m_ev.m_num_eviction_thread_runs > 0);
     
     m_ev.m_size_current = 0;
@@ -277,7 +277,7 @@ void evictor_unit_test::verify_ev_handling_cache_pressure() {
     m_ev.m_num_eviction_thread_runs = 0;
     m_ev.m_size_evicting = 101;
     m_ev.decrease_size_evicting(101);
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
     // should not have been signaled because we have no sleepers
     assert(m_ev.m_num_eviction_thread_runs == 0);
 
@@ -285,7 +285,7 @@ void evictor_unit_test::verify_ev_handling_cache_pressure() {
     m_ev.m_size_evicting = 101;
     m_ev.m_num_sleepers = 1;
     m_ev.decrease_size_evicting(2);
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
     // should have been signaled because we have sleepers
     assert(m_ev.m_num_eviction_thread_runs == 1);
     assert(m_ev.m_num_sleepers == 1); // make sure fake sleeper did not go away
@@ -294,7 +294,7 @@ void evictor_unit_test::verify_ev_handling_cache_pressure() {
     m_ev.m_size_evicting = 102;
     m_ev.m_num_sleepers = 1;
     m_ev.decrease_size_evicting(1);
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
     // should not have been signaled because we did not go to less than 100
     assert(m_ev.m_num_eviction_thread_runs == 0);
     assert(m_ev.m_num_sleepers == 1); // make sure fake sleeper did not go away

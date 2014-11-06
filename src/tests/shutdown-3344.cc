@@ -136,7 +136,7 @@ static void
 populate(DB_ENV *env, DB_TXN *txn, DB *db, uint64_t nrows) {
     int r;
     struct timeval tstart;
-    r = gettimeofday(&tstart, NULL); assert_zero(r);
+    r = toku_os_gettimeofday(&tstart, NULL); assert_zero(r);
     struct timeval tlast = tstart;
 
     for (uint64_t rowi = 0; rowi < nrows; rowi++) {
@@ -146,7 +146,7 @@ populate(DB_ENV *env, DB_TXN *txn, DB *db, uint64_t nrows) {
         uint64_t rows_per_report = 100000;
         if (((rowi + 1) % rows_per_report) == 0) {
             struct timeval tnow;
-            r = gettimeofday(&tnow, NULL); assert_zero(r);
+            r = toku_os_gettimeofday(&tnow, NULL); assert_zero(r);
             float last_time = tdiff(&tnow, &tlast);
             float total_time = tdiff(&tnow, &tstart);
             if (verbose) {

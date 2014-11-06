@@ -147,7 +147,11 @@ typedef uint64_t tokutime_t;             // Time type used in by tokutek timers.
 // A double can hold numbers up to about 53 bits.  RDTSC which uses about 33 bits every second, so that leaves
 // 2^20 seconds from booting (about 2 weeks) before the RDTSC value cannot be represented accurately as a double.
 //
-double tokutime_to_seconds(tokutime_t)  DEFAULT_VISIBILITY; // Convert tokutime to seconds.
+double tokutime_to_seconds(tokutime_t) DEFAULT_VISIBILITY; // Convert tokutime to seconds.
+
+static inline int toku_os_gettimeofday(struct timeval *tv, struct timezone *tz) {
+    return gettimeofday(tv, tz);
+}
 
 // Get the value of tokutime for right now.  We want this to be fast, so we expose the implementation as RDTSC.
 static inline tokutime_t toku_time_now(void) {
@@ -158,6 +162,6 @@ static inline tokutime_t toku_time_now(void) {
 
 static inline uint64_t toku_current_time_microsec(void) {
     struct timeval t;
-    gettimeofday(&t, NULL);
+    toku_os_gettimeofday(&t, NULL);
     return t.tv_sec * (1UL * 1000 * 1000) + t.tv_usec;
 }

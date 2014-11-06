@@ -182,7 +182,7 @@ static int prev_count;
 static void
 printtdiff (int N) {
     struct timeval thistime;
-    gettimeofday(&thistime, 0);
+    toku_os_gettimeofday(&thistime, 0);
     double diff = toku_tdiff(&thistime, &prevtime);
     int fcount=get_fsync_count();
     if (verbose) printf("%s: %10.6fs %4d fsyncs for %4d threads %s %8.1f tps, %8.1f tps/thread\n", progname, diff, fcount-prev_count,
@@ -251,7 +251,7 @@ test_main (int argc, char *const argv[]) {
     progname=argv[0];
     my_parse_args(argc, argv);
 
-    gettimeofday(&prevtime, 0);
+    toku_os_gettimeofday(&prevtime, 0);
     prev_count=0;
 
     db_env_set_func_fsync(do_fsync);

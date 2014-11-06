@@ -160,7 +160,7 @@ run_test (void) {
         assert_zero(r);
     }
 
-    usleep(4000000);
+    toku_os_usleep(4000000);
     assert(my_cleaner_callback_called);
 
     toku_cachetable_verify(ct);

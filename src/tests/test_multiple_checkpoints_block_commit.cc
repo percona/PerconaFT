@@ -100,7 +100,7 @@ DB_ENV *env;
 
 static void checkpoint_callback_1(void * extra) {
     assert(extra == NULL);
-    usleep(10*1024*1024);
+    toku_os_usleep(10*1024*1024);
 }
 
 static void *run_checkpoint(void *arg) {
@@ -156,9 +156,9 @@ static void run_test(void) {
     
     { int chk_r = toku_pthread_create(&chkpt1_tid, NULL, run_checkpoint, NULL); CKERR(chk_r); } 
     { int chk_r = toku_pthread_create(&chkpt2_tid, NULL, run_checkpoint, NULL); CKERR(chk_r); } 
-    usleep(2*1024*1024);
+    toku_os_usleep(2*1024*1024);
     struct timeval tstart;
-    gettimeofday(&tstart, NULL);
+    toku_os_gettimeofday(&tstart, NULL);
     DB_TXN *txn = NULL;
     { int chk_r = env->txn_begin(env, NULL, &txn, 0); CKERR(chk_r); }
     i = 1; v = 1;
@@ -166,7 +166,7 @@ static void run_test(void) {
     { int chk_r = txn->commit(txn, 0); CKERR(chk_r); }
     
     struct timeval tend; 
-    gettimeofday(&tend, NULL);
+    toku_os_gettimeofday(&tend, NULL);
     uint64_t diff = tdelta_usec(&tend, &tstart);
     assert(diff < 5*1024*1024); 
 

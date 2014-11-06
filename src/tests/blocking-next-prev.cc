@@ -152,7 +152,7 @@ static void blocking_next(DB_ENV *db_env, DB *db, uint64_t nrows UU(), long slee
             break;
         if (verbose)
             printf("%lu next %" PRIu64 "\n", (unsigned long) toku_pthread_self(), get_key(&context.key));
-        usleep(sleeptime);
+        toku_os_usleep(sleeptime);
     }
 
     if (verbose)
@@ -198,7 +198,7 @@ static void blocking_prev(DB_ENV *db_env, DB *db, uint64_t nrows UU(), long slee
             break;
         if (verbose)
             printf("%lu prev %" PRIu64 "\n", (unsigned long) toku_pthread_self(), get_key(&context.key));
-        usleep(sleeptime);
+        toku_os_usleep(sleeptime);
     }
 
     if (verbose)

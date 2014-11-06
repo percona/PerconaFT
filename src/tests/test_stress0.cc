@@ -126,7 +126,7 @@ static int iterate_requests(DB *db, uint64_t txnid,
     invariant(blocking_txnid > 0);
     invariant(txnid != blocking_txnid);
     if (rand() % 5 == 0) {
-        usleep(100);
+        toku_os_usleep(100);
     }
     return 0;
 }
@@ -153,7 +153,7 @@ static int iterate_txns(uint64_t txnid, uint64_t client_id,
         invariant_notnull(right_key.data);
         invariant(right_key.size > 0);
         if (rand() % 5 == 0) {
-            usleep(50);
+            toku_os_usleep(50);
         }
         memset(&left_key, 0, sizeof(DBT));
         memset(&right_key, 0, sizeof(DBT));

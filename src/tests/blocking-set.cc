@@ -144,7 +144,7 @@ static void blocking_set(DB_ENV *db_env, DB *db, uint64_t nrows, long sleeptime)
         memcpy(&v, val.data, val.size);
         assert(v == 0); // verify the value
 
-        usleep(sleeptime);
+        toku_os_usleep(sleeptime);
 
         r = cursor->c_close(cursor); assert(r == 0);
 

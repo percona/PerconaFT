@@ -175,7 +175,7 @@ static struct timeval prevtime;
 static void
 printtdiff (const char *str) {
     struct timeval thistime;
-    gettimeofday(&thistime, 0);
+    toku_os_gettimeofday(&thistime, 0);
     if (verbose) printf("%10.6f %s\n", toku_tdiff(&thistime, &prevtime), str);
     prevtime = thistime;
 }
@@ -188,7 +188,7 @@ test_main (int argc, char *const argv[]) {
     toku_os_recursive_delete(TOKU_TEST_FILENAME);
     { r=toku_os_mkdir(TOKU_TEST_FILENAME, S_IRWXU+S_IRWXG+S_IRWXO);       assert(r==0); }
 
-    gettimeofday(&prevtime, 0);
+    toku_os_gettimeofday(&prevtime, 0);
     test_groupcommit(1);  printtdiff("1 thread");
     test_groupcommit(2);  printtdiff("2 threads");
     test_groupcommit(10); printtdiff("10 threads");

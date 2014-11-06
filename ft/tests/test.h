@@ -355,7 +355,7 @@ public:
         ev->signal_eviction_thread();
         toku_mutex_unlock(&ev->m_ev_thread_lock);
         // sleep for one second to ensure eviction thread picks up new period
-        usleep(1*1024*1024);
+        toku_os_usleep(1*1024*1024);
     }
     static uint64_t get_num_eviction_runs(evictor* ev) {
         return ev->m_num_eviction_thread_runs;

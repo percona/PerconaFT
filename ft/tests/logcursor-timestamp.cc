@@ -93,7 +93,7 @@ PATENT RIGHTS GRANT:
 
 static uint64_t now(void) {
     struct timeval tv;
-    int r = gettimeofday(&tv, NULL);
+    int r = toku_os_gettimeofday(&tv, NULL);
     assert(r == 0);
     return tv.tv_sec * 1000000ULL + tv.tv_usec;
 }

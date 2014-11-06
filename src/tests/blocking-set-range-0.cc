@@ -148,7 +148,7 @@ static void blocking_set_range(DB_ENV *db_env, DB *db, uint64_t nrows, long slee
         memcpy(&v, context.val.data, context.val.size);
         assert(v == the_key); // verify the value
 
-        usleep(sleeptime);
+        toku_os_usleep(sleeptime);
 
         r = cursor->c_close(cursor); assert(r == 0);
 

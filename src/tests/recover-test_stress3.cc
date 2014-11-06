@@ -126,7 +126,7 @@ uint64_t start_time;
 
 static uint64_t get_tnow(void) {
     struct timeval tv;
-    int r = gettimeofday(&tv, NULL); assert(r == 0);
+    int r = toku_os_gettimeofday(&tv, NULL); assert(r == 0);
     return tv.tv_sec * 1000000ULL + tv.tv_usec;
 }
 

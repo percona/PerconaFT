@@ -337,7 +337,7 @@ run_test (int iter, int die) {
 	uint32_t delay = myrandom();
 	delay &= 0xFFF;       // select lower 12 bits, shifted up 8 for random number ...
 	delay = delay << 8;   // ... uniformly distributed between 0 and 1M ...
-	usleep(delay);        // ... to sleep up to one second (1M usec)
+	toku_os_usleep(delay);        // ... to sleep up to one second (1M usec)
 	drop_dead();
     }
     else {

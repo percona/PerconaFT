@@ -175,18 +175,18 @@ static void biginsert (long long n_elements, struct timeval *starttime) {
     struct timeval t1,t2;
     int iteration;
     for (i=0, iteration=0; i<n_elements; i+=ITEMS_TO_INSERT_PER_ITERATION, iteration++) {
-	gettimeofday(&t1,0);
+	toku_os_gettimeofday(&t1,0);
 	if (do_serial)
             serial_insert_from(i);
-	gettimeofday(&t2,0);
+	toku_os_gettimeofday(&t2,0);
 	if (verbose && do_serial) {
 	    printf("serial %9.6fs %8.0f/s    ", toku_tdiff(&t2, &t1), ITEMS_TO_INSERT_PER_ITERATION/toku_tdiff(&t2, &t1));
 	    fflush(stdout);
 	}
-	gettimeofday(&t1,0);
+	toku_os_gettimeofday(&t1,0);
         if (do_random)
             random_insert_below((i+ITEMS_TO_INSERT_PER_ITERATION)*SERIAL_SPACING);
-	gettimeofday(&t2,0);
+	toku_os_gettimeofday(&t2,0);
 	if (verbose && do_random) {
 	    printf("random %9.6fs %8.0f/s    ", toku_tdiff(&t2, &t1), ITEMS_TO_INSERT_PER_ITERATION/toku_tdiff(&t2, &t1));
 	    fflush(stdout);
@@ -286,11 +286,11 @@ test_main (int argc, const char *argv[]) {
         fflush(stdout);
     }
     setup();
-    gettimeofday(&t1,0);
+    toku_os_gettimeofday(&t1,0);
     biginsert(total_n_items, &t1);
-    gettimeofday(&t2,0);
+    toku_os_gettimeofday(&t2,0);
     toku_shutdown();
-    gettimeofday(&t3,0);
+    toku_os_gettimeofday(&t3,0);
     if (verbose) {
         int f = 0;
         if (do_serial) f += 1;

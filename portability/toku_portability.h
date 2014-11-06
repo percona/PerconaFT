@@ -273,7 +273,7 @@ int toku_os_write (int fd, const void *buf, size_t len) DEFAULT_VISIBILITY;
 // functions that sometimes forcefully fail, othertimes passing through)
 FILE * toku_os_fdopen(int fildes, const char *mode);    
 FILE * toku_os_fopen(const char *filename, const char *mode);
-int toku_os_open(const char *path, int oflag, int mode);
+int toku_os_open(const char *path, int oflag, int mode = 0);
 int toku_os_open_direct(const char *path, int oflag, int mode);
 int toku_os_close(int fd);
 int toku_os_fclose(FILE * stream);

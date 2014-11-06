@@ -93,13 +93,6 @@ PATENT RIGHTS GRANT:
 
 #include <toku_time.h>
 
-UNUSED
-static long current_time_usec(void) {
-    struct timeval t;
-    gettimeofday(&t, NULL);
-    return t.tv_usec + t.tv_sec * 1000000;
-}
-
 namespace toku {
 
 // test write lock conflicts when read or write locks exist

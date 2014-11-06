@@ -121,7 +121,7 @@ flush (
     bool UU(is_clone)
     ) 
 {  
-    if (w) usleep(5*1024*1024);
+    if (w) toku_os_usleep(5*1024*1024);
     if (w && check_flush) {
         assert(flush_expected);
         if (clone_called) assert(is_clone);
@@ -176,17 +176,17 @@ test_clean (enum cachetable_dirty dirty, bool cloneable) {
     assert_zero(r);
     struct timeval tstart;
     struct timeval tend; 
-    gettimeofday(&tstart, NULL);
+    toku_os_gettimeofday(&tstart, NULL);
 
     // test that having a pin that passes false for may_modify_value does not stall behind checkpoint
     r = toku_cachetable_get_and_pin(f1, make_blocknum(1), 1, &v1, &s1, wc, def_fetch, def_pf_req_callback, def_pf_callback, false, NULL);
     r = toku_test_cachetable_unpin(f1, make_blocknum(1), 1, CACHETABLE_CLEAN, make_pair_attr(8));
-    gettimeofday(&tend, NULL);
+    toku_os_gettimeofday(&tend, NULL);
     assert(tdelta_usec(&tend, &tstart) <= 2000000); 
     assert(!clone_called);
     
     r = toku_cachetable_get_and_pin(f1, make_blocknum(1), 1, &v1, &s1, wc, def_fetch, def_pf_req_callback, def_pf_callback, true, NULL);
-    gettimeofday(&tend, NULL);
+    toku_os_gettimeofday(&tend, NULL);
     
     // we take 5 seconds for a write
     // we check if time to pin is less than 2 seconds, if it is
@@ -208,7 +208,7 @@ test_clean (enum cachetable_dirty dirty, bool cloneable) {
 
     // at this point, there should be no more dirty writes
     r = toku_test_cachetable_unpin(f1, make_blocknum(1), 1, CACHETABLE_CLEAN, make_pair_attr(8));
-    gettimeofday(&tend, NULL);
+    toku_os_gettimeofday(&tend, NULL);
     if (cloneable || !dirty ) {
         assert(tdelta_usec(&tend, &tstart) <= 2000000); 
     }

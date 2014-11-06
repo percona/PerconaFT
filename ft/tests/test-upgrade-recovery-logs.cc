@@ -142,11 +142,11 @@ static void run_recovery(const char *testdir) {
 
     if (!verbose) {
         // redirect stderr
-        int devnul = open(DEV_NULL_FILE, O_WRONLY);
+        int devnul = toku_os_open(DEV_NULL_FILE, O_WRONLY);
         assert(devnul >= 0);
         int rr = toku_dup2(devnul, fileno(stderr));
         assert(rr == fileno(stderr));
-        rr = close(devnul);
+        rr = toku_os_close(devnul);
         assert(rr == 0);
     }
 

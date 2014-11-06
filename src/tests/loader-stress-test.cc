@@ -414,7 +414,7 @@ static int poll_function (void *extra, float progress) {
     if (verbose>=2) {
 	assert(did_start);
 	struct timeval now;
-	gettimeofday(&now, 0);
+	toku_os_gettimeofday(&now, 0);
 	double elapsed = now.tv_sec - start.tv_sec + 1e-6*(now.tv_usec - start.tv_usec);
 	printf("Progress: %6.6fs %5.1f%%\n", elapsed, progress*100);
 	if (progress_infos_count>=progress_infos_limit) {
@@ -435,13 +435,13 @@ static int poll_function (void *extra, float progress) {
 static struct timeval starttime;
 static double elapsed_time (void) {
     struct timeval now;
-    gettimeofday(&now, NULL);
+    toku_os_gettimeofday(&now, NULL);
     return now.tv_sec - starttime.tv_sec + 1e-6*(now.tv_usec - starttime.tv_usec);
 }
 
 static void test_loader(DB **dbs)
 {
-    gettimeofday(&starttime, NULL);
+    toku_os_gettimeofday(&starttime, NULL);
     int r;
     DB_TXN    *txn;
     DB_LOADER *loader;
@@ -494,7 +494,7 @@ static void test_loader(DB **dbs)
     if (verbose) printf("Num temp files = %d\n", n);
 
     did_start = true;
-    gettimeofday(&start, 0);
+    toku_os_gettimeofday(&start, 0);
 
     // close the loader
     if ( verbose ) printf("%9.6fs closing\n", elapsed_time());

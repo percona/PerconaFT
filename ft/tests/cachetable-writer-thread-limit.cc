@@ -113,7 +113,7 @@ flush (CACHEFILE f UNUSED,
     if (w) {
         int curr_size = toku_sync_fetch_and_sub(&total_size, 1);
         assert(curr_size <= 200);
-        usleep(500*1000);
+        toku_os_usleep(500*1000);
     }
 }
 

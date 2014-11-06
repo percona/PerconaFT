@@ -289,14 +289,14 @@ static void pt_join (toku_pthread_t thread, void *expect_extra) {
 static void timeit (const char *description, void* (*f)(void*)) {
     struct timeval start, end;
     toku_pthread_t threads[T];
-    gettimeofday(&start, 0);
+    toku_os_gettimeofday(&start, 0);
     for (int i=0; i<T; i++) {
 	pt_create(&threads[i], f, NULL);
     }
     for (int i=0; i<T; i++) {
 	pt_join(threads[i], NULL);
     }
-    gettimeofday(&end, 0);
+    toku_os_gettimeofday(&end, 0);
     printf("%-10s Time=%.6fs (%7.3fns per increment)\n", description, tdiff(&start, &end), (1e9*tdiff(&start, &end)/T)/N);
 }
 
@@ -316,7 +316,7 @@ static void timeit_with_thread_local_pointer (const char *description, void* (*f
     struct {
         uint64_t values[8] ALIGNED(64);
     } values[T]; // pad to different cache lines.
-    gettimeofday(&start, 0);
+    toku_os_gettimeofday(&start, 0);
     for (int i=0; i<T; i++) {
         values[i].values[0]=0;
 	pt_create(&threads[i], f, &values[i].values[0]);
@@ -324,7 +324,7 @@ static void timeit_with_thread_local_pointer (const char *description, void* (*f
     for (int i=0; i<T; i++) {
 	pt_join(threads[i], &values[i].values[0]);
     }
-    gettimeofday(&end, 0);
+    toku_os_gettimeofday(&end, 0);
     printf("%-10s Time=%.6fs (%7.3fns per increment)\n", description, tdiff(&start, &end), (1e9*tdiff(&start, &end)/T)/N);
 }
 

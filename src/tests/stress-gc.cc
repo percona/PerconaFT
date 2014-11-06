@@ -100,7 +100,7 @@ int test_main (int argc, char * const argv[]) {
 
     {
       struct timeval tv;
-      gettimeofday(&tv, 0);
+      toku_os_gettimeofday(&tv, 0);
       useseed = tv.tv_sec+tv.tv_usec*997;  // magic:  997 is a prime, and a million (microseconds/second) times 997 is still 32 bits.
     }
     

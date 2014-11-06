@@ -195,7 +195,7 @@ static void cachetable_prefetch_maybegetandpin_test (bool do_partial_fetch) {
     }
 
     struct timeval tstart;
-    gettimeofday(&tstart, NULL);
+    toku_os_gettimeofday(&tstart, NULL);
 
     // prefetch block 0. this will take 2 seconds.
     do_pf = true;
@@ -212,7 +212,7 @@ static void cachetable_prefetch_maybegetandpin_test (bool do_partial_fetch) {
     assert(r == 0 && v == 0 && size == 2);
 
     struct timeval tend;
-    gettimeofday(&tend, NULL);
+    toku_os_gettimeofday(&tend, NULL);
 
     assert(tdelta_usec(&tend, &tstart) >= 1900000);
 

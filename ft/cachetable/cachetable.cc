@@ -1234,7 +1234,7 @@ void toku_cachetable_put(CACHEFILE cachefile, CACHEKEY key, uint32_t fullhash, v
 
 static uint64_t get_tnow(void) {
     struct timeval tv;
-    int r = gettimeofday(&tv, NULL); assert(r == 0);
+    int r = toku_os_gettimeofday(&tv, NULL); assert(r == 0);
     return tv.tv_sec * 1000000ULL + tv.tv_usec;
 }
 
@@ -3852,7 +3852,7 @@ void evictor::run_eviction_thread(){
             if (m_period_in_seconds) {
                 toku_timespec_t wakeup_time;
                 struct timeval tv;
-                gettimeofday(&tv, 0);
+                toku_os_gettimeofday(&tv, 0);
                 wakeup_time.tv_sec  = tv.tv_sec;
                 wakeup_time.tv_nsec = tv.tv_usec * 1000LL;
                 wakeup_time.tv_sec += m_period_in_seconds;

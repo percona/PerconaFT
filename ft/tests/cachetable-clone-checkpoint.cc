@@ -121,7 +121,7 @@ flush (
 {  
     if (is_clone) {
         clone_flush_started = true;
-        usleep(4*1024*1024);
+        toku_os_usleep(4*1024*1024);
         clone_flush_completed = true;
     }
 }
@@ -171,7 +171,7 @@ cachetable_test (void) {
     r = toku_pthread_create(&checkpoint_tid, NULL, run_end_checkpoint, NULL); 
     assert_zero(r);    
 
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
 
     r = toku_cachetable_get_and_pin(f1, make_blocknum(1), 1, &v1, &s1, wc, def_fetch, def_pf_req_callback, def_pf_callback, true, NULL);
     assert_zero(r);

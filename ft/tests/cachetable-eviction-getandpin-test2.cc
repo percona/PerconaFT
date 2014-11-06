@@ -164,7 +164,7 @@ static void cachetable_prefetch_maybegetandpin_test (void) {
     }
     
     struct timeval tstart;
-    gettimeofday(&tstart, NULL);
+    toku_os_gettimeofday(&tstart, NULL);
 
     // fetch another block, causing an eviction of the first block we made above
     void* value2;
@@ -184,7 +184,7 @@ static void cachetable_prefetch_maybegetandpin_test (void) {
         );
     assert(r==0);
     ct->ev.signal_eviction_thread();
-    usleep(1*1024*1024);        
+    toku_os_usleep(1*1024*1024);        
     r = toku_test_cachetable_unpin(f1, make_blocknum(1), 1, CACHETABLE_CLEAN, make_pair_attr(8));
 
         
@@ -224,7 +224,7 @@ static void cachetable_prefetch_maybegetandpin_test (void) {
     assert(r == 0 && v == 0 && size == 1);
 
     struct timeval tend; 
-    gettimeofday(&tend, NULL);
+    toku_os_gettimeofday(&tend, NULL);
 
     assert(tdelta_usec(&tend, &tstart) >= 2000000); 
     if (verbose) printf("time %" PRIu64 " \n", tdelta_usec(&tend, &tstart));

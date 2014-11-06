@@ -106,7 +106,7 @@ static void test3 (int nodesize, int basementnodesize, int count) {
     CACHETABLE ct;
     
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-    gettimeofday(&t0, 0);
+    toku_os_gettimeofday(&t0, 0);
     toku_os_unlink(fname);
     r = toku_open_ft_handle(fname, 1, &t, nodesize, basementnodesize, compression_method, ct, null_txn, toku_builtin_compare_fun);
     assert(r==0);
@@ -121,7 +121,7 @@ static void test3 (int nodesize, int basementnodesize, int count) {
     r = toku_close_ft_handle_nolsn(t, 0);        assert(r==0);
     toku_cachetable_close(&ct);
     
-    gettimeofday(&t1, 0);
+    toku_os_gettimeofday(&t1, 0);
     {
 	double diff = toku_tdiff(&t1, &t0);
 	if (verbose) printf("serial insertions: blocksize=%d %d insertions in %.3f seconds, %.2f insertions/second\n", nodesize, count, diff, count/diff);

@@ -147,15 +147,15 @@ time_many_fsyncs_one_file(int N, int bytes, int fds[/*N*/]) {
     int i;
     int r;
 
-    r = gettimeofday(&begin, NULL);
+    r = toku_os_gettimeofday(&begin, NULL);
     CKERR(r);
     toku_file_fsync(fds[0]);
-    r = gettimeofday(&after_first, NULL);
+    r = toku_os_gettimeofday(&after_first, NULL);
     CKERR(r);
     for (i = 0; i < N; i++) {
         toku_file_fsync(fds[0]);
     }
-    r = gettimeofday(&end, NULL);
+    r = toku_os_gettimeofday(&end, NULL);
     CKERR(r);
 
     if (verbose) {
@@ -189,12 +189,12 @@ time_fsyncs_many_files(int N, int bytes, int fds[/*N*/]) {
     int i;
     int r;
 
-    r = gettimeofday(&begin, NULL);
+    r = toku_os_gettimeofday(&begin, NULL);
     CKERR(r);
     for (i = 0; i < N; i++) {
         toku_file_fsync(fds[i]);
         if (i==0) {
-            r = gettimeofday(&after_first, NULL);
+            r = toku_os_gettimeofday(&after_first, NULL);
             CKERR(r);
         }
         if (verbose>2) {
@@ -202,7 +202,7 @@ time_fsyncs_many_files(int N, int bytes, int fds[/*N*/]) {
             fflush(stdout);
         }
     }
-    r = gettimeofday(&end, NULL);
+    r = toku_os_gettimeofday(&end, NULL);
     CKERR(r);
     if (verbose) {
         printf("Fsyncing %d files:\n"
@@ -236,12 +236,12 @@ time_sync_fsyncs_many_files(int N, int bytes, int fds[/*N*/]) {
     struct timeval after_sync;
     struct timeval end;
 
-    r = gettimeofday(&begin, NULL);
+    r = toku_os_gettimeofday(&begin, NULL);
     CKERR(r);
 
     toku_os_sync();
 
-    r = gettimeofday(&after_sync, NULL);
+    r = toku_os_gettimeofday(&after_sync, NULL);
     CKERR(r);
     if (verbose>1) {
         printf("Done with sync()\n");
@@ -255,7 +255,7 @@ time_sync_fsyncs_many_files(int N, int bytes, int fds[/*N*/]) {
             fflush(stdout);
         }
     }
-    r = gettimeofday(&end, NULL);
+    r = toku_os_gettimeofday(&end, NULL);
     CKERR(r);
 
     if (verbose) {

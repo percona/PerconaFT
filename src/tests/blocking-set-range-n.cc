@@ -143,7 +143,7 @@ static void blocking_set_range(DB_ENV *db_env, DB *db, uint64_t nrows, long slee
         uint64_t k = htonl(the_key);
         DBT key = { .data = &k, .size = sizeof k };
         r = cursor->c_getf_set_range(cursor, DB_RMW, &key, blocking_set_range_callback, &context); assert(r == DB_NOTFOUND);
-        usleep(sleeptime);
+        toku_os_usleep(sleeptime);
 
         r = cursor->c_close(cursor); assert(r == 0);
 

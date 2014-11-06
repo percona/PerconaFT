@@ -132,7 +132,7 @@ static void dummy_update_status(FTNODE UU(child), int UU(dirtied), void* UU(extr
 
 
 static void checkpoint_callback(void* UU(extra)) {
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
     checkpoint_callback_called = true;
 }
 
@@ -158,7 +158,7 @@ static void flusher_callback(int state, void* extra) {
         int r = toku_pthread_create(&checkpoint_tid, NULL, do_checkpoint, NULL); 
         assert_zero(r);
         while (!checkpoint_callback_called) {
-            usleep(1*1024*1024);
+            toku_os_usleep(1*1024*1024);
         }
     }
 }

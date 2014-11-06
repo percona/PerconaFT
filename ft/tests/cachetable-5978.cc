@@ -257,7 +257,7 @@ cachetable_test (void) {
     assert_zero(r);
 
     // unpin 1 and 2 so tid1 and tid2 can make progress
-    usleep(512*1024);
+    toku_os_usleep(512*1024);
     r = toku_test_cachetable_unpin(f1, make_blocknum(1), 1, CACHETABLE_DIRTY, make_pair_attr(8));
     assert_zero(r);
     r = toku_test_cachetable_unpin(f1, make_blocknum(2), 2, CACHETABLE_DIRTY, make_pair_attr(8));

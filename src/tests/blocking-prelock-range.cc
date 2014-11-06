@@ -107,7 +107,7 @@ static void blocking_range_lock(DB_ENV *db_env, DB *db, uint64_t nrows, long sle
         DBT key = { .data = &k, .size = sizeof k};
         r = cursor->c_set_bounds(cursor, &key, &key, true, 0); assert(r == 0);
 
-        usleep(sleeptime);
+        toku_os_usleep(sleeptime);
 
         r = cursor->c_close(cursor); assert(r == 0);
 

@@ -170,7 +170,7 @@ void* reader_thread (void *arg)
 // Return the time to read
 {
     struct timeval start_time, end_time;
-    gettimeofday(&start_time, 0);
+    toku_os_gettimeofday(&start_time, 0);
 
     DB_TXN *txn;
     struct reader_thread_state *rs = (struct reader_thread_state *)arg;
@@ -226,7 +226,7 @@ void* reader_thread (void *arg)
     }
     { int r = txn->commit(txn, DB_TXN_NOSYNC);                                 CKERR(r); }
     
-    gettimeofday(&end_time, 0);
+    toku_os_gettimeofday(&end_time, 0);
     rs->elapsed_time = toku_tdiff(&end_time, &start_time);
     return NULL;
 }
@@ -272,7 +272,7 @@ static volatile unsigned long long n_preads;
 
 static ssize_t my_pread (int fd, void *buf, size_t count, off_t offset) {
     (void) toku_sync_fetch_and_add(&n_preads, 1);
-    usleep(1000); // sleep for a millisecond
+    toku_os_usleep(1000); // sleep for a millisecond
     return pread(fd, buf, count, offset);
 }
 

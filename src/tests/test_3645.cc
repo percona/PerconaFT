@@ -211,7 +211,7 @@ static void *update_db(void *arg) {
 
 static void *test_time(void *arg) {
     assert(arg == NULL);
-    usleep(time_of_test*1000*1000);
+    toku_os_usleep(time_of_test*1000*1000);
     if (verbose) printf("should now end test\n");
     run_test = false;
     return arg;

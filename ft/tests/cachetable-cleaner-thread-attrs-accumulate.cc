@@ -201,7 +201,7 @@ run_test (void) {
     toku_test_cachetable_unpin(f1, make_blocknum(n_pairs + 1), n_pairs + 1, CACHETABLE_CLEAN,
                           make_pair_attr(test_limit - expect.size + 20));
 
-    usleep(2*1024*1024);
+    toku_os_usleep(2*1024*1024);
 
     toku_cachetable_get_status(ct, &ct_status);
     assert(STATUS_VALUE(CT_SIZE_NONLEAF      ) == (uint64_t) expect.nonleaf_size);

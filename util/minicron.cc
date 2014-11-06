@@ -99,7 +99,7 @@ PATENT RIGHTS GRANT:
 static void
 toku_gettime (toku_timespec_t *a) {
     struct timeval tv;
-    gettimeofday(&tv, 0);
+    toku_os_gettimeofday(&tv, 0);
     a->tv_sec  = tv.tv_sec;
     a->tv_nsec = tv.tv_usec * 1000LL;
 }

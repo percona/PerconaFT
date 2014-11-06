@@ -103,7 +103,7 @@ tdiff (struct timeval *a, struct timeval *b) {
 struct timeval starttime;
 static double elapsed (void) {
     struct timeval now;
-    gettimeofday(&now, 0);
+    toku_os_gettimeofday(&now, 0);
     return tdiff(&now, &starttime);
 }
 
@@ -152,7 +152,7 @@ static int
 run_5x (void *v) {
     struct tenx *CAST_FROM_VOIDP(tx, v);
     struct timeval now;
-    gettimeofday(&now, 0);
+    toku_os_gettimeofday(&now, 0);
     double diff = tdiff(&now, &tx->tv);
     if (verbose) printf("T=%f tx->counter=%d\n", diff, tx->counter);
     // We only verify that the timer was not premature.  
@@ -171,7 +171,7 @@ test3 (void* v)
 {
     struct minicron m;
     struct tenx tx;
-    gettimeofday(&tx.tv, 0);
+    toku_os_gettimeofday(&tx.tv, 0);
     tx.counter=0;
     memset(&m, 0, sizeof(struct minicron));
     int r = toku_minicron_setup(&m, 1000, run_5x, &tx);   assert(r==0);
@@ -245,7 +245,7 @@ typedef void*(*ptf)(void*);
 int
 test_main (int argc, const char *argv[]) {
     default_parse_args(argc,argv);
-    gettimeofday(&starttime, 0);
+    toku_os_gettimeofday(&starttime, 0);
 
     ptf testfuns[] = {test1, test2, test3,
                       test4,

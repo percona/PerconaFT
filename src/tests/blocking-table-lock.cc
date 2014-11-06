@@ -102,7 +102,7 @@ static void blocking_table_lock(DB_ENV *db_env, DB *db, uint64_t nrows, long sle
 
         r = db->pre_acquire_table_lock(db, txn); assert(r == 0);
 
-        usleep(sleeptime);
+        toku_os_usleep(sleeptime);
 
         r = txn->commit(txn, 0); assert(r == 0);
         if (verbose)

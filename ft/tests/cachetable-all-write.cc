@@ -106,7 +106,7 @@ flush (CACHEFILE f UNUSED,
     /* Do nothing */
     if (verbose) { printf("FLUSH: %d write_me %d\n", (int)k.b, w); }
     if (w) {
-        usleep (5*1024*1024);
+        toku_os_usleep (5*1024*1024);
     }
 }
 

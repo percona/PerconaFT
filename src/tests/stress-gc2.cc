@@ -102,7 +102,7 @@ PATENT RIGHTS GRANT:
 // with garbage collection verification on
 
 static int random_sleep(DB_TXN* UU(txn), ARG UU(arg), void* UU(operation_extra), void *UU(stats_extra)) {
-    usleep(random()%2000);
+    toku_os_usleep(random()%2000);
     return 0;
 }
 

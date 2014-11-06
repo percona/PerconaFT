@@ -158,7 +158,7 @@ flush (CACHEFILE f UNUSED,
     int64_t val_to_write = *(int64_t *)v;
     size_t data_index = (size_t)k.b;
     if (write_me) {
-        usleep(10);
+        toku_os_usleep(10);
         *new_size = make_pair_attr(8);
         data[data_index] = val_to_write;
         if (checkpoint_me) checkpointed_data[data_index] = val_to_write;
@@ -188,7 +188,7 @@ fetch (CACHEFILE f        UNUSED,
     assert(data[data_index] != INT64_MAX);
     
     int64_t* XMALLOC(data_val);
-    usleep(10);
+    toku_os_usleep(10);
     *data_val = data[data_index];
     data_pair[data_index] = p;
     *value = data_val;
@@ -201,7 +201,7 @@ static void *test_time(void *arg) {
     // if num_Seconds is set to 0, run indefinitely
     //
     if (time_of_test != 0) {
-        usleep(time_of_test*1000*1000);
+        toku_os_usleep(time_of_test*1000*1000);
         if (verbose) printf("should now end test\n");
         run_test = false;
     }
@@ -255,7 +255,7 @@ static void move_number_to_child(
     assert(child_val != parent_val); // sanity check that we are messing with different vals
     assert(*parent_val != INT64_MAX);
     assert(*child_val != INT64_MAX);
-    usleep(10);
+    toku_os_usleep(10);
     (*parent_val)++;
     (*child_val)--;
     r = toku_test_cachetable_unpin(f1, parent_key, parent_fullhash, CACHETABLE_DIRTY, make_pair_attr(8));

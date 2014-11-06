@@ -457,7 +457,7 @@ generate_dispatch (void) {
 static void
 generate_get_timestamp(void) {
     fprintf(cf, "static uint64_t toku_get_timestamp(void) {\n");
-    fprintf(cf, "  struct timeval tv; int r = gettimeofday(&tv, NULL);\n");
+    fprintf(cf, "  struct timeval tv; int r = toku_os_gettimeofday(&tv, NULL);\n");
     fprintf(cf, "  assert(r==0);\n");
     fprintf(cf, "  return tv.tv_sec * 1000000ULL + tv.tv_usec;\n");
     fprintf(cf, "}\n");

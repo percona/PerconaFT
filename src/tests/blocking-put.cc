@@ -108,7 +108,7 @@ static void blocking_put(DB_ENV *db_env, DB *db, uint64_t nrows, long sleeptime)
         DBT val = { .data = &k, .size = sizeof k};
         r = db->put(db, txn, &key, &val, 0); assert(r == 0);
 
-        usleep(sleeptime);
+        toku_os_usleep(sleeptime);
 
         r = txn->commit(txn, 0); assert(r == 0);
         if (verbose)

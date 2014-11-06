@@ -176,7 +176,7 @@ unpin_two (void* UU(v)) {
         ); 
     assert_zero(r);
     // sleep to give a chance for the unpin_and_remove to get going
-    usleep(512*1024);
+    toku_os_usleep(512*1024);
 }
 
 static void *repin_one(void *UU(arg)) {

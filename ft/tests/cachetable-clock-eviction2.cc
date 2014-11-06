@@ -231,11 +231,11 @@ cachetable_test (void) {
     wc.pe_callback = other_pe_callback;
     toku_cachetable_put(f1, make_blocknum(5), 5, NULL, make_pair_attr(4), wc, put_callback_nop);
     ct->ev.signal_eviction_thread();
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
     flush_may_occur = true;
     r = toku_test_cachetable_unpin(f1, make_blocknum(5), 5, CACHETABLE_CLEAN, make_pair_attr(4));
     ct->ev.signal_eviction_thread();
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
     assert(expected_bytes_to_free == 0);
 
 

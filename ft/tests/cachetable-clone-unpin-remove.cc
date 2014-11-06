@@ -119,7 +119,7 @@ flush (
     ) 
 {  
     if (is_clone) {
-        usleep(2*1024*1024);
+        toku_os_usleep(2*1024*1024);
         flush_completed = true;
     }
     else if (!keep && !is_clone) {

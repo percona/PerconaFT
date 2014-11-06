@@ -140,7 +140,7 @@ doit (void) {
     int j;
     int r;
     struct timeval startt, endt;
-    gettimeofday(&startt, 0);
+    toku_os_gettimeofday(&startt, 0);
     r=env->txn_begin(env, 0, &txn, 0); assert(r==0);
     for (j=0; j<NINSERTS_PER; j++) {
 	int i;
@@ -155,7 +155,7 @@ doit (void) {
 	}
     }
     r=txn->commit(txn, 0); assert(r==0);
-    gettimeofday(&endt, 0);
+    toku_os_gettimeofday(&endt, 0);
     long long ninserts = NINSERTS_PER * NFILES;
     double diff = (endt.tv_sec - startt.tv_sec) + 1e-6*(endt.tv_usec-startt.tv_usec);
     if (verbose) printf("%lld insertions in %9.6fs, %9.3f ins/s \n", ninserts, diff, ninserts/diff);

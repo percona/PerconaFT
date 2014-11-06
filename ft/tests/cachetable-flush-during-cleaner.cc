@@ -135,7 +135,7 @@ cachetable_test (void) {
       r = toku_test_cachetable_unpin(f1, make_blocknum(i), i, CACHETABLE_DIRTY, attr);
   }
   while (!should_close) {
-    usleep(1024);
+    toku_os_usleep(1024);
   }
   toku_cachefile_close(&f1, false, ZERO_LSN);
 

@@ -111,7 +111,7 @@ pe_callback (
     if (check_pe_callback) {
         pe_callback_called = true;
     }
-    usleep(4*1024*1024);
+    toku_os_usleep(4*1024*1024);
     finalize(make_pair_attr(1), finalize_extra);
     return 0;
 }
@@ -151,7 +151,7 @@ static void *f2_pin(void *arg) {
     r = toku_cachetable_get_and_pin(f2, make_blocknum(1), 1, &v1, &s1, wc, def_fetch, def_pf_req_callback, def_pf_callback, true, NULL);
     assert(r == 0);
     ct->ev.signal_eviction_thread();
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
     assert(pe_callback_called);
     pe_callback_called = false;
     r = toku_test_cachetable_unpin(f2, make_blocknum(1), 1, CACHETABLE_CLEAN, make_pair_attr(8));
@@ -204,7 +204,7 @@ cachetable_test (void) {
     r = toku_pthread_create(&tid, NULL, f2_pin, NULL); 
     assert_zero(r);
 
-    usleep(2*1024*1024);
+    toku_os_usleep(2*1024*1024);
     check_flush = true;
     toku_cachefile_close(&f1, false, ZERO_LSN); 
     assert(dirty_flush_called);

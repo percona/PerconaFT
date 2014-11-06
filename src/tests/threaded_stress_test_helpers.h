@@ -615,7 +615,7 @@ static void *worker(void *arg_v) {
             we->counters[OPERATION]++;
         }
         if (arg->sleep_ms) {
-            usleep(arg->sleep_ms * 1000);
+            toku_os_usleep(arg->sleep_ms * 1000);
         }
     }
     if (arg->cli->single_txn) {
@@ -1738,10 +1738,10 @@ static void *test_time(void *arg) {
     for (int i = 0; i < num_seconds; ) {
         struct timeval tv[2];
         const int sleeptime = intmin(tte->cli_args->performance_period, num_seconds - i);
-        int r = gettimeofday(&tv[0], nullptr);
+        int r = toku_os_gettimeofday(&tv[0], nullptr);
         assert_zero(r);
-        usleep(sleeptime*1000*1000);
-        r = gettimeofday(&tv[1], nullptr);
+        toku_os_usleep(sleeptime*1000*1000);
+        r = toku_os_gettimeofday(&tv[1], nullptr);
         assert_zero(r);
         int actual_sleeptime = tv[1].tv_sec - tv[0].tv_sec;
         if (abs(actual_sleeptime - sleeptime) <= 1) {
@@ -1787,7 +1787,7 @@ static void *sleep_and_crash(void *extra) {
     toku_mutex_lock(&e->mutex);
     struct timeval tv;
     toku_timespec_t ts;
-    gettimeofday(&tv, nullptr);
+    toku_os_gettimeofday(&tv, nullptr);
     ts.tv_sec = tv.tv_sec + e->seconds;
     ts.tv_nsec = 0;
     e->is_setup = true;

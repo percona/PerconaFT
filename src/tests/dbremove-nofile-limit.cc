@@ -127,13 +127,15 @@ static void test_dbremove() {
     
     struct rlimit new_limit = current_limit;
     new_limit.rlim_cur = 0;
-    r = setrlimit(RLIMIT_NOFILE, &new_limit);
+    invariant(!"need a portable setrlimit");
+    //r = setrlimit(RLIMIT_NOFILE, &new_limit);
     assert(r == 0);
 
     r = env->dbremove(env, txn, fname, nullptr, 0);
     CKERR2(r, EMFILE);
 
-    r = setrlimit(RLIMIT_NOFILE, &current_limit);
+    invariant(!"need a portable setrlimit");
+    //r = setrlimit(RLIMIT_NOFILE, &current_limit);
     assert(r == 0);
 
     r = env->dbremove(env, txn, fname, nullptr, 0);

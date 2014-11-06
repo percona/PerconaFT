@@ -176,12 +176,12 @@ cachetable_test (void) {
     expected_flushed_key = 4;
     toku_cachetable_put(f1, make_blocknum(5), 5, NULL, make_pair_attr(1), wc, put_callback_nop);
     ct->ev.signal_eviction_thread();
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
     
     flush_may_occur = true;
     r = toku_test_cachetable_unpin(f1, make_blocknum(5), 5, CACHETABLE_CLEAN, make_pair_attr(2));
     ct->ev.signal_eviction_thread();
-    usleep(1*1024*1024);
+    toku_os_usleep(1*1024*1024);
 
     check_flush = false;
     toku_cachefile_close(&f1, false, ZERO_LSN);

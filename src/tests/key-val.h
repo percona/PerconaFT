@@ -271,7 +271,7 @@ static int UU() generate_initial_table(DB *db, DB_TXN *txn, uint32_t rows)
     struct timeval start, now;
     if ( verbose ) {
         printf("generate_initial_table\n");
-        gettimeofday(&start,0);
+        toku_os_gettimeofday(&start,0);
     }
     int r = 0;
     DBT key, val;
@@ -287,7 +287,7 @@ static int UU() generate_initial_table(DB *db, DB_TXN *txn, uint32_t rows)
         if ( r != 0 ) break;
     }
     if ( verbose ) {
-        gettimeofday(&now,0);
+        toku_os_gettimeofday(&now,0);
         int duration = (int)(now.tv_sec - start.tv_sec);
         if ( duration > 0 )
             printf("generate_initial_table : %u rows in %d sec = %d rows/sec\n", rows, duration, rows/duration);

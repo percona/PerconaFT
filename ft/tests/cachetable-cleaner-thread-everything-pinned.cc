@@ -138,7 +138,7 @@ run_test (void) {
         assert_zero(r);
     }
 
-    usleep(4000000);
+    toku_os_usleep(4000000);
 
     for (int i = 0; i < 8; ++i) {
         r = toku_test_cachetable_unpin(f1, make_blocknum(i+1), i+1, CACHETABLE_CLEAN, make_pair_attr(8));

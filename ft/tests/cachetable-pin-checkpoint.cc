@@ -147,7 +147,7 @@ flush (CACHEFILE f UNUSED,
     size_t data_index = (size_t)k.b;
     assert(val_to_write != INT64_MAX);
     if (write_me) {
-        usleep(10);
+        toku_os_usleep(10);
         data[data_index] = val_to_write;
         if (checkpoint_me) checkpointed_data[data_index] = val_to_write;
     }
@@ -173,7 +173,7 @@ fetch (CACHEFILE f        UNUSED,
     assert(data[data_index] != INT64_MAX);
     
     int64_t* XMALLOC(data_val);
-    usleep(10);
+    toku_os_usleep(10);
     *data_val = data[data_index];
     data_pair[data_index] = p;
     *value = data_val;
@@ -186,7 +186,7 @@ static void *test_time(void *arg) {
     // if num_Seconds is set to 0, run indefinitely
     //
     if (time_of_test != 0) {
-        usleep(time_of_test*1000*1000);
+        toku_os_usleep(time_of_test*1000*1000);
         if (verbose) printf("should now end test\n");
         run_test = false;
     }
@@ -271,7 +271,7 @@ static void *move_numbers(void *arg) {
         assert(second_val != first_val); // sanity check that we are messing with different vals
         assert(*first_val != INT64_MAX);
         assert(*second_val != INT64_MAX);
-        usleep(10);
+        toku_os_usleep(10);
         (*first_val)++;
         (*second_val)--;
         r = toku_test_cachetable_unpin(f1, less_key, less_fullhash, less_dirty, make_pair_attr(8));
@@ -302,7 +302,7 @@ static void *move_numbers(void *arg) {
             
             int64_t* third_val = (int64_t *)v1;
             assert(second_val != third_val); // sanity check that we are messing with different vals
-            usleep(10);
+            toku_os_usleep(10);
             (*second_val)++;
             (*third_val)--;
             r = toku_test_cachetable_unpin(f1, third_key, third_fullhash, third_dirty, make_pair_attr(8));
@@ -367,7 +367,7 @@ static void *checkpoints(void *arg) {
             sum += checkpointed_data[i];
         }
         assert (sum==0);
-        usleep(10*1024);
+        toku_os_usleep(10*1024);
         num_checkpoints++;
     }
     return arg;

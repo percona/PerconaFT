@@ -210,7 +210,8 @@ bad_open(const char *path, int oflag, int mode) {
 	errno = EINVAL;
 	rval = -1;
     } else {
-	rval = toku_os_open_native(path, oflag, mode);
+        invariant(!"need a native open() to call");
+	rval = toku_os_open(path, oflag, mode);
     }
     return rval;
 }
@@ -222,7 +223,7 @@ bad_fclose(FILE * stream) {
     int rval;
     event_count++;
     // Must close the stream even in the "error case" because otherwise there is no way to get the memory back.
-    rval = toku_os_fclose_native(stream);
+    rval = fclose(stream);
     if (rval==0) {
 	if (event_count_trigger == event_count) {
             if (verbose) printf("%s %d\n", __FUNCTION__, event_count);

@@ -360,7 +360,7 @@ static int poll_function (void *extra, float progress) {
 	static int did_one=0;
 	static struct timeval start;
 	struct timeval now;
-	gettimeofday(&now, 0);
+	toku_os_gettimeofday(&now, 0);
 	if (!did_one) {
 	    start=now;
 	    did_one=1;

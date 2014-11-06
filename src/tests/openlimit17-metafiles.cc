@@ -124,7 +124,7 @@ int test_main (int argc UNUSED, char *const argv[] UNUSED) {
     }
     int unused = 0;
     for (int i = 0; i < N; i++, unused++) {
-        fds[i] = toku_os_open("/dev/null", O_RDONLY, 0);
+        fds[i] = toku_os_open(DEV_NULL_FILE, O_RDONLY);
         if (fds[i] == -1)
             break;
     }

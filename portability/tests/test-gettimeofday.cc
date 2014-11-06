@@ -97,7 +97,7 @@ int main(void) {
     struct timeval tv;
     struct timezone tz;
 
-    r = gettimeofday(&tv, &tz);
+    r = toku_os_gettimeofday(&tv, &tz);
     assert(r == 0);
     
     return 0;

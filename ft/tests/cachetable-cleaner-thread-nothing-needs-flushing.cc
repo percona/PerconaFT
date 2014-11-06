@@ -141,7 +141,7 @@ run_test (void) {
         assert_zero(r);
     }
 
-    usleep(4000000);
+    toku_os_usleep(4000000);
 
     toku_cachetable_verify(ct);
     toku_cachefile_close(&f1, false, ZERO_LSN);

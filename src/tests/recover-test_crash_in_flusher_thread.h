@@ -125,7 +125,7 @@ static void flt_callback(int flt_state, void* extra) {
         if (verbose) printf("flt_state %d\n", flt_state);
         int r = toku_pthread_create(&checkpoint_tid, NULL, do_checkpoint_and_crash, extra); 
         assert(r==0);
-        usleep(2*1000*1000);
+        toku_os_usleep(2*1000*1000);
     }
 }
 

@@ -128,14 +128,14 @@ static void * client(void *arg)
 
     int row = 0;
 
-    gettimeofday(&start,0);
+    toku_os_gettimeofday(&start,0);
     while ( r != DB_NOTFOUND ) {
         r = cursor->c_get(cursor, &key, &val, DB_NEXT);
         if ( r != DB_NOTFOUND ) {
             row++;
         }
     }
-    gettimeofday(&now, 0);
+    toku_os_gettimeofday(&now, 0);
     if ( verbose ) printf("client : primary table scanned in %d sec, contains %d rows\n",
                           (int)(now.tv_sec - start.tv_sec),
                           row);
@@ -206,12 +206,12 @@ static void test_indexer(DB *src, DB **dbs)
     struct timeval start, now;
     if ( verbose ) {
         printf("test_indexer build\n");
-        gettimeofday(&start,0);
+        toku_os_gettimeofday(&start,0);
     }
     r = indexer->build(indexer);
     CKERR(r);
     if ( verbose ) {
-        gettimeofday(&now,0);
+        toku_os_gettimeofday(&now,0);
         int duration = (int)(now.tv_sec - start.tv_sec);
         if ( duration > 0 )
             printf("test_indexer build : sec = %d\n", duration);

@@ -157,7 +157,7 @@ cachetable_test (void) {
   r = toku_pthread_create(&pin_nonblocking_tid, NULL, pin_nonblocking, NULL); 
   assert_zero(r);    
   // sleep 3 seconds
-  usleep(3*1024*1024);
+  toku_os_usleep(3*1024*1024);
   r = toku_test_cachetable_unpin_and_remove(f1, make_blocknum(1), test_remove_key, NULL);
   assert_zero(r);
   

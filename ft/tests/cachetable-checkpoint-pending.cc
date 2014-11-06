@@ -242,7 +242,7 @@ int
 test_main(int argc, const char *argv[]) {
     {
 	struct timeval tv;
-	gettimeofday(&tv, 0);
+	toku_os_gettimeofday(&tv, 0);
 	srandom(tv.tv_sec * 1000000 + tv.tv_usec);
     }	
     {

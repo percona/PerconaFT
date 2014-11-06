@@ -114,13 +114,13 @@ int ALLOW_DUPS=0;
 static struct timeval starttime;
 static double UU() elapsed_time (void) {
     struct timeval now;
-    gettimeofday(&now, NULL);
+    toku_os_gettimeofday(&now, NULL);
     return now.tv_sec - starttime.tv_sec + 1e-6*(now.tv_usec - starttime.tv_usec);
 }
 
 static void preload_dbs(DB **dbs)
 {
-    gettimeofday(&starttime, NULL);
+    toku_os_gettimeofday(&starttime, NULL);
     int r;
     DB_TXN    *txn;
 
