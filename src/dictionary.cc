@@ -480,7 +480,6 @@ void persistent_dictionary_manager::destroy() {
 }
 
 int persistent_dictionary_manager::get_directory_cursor(DB_TXN* txn, DBC** c) {
-    assert(false); // TODO: this will not work, need to rethink this API
     return toku_db_cursor(m_directory, txn, c, 0);
 }
 
