@@ -91,11 +91,12 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
-#include <dirent.h>
-
+#include "portability/toku_compiler.h"
 #include "portability/toku_os_types.h"
 #include "portability/toku_stdint.h"
 #include "portability/toku_time.h"
+
+#include <dirent.h>
 
 // Sleep for `seconds'
 void toku_os_sleep(uint64_t seconds);
@@ -115,7 +116,7 @@ int toku_os_fork(void);
 
 // Effect: Wait for a process to finish. -1 means any in the current process group.
 // Returns: The process that finished
-pid_t toku_os_waitpid(pid_t pid, int *status, int options);
+toku_pid_t toku_os_waitpid(toku_pid_t pid, int *status, int options);
 
 // Returns: the number of processors in the system
 int toku_os_get_number_processors(void);
@@ -135,6 +136,10 @@ int toku_os_get_processor_frequency(uint64_t *hz);
 
 // Returns: 0 on success
 // sets fsize to the number of bytes in a file
+int toku_os_get_file_size_by_path(const char *pathname, int64_t *fsize);
+
+// Returns: 0 on success
+// sets fsize to the number of bytes in a file
 int toku_os_get_file_size(int fildes, int64_t *fsize)   DEFAULT_VISIBILITY;
 
 // Returns: 0 on success
@@ -148,7 +153,7 @@ int toku_os_lock_file(const char *name);
 //Unlocks and closes a file locked by toku_os_lock_on_file
 int toku_os_unlock_file(int fildes);
 
-int toku_os_mkdir(const char *pathname, mode_t mode) DEFAULT_VISIBILITY;
+int toku_os_mkdir(const char *pathname, toku_mode_t mode) DEFAULT_VISIBILITY;
 
 int toku_os_chdir(const char *pathname) DEFAULT_VISIBILITY;
 
@@ -179,6 +184,8 @@ bool toku_os_huge_pages_enabled(void) DEFAULT_VISIBILITY;
 // Set whether or not writes assert when ENOSPC is returned or they wait for space
 void toku_set_assert_on_write_enospc(int do_assert) DEFAULT_VISIBILITY;
 
+#include <time.h>
+
 // Get file system write information
 // *enospc_last_time is the last time ENOSPC was returned by write or pwrite
 // *enospc_current   is the number of threads waiting on space
@@ -198,6 +205,7 @@ int toku_get_filesystem_sizes(const char *path, uint64_t *avail_size, uint64_t *
 
 // Portable linux 'stat'
 int toku_stat(const char *name, toku_struct_stat *statbuf) DEFAULT_VISIBILITY;
+
 // Portable linux 'fstat'
 int toku_fstat(int fd, toku_struct_stat *statbuf) DEFAULT_VISIBILITY;
 

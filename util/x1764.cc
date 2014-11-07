@@ -94,15 +94,12 @@ PATENT RIGHTS GRANT:
 
 #include "x1764.h"
 
-#define PRINT 0
-
 uint32_t toku_x1764_memory_simple (const void *buf, int len)
 {
     const uint64_t *CAST_FROM_VOIDP(lbuf, buf);
     uint64_t c=0;
     while (len>=8) {
 	c = c*17 + *lbuf;
-	if (PRINT) printf("%d: c=%016" PRIx64 " sum=%016" PRIx64 "\n", __LINE__, *lbuf, c);
 	lbuf++;
 	len-=8;
     }
@@ -156,7 +153,6 @@ void toku_x1764_init(struct x1764 *l) {
 }
 
 void toku_x1764_add (struct x1764 *l, const void *vbuf, int len) {
-    if (PRINT) printf("%d: n_input_bytes=%d len=%d\n", __LINE__, l->n_input_bytes, len);
     int n_input_bytes = l->n_input_bytes;
     const unsigned char *CAST_FROM_VOIDP(cbuf, vbuf);
     // Special case short inputs
@@ -200,13 +196,10 @@ void toku_x1764_add (struct x1764 *l, const void *vbuf, int len) {
 		uint64_t thisv = *(uint64_t*)cbuf;
 		input |= thisv<<(8*n_input_bytes);
 		sum = sum*17 + input;
-		if (PRINT) printf("%d: input=%016" PRIx64 " sum=%016" PRIx64 "\n", __LINE__, input, sum);
 		input = thisv>>(8*(8-n_input_bytes));
-		if (PRINT) printf("%d: input=%016" PRIx64 "\n", __LINE__, input);
 		len-=8;
 		cbuf+=8;
 		// n_input_bytes remains unchanged
-		if (PRINT) printf("%d: n_input_bytes=%d len=%d\n", __LINE__, l->n_input_bytes, len);
 	    }
 	    l->sum = sum;
 	}
@@ -214,19 +207,15 @@ void toku_x1764_add (struct x1764 *l, const void *vbuf, int len) {
 	    uint64_t thisv = *(uint32_t*)cbuf;
 	    if (n_input_bytes<4) {
 		input |= thisv<<(8*n_input_bytes);
-		if (PRINT) printf("%d: input=%016" PRIx64 "\n", __LINE__, input);
 		n_input_bytes+=4;
 	    } else {
 		input |= thisv<<(8*n_input_bytes);
 		l->sum = l->sum*17 + input;
-		if (PRINT) printf("%d: input=%016" PRIx64 " sum=%016" PRIx64 "\n", __LINE__, input, l->sum);
 		input = thisv>>(8*(8-n_input_bytes));
 		n_input_bytes-=4;
-		if (PRINT) printf("%d: input=%016" PRIx64 " n_input_bytes=%d\n", __LINE__, input, n_input_bytes);
 	    }
 	    len-=4;
 	    cbuf+=4;
-	    if (PRINT) printf("%d: len=%d\n", __LINE__, len);
 	}
 	//assert(n_input_bytes<=8);
 	while (n_input_bytes<8 && len) {
@@ -240,7 +229,6 @@ void toku_x1764_add (struct x1764 *l, const void *vbuf, int len) {
 	    //assert(len==0);
 	    l->input = input;
 	    l->n_input_bytes = n_input_bytes;
-	    if (PRINT) printf("%d: n_input_bytes=%d\n", __LINE__, l->n_input_bytes);
 	    return;
 	}
 	sum = l->sum*17 + input;
@@ -285,10 +273,8 @@ void toku_x1764_add (struct x1764 *l, const void *vbuf, int len) {
 	if (len>=1) { input |= ((uint64_t)(*(uint8_t *)(cbuf)))<<(i*8); /*cbuf+=1; len-=1; i++;*/ }
     }
     l->input = input;
-    if (PRINT) printf("%d: n_input_bytes=%d\n", __LINE__, l->n_input_bytes);
 }
 uint32_t toku_x1764_finish (struct x1764 *l) {
-    if (PRINT) printf("%d: n_input_bytes=%d\n", __LINE__, l->n_input_bytes);
     int len = l->n_input_bytes;
     if (len>0) {
 	l->sum = l->sum*17 + l->input;

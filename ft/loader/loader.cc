@@ -91,13 +91,11 @@ PATENT RIGHTS GRANT:
 
 #include <toku_portability.h>
 
-
 #include <stdio.h>
 #include <memory.h>
 #include <errno.h>
 #include <toku_assert.h>
 #include <string.h>
-#include <fcntl.h>
 
 #include "ft/ft.h"
 #include "ft/ft-internal.h"

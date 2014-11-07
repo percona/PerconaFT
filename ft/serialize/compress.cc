@@ -91,6 +91,12 @@ PATENT RIGHTS GRANT:
 #include <toku_portability.h>
 #include <util/scoped_malloc.h>
 
+#if TOKU_WINDOWS
+
+// TODO: Right now lzma is not building with windows so we do not compile this unit.
+
+#else
+
 #include <zlib.h>
 #include <lzma.h>
 
@@ -293,3 +299,5 @@ void toku_decompress (Bytef       *dest,   uLongf destLen,
     // default fall through to error.
     assert(0);
 }
+
+#endif

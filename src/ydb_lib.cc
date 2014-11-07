@@ -89,14 +89,16 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 #ident "$Id$"
 
-#include <stdio.h>
-#include <toku_stdint.h>
-#include <toku_portability.h>
-#include <db.h>
-#include "ydb.h"
-#include <toku_assert.h>
+#include <portability/toku_compiler.h>
+#include <portability/toku_portability.h>
 
-#if defined(__GNUC__)
+#include "ydb.h"
+
+#if TOKU_WINDOWS
+
+// TODO: Need to init/destroy the ydb shared lib
+
+#else 
 
 LIB_CONSTRUCTOR 
 static void libtokuft_init(void) {
@@ -109,4 +111,4 @@ static void libtokuft_destroy(void) {
     toku_ydb_destroy();
 }
 
-#endif // __GNUC__
+#endif

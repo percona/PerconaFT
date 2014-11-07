@@ -89,12 +89,18 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 
 #include <portability/toku_config.h>
-
-#include <toku_portability.h>
-#include "toku_assert.h"
+#include <portability/toku_portability.h>
+#include <portability/toku_assert.h>
 
 #include <stdlib.h>
 #include <stdio.h>
+
+#if TOKU_WINDOWS
+
+// TODO: Write me
+
+#else
+
 #if defined(HAVE_MALLOC_H)
 # include <malloc.h>
 #elif defined(HAVE_SYS_MALLOC_H)
@@ -244,3 +250,4 @@ toku_do_assert(int expr, const char *expr_as_string, const char *function, const
         toku_do_assert_fail(expr_as_string, function, file, line, caller_errno);
 }
 
+#endif

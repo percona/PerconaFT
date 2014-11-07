@@ -92,24 +92,9 @@ PATENT RIGHTS GRANT:
 
 #include "toku_config.h"
 #include "toku_compiler.h"
+#include "toku_stdint.h"
 
-#include <time.h>
-#include <sys/time.h>
-#include <stdint.h>
-
-static inline float toku_tdiff (struct timeval *a, struct timeval *b) {
-    return (float)((a->tv_sec - b->tv_sec) + 1e-6 * (a->tv_usec - b->tv_usec));
-}
-
-#if !defined(HAVE_CLOCK_REALTIME)
-// OS X does not have clock_gettime, we fake clockid_t for the interface, and we'll implement it with clock_get_time.
-typedef int clockid_t;
-// just something bogus, it doesn't matter, we just want to make sure we're
-// only supporting this mode because we're not sure we can support other modes
-// without a real clock_gettime()
-#define CLOCK_REALTIME 0x01867234
-#endif
-int toku_clock_gettime(clockid_t clk_id, struct timespec *ts) DEFAULT_VISIBILITY;
+float toku_tdiff(struct timeval *a, struct timeval *b);
 
 // *************** Performance timers ************************
 // What do you really want from a performance timer:
@@ -149,19 +134,9 @@ typedef uint64_t tokutime_t;             // Time type used in by tokutek timers.
 //
 double tokutime_to_seconds(tokutime_t) DEFAULT_VISIBILITY; // Convert tokutime to seconds.
 
-static inline int toku_os_gettimeofday(struct timeval *tv, struct timezone *tz) {
-    return gettimeofday(tv, tz);
-}
+int toku_os_gettimeofday(struct timeval *tv, struct timezone *tz);
 
-// Get the value of tokutime for right now.  We want this to be fast, so we expose the implementation as RDTSC.
-static inline tokutime_t toku_time_now(void) {
-    uint32_t lo, hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    return (uint64_t)hi << 32 | lo;
-}
+// Get the value of tokutime for right now.  We want this to be fast, so we expose the implementation as RDTSC (toku_time.cc)
+tokutime_t toku_time_now(void);
 
-static inline uint64_t toku_current_time_microsec(void) {
-    struct timeval t;
-    toku_os_gettimeofday(&t, NULL);
-    return t.tv_sec * (1UL * 1000 * 1000) + t.tv_usec;
-}
+uint64_t toku_current_time_microsec(void);

@@ -89,6 +89,13 @@ PATENT RIGHTS GRANT:
 #ident "$Id$"
 
 #include <portability/toku_config.h>
+#include <portability/toku_compiler.h>
+
+#if TOKU_WINDOWS
+
+// TODO: Write me
+
+#else
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -236,6 +243,16 @@ toku_os_get_phys_memory_size(void) {
 #else
 # error "cannot find _SC_PHYS_PAGES or sysctlbyname()"
 #endif
+}
+
+int
+toku_os_get_file_size_by_path(const char *pathname, int64_t *fsize) {
+    toku_struct_stat sbuf;
+    int r = stat(pathname, &sbuf);
+    if (r==0) {
+        *fsize = sbuf.st_size;
+    }
+    return r;
 }
 
 int
@@ -513,3 +530,5 @@ void toku_portability_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&toku_cached_hz, sizeof toku_cached_hz);
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&toku_cached_pagesize, sizeof toku_cached_pagesize);
 }
+
+#endif

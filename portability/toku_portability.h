@@ -92,12 +92,6 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 #include "toku_config.h"
-
-// Need to check for windows first before including anything other than toku_config.h
-#if defined(_MSC_VER)
-# define TOKU_WINDOWS 1
-#endif
-
 #include "toku_compiler.h"
 
 #if defined(__clang__)
@@ -160,7 +154,6 @@ int      open(const char *path, int flag, ...)      DEPRECATED;
 int      close(int fd)                              DEPRECATED;
 int      creat(const char *pathname, mode_t mode)   DEPRECATED;
 int      fstat(int fd, struct stat *buf)            DEPRECATED;
-int      stat(const char *path, struct stat *buf)   DEPRECATED;
 int      getpid(void)                               DEPRECATED;
 #    if defined(__FreeBSD__) || defined(__APPLE__)
 int syscall(int sysno, ...)             DEPRECATED;

@@ -60,7 +60,7 @@ include_directories(
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/portability)
 
 ## build db.h and include where it will be generated
-add_subdirectory(buildheader)
+#add_subdirectory(buildheader)
 include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR}/buildheader)
 
 ## default includes and libraries

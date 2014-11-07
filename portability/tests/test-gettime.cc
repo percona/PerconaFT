@@ -93,14 +93,7 @@ PATENT RIGHTS GRANT:
 #include <toku_os.h>
 
 int main(void) {
-    int r;
-    struct timespec ts;
-
-    r = toku_clock_gettime(CLOCK_REALTIME, &ts);
-    assert(r == 0);
-    toku_os_sleep(10);
-    r = toku_clock_gettime(CLOCK_REALTIME, &ts);
-    assert(r == 0);
+    assert("!this test is obsolete, remove me");
     
     return 0;
 }

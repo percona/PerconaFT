@@ -7,22 +7,21 @@ set_source_files_properties(
   "${CMAKE_CURRENT_BINARY_DIR}/log_header.h"
   PROPERTIES GENERATED TRUE)
 
-add_executable(logformat logger/logformat.cc)
-target_link_libraries(logformat ${LIBTOKUPORTABILITY}_static)
-add_space_separated_property(TARGET logformat LINK_FLAGS --coverage)
+#add_executable(logformat logger/logformat.cc)
+#target_link_libraries(logformat ${LIBTOKUPORTABILITY}_static)
+#add_space_separated_property(TARGET logformat LINK_FLAGS --coverage)
 
-
-add_custom_command(
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_code.cc"
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_print.cc"
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_header.h"
-  COMMAND $<TARGET_FILE:logformat> .
-  DEPENDS logger/logformat
-  )
-add_custom_target(
-  generate_log_code
-  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/log_code.cc" "${CMAKE_CURRENT_BINARY_DIR}/log_print.cc" "${CMAKE_CURRENT_BINARY_DIR}/log_header.h"
-  )
+#add_custom_command(
+#  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_code.cc"
+#  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_print.cc"
+#  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_header.h"
+#  COMMAND $<TARGET_FILE:logformat> .
+#  DEPENDS logger/logformat
+#  )
+#add_custom_target(
+#  generate_log_code
+#  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/log_code.cc" "${CMAKE_CURRENT_BINARY_DIR}/log_print.cc" "${CMAKE_CURRENT_BINARY_DIR}/log_header.h"
+#  )
 
 set(FT_SOURCES
   bndata
@@ -82,6 +81,8 @@ set_target_properties(ft_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 maybe_add_gcov_to_libraries(ft ft_static)
 
 ## depend on other generated targets
+#add_dependencies(ft install_tdb_h generate_log_code build_lzma)
+#add_dependencies(ft_static install_tdb_h generate_log_code build_lzma)
 add_dependencies(ft install_tdb_h generate_log_code build_lzma)
 add_dependencies(ft_static install_tdb_h generate_log_code build_lzma)
 

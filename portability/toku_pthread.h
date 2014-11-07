@@ -121,7 +121,8 @@ typedef struct toku_mutex {
 } toku_mutex_t;
 
 typedef struct toku_mutex_aligned {
-    toku_mutex_t aligned_mutex ALIGNED(64);
+    ALIGNED(64)
+    toku_mutex_t aligned_mutex;
 } toku_mutex_aligned_t;
 
 // Different OSes implement mutexes as different amounts of nested structs.

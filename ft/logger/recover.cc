@@ -1421,7 +1421,7 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
             rr = get_error_errno();
             fprintf(stderr, "%.24s TokuFT recovery error: directory does not exist: %s\n", ctime(&tnow), env_dir);
             goto errorexit;
-        } else if (!S_ISDIR(buf.st_mode)) {
+        } else if (buf.st_mode) { // TODO: This is not right
             fprintf(stderr, "%.24s TokuFT recovery error: this file is supposed to be a directory, but is not: %s\n", ctime(&tnow), env_dir);
             rr = ENOTDIR; goto errorexit;
         }

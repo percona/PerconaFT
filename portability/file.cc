@@ -88,7 +88,15 @@ PATENT RIGHTS GRANT:
 
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 
-#include <toku_portability.h>
+#include <portability/toku_compiler.h>
+#include <portability/toku_portability.h>
+
+#if TOKU_WINDOWS
+
+// TODO: Write me.
+
+#else
+
 #include <unistd.h>
 #include <errno.h>
 #include <toku_assert.h>
@@ -569,3 +577,5 @@ int toku_fsync_directory(const char *fname) {
     toku_free(dirname);
     return result;
 }
+
+#endif

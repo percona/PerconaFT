@@ -88,58 +88,89 @@ PATENT RIGHTS GRANT:
 
 #pragma once
 
-#ifdef __GNUC__
+#include "toku_config.h"
 
-#define UNUSED              __attribute__((__unused__))
-#define WARN_UNUSED_RESULT  __attribute__((__warn_unused_result__))
-#define DEPRECATED          __attribute__((__deprecated__))
-#define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
-#define NOINLINE            __attribute__((__noinline__))
-#define ALWAYS_INLINE       __attribute__((__always_inline__))
-#define NORETURN            __attribute__((__noreturn__))
-#define ALIGNED(x)          __attribute__((__aligned__(x)))
-#define PRINTF_FORMAT(x, y) __attribute__((__format__(__printf__, x, y)))
+//#if defined(_MSC_VER)
+//# define TOKU_WINDOWS 1
+//#endif
+// TODO: Figure out the right way to detect the microsoft compiler
+//       OR the gnu compiler doing cross compilation to windows
+#define TOKU_WINDOWS 1
 
-#define LIB_CONSTRUCTOR     __attribute__((__constructor__))
-#define LIB_DESTRUCTOR      __attribute__((__destructor__))
+#if !TOKU_WINDOWS
 
-#define THREAD_LOCAL        __thread
-#define THROW               __THROW
-#define MALLOC_LIKE         __malloc_like
+# define UNUSED              __attribute__((__unused__))
+# define WARN_UNUSED_RESULT  __attribute__((__warn_unused_result__))
+# define DEPRECATED          __attribute__((__deprecated__))
+# define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
+# define NOINLINE            __attribute__((__noinline__))
+# define ALWAYS_INLINE       __attribute__((__always_inline__))
+# define NORETURN            __attribute__((__noreturn__))
+# define ALIGNED(x)          __attribute__((__aligned__(x)))
+# define PRINTF_FORMAT(x, y) __attribute__((__format__(__printf__, x, y)))
 
-// TODO: Prefer UNUSED x over UU(x)
-#define UU(x)               x __attribute__((__unused__))
+# define LIB_CONSTRUCTOR     __attribute__((__constructor__))
+# define LIB_DESTRUCTOR      __attribute__((__destructor__))
 
-#define toku_compiler_expect(_expr_, _value_)       __builtin_expect(_expr_, _value_)
-#define toku_compiler_likely(_expr_)                toku_compiler_expect(((_expr_) != 0), 1)
-#define toku_compiler_unlikely(_expr_)              toku_compiler_expect(((_expr_) != 0), 0)
-#define toku_compiler_offsetof(_type_, _member_)    __builtin_offsetof(_type_, _member_)
-
-#else // !__GNUC__
-
-#define UNUSED              __attribute__((__unused__))
-#define WARN_UNUSED_RESULT  __attribute__((__warn_unused_result__))
-#define DEPRECATED          __attribute__((__deprecated__))
-#define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
-#define NOINLINE            __attribute__((__noinline__))
-#define ALWAYS_INLINE       __attribute__((__always_inline__))
-#define NORETURN            __attribute__((__noreturn__))
-#define ALIGNED(x)          __declspec(align(x))
-#define PRINTF_FORMAT(x, y) __attribute__((__format__(__printf__, x, y)))
-
-#define LIB_CONSTRUCTOR     // TODO: !
-#define LIB_DESTRUCTOR      // TODO: !
-
-#define THREAD_LOCAL        __declspec(thread)
-#define THROW               __declspec(nothrow)
-#define MALLOC_LIKE         
+# define THREAD_LOCAL        __thread
+# define THROW               __THROW
+# define MALLOC_LIKE         __malloc_like
 
 // TODO: Prefer UNUSED x over UU(x)
-#define UU(x)               ((void) x)
+# define UU(x)               x __attribute__((__unused__))
 
-#define toku_compiler_expect(_expr_, _value_)       _expr_
-#define toku_compiler_likely(_expr_)                _expr_
-#define toku_compiler_unlikely(_expr_)              _expr_
-#define toku_compiler_offsetof(_type_, _member_)    offsetof(_type_, _member_)
+# define toku_compiler_expect(_expr_, _value_)       __builtin_expect(_expr_, _value_)
+# define toku_compiler_likely(_expr_)                toku_compiler_expect(((_expr_) != 0), 1)
+# define toku_compiler_unlikely(_expr_)              toku_compiler_expect(((_expr_) != 0), 0)
+# define toku_compiler_offsetof(_type_, _member_)    __builtin_offsetof(_type_, _member_)
+
+#else // Windows
+
+# define UNUSED              __attribute__((__unused__))
+# define WARN_UNUSED_RESULT  __attribute__((__warn_unused_result__))
+# define DEPRECATED          __attribute__((__deprecated__))
+# define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
+# define NOINLINE            __attribute__((__noinline__))
+# define ALWAYS_INLINE       __attribute__((__always_inline__))
+# define NORETURN            __attribute__((__noreturn__))
+// Keep declspec commented out until real msvc compilation is attempted
+//# define ALIGNED(x)          __declspec(align(x))
+# define ALIGNED(x)          
+# define ALIGNED(x)          
+# define PRINTF_FORMAT(x, y) __attribute__((__format__(__printf__, x, y)))
+
+# define LIB_CONSTRUCTOR     // TODO: !
+# define LIB_DESTRUCTOR      // TODO: !
+
+// Keep declspec commented out until real msvc compilation is attempted
+//# define THREAD_LOCAL        __declspec(thread)
+//# define THROW               __declspec(nothrow)
+# define THREAD_LOCAL        
+# define THROW               
+# define MALLOC_LIKE         
+
+// TODO: Prefer UNUSED x over UU(x)
+# define UU(x)               x __attribute__((__unused__))
+
+# define toku_compiler_expect(_expr_, _value_)       _expr_
+# define toku_compiler_likely(_expr_)                _expr_
+# define toku_compiler_unlikely(_expr_)              _expr_
+# define toku_compiler_offsetof(_type_, _member_)    offsetof(_type_, _member_)
+
+// TODO: Use these with MVSC compiler
+#if 0
+# define PRId32 I32d
+# define PRIu32 I32u
+# define PRId64 I64d
+# define PRIu64 I64u
+#endif
+#define PRId32 "d"
+#define PRIu32 "u"
+#define PRIx32 "x"
+#define PRId64 "ld"
+#define PRIu64 "lu"
+#define PRIx64 "lx"
+#define SCNu32 "u"
+#define SCNu64 "lu"
 
 #endif

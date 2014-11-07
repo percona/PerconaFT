@@ -90,35 +90,48 @@ PATENT RIGHTS GRANT:
 
 #include "toku_time.h"
 
-#if !defined(HAVE_CLOCK_REALTIME)
+#if TOKU_WINDOWS
 
-#include <errno.h>
-#include <mach/clock.h>
-#include <mach/mach.h>
-
-int toku_clock_gettime(clockid_t clk_id, struct timespec *ts) {
-    if (clk_id != CLOCK_REALTIME) {
-        // dunno how to fake any of the other types of clock on osx
-        return EINVAL;
-    }
-    // We may want to share access to cclock for performance, but that requires
-    // initialization and destruction that's more complex than it's worth for
-    // OSX right now.  Some day we'll probably just use pthread_once or
-    // library constructors.
-    clock_serv_t cclock;
-    mach_timespec_t mts;
-    host_get_clock_service(mach_host_self(), REALTIME_CLOCK, &cclock);
-    clock_get_time(cclock, &mts);
-    mach_port_deallocate(mach_task_self(), cclock);
-    ts->tv_sec = mts.tv_sec;
-    ts->tv_nsec = mts.tv_nsec;
+float toku_tdiff(struct timeval *a, struct timeval *b) {
+    (void) a;
+    (void) b;
     return 0;
 }
-#else // defined(HAVE_CLOCK_REALTIME)
 
-#include <time.h>
-int toku_clock_gettime(clockid_t clk_id, struct timespec *ts) {
-    return clock_gettime(clk_id, ts);
+int toku_os_gettimeofday(struct timeval *tv, struct timezone *tz) {
+    (void) tv;
+    (void) tz;
+    return 0;
+}
+
+tokutime_t toku_time_now(void) {
+    return 0;
+}
+
+uint64_t toku_current_time_microsec(void) {
+    return 0;
+}
+
+#else
+
+float toku_tdiff(struct timeval *a, struct timeval *b) {
+    return (float)((a->tv_sec - b->tv_sec) + 1e-6 * (a->tv_usec - b->tv_usec));
+}
+
+int toku_os_gettimeofday(struct timeval *tv, struct timezone *tz) {
+    return gettimeofday(tv, tz);
+}
+
+tokutime_t toku_time_now(void) {
+    uint32_t lo, hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    return (uint64_t)hi << 32 | lo;
+}
+
+uint64_t toku_current_time_microsec(void) {
+    struct timeval t;
+    toku_os_gettimeofday(&t, NULL);
+    return t.tv_sec * (1UL * 1000 * 1000) + t.tv_usec;
 }
 
 #endif

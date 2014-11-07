@@ -88,18 +88,48 @@ PATENT RIGHTS GRANT:
 
 #pragma once
 
-#include <stdbool.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
 #include <portability/toku_compiler.h>
+#include <portability/toku_stdint.h>
 
-typedef int toku_os_handle_t;
+#include <sys/types.h>
 
+/* device and inode are enough to uniquely identify a file in unix. */
 struct fileid {
-    dev_t st_dev; /* device and inode are enough to uniquely identify a file in unix. */
+    // TODO: Should it just be uint32_t on all platforms?
+#if TOKU_WINDOWS
+    uint32_t st_dev;
+    uint32_t st_ino;
+#else
+    dev_t st_dev;
     ino_t st_ino;
+#endif
 };
+
+#if TOKU_WINDOWS
+
+// These are not good values
+typedef int toku_pid_t;
+typedef int toku_mode_t;
+#define S_IRUSR 0
+#define S_IWUSR 0
+#define S_IRGRP 0
+#define S_IWGRP 0
+#define S_IROTH 0
+#define S_IWOTH 0
+
+#define O_CREAT 0
+#define O_RDONLY 0
+#define O_WRONLY 0
+#define O_RDWR 0
+#define O_TRUNC 0
+#define O_EXCL 0
+
+#else
+
+typedef pid_t toku_pid_t;
+typedef mode_t toku_mode_t;
+
+#endif
 
 static inline int toku_fileid_cmp(const struct fileid &a, const struct fileid &b) {
     if (a.st_dev < b.st_dev) {
@@ -122,7 +152,15 @@ static inline bool toku_fileids_are_equal(const struct fileid *a, const struct f
     return toku_fileid_cmp(*a, *b) == 0;
 }
 
+#if TOKU_WINDOWS
+// TODO: Fill me out
+struct toku_struct_stat { 
+    // Will get something to compile at least.
+    int st_mode;
+};
+#else
 typedef struct stat toku_struct_stat;
+#endif
 
 #if !defined(O_BINARY)
 #define O_BINARY 0

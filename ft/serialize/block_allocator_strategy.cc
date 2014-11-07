@@ -98,15 +98,6 @@ static uint64_t _align(uint64_t value, uint64_t ba_alignment) {
     return ((value + ba_alignment - 1) / ba_alignment) * ba_alignment;
 }
 
-static uint64_t _roundup_to_power_of_two(uint64_t value) {
-    uint64_t r = 4096;
-    while (r < value) {
-        r *= 2;
-        invariant(r > 0);
-    }
-    return r;
-}
-
 // First fit block allocation
 static struct block_allocator::blockpair *
 _first_fit(struct block_allocator::blockpair *blocks_array,
@@ -185,8 +176,17 @@ block_allocator_strategy::best_fit(struct block_allocator::blockpair *blocks_arr
 
 static uint64_t padded_fit_alignment = 4096;
 
-// TODO: These compiler specific directives should be abstracted in a portability header
-//       portability/toku_compiler.h?
+#if !TOKU_WINDOWS
+
+static uint64_t _roundup_to_power_of_two(uint64_t value) {
+    uint64_t r = 4096;
+    while (r < value) {
+        r *= 2;
+        invariant(r > 0);
+    }
+    return r;
+}
+
 LIB_CONSTRUCTOR
 static void determine_padded_fit_alignment_from_env(void) {
     // TODO: Should be in portability as 'toku_os_getenv()?'
@@ -204,6 +204,7 @@ static void determine_padded_fit_alignment_from_env(void) {
         }
     }
 }
+#endif
 
 // First fit into a block that is oversized by up to max_padding.
 // The hope is that if we purposefully waste a bit of space at allocation
@@ -216,8 +217,7 @@ block_allocator_strategy::padded_fit(struct block_allocator::blockpair *blocks_a
 
 static double hot_zone_threshold = 0.85;
 
-// TODO: These compiler specific directives should be abstracted in a portability header
-//       portability/toku_compiler.h?
+#if !TOKU_WINDOWS
 LIB_CONSTRUCTOR
 static void determine_hot_zone_threshold_from_env(void) {
     // TODO: Should be in portability as 'toku_os_getenv()?'
@@ -234,6 +234,7 @@ static void determine_hot_zone_threshold_from_env(void) {
         }
     }
 }
+#endif
 
 struct block_allocator::blockpair *
 block_allocator_strategy::heat_zone(struct block_allocator::blockpair *blocks_array,

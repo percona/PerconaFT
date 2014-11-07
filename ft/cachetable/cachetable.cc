@@ -2821,7 +2821,6 @@ int toku_cachetable_assert_all_unpinned (CACHETABLE ct) {
         for (p=ct->list.m_table[i]; p; p=p->hash_chain) {
             pair_lock(p);
             if (p->value_rwlock.users()) {
-                //printf("%s:%d pinned: %" PRId64 " (%p)\n", __FILE__, __LINE__, p->key.b, p->value_data);
                 some_pinned=1;
             }
             pair_unlock(p);

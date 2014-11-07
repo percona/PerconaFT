@@ -88,13 +88,24 @@ PATENT RIGHTS GRANT:
 
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 
-#include <sys/mman.h>
+#include <portability/toku_compiler.h>
+#include <portability/toku_os.h>
+
+#if TOKU_WINDOWS
+
+// Just fake this for now.
+bool toku_os_huge_pages_enabled(void) {
+    return false;
+}
+
+#else
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include <portability/toku_assert.h>
-#include <portability/toku_os.h>
 
 static bool check_huge_pages_config_file(const char *fname)
 // Effect: Return true if huge pages are there.  If so, print diagnostics.
@@ -192,3 +203,5 @@ bool toku_os_huge_pages_enabled(void)
         return conf1|conf2|prac;
     }
 }
+
+#endif
