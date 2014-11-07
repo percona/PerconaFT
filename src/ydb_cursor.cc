@@ -711,8 +711,6 @@ c_getf_set_range_reverse_callback(uint32_t keylen, const void *key, uint32_t val
 
 
 int toku_c_close_internal(DBC *c) {
-    HANDLE_PANICKED_DB(c->dbp);
-    HANDLE_CURSOR_ILLEGAL_WORKING_PARENT_TXN(c);
     toku_ft_cursor_destroy(dbc_ftcursor(c));
     toku_sdbt_cleanup(&dbc_struct_i(c)->skey_s);
     toku_sdbt_cleanup(&dbc_struct_i(c)->sval_s);
