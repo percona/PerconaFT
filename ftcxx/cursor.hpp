@@ -183,6 +183,10 @@ namespace ftcxx {
 
         ::DBC *dbc() const { return _dbc; }
 
+        void set_txn(const DBTxn &txn) const {
+            _dbc->c_set_txn(_dbc, txn.txn());
+        }
+
         void close();
 
         bool set_range(const IterationStrategy &strategy, const Bounds &bounds, YDB_CALLBACK_FUNCTION callback, void *extra) const;
@@ -225,6 +229,8 @@ namespace ftcxx {
         bool finished() const { return _finished; }
 
         bool ok() const { return !finished(); }
+
+        void set_txn(const DBTxn &txn) const { _dbc.set_txn(txn); }
 
     private:
 
@@ -296,6 +302,8 @@ namespace ftcxx {
             return _cur.ok() || _buf.more();
         }
 
+        void set_txn(const DBTxn &txn) const { _cur.set_txn(txn); }
+
     private:
 
         typedef BufferAppender<Predicate> Appender;
@@ -323,6 +331,8 @@ namespace ftcxx {
         bool ok() const {
             return _cur.ok();
         }
+
+        void set_txn(const DBTxn &txn) const { _cur.set_txn(txn); }
 
         class SliceCopier {
             Slice &_key;
