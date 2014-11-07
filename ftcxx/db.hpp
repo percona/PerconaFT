@@ -237,13 +237,24 @@ namespace ftcxx {
                 handle_ft_retval(r);
             }
 
-            r = db->open(db, txn.txn(), fname, dbname, dbtype, flags, mode);
+            const DBTxn *txnp = &txn;
+            DBTxn writeTxn;
+            if (txn.is_read_only()) {
+                writeTxn = DBTxn(env, DB_SERIALIZABLE);
+                txnp = &writeTxn;
+            }
+
+            r = db->open(db, txnp->txn(), fname, dbname, dbtype, flags, mode);
             handle_ft_retval(r);
 
             if (!_descriptor.empty()) {
                 DBT desc = _descriptor.dbt();
-                r = db->change_descriptor(db, txn.txn(), &desc, DB_UPDATE_CMP_DESCRIPTOR);
+                r = db->change_descriptor(db, txnp->txn(), &desc, DB_UPDATE_CMP_DESCRIPTOR);
                 handle_ft_retval(r);
+            }
+
+            if (txn.is_read_only()) {
+                writeTxn.commit();
             }
 
             return DB(db, true);

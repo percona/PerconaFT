@@ -12,23 +12,26 @@ namespace ftcxx {
     class DBTxn {
     public:
         DBTxn()
-            : _txn(nullptr)
+            : _flags(0),
+              _txn(nullptr)
         {}
 
         explicit DBTxn(const DBEnv &env, int flags=0)
-            : _txn(nullptr)
+            : _flags(flags),
+              _txn(nullptr)
         {
             DB_TXN *t;
-            int r = env.env()->txn_begin(env.env(), nullptr, &t, flags);
+            int r = env.env()->txn_begin(env.env(), nullptr, &t, _flags);
             handle_ft_retval(r);
             _txn = t;
         }
 
         DBTxn(const DBEnv &env, const DBTxn &parent, int flags=0)
-            : _txn(nullptr)
+            : _flags(flags),
+              _txn(nullptr)
         {
             DB_TXN *t;
-            int r = env.env()->txn_begin(env.env(), parent.txn(), &t, flags);
+            int r = env.env()->txn_begin(env.env(), parent.txn(), &t, _flags);
             handle_ft_retval(r);
             _txn = t;
         }
@@ -43,12 +46,15 @@ namespace ftcxx {
         DBTxn& operator=(const DBTxn &) = delete;
 
         DBTxn(DBTxn &&o)
-            : _txn(nullptr)
+            : _flags(0),
+              _txn(nullptr)
         {
+            std::swap(_flags, o._flags);
             std::swap(_txn, o._txn);
         }
 
         DBTxn& operator=(DBTxn &&o) {
+            std::swap(_flags, o._flags);
             std::swap(_txn, o._txn);
             return *this;
         }
@@ -67,7 +73,12 @@ namespace ftcxx {
             _txn = nullptr;
         }
 
+        bool is_read_only() const {
+            return _flags & DB_TXN_READ_ONLY;
+        }
+
     private:
+        int _flags;
         DB_TXN *_txn;
     };
 
