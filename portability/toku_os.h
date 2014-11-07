@@ -1,6 +1,6 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
-#ident "$Id$"
+
 /*
 COPYING CONDITIONS NOTICE:
 
@@ -88,15 +88,10 @@ PATENT RIGHTS GRANT:
 
 #pragma once
 
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
-
 #include "portability/toku_compiler.h"
 #include "portability/toku_os_types.h"
 #include "portability/toku_stdint.h"
 #include "portability/toku_time.h"
-
-#include <dirent.h>
 
 // Sleep for `seconds'
 void toku_os_sleep(uint64_t seconds);
@@ -192,7 +187,7 @@ void toku_set_assert_on_write_enospc(int do_assert) DEFAULT_VISIBILITY;
 // *enospc_total     is the number of times ENOSPC was returned by write or pwrite
 void toku_fs_get_write_info(time_t *enospc_last_time, uint64_t *enospc_current, uint64_t *enospc_total);
 
-void toku_fsync_dirfd_without_accounting(DIR *dirp);
+//void toku_fsync_dirfd_without_accounting(DIR *dirp);
 
 int toku_fsync_dir_by_name_without_accounting(const char *dir_name);
 

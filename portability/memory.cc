@@ -99,7 +99,6 @@ PATENT RIGHTS GRANT:
 #elif defined(HAVE_SYS_MALLOC_H)
 # include <sys/malloc.h>
 #endif
-#include <dlfcn.h>
 #include <toku_race_tools.h>
 #include "memory.h"
 #include "toku_assert.h"
@@ -118,6 +117,10 @@ static LOCAL_MEMORY_STATUS_S status;
 int toku_memory_do_stats = 0;
 
 static bool memory_startup_complete;
+
+#if !TOKU_WINDOWS
+#include <dlfcn.h>
+#endif
 
 int
 toku_memory_startup(void) {
@@ -138,11 +141,13 @@ toku_memory_startup(void) {
     } else
         result = EINVAL;
 #else
+	invariant(!"need mmap threshold for windows");
     // just a guess
     status.mallocator_version = "darwin";
     status.mmap_threshold = 16 * 1024;
 #endif
 
+#if !TOKU_WINDOWS
     // jemalloc has a mallctl function, while libc malloc does not.  we can check if jemalloc 
     // is loaded by checking if the mallctl function can be found.  if it can, we call it 
     // to get version and mmap threshold configuration.
@@ -160,6 +165,9 @@ toku_memory_startup(void) {
                 status.mmap_threshold = 1 << lg_chunk;
         }
     }
+#else
+	invariant(!"need to stop checking if !TOKU_WINDOWS and instead do a feature check on dlsym");
+#endif
 
     return result;
 }

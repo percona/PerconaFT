@@ -89,7 +89,8 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 
 #include <portability/toku_config.h>
-#include <toku_pthread.h>
+#include <portability/toku_assert.h>
+#include <portability/toku_pthread.h>
 
 int toku_pthread_yield(void) {
 #if defined(HAVE_PTHREAD_YIELD)
@@ -105,6 +106,7 @@ int toku_pthread_yield(void) {
     pthread_yield_np();
     return 0;
 #else
-# error "cannot find pthread_yield or pthread_yield_np"
+	invariant(!"need a process yield function for windows");
+	return 0;
 #endif
 }

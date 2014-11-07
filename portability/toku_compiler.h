@@ -90,12 +90,10 @@ PATENT RIGHTS GRANT:
 
 #include "toku_config.h"
 
-//#if defined(_MSC_VER)
-//# define TOKU_WINDOWS 1
-//#endif
-// TODO: Figure out the right way to detect the microsoft compiler
-//       OR the gnu compiler doing cross compilation to windows
-#define TOKU_WINDOWS 1
+#if defined(_MSC_VER)
+# define TOKU_WINDOWS 1
+#endif
+
 
 #if !TOKU_WINDOWS
 
@@ -126,31 +124,26 @@ PATENT RIGHTS GRANT:
 
 #else // Windows
 
-# define UNUSED              __attribute__((__unused__))
-# define WARN_UNUSED_RESULT  __attribute__((__warn_unused_result__))
-# define DEPRECATED          __attribute__((__deprecated__))
-# define DEFAULT_VISIBILITY  __attribute__((__visibility__("default")))
-# define NOINLINE            __attribute__((__noinline__))
-# define ALWAYS_INLINE       __attribute__((__always_inline__))
-# define NORETURN            __attribute__((__noreturn__))
-// Keep declspec commented out until real msvc compilation is attempted
-//# define ALIGNED(x)          __declspec(align(x))
-# define ALIGNED(x)          
-# define ALIGNED(x)          
-# define PRINTF_FORMAT(x, y) __attribute__((__format__(__printf__, x, y)))
+# define UNUSED             
+# define WARN_UNUSED_RESULT 
+# define DEPRECATED         
+# define DEFAULT_VISIBILITY  
+# define NOINLINE           
+# define ALWAYS_INLINE      
+# define NORETURN            
+# define ALIGNED(x)          __declspec(align(x))
+# define PRINTF_FORMAT(x, y) 
 
-# define LIB_CONSTRUCTOR     // TODO: !
-# define LIB_DESTRUCTOR      // TODO: !
+# define LIB_CONSTRUCTOR     
+# define LIB_DESTRUCTOR      
 
 // Keep declspec commented out until real msvc compilation is attempted
-//# define THREAD_LOCAL        __declspec(thread)
-//# define THROW               __declspec(nothrow)
-# define THREAD_LOCAL        
-# define THROW               
+# define THREAD_LOCAL        __declspec(thread)
+# define THROW               __declspec(nothrow)
 # define MALLOC_LIKE         
 
 // TODO: Prefer UNUSED x over UU(x)
-# define UU(x)               x __attribute__((__unused__))
+# define UU(x)               x
 
 # define toku_compiler_expect(_expr_, _value_)       _expr_
 # define toku_compiler_likely(_expr_)                _expr_

@@ -117,6 +117,11 @@ PATENT RIGHTS GRANT:
 # define __LITTLE_ENDIAN __DARWIN_LITTLE_ENDIAN
 # define __BIG_ENDIAN __DARWIN_BIG_ENDIAN
 #endif
+#if TOKU_WINDOWS
+# define __BYTE_ORDER BYTE_ORDER
+# define __LITTLE_ENDIAN LITTLE_ENDIAN
+# define __BIG_ENDIAN BIG_ENDIAN
+#endif
 #if !defined(__BYTE_ORDER) || \
     !defined(__LITTLE_ENDIAN) || \
     !defined(__BIG_ENDIAN)

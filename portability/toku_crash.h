@@ -88,7 +88,13 @@ PATENT RIGHTS GRANT:
 
 #pragma once
 
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
+#include "portability/toku_compiler.h"
+
+#if TOKU_WINDOWS
+
+// TODO: Implement me
+
+#else
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -193,3 +199,5 @@ toku_crash_and_dump_core_on_purpose(void) {
 }
 
 void toku_try_gdb_stack_trace(const char *gdb_path);
+
+#endif

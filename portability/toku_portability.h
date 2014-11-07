@@ -144,6 +144,8 @@ typedef int64_t toku_off_t;
 #include "toku_assert.h"
 #include "toku_crash.h"
 
+#if !TOKU_WINDOWS
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -179,6 +181,7 @@ char*    __strdup(const char *)         DEPRECATED;
 ssize_t  write(int, const void *, size_t)           DEPRECATED;
 ssize_t  pwrite(int, const void *, size_t, off_t)   DEPRECATED;
 #endif
+
 #    ifndef DONT_DEPRECATE_MALLOC
 #     if defined(__FreeBSD__)
 extern void *malloc(size_t)                    MALLOC_LIKE DEPRECATED;
@@ -205,6 +208,7 @@ extern int errno                               DEPRECATED;
 # pragma GCC poison FALSE
 # pragma GCC poison TRUE
 #endif
+
 #pragma GCC poison __sync_fetch_and_add
 #pragma GCC poison __sync_fetch_and_sub
 #pragma GCC poison __sync_fetch_and_or
@@ -226,6 +230,12 @@ extern int errno                               DEPRECATED;
 
 #if defined(__cplusplus)
 };
+#endif
+
+#endif !TOKU_WINDOWS
+
+#if TOKU_WINDOWS
+typedef uint64_t ssize_t;
 #endif
 
 void *os_malloc(size_t) DEFAULT_VISIBILITY;

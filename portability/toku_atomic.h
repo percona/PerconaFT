@@ -112,49 +112,59 @@ static inline bool crosses_boundary(T *addr, size_t width) {
 template <typename T, typename U> ALWAYS_INLINE
 static inline T toku_sync_fetch_and_add(T *addr, U diff) {
     paranoid_invariant(!crosses_boundary(addr, sizeof *addr));
-    return __sync_fetch_and_add(addr, diff);
+#if TOKU_WINDOWS
+	invariant("need syncops for windows");
+#else
+	return __sync_fetch_and_add(addr, diff);
+#endif
 }
+
 template <typename T, typename U> ALWAYS_INLINE
 static inline T toku_sync_add_and_fetch(T *addr, U diff) {
     paranoid_invariant(!crosses_boundary(addr, sizeof *addr));
+#if TOKU_WINDOWS
+	invariant("need syncops for windows"); return *addr;
+#else
     return __sync_add_and_fetch(addr, diff);
+#endif
 }
+
 template <typename T, typename U> ALWAYS_INLINE
 static inline T toku_sync_fetch_and_sub(T *addr, U diff) {
     paranoid_invariant(!crosses_boundary(addr, sizeof *addr));
-    return __sync_fetch_and_sub(addr, diff);
+#if TOKU_WINDOWS
+	invariant("need syncops for windows"); return *addr;
+#else
+	return __sync_fetch_and_sub(addr, diff);
+#endif
 }
+
 template <typename T, typename U> ALWAYS_INLINE
 static inline T toku_sync_sub_and_fetch(T *addr, U diff) {
     paranoid_invariant(!crosses_boundary(addr, sizeof *addr));
-    return __sync_sub_and_fetch(addr, diff);
+#if TOKU_WINDOWS
+	invariant("need syncops for windows"); return *addr;
+#else
+	return __sync_sub_and_fetch(addr, diff);
+#endif
 }
+
 template <typename T, typename U, typename V> ALWAYS_INLINE
 static inline T toku_sync_val_compare_and_swap(T *addr, U oldval, V newval) {
     paranoid_invariant(!crosses_boundary(addr, sizeof *addr));
-    return __sync_val_compare_and_swap(addr, oldval, newval);
+#if TOKU_WINDOWS
+	invariant("need syncops for windows"); return *addr;
+#else
+	return __sync_val_compare_and_swap(addr, oldval, newval);
+#endif
 }
+
 template <typename T, typename U, typename V> ALWAYS_INLINE
 static inline bool toku_sync_bool_compare_and_swap(T *addr, U oldval, V newval) {
     paranoid_invariant(!crosses_boundary(addr, sizeof *addr));
-    return __sync_bool_compare_and_swap(addr, oldval, newval);
+#if TOKU_WINDOWS
+	invariant("need syncops for windows"); return oldval;
+#else
+	return __sync_bool_compare_and_swap(addr, oldval, newval);
+#endif
 }
-
-// in case you include this but not toku_portability.h
-#pragma GCC poison __sync_fetch_and_add
-#pragma GCC poison __sync_fetch_and_sub
-#pragma GCC poison __sync_fetch_and_or
-#pragma GCC poison __sync_fetch_and_and
-#pragma GCC poison __sync_fetch_and_xor
-#pragma GCC poison __sync_fetch_and_nand
-#pragma GCC poison __sync_add_and_fetch
-#pragma GCC poison __sync_sub_and_fetch
-#pragma GCC poison __sync_or_and_fetch
-#pragma GCC poison __sync_and_and_fetch
-#pragma GCC poison __sync_xor_and_fetch
-#pragma GCC poison __sync_nand_and_fetch
-#pragma GCC poison __sync_bool_compare_and_swap
-#pragma GCC poison __sync_val_compare_and_swap
-#pragma GCC poison __sync_synchronize
-#pragma GCC poison __sync_lock_test_and_set
-#pragma GCC poison __sync_release

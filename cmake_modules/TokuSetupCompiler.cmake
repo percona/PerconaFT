@@ -181,8 +181,13 @@ if (NOT CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 endif ()
 
 ## always want these
-set(CMAKE_C_FLAGS "-Wall -Werror ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "-Wall -Werror ${CMAKE_CXX_FLAGS}")
+set(CMAKE_C_FLAGS "-Wall ${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "-Wall ${CMAKE_CXX_FLAGS}")
+if (NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
+  ## no -Werror on windows?
+  set(CMAKE_C_FLAGS "-Werror ${CMAKE_C_FLAGS}")
+  set(CMAKE_CXX_FLAGS "-Werror ${CMAKE_CXX_FLAGS}")
+endif()
 
 ## need to set -stdlib=libc++ to get real c++11 support on darwin
 if (APPLE)
@@ -195,15 +200,17 @@ endif ()
 
 # pick language dialect
 set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
-check_cxx_compiler_flag(-std=c++11 HAVE_STDCXX11)
-check_cxx_compiler_flag(-std=c++0x HAVE_STDCXX0X)
-if (HAVE_STDCXX11)
-  set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
-elseif (HAVE_STDCXX0X)
-  set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
-else ()
-  message(FATAL_ERROR "${CMAKE_CXX_COMPILER} doesn't support -std=c++11 or -std=c++0x, you need one that does.")
-endif ()
+if (NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
+  check_cxx_compiler_flag(-std=c++11 HAVE_STDCXX11)
+  check_cxx_compiler_flag(-std=c++0x HAVE_STDCXX0X)
+  if (HAVE_STDCXX11)
+    set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
+  elseif (HAVE_STDCXX0X)
+    set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
+  else ()
+    message(FATAL_ERROR "${CMAKE_CXX_COMPILER} doesn't support -std=c++11 or -std=c++0x, you need one that does.")
+  endif ()
+endif()
 
 function(add_space_separated_property type obj propname val)
   get_property(oldval ${type} ${obj} PROPERTY ${propname})

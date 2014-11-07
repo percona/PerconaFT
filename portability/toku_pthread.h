@@ -89,7 +89,13 @@ PATENT RIGHTS GRANT:
 
 #pragma once
 
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
+#include "portability/toku_compiler.h"
+
+#if TOKU_WINDOWS
+
+// TODO: Write me
+
+#else
 
 #include <pthread.h>
 #include <time.h>
@@ -428,3 +434,5 @@ toku_pthread_setspecific(toku_pthread_key_t key, void *data) {
 #define toku_pthread_rwlockattr_destroy pthread_rwlockattr_destroy
 #define toku_pthread_equal pthread_equal
 #define toku_pthread_self pthread_self
+
+#endif

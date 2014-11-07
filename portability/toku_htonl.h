@@ -91,12 +91,23 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 
 #include <toku_htod.h>
+
+#if !TOKU_WINDOWS
 #include <arpa/inet.h>
+#endif
 
 static inline uint32_t toku_htonl(uint32_t i) {
-    return htonl(i);
+#if TOKU_WINDOWS
+	return i; // TODO: Just to get it compiling
+#else
+	return htonl(i);
+#endif
 }
 
 static inline uint32_t toku_ntohl(uint32_t i) {
-    return ntohl(i);
+#if TOKU_WINDOWS
+	return i; // TODO: Just to get it compiling;
+#else
+	return ntohl(i);
+#endif
 }

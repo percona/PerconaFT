@@ -88,6 +88,14 @@ PATENT RIGHTS GRANT:
 
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 
+#include "portability/toku_crash.h"
+
+#if TOKU_WINDOWS
+
+// TODO: Write me
+
+#else
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -97,7 +105,6 @@ PATENT RIGHTS GRANT:
 #endif
 
 #include "portability/toku_atomic.h"
-#include "portability/toku_crash.h"
 #include "portability/toku_os.h"
 #include "portability/toku_pthread.h"
 #include "portability/toku_race_tools.h"
@@ -213,4 +220,6 @@ toku_try_gdb_stack_trace(const char *gdb_path) {
         spawn_gdb(gdb_path ? gdb_path : default_gdb_path);
     }
 }
+
+#endif
 

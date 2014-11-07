@@ -93,8 +93,11 @@ PATENT RIGHTS GRANT:
 #include <toku_assert.h>
 #include <stdlib.h>
 #include <string.h>
+#if !TOKU_WINDOWS
 #include <libgen.h>
+#endif
 
+#if !TOKU_WINDOWS
 const char *toku_test_filename(const char *default_filename) {
     const char *filename = getenv("TOKU_TEST_FILENAME");
     if (filename == nullptr) {
@@ -176,3 +179,5 @@ char *toku_path_join(char *dest, int n, const char *base, ...) {
     memset(&dest[written], 0, TOKU_PATH_MAX - written);
     return dest;
 }
+
+#endif
