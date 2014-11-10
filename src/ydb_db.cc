@@ -881,11 +881,10 @@ load_inames(DB_ENV * env, DB_TXN * txn, int N, DB * dbs[/*N*/], const char * new
     }
 
     for (i = 0; i < N; i++) {
-        const uint64_t id = dbs[i]->i->dict->get_id();
         const char * dname = dbs[i]->i->dict->get_dname();
         const char *new_iname = create_new_iname(dname, env, txn, mark);
         new_inames_in_env[i] = new_iname;
-        rval = env->i->dict_manager.change_iname(txn, id, new_iname, 0);
+        rval = env->i->dict_manager.change_iname(txn, dname, new_iname, 0);
         if (rval) break;
     }
 

@@ -168,7 +168,7 @@ private:
     // internal dictionaries (such as environment and directory
     static const uint64_t m_min_user_id = 1000;
     DB* m_directory; // maps dname to dictionary id
-    DB* m_inamedb; // maps dictionary id to iname
+    DB* m_detailsdb; // maps dictionary id to iname
     DB* m_descriptordb; // maps dictionary id to descriptor
     DB* m_iname_refs_db; // maps iname to number of dictionaries that are using the iname to store data
     uint64_t m_next_id;
@@ -177,13 +177,13 @@ private:
     int get_iname_refcount(const char* iname, DB_TXN* txn, uint64_t* refcount);
     int add_iname_reference(const char * iname, DB_TXN* txn, uint32_t put_flags);
     int release_iname_reference(const char * iname, DB_TXN* txn, bool* unlink_iname);    
-    int read_from_inamedb(uint64_t id, DB_TXN* txn, dictionary_info* dinfo);
-    int write_to_inamedb(DB_TXN* txn, dictionary_info* dinfo, uint32_t put_flags);
+    int read_from_detailsdb(uint64_t id, DB_TXN* txn, dictionary_info* dinfo);
+    int write_to_detailsdb(DB_TXN* txn, dictionary_info* dinfo, uint32_t put_flags);
 
 public:
     persistent_dictionary_manager() : 
         m_directory(nullptr),
-        m_inamedb(nullptr),
+        m_detailsdb(nullptr),
         m_descriptordb(nullptr),
         m_iname_refs_db(nullptr),
         m_next_id(0)
@@ -193,7 +193,7 @@ public:
     int get_directory_cursor(DB_TXN* txn, DBC** c);
     int get_dinfo(const char* dname, DB_TXN* txn, dictionary_info* dinfo);
     int get_iname(const char* dname, DB_TXN* txn, char** iname);
-    int change_iname(DB_TXN* txn, uint64_t id, const char* new_iname, uint32_t put_flags);
+    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags);
     int pre_acquire_fileops_lock(DB_TXN* txn, char* dname);
     int create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo);
     int remove(const char * dname, DB_TXN* txn, bool* unlink_iname);
@@ -273,8 +273,8 @@ public:
     }
     int get_iname_in_dbt(DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt);
     // used in a part of bulk loading
-    int change_iname(DB_TXN* txn, uint64_t id, const char* new_iname, uint32_t put_flags) {
-        return pdm.change_iname(txn, id, new_iname, put_flags);
+    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags) {
+        return pdm.change_iname(txn, dname, new_iname, put_flags);
     }
     int pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
         return pdm.pre_acquire_fileops_lock(txn, dname);
