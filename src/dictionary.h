@@ -101,6 +101,8 @@ PATENT RIGHTS GRANT:
 
 class inmemory_dictionary_manager;
 
+#define PREPEND_ID_INVALID UINT64_MAX
+
 // retrieved from metadata stored
 class dictionary_info {
 public:
@@ -109,9 +111,16 @@ public:
     char* groupname;
     uint64_t id;
     uint64_t prepend_id;
-    uint64_t num_prepend_bytes;
+    uint8_t num_prepend_bytes;
     DBT descriptor;
-    dictionary_info() : dname(nullptr), iname(nullptr), groupname(nullptr) {
+
+    dictionary_info() : 
+        dname(nullptr),
+        iname(nullptr),
+        groupname(nullptr),
+        prepend_id(PREPEND_ID_INVALID),
+        num_prepend_bytes(0)
+    {
         toku_init_dbt(&descriptor);
     }
     void destroy() {

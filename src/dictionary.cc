@@ -301,10 +301,10 @@ int persistent_dictionary_manager::read_from_detailsdb(uint64_t id, DB_TXN* txn,
     // get iname
     DBT id_dbt;
     toku_fill_dbt(&id_dbt, &id, sizeof(id));
-    DBT iname_dbt;
-    toku_init_dbt_flags(&iname_dbt, DB_DBT_MALLOC);
+    DBT details_dbt;
+    toku_init_dbt_flags(&details_dbt, DB_DBT_MALLOC);
     
-    int r = toku_db_get(m_detailsdb, txn, &id_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
+    int r = toku_db_get(m_detailsdb, txn, &id_dbt, &details_dbt, DB_SERIALIZABLE);  // allocates memory for iname
     if (r == DB_NOTFOUND) {
         // we have an inconsistent state. This is a bad bug
         printf("We found an id , but not the iname\n");
@@ -313,10 +313,69 @@ int persistent_dictionary_manager::read_from_detailsdb(uint64_t id, DB_TXN* txn,
     }
     if (r != 0) goto cleanup;
 
-    dinfo->iname = toku_strdup((char *)iname_dbt.data);
+    {
+        char* start = (char* )details_dbt.data;
+        char* pos = start;
+        // unpack prepend_id
+        dinfo->prepend_id = *((uint64_t *)pos);
+        pos += sizeof(dinfo->prepend_id);
+        // unpack num_prepend_bytes
+        dinfo->num_prepend_bytes = pos[0];
+        pos++;
+        // unpack groupname, if it exists
+        uint8_t has_groupname = pos[0];
+        pos++;
+        if (has_groupname) {
+            dinfo->groupname = toku_strdup(pos);
+            pos += strlen(pos) + 1;
+        }
+        dinfo->iname = toku_strdup(pos);
+        pos += strlen(pos) + 1;
+
+        invariant(pos - start == details_dbt.size);
+    }
 cleanup:
-    toku_free(iname_dbt.data);
+    toku_free(details_dbt.data);
     return r;
+}
+
+int persistent_dictionary_manager::write_to_detailsdb(DB_TXN* txn, dictionary_info* dinfo, uint32_t put_flags) {
+    DBT id_dbt;  // holds id
+    toku_fill_dbt(&id_dbt, &dinfo->id, sizeof(dinfo->id));
+
+    // things to write:
+    // prepend_id
+    // num_prepend_bytes
+    // groupname
+    // iname
+    uint64_t num_bytes = sizeof(dinfo->prepend_id) + 
+        sizeof(dinfo->num_prepend_bytes) + 
+        1 + // bool stating if groupname exists
+        (dinfo->groupname ? (strlen(dinfo->groupname) + 1) : 0) +
+        strlen(dinfo->iname) + 1;
+    char* data = (char*)toku_xmalloc(num_bytes);
+    char* pos = data;
+    // pack prepend_id
+    *((uint64_t *)pos) = dinfo->prepend_id;
+    pos += sizeof(dinfo->prepend_id);
+    // pack num_prepend_bytes
+    *((uint8_t *)pos) = dinfo->num_prepend_bytes;
+    pos += sizeof(dinfo->num_prepend_bytes);
+    // pack groupname, if it exists
+    uint8_t has_groupname = (dinfo->groupname == nullptr) ? 0 : 1;
+    *((uint8_t *)pos) = has_groupname;
+    pos += sizeof(has_groupname);
+    if (has_groupname) {
+        memcpy(pos, dinfo->groupname, strlen(dinfo->groupname) + 1);
+        pos += strlen(dinfo->groupname) + 1;
+    }
+    memcpy(pos, dinfo->iname, strlen(dinfo->iname) + 1);
+    pos += strlen(dinfo->iname) + 1;
+    invariant((uint64_t)(pos - data) == num_bytes);
+    
+    DBT details_dbt;
+    toku_fill_dbt(&details_dbt, data, num_bytes);
+    return toku_db_put(m_detailsdb, txn, &id_dbt, &details_dbt, put_flags, true);
 }
 
 int persistent_dictionary_manager::get_dinfo(const char* dname, DB_TXN* txn, dictionary_info* dinfo) {
@@ -357,14 +416,6 @@ int persistent_dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* d
     return toku_db_get_range_lock(m_directory, txn,
             &key_in_directory, &key_in_directory,
             toku::lock_request::type::WRITE);
-}
-
-int persistent_dictionary_manager::write_to_detailsdb(DB_TXN* txn, dictionary_info* dinfo, uint32_t put_flags) {
-    DBT id_dbt;  // holds id
-    toku_fill_dbt(&id_dbt, &dinfo->id, sizeof(dinfo->id));
-    DBT iname_dbt;  // holds new iname
-    toku_fill_dbt(&iname_dbt, dinfo->iname, strlen(dinfo->iname) + 1);      // iname_in_env goes in directory
-    return toku_db_put(m_detailsdb, txn, &id_dbt, &iname_dbt, put_flags, true);
 }
 
 int persistent_dictionary_manager::change_iname(
