@@ -259,6 +259,8 @@ int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn, toku::lo
     if (r != 0) goto cleanup;
     r = setup_internal_db(&m_descriptordb, env, txn, toku_product_name_strings.fileopsdesc, DESC_ID, ltm);
     if (r != 0) goto cleanup;
+    r = setup_internal_db(&m_iname_refs_db, env, txn, toku_product_name_strings.fileops_iname_refs, INAME_REFS_ID, ltm);
+    if (r != 0) goto cleanup;
     // get the last entry in m_inamesdb, that has the current max used id
     // set m_next_id to that value plus one
     r = m_inamedb->cursor(m_inamedb, txn, &c, DB_SERIALIZABLE);
@@ -391,7 +393,79 @@ exit:
     return r;
 }
 
-int persistent_dictionary_manager::remove(const char * dname, DB_TXN* txn) {
+int persistent_dictionary_manager::get_iname_refcount(const char* iname, DB_TXN* txn, uint64_t* refcount) {
+    DBT ref_dbt;
+    uint64_t found_refcount = 0;
+    DBT iname_dbt;
+    toku_fill_dbt(&iname_dbt, iname, strlen(iname)+1);
+    toku_init_dbt(&ref_dbt);
+    ref_dbt.data = &found_refcount;
+    ref_dbt.ulen = sizeof(found_refcount);
+    ref_dbt.flags = DB_DBT_USERMEM;
+    
+    int r = toku_db_get(m_iname_refs_db, txn, &iname_dbt, &ref_dbt, DB_SERIALIZABLE);
+    if (r == DB_NOTFOUND) {
+        *refcount = 0;
+        r = 0;
+        goto exit;
+    }
+    if (r != 0) goto exit;
+    invariant(found_refcount > 0);
+    *refcount = found_refcount;
+    r = 0;
+exit:
+    return r;
+}
+
+int persistent_dictionary_manager::add_iname_reference(const char* iname, DB_TXN* txn, uint32_t put_flags) {
+    DBT iname_dbt;  // holds new iname
+    toku_fill_dbt(&iname_dbt, iname, strlen(iname) + 1);
+
+    uint64_t refcount = 0;
+    DBT ref_dbt; // holds refcount
+    toku_fill_dbt(&ref_dbt, &refcount, sizeof(refcount));
+
+    int r = get_iname_refcount(iname, txn, &refcount);
+    if (r != 0) goto exit;
+
+    refcount++;
+    // set a reference to the iname in m_iname_refs_db
+    // we are assuming this function is called with DB_NOOVERWRITE
+    // NOT set
+    r = toku_db_put(m_iname_refs_db, txn, &iname_dbt, &ref_dbt, put_flags, true);
+    if (r != 0) goto exit;
+
+exit:
+    return r;
+}
+
+int persistent_dictionary_manager::release_iname_reference(const char * iname, DB_TXN* txn, bool* unlink_iname) {
+    DBT iname_dbt;
+    toku_fill_dbt(&iname_dbt, iname, strlen(iname)+1);
+
+    uint64_t refcount = 0;
+    int r = get_iname_refcount(iname, txn, &refcount);
+    if (r != 0) goto exit;
+    
+    if (refcount == 1) {
+        // act of reducing refcount from 1 to 0 means deleting it
+        r = toku_db_del(m_iname_refs_db, txn, &iname_dbt, DB_DELETE_ANY, true);
+        if (r != 0) { goto exit; }
+        *unlink_iname = true;
+    }
+    else {
+        refcount--;
+        DBT ref_dbt; // holds refcount
+        toku_fill_dbt(&ref_dbt, &refcount, sizeof(refcount));
+        r = toku_db_put(m_iname_refs_db, txn, &iname_dbt, &ref_dbt, 0, true);
+        if (r != 0) goto exit;
+        *unlink_iname = false;
+    }
+exit:
+    return r;
+}
+
+int persistent_dictionary_manager::remove(const char * dname, DB_TXN* txn, bool* unlink_iname) {
     dictionary_info dinfo;
     int r = get_dinfo(dname, txn, &dinfo);
     if (r != 0) {
@@ -413,6 +487,10 @@ int persistent_dictionary_manager::remove(const char * dname, DB_TXN* txn) {
     if (r != 0) { goto exit; }
 
     r = toku_db_del(m_inamedb, txn, &id_dbt, DB_DELETE_ANY, true);
+    if (r != 0) { goto exit; }
+
+    // handle ref counting of iname
+    r = release_iname_reference(dinfo.iname, txn, unlink_iname);
     if (r != 0) { goto exit; }
 
 exit:
@@ -439,7 +517,14 @@ exit:
     return r;
 }
 
-int  persistent_dictionary_manager::create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo) {
+int  persistent_dictionary_manager::create_new_db(
+    DB_TXN* txn,
+    const char* dname,
+    DB_ENV* env,
+    bool is_db_hot_index,
+    dictionary_info* dinfo // output parameter
+    )
+{
     dinfo->dname = (dname) ? toku_strdup(dname) : nullptr;
     dinfo->iname = create_new_iname(dname, env, txn, NULL);
     {
@@ -450,18 +535,22 @@ int  persistent_dictionary_manager::create_new_db(DB_TXN* txn, const char* dname
     }
     uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0);
 
-    // set entry in directory
-    DBT dname_dbt;  // holds new iname
+    DBT dname_dbt;  // holds dname
     toku_fill_dbt(&dname_dbt, dname, strlen(dname) + 1);
     DBT id_dbt;  // holds id
     toku_fill_dbt(&id_dbt, &dinfo->id, sizeof(dinfo->id));
+
+    // set entry in directory
     int r = toku_db_put(m_directory, txn, &dname_dbt, &id_dbt, put_flags, true);
     if (r != 0) goto exit;
 
     // set the iname
     r = change_iname(txn, dinfo->id, dinfo->iname, put_flags);
     if (r != 0) goto exit;
-    
+
+    r = add_iname_reference(dinfo->iname, txn, put_flags);
+    if (r != 0) goto exit;
+
 exit:
     return r;
 }
@@ -475,6 +564,9 @@ void persistent_dictionary_manager::destroy() {
     }
     if (m_descriptordb) {
         toku_db_close(m_descriptordb);
+    }
+    if (m_iname_refs_db) {
+        toku_db_close(m_iname_refs_db);
     }
     toku_mutex_destroy(&m_mutex);
 }
@@ -557,6 +649,8 @@ int dictionary_manager::validate_environment(DB_ENV* env, bool* valid_newenv) {
     r = validate_metadata_db(env, toku_product_name_strings.fileopsinames, expect_newenv);
     if (r != 0) goto cleanup;
     r = validate_metadata_db(env, toku_product_name_strings.fileopsdesc, expect_newenv);
+    if (r != 0) goto cleanup;
+    r = validate_metadata_db(env, toku_product_name_strings.fileops_iname_refs, expect_newenv);
     if (r != 0) goto cleanup;
 
     *valid_newenv = expect_newenv;
@@ -848,10 +942,11 @@ exit:
 int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
     // TODO: perhaps add a fast path of bailing if open handles exist
     DB *db = NULL;
+    bool unlink = false;
     dictionary_info dinfo;
     int r = pdm.get_dinfo(dname, txn, &dinfo);
     if (r != 0) goto exit;
-    r = pdm.remove(dname, txn);
+    r = pdm.remove(dname, txn, &unlink);
     if (r != 0) goto exit;
 
     r = toku_db_create(&db, env, 0);
@@ -864,7 +959,7 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
             r = toku_ydb_do_error(env, r, "toku dbremove failed\n");
         goto exit;
     }
-    if (txn) {
+    {
         dictionary* old_dict = NULL;
         old_dict = idm.find(dname);
         // Now that we have a writelock on dname, verify that there are still no handles open. (to prevent race conditions)
@@ -872,6 +967,8 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
             r = toku_ydb_do_error(env, EINVAL, "Cannot remove dictionary with an open handle.\n");
             goto exit;
         }
+    }
+    if (txn) {
         // we know a live db handle does not exist.
         //
         // use the internally opened db to try and get a table lock
@@ -888,11 +985,15 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
             goto exit;
         }
         // The ft will be unlinked when the txn commits
-        toku_ft_unlink_on_commit(db->i->ft_handle, db_txn_struct_i(txn)->tokutxn);
+        if (unlink) {
+            toku_ft_unlink_on_commit(db->i->ft_handle, db_txn_struct_i(txn)->tokutxn);
+        }
     }
     else {
         // unlink the ft without a txn
-        toku_ft_unlink(db->i->ft_handle);
+        if (unlink) {
+            toku_ft_unlink(db->i->ft_handle);
+        }
     }
 
 exit:
