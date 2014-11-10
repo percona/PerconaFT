@@ -187,8 +187,6 @@ void toku_set_assert_on_write_enospc(int do_assert) DEFAULT_VISIBILITY;
 // *enospc_total     is the number of times ENOSPC was returned by write or pwrite
 void toku_fs_get_write_info(time_t *enospc_last_time, uint64_t *enospc_current, uint64_t *enospc_total);
 
-//void toku_fsync_dirfd_without_accounting(DIR *dirp);
-
 int toku_fsync_dir_by_name_without_accounting(const char *dir_name);
 
 // Get the file system free and total space for the file system that contains a path name

@@ -92,3 +92,4 @@ PATENT RIGHTS GRANT:
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <inttypes.h>

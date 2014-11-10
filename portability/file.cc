@@ -513,18 +513,14 @@ void toku_file_fsync_without_accounting(int fd) {
     file_fsync_internal(fd);
 }
 
-void toku_fsync_dirfd_without_accounting(DIR *dir) {
-    int fd = dirfd(dir);
-    toku_file_fsync_without_accounting(fd);
-}
-
 int toku_fsync_dir_by_name_without_accounting(const char *dir_name) {
     int r = 0;
     DIR * dir = opendir(dir_name);
     if (!dir) {
         r = get_error_errno();
     } else {
-        toku_fsync_dirfd_without_accounting(dir);
+        int fd = dirfd(dir);
+        toku_file_fsync_without_accounting(fd);
         r = closedir(dir);
         if (r != 0) {
             r = get_error_errno();

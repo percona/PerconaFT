@@ -150,7 +150,10 @@ size_t toku_strlcpy(char *dst, const char *src, size_t siz)
     return toku_strlcat(dst, src, siz);
 }
 
+#include <stdarg.h>
 char *toku_path_join(char *dest, int n, const char *base, ...) {
+    invariant(!"use std::string instead of this nightmare");
+
     static const char PATHSEP = '/';
     size_t written;
     written = toku_strlcpy(dest, base, TOKU_PATH_MAX);

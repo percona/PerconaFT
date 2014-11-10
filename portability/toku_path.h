@@ -92,6 +92,7 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 #include "portability/toku_compiler.h"
+#include "portability/toku_stdlib.h"
 
 const char *toku_test_filename(const char *default_filename);
 
@@ -100,7 +101,8 @@ const char *toku_test_filename(const char *default_filename);
 #if TOKU_WINDOWS
 # define TOKU_PATH_MAX 255
 #else
-# define TOKU_PATH_MAX PATH_MAX
+// TODO: We shouldn't care!
+# define TOKU_PATH_MAX 255
 #endif
 
 // Guarantees NUL termination (unless siz == 0)

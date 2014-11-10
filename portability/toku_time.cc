@@ -114,6 +114,9 @@ uint64_t toku_current_time_microsec(void) {
 
 #else
 
+#include <stddef.h>
+#include <sys/time.h>
+
 float toku_tdiff(struct timeval *a, struct timeval *b) {
     return (float)((a->tv_sec - b->tv_sec) + 1e-6 * (a->tv_usec - b->tv_usec));
 }

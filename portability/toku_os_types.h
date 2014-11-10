@@ -126,6 +126,9 @@ typedef int toku_mode_t;
 
 #else
 
+#include <stddef.h>
+#include <sys/types.h>
+
 typedef pid_t toku_pid_t;
 typedef mode_t toku_mode_t;
 
@@ -152,14 +155,17 @@ static inline bool toku_fileids_are_equal(const struct fileid *a, const struct f
     return toku_fileid_cmp(*a, *b) == 0;
 }
 
-#if TOKU_WINDOWS
-// TODO: Fill me out
-struct toku_struct_stat { 
-    // Will get something to compile at least.
-    int st_mode;
-};
-#else
+#if !TOKU_WINDOWS
+
+#include <sys/stat.h>
+#include <dirent.h>
+
 typedef struct stat toku_struct_stat;
+
+#else
+
+#error "need a struct stat and DIR impl for windows builds"
+
 #endif
 
 #if !defined(O_BINARY)
