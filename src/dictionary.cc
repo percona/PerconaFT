@@ -297,13 +297,33 @@ cleanup:
     return r;
 }
 
+int persistent_dictionary_manager::read_from_inamedb(uint64_t id, DB_TXN* txn, dictionary_info* dinfo) {
+    // get iname
+    DBT id_dbt;
+    toku_fill_dbt(&id_dbt, &id, sizeof(id));
+    DBT iname_dbt;
+    toku_init_dbt_flags(&iname_dbt, DB_DBT_MALLOC);
+    
+    int r = toku_db_get(m_inamedb, txn, &id_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
+    if (r == DB_NOTFOUND) {
+        // we have an inconsistent state. This is a bad bug
+        printf("We found an id , but not the iname\n");
+        printf("id: %" PRIu64 "\n", id);
+        goto cleanup;
+    }
+    if (r != 0) goto cleanup;
+
+    dinfo->iname = toku_strdup((char *)iname_dbt.data);
+cleanup:
+    toku_free(iname_dbt.data);
+    return r;
+}
+
 int persistent_dictionary_manager::get_dinfo(const char* dname, DB_TXN* txn, dictionary_info* dinfo) {
     DBT dname_dbt;
-    DBT iname_dbt;
     DBT id_dbt;
     uint64_t id;
     toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
-    toku_init_dbt_flags(&iname_dbt, DB_DBT_MALLOC);
     toku_init_dbt(&id_dbt);
     id_dbt.data = &id;
     id_dbt.ulen = sizeof(id);
@@ -314,17 +334,8 @@ int persistent_dictionary_manager::get_dinfo(const char* dname, DB_TXN* txn, dic
     if (r != 0) goto cleanup;
     dinfo->id = id;
 
-    // get iname
-    r = toku_db_get(m_inamedb, txn, &id_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
-    if (r == DB_NOTFOUND) {
-        // we have an inconsistent state. This is a bad bug
-        printf("We found an id for the dname, but not the iname\n");
-        printf("dname %s\n", dname);
-        printf("id: %" PRIu64 "\n", id);
-        goto cleanup;
-    }
+    r = read_from_inamedb(id, txn, dinfo);
     if (r != 0) goto cleanup;
-    dinfo->iname = (char *) iname_dbt.data;
 
     // get descriptor
     toku_init_dbt_flags(&dinfo->descriptor, DB_DBT_MALLOC);
@@ -348,12 +359,16 @@ int persistent_dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* d
             toku::lock_request::type::WRITE);
 }
 
-int persistent_dictionary_manager::change_iname(DB_TXN* txn, uint64_t id, const char* new_iname, uint32_t put_flags) {
+int persistent_dictionary_manager::write_to_inamedb(DB_TXN* txn, dictionary_info* dinfo, uint32_t put_flags) {
     DBT id_dbt;  // holds id
-    toku_fill_dbt(&id_dbt, &id, sizeof(id));
+    toku_fill_dbt(&id_dbt, &dinfo->id, sizeof(dinfo->id));
     DBT iname_dbt;  // holds new iname
-    toku_fill_dbt(&iname_dbt, new_iname, strlen(new_iname) + 1);      // iname_in_env goes in directory
+    toku_fill_dbt(&iname_dbt, dinfo->iname, strlen(dinfo->iname) + 1);      // iname_in_env goes in directory
     return toku_db_put(m_inamedb, txn, &id_dbt, &iname_dbt, put_flags, true);
+}
+
+int persistent_dictionary_manager::change_iname(DB_TXN* txn UU(), uint64_t id UU(), const char* new_iname UU(), uint32_t put_flags UU()) {
+    assert(false);
 }
 
 int persistent_dictionary_manager::rename(DB_TXN* txn, const char *old_dname, const char *new_dname) {
@@ -545,7 +560,7 @@ int  persistent_dictionary_manager::create_new_db(
     if (r != 0) goto exit;
 
     // set the iname
-    r = change_iname(txn, dinfo->id, dinfo->iname, put_flags);
+    r = write_to_inamedb(txn, dinfo, put_flags);
     if (r != 0) goto exit;
 
     r = add_iname_reference(dinfo->iname, txn, put_flags);

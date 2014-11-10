@@ -106,9 +106,12 @@ class dictionary_info {
 public:
     char* dname;
     char* iname;
+    char* groupname;
     uint64_t id;
+    uint64_t prepend_id;
+    uint64_t num_prepend_bytes;
     DBT descriptor;
-    dictionary_info() : dname(nullptr), iname(nullptr) {
+    dictionary_info() : dname(nullptr), iname(nullptr), groupname(nullptr) {
         toku_init_dbt(&descriptor);
     }
     void destroy() {
@@ -117,6 +120,9 @@ public:
         }
         if (iname) {
             toku_free(iname);
+        }
+        if (groupname) {
+            toku_free(groupname);
         }
         toku_destroy_dbt(&descriptor);
     }
@@ -170,8 +176,10 @@ private:
     int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname, uint64_t id, toku::locktree_manager &ltm);
     int get_iname_refcount(const char* iname, DB_TXN* txn, uint64_t* refcount);
     int add_iname_reference(const char * iname, DB_TXN* txn, uint32_t put_flags);
-    int release_iname_reference(const char * iname, DB_TXN* txn, bool* unlink_iname);
-    
+    int release_iname_reference(const char * iname, DB_TXN* txn, bool* unlink_iname);    
+    int read_from_inamedb(uint64_t id, DB_TXN* txn, dictionary_info* dinfo);
+    int write_to_inamedb(DB_TXN* txn, dictionary_info* dinfo, uint32_t put_flags);
+
 public:
     persistent_dictionary_manager() : 
         m_directory(nullptr),
