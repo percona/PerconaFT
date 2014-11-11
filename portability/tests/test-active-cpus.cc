@@ -95,7 +95,10 @@ PATENT RIGHTS GRANT:
 #include <toku_assert.h>
 #include "toku_os.h"
 
+#include <apr-1/apr_general.h>
+
 int main(void) {
+    apr_app_initialize(0, NULL, NULL);
     int r;
     r = unsetenv("TOKU_NCPUS"); 
     assert(r == 0);
@@ -112,6 +115,8 @@ int main(void) {
 
         assert(toku_os_get_number_active_processors() == ncpus);
     }
+
+    apr_terminate();
 
     return 0;
 }

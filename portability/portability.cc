@@ -90,6 +90,10 @@ PATENT RIGHTS GRANT:
 
 #include <portability/toku_config.h>
 
+#include <apr-1/apr_env.h>
+#include <apr-1/apr_general.h>
+#include <apr-1/apr_pools.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -133,6 +137,7 @@ PATENT RIGHTS GRANT:
 
 int
 toku_portability_init(void) {
+    apr_initialize();
     int r = toku_memory_startup();
     if (r == 0) {
         uint64_t hz;
@@ -145,6 +150,7 @@ toku_portability_init(void) {
 void
 toku_portability_destroy(void) {
     toku_memory_shutdown();
+    apr_terminate();
 }
 
 int
@@ -176,12 +182,16 @@ toku_os_get_number_active_processors(void) {
 #define DO_TOKU_NCPUS 1
 #if DO_TOKU_NCPUS
     {
-        char *toku_ncpus = getenv("TOKU_NCPUS");
-        if (toku_ncpus) {
+        apr_pool_t *pool;
+        assert(APR_SUCCESS == apr_pool_create(&pool, NULL));
+        char *toku_ncpus;
+        const int apr_r = apr_env_get(&toku_ncpus, "TOKU_NCPUS", pool);
+        if (apr_r == APR_SUCCESS && toku_ncpus) {
             int ncpus = atoi(toku_ncpus);
             if (ncpus < n)
                 n = ncpus;
         }
+        apr_pool_destroy(pool);
     }
 #endif
     return n;
