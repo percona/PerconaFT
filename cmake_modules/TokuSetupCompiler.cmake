@@ -2,6 +2,8 @@ function(add_c_defines)
   set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS ${ARGN})
 endfunction(add_c_defines)
 
+add_c_defines(${APR_DEFINITIONS})
+
 if (APPLE)
   add_c_defines(DARWIN=1 _DARWIN_C_SOURCE)
 endif ()
@@ -124,6 +126,11 @@ set_cflags_if_supported(
 set_ldflags_if_supported(
   -Wno-error=strict-overflow
   )
+
+foreach (_apr_flag ${APR_FLAGS})
+  set(CMAKE_C_FLAGS "${_apr_flag} ${CMAKE_C_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${_apr_flag} ${CMAKE_CXX_FLAGS}")
+endforeach ()
 
 ## set extra debugging flags and preprocessor definitions
 set(CMAKE_C_FLAGS_DEBUG "-g3 -O0 ${CMAKE_C_FLAGS_DEBUG}")

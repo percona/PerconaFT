@@ -52,6 +52,9 @@ if (USE_VALGRIND AND NOT VALGRIND_INCLUDE_DIR MATCHES NOTFOUND)
     )
 endif()
 include_directories(
+  ${APR_INCLUDE_DIRECTORIES}
+  )
+include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/portability
   ${CMAKE_CURRENT_SOURCE_DIR}  ## so you can include <ft/ft-ops.h> from inside src/
   ${CMAKE_CURRENT_BINARY_DIR}  ## for logging code

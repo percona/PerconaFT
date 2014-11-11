@@ -7,6 +7,8 @@ if(USE_VALGRIND)
   find_package(Valgrind REQUIRED)
 endif()
 
+find_package(APR REQUIRED)
+
 option(TOKU_DEBUG_PARANOID "Enable paranoid asserts." ON)
 
 include(CheckIncludeFiles)
