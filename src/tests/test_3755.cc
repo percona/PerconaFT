@@ -100,8 +100,7 @@ DB_ENV *env;
 const unsigned int NUM_KEYS = 1024;
 
 
-static int update_fun(DB *UU(db),
-                      const DBT *UU(key),
+static int update_fun(const DBT *UU(key),
                       const DBT *old_val, const DBT *extra,
                       void (*set_val)(const DBT *new_val,
                                       void *set_extra),

@@ -105,8 +105,7 @@ unsigned int leaf_hits;
 
 // Custom Update Function for our test FT.
 static int
-update_func(DB* UU(db),
-            const DBT* key,
+update_func(const DBT* key,
             const DBT* old_val,
             const DBT* extra,
             void (*set_val)(const DBT* new_val, void* set_extra) __attribute__((unused)),

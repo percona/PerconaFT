@@ -107,8 +107,7 @@ static inline unsigned int _v(const unsigned int i) { return 10 - i; }
 static inline unsigned int _e(const unsigned int i) { return i + 4; }
 static inline unsigned int _u(const unsigned int v, const unsigned int e) { return v * v * e; }
 
-static int update_fun(DB *UU(db),
-                      const DBT *key,
+static int update_fun(const DBT *key,
                       const DBT *old_val, const DBT *extra,
                       void (*set_val)(const DBT *new_val,
                                       void *set_extra),

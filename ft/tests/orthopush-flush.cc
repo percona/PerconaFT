@@ -251,7 +251,7 @@ struct orthopush_flush_update_fun_extra {
 };
 
 static int
-orthopush_flush_update_fun(DB * UU(db), const DBT *UU(key), const DBT *UU(old_val), const DBT *extra,
+orthopush_flush_update_fun(const DBT *UU(key), const DBT *UU(old_val), const DBT *extra,
                            void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra) {
     struct orthopush_flush_update_fun_extra *CAST_FROM_VOIDP(e, extra->data);
     (*e->num_applications)++;

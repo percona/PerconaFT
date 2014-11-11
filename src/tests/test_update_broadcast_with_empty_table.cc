@@ -96,8 +96,7 @@ const int envflags = DB_INIT_MPOOL|DB_CREATE|DB_THREAD |DB_INIT_LOCK|DB_INIT_LOG
 
 DB_ENV *env;
 
-static int update_fun(DB *UU(db),
-                      const DBT *UU(key),
+static int update_fun(const DBT *UU(key),
                       const DBT *UU(old_val), const DBT *UU(extra),
                       void UU((*set_val)(const DBT *new_val,
                                          void *set_extra)),

@@ -91,8 +91,7 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 
 
-static int update_fun(DB *UU(db),
-                      const DBT *UU(key),
+static int update_fun(const DBT *UU(key),
                       const DBT *UU(old_val), const DBT *UU(extra),
                       void (*set_val)(const DBT *new_val,
                                       void *set_extra),

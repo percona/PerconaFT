@@ -143,7 +143,7 @@ struct __toku_db_env_internal {
     char *lg_dir;
     char *data_dir;
     ft_compare_func bt_compare;
-    int (*update_function)(DB *, const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra);
+    ft_update_func update_function;
     generate_row_for_put_func generate_row_for_put;
     generate_row_for_del_func generate_row_for_del;
 

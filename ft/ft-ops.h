@@ -141,7 +141,7 @@ int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int node
 // Implementation note: Acquires a write lock on the entire database.
 //  This function works by sending an BROADCAST-UPDATE message containing
 //   the key and the extra.
-typedef int (*ft_update_func)(DB *db, const DBT *key, const DBT *old_val, const DBT *extra,
+typedef int (*ft_update_func)(const DBT *key, const DBT *old_val, const DBT *extra,
                               void (*set_val)(const DBT *new_val, void *set_extra),
                               void *set_extra);
 

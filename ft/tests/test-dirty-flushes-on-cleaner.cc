@@ -106,7 +106,6 @@ FT_HANDLE ft;
 const char *fname = TOKU_TEST_FILENAME;
 
 static int update_func(
-    DB* UU(db),
     const DBT* key,
     const DBT* old_val, 
     const DBT* UU(extra),

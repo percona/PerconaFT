@@ -101,7 +101,7 @@ PATENT RIGHTS GRANT:
 #include <sys/stat.h>
 
 static int 
-my_update_callback(DB *db UU(), const DBT *key UU(), const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra) {
+my_update_callback(const DBT *key UU(), const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra) {
     if (old_val != NULL && old_val->size == 42) // special code for delete
         set_val(NULL, set_extra);
     else

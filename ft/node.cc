@@ -1240,7 +1240,7 @@ static void setval_fun (const DBT *new_val, void *svextra_v) {
 // so capturing the msn in the setval_extra_s is not strictly required.         The alternative
 // would be to put a dummy msn in the messages created by setval_fun(), but preserving
 // the original msn seems cleaner and it preserves accountability at a lower layer.
-static int do_update(ft_update_func update_fun, const DESCRIPTOR_S *desc, BASEMENTNODE bn, const ft_msg &msg, uint32_t idx,
+static int do_update(ft_update_func update_fun, BASEMENTNODE bn, const ft_msg &msg, uint32_t idx,
                      LEAFENTRY le,
                      void* keydata,
                      uint32_t keylen,
@@ -1290,9 +1290,7 @@ static int do_update(ft_update_func update_fun, const DESCRIPTOR_S *desc, BASEME
                                           keyp, idx, keylen, le_for_update, gc_info,
                                           workdone, stats_to_update};
     // call handlerton's ft->update_fun(), which passes setval_extra to setval_fun()
-    FAKE_DB(db, desc);
     int r = update_fun(
-        &db,
         keyp,
         vdbtp,
         update_function_extra,
@@ -1478,9 +1476,9 @@ toku_ft_bn_apply_msg (
                 key = msg.kdbt()->data;
                 keylen = msg.kdbt()->size;
             }
-            r = do_update(update_fun, cmp.get_descriptor(), bn, msg, idx, NULL, NULL, 0, gc_info, workdone, stats_to_update);
+            r = do_update(update_fun, bn, msg, idx, NULL, NULL, 0, gc_info, workdone, stats_to_update);
         } else if (r==0) {
-            r = do_update(update_fun, cmp.get_descriptor(), bn, msg, idx, storeddata, key, keylen, gc_info, workdone, stats_to_update);
+            r = do_update(update_fun, bn, msg, idx, storeddata, key, keylen, gc_info, workdone, stats_to_update);
         } // otherwise, a worse error, just return it
         break;
     }
@@ -1503,7 +1501,7 @@ toku_ft_bn_apply_msg (
 
             // This is broken below. Have a compilation error checked
             // in as a reminder
-            r = do_update(update_fun, cmp.get_descriptor(), bn, msg, idx, storeddata, curr_key, curr_keylen, gc_info, workdone, stats_to_update);
+            r = do_update(update_fun, bn, msg, idx, storeddata, curr_key, curr_keylen, gc_info, workdone, stats_to_update);
             assert_zero(r);
 
             if (num_leafentries_before == bn->data_buffer.num_klpairs()) {

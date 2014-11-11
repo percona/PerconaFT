@@ -136,7 +136,7 @@ typedef struct arg *ARG;
 typedef int (*operation_t)(DB_TXN *txn, ARG arg, void *operation_extra, void *stats_extra);
 
 // TODO: Properly define these in db.h so we don't have to copy them here
-typedef int (*test_update_callback_f)(DB *, const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra);
+typedef int (*test_update_callback_f)(const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra);
 typedef int (*test_generate_row_for_put_callback)(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_data);
 typedef int (*test_generate_row_for_del_callback)(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, const DBT *src_key, const DBT *src_data);
 
@@ -1338,7 +1338,7 @@ static struct update_op_args UU() get_update_op_args(struct cli_args* cli_args, 
 
 static uint64_t update_count = 0;
 
-static int update_op_callback(DB *UU(db), const DBT *UU(key),
+static int update_op_callback(const DBT *UU(key),
                               const DBT *old_val,
                               const DBT *extra,
                               void (*set_val)(const DBT *new_val,

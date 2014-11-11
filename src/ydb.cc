@@ -737,7 +737,7 @@ env_set_default_bt_compare(DB_ENV * env, ft_compare_func bt_compare) {
 }
 
 static void
-env_set_update (DB_ENV *env, int (*update_function)(DB *, const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra)) {
+env_set_update (DB_ENV *env, int (*update_function)(const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra)) {
     env->i->update_function = update_function;
 }
 

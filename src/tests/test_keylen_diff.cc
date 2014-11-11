@@ -134,7 +134,7 @@ static int packed_key_cmp(const DBT *a, const DBT *b) {
     }
 }
 
-static int update_callback(DB *UU(db), const DBT *UU(key), const DBT *old_val, const DBT *extra,
+static int update_callback(const DBT *UU(key), const DBT *old_val, const DBT *extra,
                            void (*set_val)(const DBT *new_val, void *setval_extra), void *setval_extra) {
     assert(extra != nullptr);
     assert(old_val != nullptr);
