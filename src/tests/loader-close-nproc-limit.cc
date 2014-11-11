@@ -129,6 +129,7 @@ static void run_test(int ndb) {
     DB_LOADER *loader;
     r = env->create_loader(env, txn, &loader, ndb > 0 ? dbs[0] : NULL, ndb, dbs, db_flags, dbt_flags, loader_flags); CKERR(r);
 
+#if 0
     struct rlimit current_nproc_limit;
     r = getrlimit(RLIMIT_NPROC, &current_nproc_limit);
     assert(r == 0);
@@ -147,6 +148,8 @@ static void run_test(int ndb) {
 
     r = setrlimit(RLIMIT_NPROC, &current_nproc_limit);
     assert(r == 0);
+#endif
+    invariant("!need portable rlimit");
 
     r = txn->abort(txn); CKERR(r);
 

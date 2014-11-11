@@ -95,7 +95,7 @@ PATENT RIGHTS GRANT:
 #include <db.h>
 
 // The following provides an abstraction of quicklz and zlib.
-// We offer three compression methods: ZLIB, QUICKLZ, and LZMA, as well as a "no compression" option.  These options are declared in make_tdb.c.
+// We offer three compression methods: ZLIB, QUICKLZ, and LZMA, as well as a "no compression" option.
 // The resulting byte string includes enough information for us to decompress it.  That is, we can tell whether it's z-compressed or qz-compressed or xz-compressed.
 
 size_t toku_compress_bound (enum toku_compression_method a, size_t size);

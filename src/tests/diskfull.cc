@@ -236,7 +236,9 @@ pwrite_counting_and_failing (int fd, const void *buf, size_t size, toku_off_t of
 	errno = ENOSPC;
 	return -1;
     } else {
-	return pwrite(fd, buf, size, off);
+        (void) (fd && size && buf && off);
+        invariant(!"need a native pwrite() function");
+	//return pwrite(fd, buf, size, off);
     }
 }
 
@@ -249,7 +251,9 @@ write_counting_and_failing (int fd, const void *buf, size_t size)
 	errno = ENOSPC;
 	return -1;
     } else {
-	return write(fd, buf, size);
+        (void) (fd && size && buf);
+        invariant(!"need a native write() function");
+	//return write(fd, buf, size);
     }
 }
 
@@ -268,6 +272,10 @@ do_writes_that_fail (void) {
     }
     printf("%d", write_count);
 }
+
+#if !TOKU_WINDOWS
+#include <getopt.h>
+#endif
 
 static void
 diskfull_parse_args (int argc, char * const argv[]) {

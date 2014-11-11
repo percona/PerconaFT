@@ -126,6 +126,7 @@ typedef int toku_mode_t;
 
 #else
 
+#include <fcntl.h>
 #include <stddef.h>
 #include <sys/types.h>
 

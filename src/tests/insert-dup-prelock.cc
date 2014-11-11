@@ -88,31 +88,31 @@ PATENT RIGHTS GRANT:
 
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
-#include <stdio.h>
-#include <assert.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <stdlib.h>
-#include <string.h>
+
 #include <db.h>
-#include <toku_byteswap.h>
+#include <string.h>
+
+#include <portability/toku_assert.h>
+#include <portability/toku_htonl.h>
 #include <portability/toku_path.h>
+#include <portability/toku_portability.h>
+#include <portability/toku_stdint.h>
 
 static int verbose = 0;
-static uint64_t maxk = 100000;
+static uint32_t maxk = 100000;
 
 static int usage(const char *prog) {
     fprintf(stderr, "%s: run single row insertions with prelocking\n", prog);
-    fprintf(stderr, "[--n %" PRIu64 "]\n", maxk);
+    fprintf(stderr, "[--n %" PRIu32 "]\n", maxk);
     return 1;
 }
 
-static int inserter(DB_ENV *env, DB *db, uint64_t _maxk, int putflags, int expectr) {
+static int inserter(DB_ENV *env, DB *db, uint32_t _maxk, int putflags, int expectr) {
     if (verbose) printf("%p %p\n", env, db);
     int r;
-    for (uint64_t k = 0; k < _maxk; k++) {
+    for (uint32_t k = 0; k < _maxk; k++) {
         
-        if (verbose) printf("%" PRIu64 "\n", k);
+        if (verbose) printf("%" PRIu32 "\n", k);
 
         DB_TXN *txn;
         r = env->txn_begin(env, NULL, &txn, 0);
@@ -121,7 +121,7 @@ static int inserter(DB_ENV *env, DB *db, uint64_t _maxk, int putflags, int expec
         r = db->pre_acquire_table_lock(db, txn);
         assert(r == 0);
 
-        uint64_t kk = bswap_64(k);
+        uint32_t kk = toku_htonl(k);
         DBT key = { .data = &kk, .size = sizeof kk };
         DBT val = { .data = &k, .size = sizeof k };
         r = db->put(db, txn, &key, &val, putflags);
@@ -190,12 +190,9 @@ int main(int argc, char *argv[]) {
     }
 
     const char *envdir = TOKU_TEST_FILENAME;
-    char cmd[TOKU_PATH_MAX+sizeof("rm -rf ")];
-    snprintf(cmd, sizeof(cmd), "rm -rf %s", TOKU_TEST_FILENAME);
-    r = system(cmd);
-    assert(r == 0);
-    r = mkdir(envdir, 0777);
-    assert(r == 0);
+    toku_os_recursive_delete(envdir);
+    r = toku_os_mkdir(envdir, 0755);
+    invariant_zero(r);
 
     DB_ENV *env;
     r = env_init(&env, envdir);

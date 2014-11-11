@@ -128,12 +128,14 @@ int test_main (int argc, char * const argv[]) {
     toku_os_recursive_delete(TOKU_TEST_FILENAME);
     r = toku_os_mkdir(TOKU_TEST_FILENAME, S_IRWXU+S_IRWXG+S_IRWXO);
 
-    struct rlimit nproc_rlimit;
-    r = getrlimit(RLIMIT_NPROC, &nproc_rlimit);
+    //struct rlimit nproc_rlimit;
+    invariant(!"need portable getrlimit");
+    //r = getrlimit(RLIMIT_NPROC, &nproc_rlimit);
     assert(r == 0);
 
-    nproc_rlimit.rlim_cur = limit;
-    r = setrlimit(RLIMIT_NPROC, &nproc_rlimit);
+    invariant(!"need portable setrlimit"); (void) limit;
+    //nproc_rlimit.rlim_cur = limit;
+    //r = setrlimit(RLIMIT_NPROC, &nproc_rlimit);
     assert(r == 0);
 
     env_open_close();

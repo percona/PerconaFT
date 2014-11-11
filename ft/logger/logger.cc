@@ -194,7 +194,7 @@ int toku_logger_create (TOKULOGGER *resultp) {
 }
 
 static void fsync_logdir(TOKULOGGER logger) {
-    toku_fsync_dirfd_without_accounting(logger->dir);
+    toku_fsync_directory(logger->directory);
 }
 
 static int open_logdir(TOKULOGGER logger, const char *directory) {

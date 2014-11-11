@@ -121,12 +121,15 @@ static void test_dbremove() {
     DB_TXN *txn;
     r = env->txn_begin(env, nullptr, &txn, 0); CKERR(r);
 
-    struct rlimit current_limit;
-    r = getrlimit(RLIMIT_NOFILE, &current_limit);
+    invariant(!"need portable struct rlimit");
+    //struct rlimit current_limit;
+    invariant(!"need a portable getrlimit");
+    //r = getrlimit(RLIMIT_NOFILE, &current_limit);
     assert(r == 0);
     
-    struct rlimit new_limit = current_limit;
-    new_limit.rlim_cur = 0;
+    invariant(!"need portable struct rlimit");
+    //struct rlimit new_limit = current_limit;
+    //new_limit.rlim_cur = 0;
     invariant(!"need a portable setrlimit");
     //r = setrlimit(RLIMIT_NOFILE, &new_limit);
     assert(r == 0);

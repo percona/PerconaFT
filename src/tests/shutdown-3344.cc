@@ -98,19 +98,9 @@ PATENT RIGHTS GRANT:
 // abort txn 0
 
 #include "test.h"
-#include <toku_byteswap.h>
 
-static long htonl64(long x) {
-#if BYTE_ORDER == LITTLE_ENDIAN
-    return bswap_64(x);
-#else
-#error
-#endif
-}
-
-static inline float tdiff (struct timeval *a, struct timeval *b) {
-    return (a->tv_sec - b->tv_sec) +1e-6*(a->tv_usec - b->tv_usec);
-}
+#include <portability/toku_htonl.h>
+#include <portability/toku_time.h>
 
 static void
 insert_row(DB_ENV *env UU(), DB_TXN *txn, DB *db, uint64_t rowi) {
@@ -147,8 +137,8 @@ populate(DB_ENV *env, DB_TXN *txn, DB *db, uint64_t nrows) {
         if (((rowi + 1) % rows_per_report) == 0) {
             struct timeval tnow;
             r = toku_os_gettimeofday(&tnow, NULL); assert_zero(r);
-            float last_time = tdiff(&tnow, &tlast);
-            float total_time = tdiff(&tnow, &tstart);
+            float last_time = toku_tdiff(&tnow, &tlast);
+            float total_time = toku_tdiff(&tnow, &tstart);
             if (verbose) {
                 fprintf(stderr, "%" PRIu64 " %.3f %.0f/s %.0f/s\n", rowi + 1, last_time, rows_per_report/last_time, rowi/total_time); fflush(stderr);
             }

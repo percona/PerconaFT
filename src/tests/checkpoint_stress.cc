@@ -356,6 +356,9 @@ usage(char *progname) {
                                          progname);
 }
 
+#if !TOKU_WINDOWS
+#include <getopt.h>
+#endif
 
 int
 test_main (int argc, char * const argv[]) {
