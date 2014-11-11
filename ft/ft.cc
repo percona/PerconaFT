@@ -1098,6 +1098,13 @@ void tokuft_update_product_name_strings(void) {
         assert((unsigned)n < sizeof(toku_product_name_strings.fileops_iname_refs));
     }
     {
+        int n = snprintf(toku_product_name_strings.fileops_groupnames,
+                         sizeof(toku_product_name_strings.fileops_groupnames),
+                         "%s.groupnames", toku_product_name);
+        assert(n >= 0);
+        assert((unsigned)n < sizeof(toku_product_name_strings.fileops_groupnames));
+    }
+    {
         int n = snprintf(toku_product_name_strings.environmentdictionary,
                          sizeof(toku_product_name_strings.environmentdictionary),
                          "%s.environment", toku_product_name);

@@ -137,6 +137,31 @@ public:
     }
 };
 
+// metadata about a groupname retrieved
+// retrieved from the groupnames db
+class groupname_info {
+public:
+    char* groupname;
+    char* iname;
+    uint8_t num_prepend_bytes;
+
+    groupname_info() :
+        groupname(nullptr),
+        iname(nullptr),
+        num_prepend_bytes(0)
+    {
+    }
+
+    void destroy() {
+        if (iname) {
+            toku_free(iname);
+        }
+        if (groupname) {
+            toku_free(groupname);
+        }
+    }
+};
+
 class dictionary {
     char* m_dname;
     uint32_t m_refcount; // access protected by the mutex of dictionary_manager that is managing this dictionary
@@ -145,6 +170,8 @@ class dictionary {
     toku::locktree *m_lt;
     toku::locktree_manager *m_ltm;
     DESCRIPTOR_S m_descriptor;
+    uint8_t m_num_prepend_bytes;
+    uint64_t m_prepend_id;
 public:
     void create(
         const dictionary_info* dinfo,
@@ -159,6 +186,8 @@ public:
     uint64_t get_id() const;
     toku::locktree* get_lt() const;
     DESCRIPTOR_S* get_descriptor();
+    uint8_t num_prepend_bytes() const;
+    uint64_t prepend_id() const;
 
     friend class inmemory_dictionary_manager;
 };
@@ -168,7 +197,8 @@ typedef enum {
     DIRECTORY_ID, // id for directory
     INAME_ID, // id for inamedb
     DESC_ID, // id for descriptordb
-    INAME_REFS_ID // id for m_iname_refs_db
+    INAME_REFS_ID, // id for m_iname_refs_db
+    GROUPNAMES_ID // id for m_groupnamedb
 } RESERVED_DICTIONARY_ID;
 
 class persistent_dictionary_manager {
@@ -178,6 +208,7 @@ private:
     static const uint64_t m_min_user_id = 1000;
     DB* m_directory; // maps dname to dictionary id
     DB* m_detailsdb; // maps dictionary id to iname
+    DB* m_groupnamedb; // maps groupname to information about it (such as num prepend bytes and iname used)
     DB* m_descriptordb; // maps dictionary id to descriptor
     DB* m_iname_refs_db; // maps iname to number of dictionaries that are using the iname to store data
     uint64_t m_next_id;
@@ -188,11 +219,30 @@ private:
     int release_iname_reference(const char * iname, DB_TXN* txn, bool* unlink_iname);    
     int read_from_detailsdb(uint64_t id, DB_TXN* txn, dictionary_info* dinfo);
     int write_to_detailsdb(DB_TXN* txn, dictionary_info* dinfo, uint32_t put_flags);
+    int get_groupname_info(
+        DB_TXN* txn,
+        const char* groupname,
+        groupname_info* ginfo
+        );
+    int create_new_groupname_info(
+        DB_TXN* txn,
+        const char* groupname,
+        uint8_t num_prepend_bytes,
+        DB_ENV* env,
+        groupname_info* ginfo
+        );
+    int fill_dinfo_from_groupname(
+        DB_TXN* txn,
+        const char* groupname,
+        DB_ENV* env,
+        dictionary_info* dinfo // output parameter
+        );
 
 public:
     persistent_dictionary_manager() : 
         m_directory(nullptr),
         m_detailsdb(nullptr),
+        m_groupnamedb(nullptr),
         m_descriptordb(nullptr),
         m_iname_refs_db(nullptr),
         m_next_id(0)
@@ -204,7 +254,7 @@ public:
     int get_iname(const char* dname, DB_TXN* txn, char** iname);
     int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags);
     int pre_acquire_fileops_lock(DB_TXN* txn, char* dname);
-    int create_new_db(DB_TXN* txn, const char* dname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo);
+    int create_new_db(DB_TXN* txn, const char* dname, const char* groupname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo);
     int remove(const char * dname, DB_TXN* txn, bool* unlink_iname);
     int rename(DB_TXN* txn, const char *old_dname, const char *new_dname);
     int change_descriptor(const char *dname, DB_TXN* txn, DBT *descriptor);
@@ -261,6 +311,8 @@ private:
     bool can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const dictionary_info *dinfo);
     int setup_internal_db(DB** db, DB_ENV* env, DB_TXN* txn, const char* iname);
     int validate_metadata_db(DB_ENV* env, const char* iname, bool expect_newenv);
+    // helper function for open_db and create_db_with_groupname
+    int finish_open_db(DB* db, DB_TXN* txn, dictionary_info* dinfo, uint32_t flags);
 
 public:
     dictionary_manager() : 
@@ -294,6 +346,13 @@ public:
     void create();
     void destroy();
     int open_db(DB* db, const char * dname, DB_TXN * txn, uint32_t flags);    
+    int create_db_with_groupname(
+        DB* db,
+        const char * dname,
+        const char * groupname,
+        DB_TXN * txn,
+        uint32_t flags
+        );
     uint32_t num_open_dictionaries() {
         return idm.num_open_dictionaries();
     }

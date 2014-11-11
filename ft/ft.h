@@ -218,6 +218,7 @@ struct toku_product_name_strings_struct {
     char fileopsinames[sizeof(toku_product_name) + sizeof(".inames")];
     char fileopsdesc[sizeof(toku_product_name) + sizeof(".descriptors")];
     char fileops_iname_refs[sizeof(toku_product_name) + sizeof(".inamerefs")];
+    char fileops_groupnames[sizeof(toku_product_name) + sizeof(".groupnames")];
     char single_process_lock[sizeof(toku_product_name) + sizeof("___lock_dont_delete_me")];
     char rollback_cachefile[sizeof(toku_product_name) + sizeof(".rollback")];
 };

@@ -179,6 +179,8 @@ void dictionary::create(
     m_refcount = 0;
     m_mgr = manager;
     m_ltm = &ltm;
+    m_num_prepend_bytes = dinfo->num_prepend_bytes;
+    m_prepend_id = dinfo->prepend_id;
     toku_clone_dbt(&m_descriptor.dbt, dinfo->descriptor);
     if (need_locktree) {
         DICTIONARY_ID dict_id = {
@@ -229,7 +231,13 @@ DESCRIPTOR_S* dictionary::get_descriptor() {
     return &m_descriptor;
 }
 
+uint8_t dictionary::num_prepend_bytes() const {
+    return m_num_prepend_bytes;
+}
 
+uint64_t dictionary::prepend_id() const {
+    return m_prepend_id;
+}
 
 //////////////////////////////////////////
 // persistent_dictionary_manager methods
@@ -261,7 +269,9 @@ int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn, toku::lo
     if (r != 0) goto cleanup;
     r = setup_internal_db(&m_iname_refs_db, env, txn, toku_product_name_strings.fileops_iname_refs, INAME_REFS_ID, ltm);
     if (r != 0) goto cleanup;
-    // get the last entry in m_inamesdb, that has the current max used id
+    r = setup_internal_db(&m_groupnamedb, env, txn, toku_product_name_strings.fileops_groupnames, GROUPNAMES_ID, ltm);
+    if (r != 0) goto cleanup;
+    // get the last entry in m_detailsdb, that has the current max used id
     // set m_next_id to that value plus one
     r = m_detailsdb->cursor(m_detailsdb, txn, &c, DB_SERIALIZABLE);
     if (r != 0) goto cleanup;
@@ -598,40 +608,145 @@ exit:
     return r;
 }
 
+int persistent_dictionary_manager::get_groupname_info(
+    DB_TXN* txn,
+    const char* groupname,
+    groupname_info* ginfo
+    )
+{
+    DBT groupname_dbt;
+    toku_fill_dbt(&groupname_dbt, groupname, strlen(groupname) + 1);
+    DBT info_dbt;
+    toku_init_dbt_flags(&info_dbt, DB_DBT_MALLOC);
+
+    int r = toku_db_get(m_groupnamedb, txn, &groupname_dbt, &info_dbt, DB_SERIALIZABLE);
+    if (r != 0) {
+        goto cleanup;
+    }
+    // deserialize the information and set the groupname info bits
+    {
+        ginfo->groupname = toku_strdup(groupname);
+        char* data = (char *)info_dbt.data;
+        char* pos = data;
+        ginfo->iname = toku_strdup(pos);
+        pos += strlen(ginfo->iname) + 1;
+        ginfo->num_prepend_bytes = pos[0];
+        pos++;
+        invariant((uint32_t)(pos - data) == info_dbt.size);
+    }
+cleanup:
+    toku_free(info_dbt.data);
+    return r;
+}
+
+int persistent_dictionary_manager::create_new_groupname_info(
+    DB_TXN* txn,
+    const char* groupname,
+    uint8_t num_prepend_bytes,
+    DB_ENV* env,
+    groupname_info* ginfo
+    )
+{
+    ginfo->groupname = toku_strdup(groupname);
+    ginfo->iname = create_new_iname(groupname, env, txn, NULL);
+    ginfo->num_prepend_bytes = num_prepend_bytes;
+    assert(num_prepend_bytes == sizeof(uint64_t)); // TODO: TEMPORARY
+    if (ginfo->num_prepend_bytes < sizeof(uint64_t)) {
+        // need to create a metadata dictionary
+        assert(false); // not supported yet
+    }
+    // now need to write this info    
+    uint64_t num_bytes = strlen(ginfo->iname) + 1 + 
+        sizeof(ginfo->num_prepend_bytes);
+
+    DBT groupname_dbt;
+    toku_fill_dbt(&groupname_dbt, ginfo->groupname, strlen(ginfo->groupname) + 1);
+    char* data = (char *)toku_xmalloc(num_bytes);
+    char* pos = data;
+    memcpy(pos, ginfo->iname, strlen(ginfo->iname) + 1);
+    pos += strlen(ginfo->iname) + 1;
+    pos[0] = num_prepend_bytes;
+    pos++;
+    invariant((uint64_t)(pos - data) == num_bytes);
+    DBT data_dbt;
+    toku_fill_dbt(&data_dbt, data, num_bytes);
+    return toku_db_put(m_groupnamedb, txn, &groupname_dbt, &data_dbt, 0, true);
+}
+
+int persistent_dictionary_manager::fill_dinfo_from_groupname(
+    DB_TXN* txn,
+    const char* groupname,
+    DB_ENV* env,
+    dictionary_info* dinfo // output parameter
+    )
+{
+    int r;
+    groupname_info ginfo;
+    r = get_groupname_info(txn, groupname, &ginfo);
+    if (r != 0 && r != DB_NOTFOUND) {
+        goto cleanup;
+    }
+    if (r == DB_NOTFOUND) {
+        // create groupname info
+        r = create_new_groupname_info(txn, groupname, 8, env, &ginfo);
+        if (r != 0) goto cleanup;
+    }
+    // now we have a ginfo, let's fill dinfo
+    dinfo->iname = toku_strdup(ginfo.iname);
+    dinfo->groupname = toku_strdup(ginfo.groupname);
+    dinfo->num_prepend_bytes = ginfo.num_prepend_bytes;
+    dinfo->prepend_id = dinfo->id;
+
+cleanup:
+    ginfo.destroy();
+    return r;
+}
+
 int  persistent_dictionary_manager::create_new_db(
     DB_TXN* txn,
     const char* dname,
+    const char* groupname,
     DB_ENV* env,
     bool is_db_hot_index,
     dictionary_info* dinfo // output parameter
     )
 {
+    int r = 0;
     dinfo->dname = (dname) ? toku_strdup(dname) : nullptr;
-    dinfo->iname = create_new_iname(dname, env, txn, NULL);
     {
         toku_mutex_lock(&m_mutex);
         dinfo->id = m_next_id;
         m_next_id++;
         toku_mutex_unlock(&m_mutex);
     }
-    uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0);
 
-    DBT dname_dbt;  // holds dname
-    toku_fill_dbt(&dname_dbt, dname, strlen(dname) + 1);
-    DBT id_dbt;  // holds id
-    toku_fill_dbt(&id_dbt, &dinfo->id, sizeof(dinfo->id));
+    if (groupname == nullptr) {
+        dinfo->iname = create_new_iname(dname, env, txn, NULL);
+    }
+    else {
+        r = fill_dinfo_from_groupname(txn, groupname, env, dinfo);
+        if (r != 0) goto exit;
+    }
 
-    // set entry in directory
-    int r = toku_db_put(m_directory, txn, &dname_dbt, &id_dbt, put_flags, true);
-    if (r != 0) goto exit;
+    {
+        uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0);
 
-    // set the details
-    r = write_to_detailsdb(txn, dinfo, put_flags);
-    if (r != 0) goto exit;
+        DBT dname_dbt;  // holds dname
+        toku_fill_dbt(&dname_dbt, dname, strlen(dname) + 1);
+        DBT id_dbt;  // holds id
+        toku_fill_dbt(&id_dbt, &dinfo->id, sizeof(dinfo->id));
 
-    r = add_iname_reference(dinfo->iname, txn, put_flags);
-    if (r != 0) goto exit;
+        // set entry in directory
+        r = toku_db_put(m_directory, txn, &dname_dbt, &id_dbt, put_flags, true);
+        if (r != 0) goto exit;
 
+        // set the details
+        r = write_to_detailsdb(txn, dinfo, put_flags);
+        if (r != 0) goto exit;
+
+        r = add_iname_reference(dinfo->iname, txn, put_flags);
+        if (r != 0) goto exit;
+    }
 exit:
     return r;
 }
@@ -642,6 +757,9 @@ void persistent_dictionary_manager::destroy() {
     }
     if (m_detailsdb) {
         toku_db_close(m_detailsdb);
+    }
+    if (m_groupnamedb) {
+        toku_db_close(m_groupnamedb);
     }
     if (m_descriptordb) {
         toku_db_close(m_descriptordb);
@@ -732,6 +850,8 @@ int dictionary_manager::validate_environment(DB_ENV* env, bool* valid_newenv) {
     r = validate_metadata_db(env, toku_product_name_strings.fileopsdesc, expect_newenv);
     if (r != 0) goto cleanup;
     r = validate_metadata_db(env, toku_product_name_strings.fileops_iname_refs, expect_newenv);
+    if (r != 0) goto cleanup;
+    r = validate_metadata_db(env, toku_product_name_strings.fileops_groupnames, expect_newenv);
     if (r != 0) goto cleanup;
 
     *valid_newenv = expect_newenv;
@@ -1104,6 +1224,16 @@ exit:
     return r;
 }
 
+int dictionary_manager::finish_open_db(DB* db, DB_TXN* txn, dictionary_info* dinfo, uint32_t flags) {
+    int r = toku_db_open_iname(db, txn, dinfo->iname, flags);
+    if (r == 0) {
+        // now that the directory has been updated, create the dictionary
+        db->i->dict = idm.get_dictionary(dinfo, toku_ft_get_comparator(db->i->ft_handle));
+        db->descriptor = db->i->dict->get_descriptor();
+    }
+    return r;
+}
+
 int dictionary_manager::open_db(
     DB* db,
     const char * dname,
@@ -1121,22 +1251,54 @@ int dictionary_manager::open_db(
     r = pdm.get_dinfo(dname, txn, &dinfo);
     if (r == DB_NOTFOUND && !is_db_create) {
         r = ENOENT;
-    } else if (r==0 && is_db_excl) {
+        goto cleanup;
+    }
+    else if (r==0 && is_db_excl) {
         r = EEXIST;
-    } else if (r == DB_NOTFOUND) {
-        r = pdm.create_new_db(txn, dname, db->dbenv, is_db_hot_index, &dinfo);
+        goto cleanup;
     }
-    
+    else if (r == DB_NOTFOUND) {
+        r = pdm.create_new_db(txn, dname, nullptr, db->dbenv, is_db_hot_index, &dinfo);
+        if (r != 0) goto cleanup;
+    }
     // we now have an iname
-    if (r == 0) {
-        r = toku_db_open_iname(db, txn, dinfo.iname, flags);
-        if (r == 0) {
-            // now that the directory has been updated, create the dictionary
-            db->i->dict = idm.get_dictionary(&dinfo, toku_ft_get_comparator(db->i->ft_handle));
-            db->descriptor = db->i->dict->get_descriptor();
-        }
-    }
+    r = finish_open_db(db, txn, &dinfo, flags);
+
+cleanup:
+    dinfo.destroy();
+    return r;
+}
+
+int dictionary_manager::create_db_with_groupname(
+    DB* db,
+    const char * dname,
+    const char * groupname,
+    DB_TXN * txn,
+    uint32_t flags
+    )
+{
+    int r = 0;
+    int is_db_hot_index  = flags & DB_IS_HOT_INDEX;
     
+    assert(!db_opened(db));
+    dictionary_info dinfo;
+    // check that the db does not already exist
+    r = pdm.get_dinfo(dname, txn, &dinfo);
+    if (r==0) {
+        r = EEXIST;
+        goto cleanup;
+    }
+    else if (r != DB_NOTFOUND) {
+        goto cleanup;
+    }
+    r = 0; // reset r, it was DB_NOTFOUND
+    // at this point we are ready to create the db
+    r = pdm.create_new_db(txn, dname, groupname, db->dbenv, is_db_hot_index, &dinfo);
+    if (r != 0) goto cleanup;
+    
+    r = finish_open_db(db, txn, &dinfo, flags | DB_CREATE);
+
+cleanup:
     dinfo.destroy();
     return r;
 }
