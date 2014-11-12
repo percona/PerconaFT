@@ -101,7 +101,7 @@ static int my_cmp(const DBT *UU(a), const DBT *UU(b)) {
 
 static void my_test(locktree_manager *mgr) {
     toku::comparator my_comparator;
-    my_comparator.create(my_cmp, nullptr);
+    my_comparator.create(my_cmp, nullptr, 0);
     DICTIONARY_ID a = { 42 };
     for (int i=0; i<100000; i++) {
         locktree *alt = mgr->get_lt(a, my_comparator);

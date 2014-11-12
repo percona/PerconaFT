@@ -1229,7 +1229,7 @@ int
 test_main (int argc, const char *argv[]) {
     parse_args(argc, argv);
 
-    dummy_cmp.create(cmp_fn, nullptr);
+    dummy_cmp.create(cmp_fn, nullptr, 0);
 
     initialize_dummymsn();
     int r;

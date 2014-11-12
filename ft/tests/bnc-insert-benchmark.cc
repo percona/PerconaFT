@@ -138,7 +138,7 @@ run_test(unsigned long eltsize, unsigned long nodesize, unsigned long repeat)
     gettimeofday(&t[0], NULL);
 
     toku::comparator cmp;
-    cmp.create(long_key_cmp, nullptr);
+    cmp.create(long_key_cmp, nullptr, 0);
 
     for (unsigned int i = 0; i < repeat; ++i) {
         bnc = toku_create_empty_nl();

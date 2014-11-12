@@ -97,7 +97,7 @@ namespace toku {
 // from the tree and account correctly for the amount of memory released.
 void concurrent_tree_unit_test::test_lkr_remove_all(void) {
     comparator cmp;
-    cmp.create(compare_dbts, nullptr);
+    cmp.create(compare_dbts, nullptr, 0);
 
     // we'll test a tree that has values 0..20
     const uint64_t min = 0;

@@ -2989,34 +2989,6 @@ toku_ft_handle_open(FT_HANDLE t, const char *fname_in_env, int is_create, int on
     return r;
 }
 
-// clone an ft handle. the cloned handle has a new dict_id but refers to the same fractal tree
-int 
-toku_ft_handle_clone(FT_HANDLE *cloned_ft_handle, FT_HANDLE ft_handle, TOKUTXN txn) {
-    FT_HANDLE result_ft_handle;
-    // the right functions will be populated via toku_ft_handle_inherit_options
-    // below, so passing in NULL for first two parameters
-    toku_ft_handle_create(NULL, NULL, &result_ft_handle);
-
-    // we're cloning, so the handle better have an open ft and open cf
-    invariant(ft_handle->ft);
-    invariant(ft_handle->ft->cf);
-
-    // inherit the options of the ft whose handle is being cloned.
-    toku_ft_handle_inherit_options(result_ft_handle, ft_handle->ft);
-
-    // we can clone the handle by creating a new handle with the same fname
-    CACHEFILE cf = ft_handle->ft->cf;
-    CACHETABLE ct = toku_cachefile_get_cachetable(cf);
-    const char *fname_in_env = toku_cachefile_fname_in_env(cf);
-    int r = toku_ft_handle_open(result_ft_handle, fname_in_env, false, false, ct, txn); 
-    if (r != 0) {
-        toku_ft_handle_close(result_ft_handle);
-        result_ft_handle = NULL;
-    }
-    *cloned_ft_handle = result_ft_handle;
-    return r;
-}
-
 // Open an ft in normal use.  The FILENUM and dict_id are assigned by the ft_handle_open() function.
 int
 toku_ft_handle_open_with_dict_id(
@@ -3041,6 +3013,11 @@ toku_ft_handle_open_with_dict_id(
         MAX_LSN
         );
     return r;
+}
+
+void toku_ft_add_flags(FT_HANDLE ft_handle, unsigned int flags) {
+    ft_handle->did_set_flags = true;
+    ft_handle->options.flags |= flags;
 }
 
 void toku_ft_set_flags(FT_HANDLE ft_handle, unsigned int flags) {

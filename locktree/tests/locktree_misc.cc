@@ -108,7 +108,7 @@ void locktree_unit_test::test_misc(void) {
     locktree lt;
     DICTIONARY_ID dict_id = { 1 };
     toku::comparator my_dbt_comparator;
-    my_dbt_comparator.create(my_compare_dbts, nullptr);
+    my_dbt_comparator.create(my_compare_dbts, nullptr, 0);
     lt.create(nullptr, dict_id, my_dbt_comparator);
 
     invariant(lt.get_userdata() == nullptr);
@@ -124,8 +124,8 @@ void locktree_unit_test::test_misc(void) {
     expected_b = &dbt_b;
 
     toku::comparator cmp_d1, cmp_d2;
-    cmp_d1.create(my_compare_dbts, &d1);
-    cmp_d2.create(my_compare_dbts, &d2);
+    cmp_d1.create(my_compare_dbts, &d1, 0);
+    cmp_d2.create(my_compare_dbts, &d2, 0);
 
     lt.release_reference();
     lt.destroy();

@@ -1050,7 +1050,7 @@ test_serialize_nonleaf(enum ftnode_verify_type bft, bool do_clone) {
     CKERR(r);
 
     toku::comparator cmp;
-    cmp.create(string_key_cmp, nullptr);
+    cmp.create(string_key_cmp, nullptr, 0);
 
     toku_bnc_insert_msg(BNC(&sn, 0), "a", 2, "aval", 5, FT_NONE, next_dummymsn(), xids_0, true, cmp);
     toku_bnc_insert_msg(BNC(&sn, 0), "b", 2, "bval", 5, FT_NONE, next_dummymsn(), xids_123, false, cmp);
@@ -1072,7 +1072,7 @@ test_serialize_nonleaf(enum ftnode_verify_type bft, bool do_clone) {
                  128*1024,
                  TOKU_DEFAULT_COMPRESSION_METHOD,
                  16);
-    ft_h->cmp.create(string_key_cmp, nullptr);
+    ft_h->cmp.create(string_key_cmp, nullptr, 0);
     ft->ft = ft_h;
     
     ft_h->blocktable.create();

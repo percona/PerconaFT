@@ -283,10 +283,7 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
 void toku_db_use_builtin_key_cmp(DB *db) {
     assert(!db_opened(db));
     assert(!db->i->ft_handle->did_set_flags);
-    uint32_t tflags;
-    toku_ft_get_flags(db->i->ft_handle, &tflags);
-    tflags |= TOKU_DB_KEYCMP_BUILTIN;
-    toku_ft_set_flags(db->i->ft_handle, tflags);
+    toku_ft_add_flags(db->i->ft_handle, TOKU_DB_KEYCMP_BUILTIN);
     toku_ft_set_bt_compare(db->i->ft_handle, toku_builtin_compare_fun);
 }
 

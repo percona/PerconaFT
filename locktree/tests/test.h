@@ -162,7 +162,7 @@ namespace toku {
 
     __attribute__((__constructor__))
     static void construct_dbt_comparator(void) {
-        dbt_comparator.create(compare_dbts, nullptr); 
+        dbt_comparator.create(compare_dbts, nullptr, 0); 
     }
 
     __attribute__((__destructor__))

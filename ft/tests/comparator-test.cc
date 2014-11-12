@@ -110,15 +110,15 @@ static void test_desc(void) {
     DESCRIPTOR_S d1, d2;
 
     // create with d1, make sure it gets used
-    cmp.create(magic_compare, &d1);
+    cmp.create(magic_compare, &d1, 0);
     expected_desc = &d1;
     c = cmp(&dbt_a, &dbt_b);
     invariant(c == MAGIC);
 
     // set desc to d2, make sure it gets used
     toku::comparator cmp2;
-    cmp2.create(magic_compare, &d2);
-    cmp.inherit(cmp2);
+    cmp2.create(magic_compare, &d2, 0);
+    cmp.create_from(cmp2);
     expected_desc = &d2;
     c = cmp(&dbt_a, &dbt_b);
     invariant(c == MAGIC);
@@ -126,7 +126,7 @@ static void test_desc(void) {
 
     // go back to using d1, but using the create_from API
     toku::comparator cmp3, cmp4;
-    cmp3.create(magic_compare, &d1); // cmp3 has d1
+    cmp3.create(magic_compare, &d1, 0); // cmp3 has d1
     cmp4.create_from(cmp3); // cmp4 should get d1 from cmp3
     expected_desc = &d1;
     c = cmp3(&dbt_a, &dbt_b);
@@ -147,7 +147,7 @@ static int dont_compare_me_bro(const DBT *a, const DBT *b) {
 static void test_infinity(void) {
     int c;
     toku::comparator cmp;
-    cmp.create(dont_compare_me_bro, nullptr);
+    cmp.create(dont_compare_me_bro, nullptr, 0);
 
     // make sure infinity-valued end points compare as expected
     // to an arbitrary (uninitialized!) dbt. the comparison function

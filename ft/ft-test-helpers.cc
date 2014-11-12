@@ -302,7 +302,7 @@ int toku_testsetup_insert_to_nonleaf (FT_HANDLE ft_handle, BLOCKNUM blocknum, en
     XIDS xids_0 = toku_xids_get_root_xids();
     MSN msn = next_dummymsn();
     toku::comparator cmp;
-    cmp.create(testhelper_string_key_cmp, nullptr);
+    cmp.create(testhelper_string_key_cmp, nullptr, 0);
     toku_bnc_insert_msg(BNC(node, childnum), key, keylen, val, vallen, msgtype, msn, xids_0, true, cmp);
     cmp.destroy();
     // Hack to get the test working. The problem is that this test

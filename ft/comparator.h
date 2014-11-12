@@ -97,6 +97,15 @@ PATENT RIGHTS GRANT:
 
 #include "util/dbt.h"
 
+enum ft_flags {
+    //TOKU_DB_DUP             = (1<<0),  //Obsolete #2862
+    //TOKU_DB_DUPSORT         = (1<<1),  //Obsolete #2862
+    TOKU_DB_KEYCMP_BUILTIN  = (1<<2),
+    TOKU_DB_VALCMP_BUILTIN_13  = (1<<3),
+    TOKU_DB_CMP_NO_DESC = (1<<4), // comparison function uses no descriptor, meaning it is NOT legacy
+    TOKU_DB_HAS_PREPEND_BYTES = (1<<5) // meaning FT has prepend bytes
+};
+
 typedef int (*ft_compare_func)(const DBT *a, const DBT *b);
 
 int toku_keycompare(const void *key1, uint32_t key1len, const void *key2, uint32_t key2len);
@@ -110,8 +119,9 @@ namespace toku {
     // that points may be positive or negative infinity.
 
     class comparator {
-        void init(ft_compare_func cmp, const DESCRIPTOR_S* desc, uint8_t memcmp_magic) {
+        void init(ft_compare_func cmp, const DESCRIPTOR_S* desc, uint32_t ft_flags, uint8_t memcmp_magic) {
             _cmp = cmp;
+            _num_prepend_bytes = (ft_flags & TOKU_DB_HAS_PREPEND_BYTES) ? 8 : 0;
             toku_init_dbt(&_desc.dbt);
             if (desc->dbt.data) {
                 toku_clone_dbt(&_desc.dbt, desc->dbt);
@@ -119,35 +129,39 @@ namespace toku {
             _memcmp_magic = memcmp_magic;
         }
 
+        inline bool dbt_has_memcmp_magic(const DBT *dbt) const {
+            return *reinterpret_cast<const char *>(dbt->data) == _memcmp_magic;
+        }
+
+
     public:
+        comparator() : _cmp(nullptr), _memcmp_magic(MEMCMP_MAGIC_NONE), _num_prepend_bytes(0) {
+            toku_init_dbt(&_desc.dbt);
+        }
         // This magic value is reserved to mean that the magic has not been set.
         static const uint8_t MEMCMP_MAGIC_NONE = 0;
 
-        void create(ft_compare_func cmp, DESCRIPTOR desc, uint8_t memcmp_magic = MEMCMP_MAGIC_NONE) {
-            init(cmp, desc, memcmp_magic);
-        }
-
-        // inherit the attributes of another comparator, but keep our own
-        // copy of fake_db that is owned separately from the one given.
-        void inherit(const comparator &cmp) {
-            invariant_notnull(cmp._cmp);
-            init(cmp._cmp, &cmp._desc, cmp._memcmp_magic);
+        void create(ft_compare_func cmp, DESCRIPTOR desc, uint32_t ft_flags, uint8_t memcmp_magic = MEMCMP_MAGIC_NONE) {
+            init(cmp, desc, ft_flags, memcmp_magic);
         }
 
         // like inherit, but doesn't require that the this comparator
         // was already created
+        // this will strip out the ft flags
+        // Basically, this function is used in the locktree, which
+        // needs to disregard the prepend bytes. Having a stripped
+        // out ft flags is one way to do it, but it's subtle. Ought to
+        // think of a more understandable way of doing this
         void create_from(const comparator &cmp) {
-            inherit(cmp);
+            destroy();
+            invariant_notnull(cmp._cmp);
+            init(cmp._cmp, &cmp._desc, 0, cmp._memcmp_magic);
         }
 
         void destroy() {
             if (_desc.dbt.data) {
                 toku_free(_desc.dbt.data);
             }
-        }
-
-        const DESCRIPTOR_S *get_descriptor() const {
-            return &_desc;
         }
 
         ft_compare_func get_compare_func() const {
@@ -162,21 +176,24 @@ namespace toku {
             return _cmp != nullptr;
         }
 
-        inline bool dbt_has_memcmp_magic(const DBT *dbt) const {
-            return *reinterpret_cast<const char *>(dbt->data) == _memcmp_magic;
-        }
-
         int operator()(const DBT *a, const DBT *b) const {
-            if (__builtin_expect(toku_dbt_is_infinite(a) || toku_dbt_is_infinite(b), 0)) {
-                return toku_dbt_infinite_compare(a, b);
-            } else if (_memcmp_magic != MEMCMP_MAGIC_NONE
-                       // If `a' has the memcmp magic..
-                       && dbt_has_memcmp_magic(a)
-                       // ..then we expect `b' to also have the memcmp magic
-                       && __builtin_expect(dbt_has_memcmp_magic(b), 1)) {
-                return toku_builtin_compare_fun(a, b);
-            } else {
-                return _cmp(a, b);
+            paranoid_invariant(!_num_prepend_bytes || (a->size >= _num_prepend_bytes && b->size >= _num_prepend_bytes));
+            int c = (_num_prepend_bytes) ? memcmp(a->data, b->data, _num_prepend_bytes): 0; 
+            if (__builtin_expect(c == 0, 1)) {
+                if (__builtin_expect(toku_dbt_is_infinite(a) || toku_dbt_is_infinite(b), 0)) {
+                    return toku_dbt_infinite_compare(a, b);
+                } else if (_memcmp_magic != MEMCMP_MAGIC_NONE
+                           // If `a' has the memcmp magic..
+                           && dbt_has_memcmp_magic(a)
+                           // ..then we expect `b' to also have the memcmp magic
+                           && __builtin_expect(dbt_has_memcmp_magic(b), 1)) {
+                    return toku_builtin_compare_fun(a, b);
+                } else {
+                    return _cmp(a, b);
+                }
+            }
+            else {
+                return c;
             }
         }
 
@@ -184,6 +201,7 @@ namespace toku {
         DESCRIPTOR_S _desc;
         ft_compare_func _cmp;
         uint8_t _memcmp_magic;
+        uint8_t _num_prepend_bytes;
     };
 
 } /* namespace toku */

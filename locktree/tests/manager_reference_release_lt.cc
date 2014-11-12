@@ -101,7 +101,7 @@ void manager_unit_test::test_reference_release_lt(void) {
     locktree_manager mgr;
     mgr.create(nullptr, nullptr);
     toku::comparator my_comparator;
-    my_comparator.create(my_cmp, nullptr);
+    my_comparator.create(my_cmp, nullptr, 0);
 
     DICTIONARY_ID a = { 0 };
     DICTIONARY_ID b = { 1 };

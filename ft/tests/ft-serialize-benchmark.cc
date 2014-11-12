@@ -195,7 +195,7 @@ test_serialize_leaf(int valsize, int nelts, double entropy, int ser_runs, int de
                  128*1024,
                  TOKU_DEFAULT_COMPRESSION_METHOD,
                  16);
-    ft_h->cmp.create(long_key_cmp, nullptr);
+    ft_h->cmp.create(long_key_cmp, nullptr, 0);
     ft->ft = ft_h;
     
     ft_h->blocktable.create();
@@ -319,7 +319,7 @@ test_serialize_nonleaf(int valsize, int nelts, double entropy, int ser_runs, int
     r = toku_xids_create_child(xids_0, &xids_123, (TXNID)123);
     CKERR(r);
     toku::comparator cmp;
-    cmp.create(long_key_cmp, nullptr);
+    cmp.create(long_key_cmp, nullptr, 0);
     int nperchild = nelts / 8;
     for (int ck = 0; ck < sn.n_children; ++ck) {
         long k;
@@ -358,7 +358,7 @@ test_serialize_nonleaf(int valsize, int nelts, double entropy, int ser_runs, int
                  128*1024,
                  TOKU_DEFAULT_COMPRESSION_METHOD,
                  16);
-    ft_h->cmp.create(long_key_cmp, nullptr);
+    ft_h->cmp.create(long_key_cmp, nullptr, 0);
     ft->ft = ft_h;
     
     ft_h->blocktable.create();

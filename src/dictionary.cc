@@ -1224,7 +1224,15 @@ exit:
     return r;
 }
 
-int dictionary_manager::finish_open_db(DB* db, DB_TXN* txn, dictionary_info* dinfo, uint32_t flags) {
+int dictionary_manager::finish_open_db(DB* db, DB_TXN* txn, dictionary_info* dinfo, uint32_t flags, bool is_create) {
+    if (is_create) {
+        // we only want to set flags when we create
+        uint32_t ft_flags = TOKU_DB_CMP_NO_DESC; // state that comparisons for this FT have no descriptor
+        if (dinfo->num_prepend_bytes > 0) {
+            ft_flags |= TOKU_DB_HAS_PREPEND_BYTES; // state that this FT has some prepend bytes, used for comparisons and updates
+        }
+        toku_ft_add_flags(db->i->ft_handle, ft_flags);
+    }
     int r = toku_db_open_iname(db, txn, dinfo->iname, flags);
     if (r == 0) {
         // now that the directory has been updated, create the dictionary
@@ -1262,7 +1270,7 @@ int dictionary_manager::open_db(
         if (r != 0) goto cleanup;
     }
     // we now have an iname
-    r = finish_open_db(db, txn, &dinfo, flags);
+    r = finish_open_db(db, txn, &dinfo, flags, is_db_create);
 
 cleanup:
     dinfo.destroy();
@@ -1296,7 +1304,7 @@ int dictionary_manager::create_db_with_groupname(
     r = pdm.create_new_db(txn, dname, groupname, db->dbenv, is_db_hot_index, &dinfo);
     if (r != 0) goto cleanup;
     
-    r = finish_open_db(db, txn, &dinfo, flags | DB_CREATE);
+    r = finish_open_db(db, txn, &dinfo, flags | DB_CREATE, true);
 
 cleanup:
     dinfo.destroy();

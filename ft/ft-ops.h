@@ -155,6 +155,7 @@ typedef int (*ft_update_func)(const DBT *key, const DBT *old_val, const DBT *ext
 uint32_t toku_serialize_descriptor_size(DESCRIPTOR desc);
 
 void toku_ft_handle_create(ft_compare_func cmp_func, ft_update_func update_func, FT_HANDLE *ft);
+void toku_ft_add_flags(FT_HANDLE ft_handle, unsigned int flags);
 void toku_ft_set_flags(FT_HANDLE, unsigned int flags);
 void toku_ft_get_flags(FT_HANDLE, unsigned int *flags);
 void toku_ft_handle_set_nodesize(FT_HANDLE, unsigned int nodesize);
@@ -177,9 +178,6 @@ int toku_ft_handle_open(FT_HANDLE, const char *fname_in_env,
 		  int is_create, int only_create, CACHETABLE ct, TOKUTXN txn)  __attribute__ ((warn_unused_result));
 int toku_ft_handle_open_recovery(FT_HANDLE, const char *fname_in_env, int is_create, int only_create, CACHETABLE ct, TOKUTXN txn, 
 			   FILENUM use_filenum, LSN max_acceptable_lsn)  __attribute__ ((warn_unused_result));
-
-// clone an ft handle. the cloned handle has a new dict_id but refers to the same fractal tree
-int toku_ft_handle_clone(FT_HANDLE *cloned_ft_handle, FT_HANDLE ft_handle, TOKUTXN txn);
 
 // close an ft handle during normal operation. the underlying ft may or may not close,
 // depending if there are still references. an lsn for this close will come from the logger.
@@ -252,13 +250,6 @@ int toku_dump_ft (FILE *,FT_HANDLE ft_h)  __attribute__ ((warn_unused_result));
 extern int toku_ft_debug_mode;
 int toku_verify_ft (FT_HANDLE ft_h)  __attribute__ ((warn_unused_result));
 int toku_verify_ft_with_progress (FT_HANDLE ft_h, int (*progress_callback)(void *extra, float progress), void *extra, int verbose, int keep_going)  __attribute__ ((warn_unused_result));
-
-enum ft_flags {
-    //TOKU_DB_DUP             = (1<<0),  //Obsolete #2862
-    //TOKU_DB_DUPSORT         = (1<<1),  //Obsolete #2862
-    TOKU_DB_KEYCMP_BUILTIN  = (1<<2),
-    TOKU_DB_VALCMP_BUILTIN_13  = (1<<3),
-};
 
 void toku_ft_keyrange(FT_HANDLE ft_h, DBT *key, uint64_t *less,  uint64_t *equal,  uint64_t *greater);
 void toku_ft_keysrange(FT_HANDLE ft_h, DBT* key_left, DBT* key_right, uint64_t *less_p, uint64_t* equal_left_p, uint64_t* middle_p, uint64_t* equal_right_p, uint64_t* greater_p, bool* middle_3_exact_p);
