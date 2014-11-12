@@ -381,7 +381,7 @@ static void ft_init(FT ft, FT_OPTIONS options, CACHEFILE cf) {
 
     // intuitively, the comparator points to the FT's cmp descriptor
     ft->cmp.create(options->compare_fun, &ft->cmp_descriptor, ft->h->flags, options->memcmp_magic);
-    ft->update_fun = options->update_fun;
+    ft->update_info.init(options->update_fun, ft->h->flags);
 
     if (ft->cf != NULL) {
         assert(ft->cf == cf);
@@ -467,7 +467,7 @@ int toku_read_ft_and_store_in_cachefile (FT_HANDLE ft_handle, CACHEFILE cf, LSN 
     FT ft = nullptr;
     if ((ft = (FT) toku_cachefile_get_userdata(cf)) != nullptr) {
         *header = ft;
-        assert(ft_handle->options.update_fun == ft->update_fun);
+        assert(ft_handle->options.update_fun == ft->update_info.update_func);
         return 0;
     }
 
@@ -483,7 +483,7 @@ int toku_read_ft_and_store_in_cachefile (FT_HANDLE ft_handle, CACHEFILE cf, LSN 
     invariant_notnull(ft);
     // intuitively, the comparator points to the FT's cmp descriptor
     ft->cmp.create(ft_handle->options.compare_fun, &ft->cmp_descriptor, ft->h->flags, ft_handle->options.memcmp_magic);
-    ft->update_fun = ft_handle->options.update_fun;
+    ft->update_info.init(ft_handle->options.update_fun, ft->h->flags);
     ft->cf = cf;
     toku_cachefile_set_userdata(cf,
                                 reinterpret_cast<void *>(ft),
@@ -624,7 +624,7 @@ ft_handle_open_for_redirect(FT_HANDLE *new_ftp, const char *fname_in_env, TOKUTX
     // will be set in functions below
     toku_ft_handle_create(NULL, NULL, &ft_handle);
     toku_ft_set_bt_compare(ft_handle, old_ft->cmp.get_compare_func());
-    toku_ft_set_update(ft_handle, old_ft->update_fun);
+    toku_ft_set_update(ft_handle, old_ft->update_info.update_func);
     toku_ft_handle_set_nodesize(ft_handle, old_ft->h->nodesize);
     toku_ft_handle_set_basementnodesize(ft_handle, old_ft->h->basementnodesize);
     toku_ft_handle_set_compression_method(ft_handle, old_ft->h->compression_method);

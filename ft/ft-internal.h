@@ -215,7 +215,7 @@ struct ft {
     toku::comparator cmp;
 
     // the update function always utilizes the cmp_descriptor, not the regular one
-    ft_update_func update_fun;
+    ft_update_info update_info;
 
     // These are not read-only:
 

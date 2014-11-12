@@ -276,7 +276,7 @@ do_bn_apply_msg(FT_HANDLE ft_handle, BASEMENTNODE bn, message_buffer *msg_buffer
     if (msg.msn().msn > bn->max_msn_applied.msn) {
         toku_ft_bn_apply_msg(
             ft_handle->ft->cmp,
-            ft_handle->ft->update_fun,
+            ft_handle->ft->update_info,
             bn,
             msg,
             gc_info,
@@ -1212,7 +1212,7 @@ struct setval_extra_s {
  * If new_val == NULL, we send a delete message instead of an insert.
  * This happens here instead of in do_delete() for consistency.
  * setval_fun() is called from handlerton, passing in svextra_v
- * from setval_extra_s input arg to ft->update_fun().
+ * from setval_extra_s input arg to ft->update_info().
  */
 static void setval_fun (const DBT *new_val, void *svextra_v) {
     struct setval_extra_s *CAST_FROM_VOIDP(svextra, svextra_v);
@@ -1240,7 +1240,7 @@ static void setval_fun (const DBT *new_val, void *svextra_v) {
 // so capturing the msn in the setval_extra_s is not strictly required.         The alternative
 // would be to put a dummy msn in the messages created by setval_fun(), but preserving
 // the original msn seems cleaner and it preserves accountability at a lower layer.
-static int do_update(ft_update_func update_fun, BASEMENTNODE bn, const ft_msg &msg, uint32_t idx,
+static int do_update(const ft_update_info& update_info, BASEMENTNODE bn, const ft_msg &msg, uint32_t idx,
                      LEAFENTRY le,
                      void* keydata,
                      uint32_t keylen,
@@ -1286,11 +1286,15 @@ static int do_update(ft_update_func update_fun, BASEMENTNODE bn, const ft_msg &m
     }
     le_for_update = le;
 
+    // the key we pass to the update callback needs prepend bytes stripped    
+    DBT update_key;
+    invariant(update_info.num_prepend_bytes <= keyp->size);
+    toku_fill_dbt(&update_key, (char *)(((char *)keyp->data) + 2), keyp->size - update_info.num_prepend_bytes);
     struct setval_extra_s setval_extra = {setval_tag, false, 0, bn, msg.msn(), msg.xids(),
                                           keyp, idx, keylen, le_for_update, gc_info,
                                           workdone, stats_to_update};
-    // call handlerton's ft->update_fun(), which passes setval_extra to setval_fun()
-    int r = update_fun(
+    // call handlerton's ft->update_info(), which passes setval_extra to setval_fun()
+    int r = update_info.update_func(
         keyp,
         vdbtp,
         update_function_extra,
@@ -1305,7 +1309,7 @@ static int do_update(ft_update_func update_fun, BASEMENTNODE bn, const ft_msg &m
 void
 toku_ft_bn_apply_msg (
     const toku::comparator &cmp,
-    ft_update_func update_fun,
+    const ft_update_info& update_info,
     BASEMENTNODE bn,
     const ft_msg &msg,
     txn_gc_info *gc_info, 
@@ -1476,9 +1480,9 @@ toku_ft_bn_apply_msg (
                 key = msg.kdbt()->data;
                 keylen = msg.kdbt()->size;
             }
-            r = do_update(update_fun, bn, msg, idx, NULL, NULL, 0, gc_info, workdone, stats_to_update);
+            r = do_update(update_info, bn, msg, idx, NULL, NULL, 0, gc_info, workdone, stats_to_update);
         } else if (r==0) {
-            r = do_update(update_fun, bn, msg, idx, storeddata, key, keylen, gc_info, workdone, stats_to_update);
+            r = do_update(update_info, bn, msg, idx, storeddata, key, keylen, gc_info, workdone, stats_to_update);
         } // otherwise, a worse error, just return it
         break;
     }
@@ -1501,7 +1505,7 @@ toku_ft_bn_apply_msg (
 
             // This is broken below. Have a compilation error checked
             // in as a reminder
-            r = do_update(update_fun, bn, msg, idx, storeddata, curr_key, curr_keylen, gc_info, workdone, stats_to_update);
+            r = do_update(update_info, bn, msg, idx, storeddata, curr_key, curr_keylen, gc_info, workdone, stats_to_update);
             assert_zero(r);
 
             if (num_leafentries_before == bn->data_buffer.num_klpairs()) {
@@ -1865,7 +1869,7 @@ void toku_ftnode_leaf_run_gc(FT ft, FTNODE node) {
 void
 toku_ftnode_put_msg (
     const toku::comparator &cmp,
-    ft_update_func update_fun,
+    const ft_update_info& update_info,
     FTNODE node,
     int target_childnum,
     const ft_msg &msg,
@@ -1888,7 +1892,7 @@ toku_ftnode_put_msg (
     // and instead defer to these functions
     //
     if (node->height==0) {
-        toku_ft_leaf_apply_msg(cmp, update_fun, node, target_childnum, msg, gc_info, nullptr, stats_to_update);
+        toku_ft_leaf_apply_msg(cmp, update_info, node, target_childnum, msg, gc_info, nullptr, stats_to_update);
     } else {
         ft_nonleaf_put_msg(cmp, node, target_childnum, msg, is_fresh, flow_deltas);
     }
@@ -1899,7 +1903,7 @@ toku_ftnode_put_msg (
 //           node MUST be in memory.
 void toku_ft_leaf_apply_msg(
     const toku::comparator &cmp,
-    ft_update_func update_fun,
+    const ft_update_info& update_info,
     FTNODE node,
     int target_childnum,  // which child to inject to, or -1 if unknown
     const ft_msg &msg,
@@ -1944,7 +1948,7 @@ void toku_ft_leaf_apply_msg(
         if (msg.msn().msn > bn->max_msn_applied.msn) {
             bn->max_msn_applied = msg.msn();
             toku_ft_bn_apply_msg(cmp,
-                                 update_fun,
+                                 update_info,
                                  bn,
                                  msg,
                                  gc_info,
@@ -1959,7 +1963,7 @@ void toku_ft_leaf_apply_msg(
             if (msg.msn().msn > BLB(node, childnum)->max_msn_applied.msn) {
                 BLB(node, childnum)->max_msn_applied = msg.msn();
                 toku_ft_bn_apply_msg(cmp,
-                                     update_fun,
+                                     update_info,
                                      BLB(node, childnum),
                                      msg,
                                      gc_info,

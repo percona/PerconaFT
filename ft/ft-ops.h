@@ -103,7 +103,7 @@ PATENT RIGHTS GRANT:
 
 typedef struct ft_handle *FT_HANDLE;
 
-int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int nodesize, int basementnodesize, enum toku_compression_method compression_method, CACHETABLE, TOKUTXN, ft_compare_func) __attribute__ ((warn_unused_result));
+int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int nodesize, int basementnodesize, enum toku_compression_method compression_method, CACHETABLE, TOKUTXN, ft_compare_func);
 
 // How updates (update/insert/deletes) work:
 // There are two flavers of upsertdels:  Singleton and broadcast.
@@ -144,6 +144,17 @@ int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int node
 typedef int (*ft_update_func)(const DBT *key, const DBT *old_val, const DBT *extra,
                               void (*set_val)(const DBT *new_val, void *set_extra),
                               void *set_extra);
+
+class ft_update_info {
+public:
+    uint8_t num_prepend_bytes;
+    ft_update_func update_func;
+    ft_update_info() : num_prepend_bytes(0), update_func(nullptr) {}
+    void init(ft_update_func up, uint32_t ft_flags) {
+        this->num_prepend_bytes = (ft_flags & TOKU_DB_HAS_PREPEND_BYTES) ? 8 : 0;
+        this->update_func = up;
+    }
+};
 
 
 // effect: changes the descriptor for the ft of the given handle.

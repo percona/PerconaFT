@@ -135,7 +135,7 @@ doit (void) {
     assert(r==0);
 
     ft->options.update_fun = update_func;
-    ft->ft->update_fun = update_func;
+    ft->ft->update_info.init(update_func, 0);
     
     toku_testsetup_initialize();  // must precede any other toku_testsetup calls
 

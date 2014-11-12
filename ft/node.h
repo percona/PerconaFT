@@ -435,7 +435,7 @@ enum reactivity toku_ftnode_get_leaf_reactivity(FTNODE node, uint32_t nodesize);
  */
 int toku_ftnode_hot_next_child(FTNODE node, const DBT *k, const toku::comparator &cmp);
 
-void toku_ftnode_put_msg(const toku::comparator &cmp, ft_update_func update_fun,
+void toku_ftnode_put_msg(const toku::comparator &cmp, const ft_update_info& update_fun,
                          FTNODE node, int target_childnum,
                          const ft_msg &msg, bool is_fresh, txn_gc_info *gc_info,
                          size_t flow_deltas[], STAT64INFO stats_to_update);
@@ -444,11 +444,11 @@ void toku_ft_bn_apply_msg_once(BASEMENTNODE bn, const ft_msg &msg, uint32_t idx,
                                uint32_t le_keylen, LEAFENTRY le, txn_gc_info *gc_info,
                                uint64_t *workdonep, STAT64INFO stats_to_update);
 
-void toku_ft_bn_apply_msg(const toku::comparator &cmp, ft_update_func update_fun,
+void toku_ft_bn_apply_msg(const toku::comparator &cmp, const ft_update_info& update_info,
                           BASEMENTNODE bn, const ft_msg &msg, txn_gc_info *gc_info,
                           uint64_t *workdone, STAT64INFO stats_to_update);
 
-void toku_ft_leaf_apply_msg(const toku::comparator &cmp, ft_update_func update_fun,
+void toku_ft_leaf_apply_msg(const toku::comparator &cmp, const ft_update_info& update_fun,
                             FTNODE node, int target_childnum,
                             const ft_msg &msg, txn_gc_info *gc_info,
                             uint64_t *workdone, STAT64INFO stats_to_update);

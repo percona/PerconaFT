@@ -134,7 +134,7 @@ append_leaf(FT_HANDLE ft, FTNODE leafnode, void *key, uint32_t keylen, void *val
     ft_msg msg(&thekey, &theval, FT_INSERT, msn, toku_xids_get_root_xids());
     txn_gc_info gc_info(nullptr, TXNID_NONE, TXNID_NONE, false);
 
-    toku_ft_leaf_apply_msg(ft->ft->cmp, ft->ft->update_fun, leafnode, -1, msg, &gc_info, nullptr, nullptr);
+    toku_ft_leaf_apply_msg(ft->ft->cmp, ft->ft->update_info, leafnode, -1, msg, &gc_info, nullptr, nullptr);
     {
 	int r = toku_ft_lookup(ft, &thekey, lookup_checkf, &pair);
 	assert(r==0);
@@ -142,7 +142,7 @@ append_leaf(FT_HANDLE ft, FTNODE leafnode, void *key, uint32_t keylen, void *val
     }
 
     ft_msg badmsg(&thekey, &badval, FT_INSERT, msn, toku_xids_get_root_xids());
-    toku_ft_leaf_apply_msg(ft->ft->cmp, ft->ft->update_fun, leafnode, -1, badmsg, &gc_info, nullptr, nullptr);
+    toku_ft_leaf_apply_msg(ft->ft->cmp, ft->ft->update_info, leafnode, -1, badmsg, &gc_info, nullptr, nullptr);
 
     // message should be rejected for duplicate msn, row should still have original val
     {
@@ -155,7 +155,7 @@ append_leaf(FT_HANDLE ft, FTNODE leafnode, void *key, uint32_t keylen, void *val
     msn = next_dummymsn();
     ft->ft->h->max_msn_in_ft = msn;
     ft_msg msg2(&thekey, &val2,  FT_INSERT, msn, toku_xids_get_root_xids());
-    toku_ft_leaf_apply_msg(ft->ft->cmp, ft->ft->update_fun, leafnode, -1, msg2, &gc_info, nullptr, nullptr);
+    toku_ft_leaf_apply_msg(ft->ft->cmp, ft->ft->update_info, leafnode, -1, msg2, &gc_info, nullptr, nullptr);
 
     // message should be accepted, val should have new value
     {
@@ -167,7 +167,7 @@ append_leaf(FT_HANDLE ft, FTNODE leafnode, void *key, uint32_t keylen, void *val
     // now verify that message with lesser (older) msn is rejected
     msn.msn = msn.msn - 10;
     ft_msg msg3(&thekey, &badval, FT_INSERT, msn, toku_xids_get_root_xids());
-    toku_ft_leaf_apply_msg(ft->ft->cmp, ft->ft->update_fun, leafnode, -1, msg3, &gc_info, nullptr, nullptr);
+    toku_ft_leaf_apply_msg(ft->ft->cmp, ft->ft->update_info, leafnode, -1, msg3, &gc_info, nullptr, nullptr);
 
     // message should be rejected, val should still have value in pair2
     {

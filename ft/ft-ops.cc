@@ -1577,7 +1577,7 @@ static void inject_message_in_locked_node(
     STAT64INFO_S stats_delta = {0,0};
     toku_ftnode_put_msg(
         ft->cmp,
-        ft->update_fun,
+        ft->update_info,
         node,
         childnum,
         msg_with_msn,
@@ -2825,7 +2825,7 @@ toku_ft_handle_inherit_options(FT_HANDLE t, FT ft) {
         .flags = ft->h->flags,
         .memcmp_magic = ft->cmp.get_memcmp_magic(),
         .compare_fun = ft->cmp.get_compare_func(),
-        .update_fun = ft->update_fun
+        .update_fun = ft->update_info.update_func
     };
     t->options = options;
     t->did_set_flags = true;
