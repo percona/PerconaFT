@@ -2989,32 +2989,6 @@ toku_ft_handle_open(FT_HANDLE t, const char *fname_in_env, int is_create, int on
     return r;
 }
 
-// Open an ft in normal use.  The FILENUM and dict_id are assigned by the ft_handle_open() function.
-int
-toku_ft_handle_open_with_dict_id(
-    FT_HANDLE t,
-    const char *fname_in_env,
-    int is_create,
-    int only_create,
-    CACHETABLE cachetable,
-    TOKUTXN txn,
-    DICTIONARY_ID use_dictionary_id UU()
-    )
-{
-    int r;
-    r = ft_handle_open(
-        t,
-        fname_in_env,
-        is_create,
-        only_create,
-        cachetable,
-        txn,
-        FILENUM_NONE,
-        MAX_LSN
-        );
-    return r;
-}
-
 void toku_ft_add_flags(FT_HANDLE ft_handle, unsigned int flags) {
     ft_handle->did_set_flags = true;
     ft_handle->options.flags |= flags;

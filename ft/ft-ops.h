@@ -204,17 +204,6 @@ struct DICTIONARY_ID {
 };
 static const DICTIONARY_ID DICTIONARY_ID_NONE = { .dictid = 0 };
 
-int
-toku_ft_handle_open_with_dict_id(
-    FT_HANDLE ft_h, 
-    const char *fname_in_env, 
-    int is_create, 
-    int only_create, 
-    CACHETABLE cachetable, 
-    TOKUTXN txn, 
-    DICTIONARY_ID use_dictionary_id
-    )  __attribute__ ((warn_unused_result));
-
 // Effect: Insert a key and data pair into an ft
 void toku_ft_insert (FT_HANDLE ft_h, DBT *k, DBT *v, TOKUTXN txn);
 
