@@ -102,6 +102,17 @@ PATENT RIGHTS GRANT:
 #include "ydb_row_lock.h"
 #include "iname_helpers.h"
 
+#define SWAP64(x) \
+        ((uint64_t)((((uint64_t)(x) & 0xff00000000000000ULL) >> 56) | \
+                    (((uint64_t)(x) & 0x00ff000000000000ULL) >> 40) | \
+                    (((uint64_t)(x) & 0x0000ff0000000000ULL) >> 24) | \
+                    (((uint64_t)(x) & 0x000000ff00000000ULL) >>  8) | \
+                    (((uint64_t)(x) & 0x00000000ff000000ULL) <<  8) | \
+                    (((uint64_t)(x) & 0x0000000000ff0000ULL) << 24) | \
+                    (((uint64_t)(x) & 0x000000000000ff00ULL) << 40) | \
+                    (((uint64_t)(x) & 0x00000000000000ffULL) << 56)))
+
+
 static int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags) {
     //Set comparison functions if not yet set.
     HANDLE_READ_ONLY_TXN(txn);
@@ -237,6 +248,47 @@ uint8_t dictionary::num_prepend_bytes() const {
 
 uint64_t dictionary::prepend_id() const {
     return m_prepend_id;
+}
+
+int dictionary::fill_db_key(const void *key, const uint32_t keylen, DBT* out) {
+    invariant(keylen >= m_num_prepend_bytes);
+    invariant(m_num_prepend_bytes == 0 || m_num_prepend_bytes == sizeof(uint64_t)); // this will need to change when we allow 1 prepend byte
+    if (m_num_prepend_bytes > 0) {
+        uint64_t found_prepend_id = SWAP64(*(uint64_t *)key);
+        if (found_prepend_id != m_prepend_id) {
+            return DB_NOTFOUND;
+        }
+    }
+    char* pos = (char *)key;
+    pos += m_num_prepend_bytes;
+    toku_fill_dbt(out, pos, keylen - m_num_prepend_bytes);
+    return 0;
+}
+
+void dictionary::fill_ft_key(const DBT* in, void* buf, DBT* out) {
+    if (m_num_prepend_bytes > 0) {
+        char* pos = (char *)buf;
+        invariant(m_num_prepend_bytes == sizeof(uint64_t));
+        uint64_t swapped_prepend_id = SWAP64(m_prepend_id);
+        memcpy(pos, &swapped_prepend_id, sizeof(uint64_t));
+        pos += sizeof(uint64_t);
+        memcpy(pos, in->data, in->size);
+        toku_fill_dbt(out, buf, in->size+m_num_prepend_bytes);
+    }
+    else {
+        toku_fill_dbt(out, in->data, in->size);
+    }
+}
+
+void dictionary::fill_max_key(void* buf, DBT* out) {
+    // this function is just used in ydb_cursor for cases where a prepend id exists
+    // not interested in extending this for general usage. So, basically,
+    // user beware
+    invariant(m_num_prepend_bytes > 0);
+    invariant(m_num_prepend_bytes == sizeof(uint64_t));
+    uint64_t swapped_prepend_id = SWAP64(m_prepend_id+1);
+    memcpy(buf, &swapped_prepend_id, sizeof(uint64_t));
+    toku_fill_dbt(out, buf, m_num_prepend_bytes);
 }
 
 //////////////////////////////////////////

@@ -180,16 +180,22 @@ namespace toku {
             paranoid_invariant(!_num_prepend_bytes || (a->size >= _num_prepend_bytes && b->size >= _num_prepend_bytes));
             int c = (_num_prepend_bytes) ? memcmp(a->data, b->data, _num_prepend_bytes): 0; 
             if (__builtin_expect(c == 0, 1)) {
+                DBT aa;
+                DBT bb;                
+                toku_fill_dbt(&aa, (char *)(((char *)a->data) + _num_prepend_bytes), a->size - _num_prepend_bytes);
+                toku_fill_dbt(&bb, (char *)(((char *)b->data) + _num_prepend_bytes), b->size - _num_prepend_bytes);
                 if (__builtin_expect(toku_dbt_is_infinite(a) || toku_dbt_is_infinite(b), 0)) {
                     return toku_dbt_infinite_compare(a, b);
+                } else if (__builtin_expect(aa.size == 0 || bb.size == 0, 0)) {
+                    return aa.size < bb.size;
                 } else if (_memcmp_magic != MEMCMP_MAGIC_NONE
                            // If `a' has the memcmp magic..
-                           && dbt_has_memcmp_magic(a)
+                           && dbt_has_memcmp_magic(&aa)
                            // ..then we expect `b' to also have the memcmp magic
-                           && __builtin_expect(dbt_has_memcmp_magic(b), 1)) {
-                    return toku_builtin_compare_fun(a, b);
+                           && __builtin_expect(dbt_has_memcmp_magic(&bb), 1)) {
+                    return toku_builtin_compare_fun(&aa, &bb);
                 } else {
-                    return _cmp(a, b);
+                    return _cmp(&aa, &bb);
                 }
             }
             else {

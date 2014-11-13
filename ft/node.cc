@@ -1289,7 +1289,7 @@ static int do_update(const ft_update_info& update_info, BASEMENTNODE bn, const f
     // the key we pass to the update callback needs prepend bytes stripped    
     DBT update_key;
     invariant(update_info.num_prepend_bytes <= keyp->size);
-    toku_fill_dbt(&update_key, (char *)(((char *)keyp->data) + 2), keyp->size - update_info.num_prepend_bytes);
+    toku_fill_dbt(&update_key, (char *)(((char *)keyp->data) + update_info.num_prepend_bytes), keyp->size - update_info.num_prepend_bytes);
     struct setval_extra_s setval_extra = {setval_tag, false, 0, bn, msg.msn(), msg.xids(),
                                           keyp, idx, keylen, le_for_update, gc_info,
                                           workdone, stats_to_update};

@@ -188,6 +188,10 @@ public:
     DESCRIPTOR_S* get_descriptor();
     uint8_t num_prepend_bytes() const;
     uint64_t prepend_id() const;
+    int fill_db_key(const void *key, const uint32_t keylen, DBT* out);
+    void fill_ft_key(const DBT* in, void* buf, DBT* out);
+    // special function for cases where we have a prepend id
+    void fill_max_key(void* buf, DBT* out);
 
     friend class inmemory_dictionary_manager;
 };
