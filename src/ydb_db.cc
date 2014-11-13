@@ -485,7 +485,15 @@ toku_db_keys_range64(DB* db, DB_TXN* txn __attribute__((__unused__)), DBT* keyle
 
     // note that we ignore the txn param.  It would be more complicated to support it.
     // TODO(yoni): Maybe add support for txns later?  How would we do this?  ydb lock comment about db_keyrange64 is obsolete.
-    toku_ft_keysrange(db->i->ft_handle, keyleft, keyright, less, left, between, right, greater, middle_3_exact);
+    DBT ft_left_key;
+    void* left_data = alloca(sizeof(uint64_t) + keyleft->size);
+    db->i->dict->fill_ft_key(keyleft, left_data, &ft_left_key);
+    
+    DBT ft_right_key;
+    void* right_data = alloca(sizeof(uint64_t) + keyright->size);
+    db->i->dict->fill_ft_key(keyright, right_data, &ft_right_key);
+
+    toku_ft_keysrange(db->i->ft_handle, &ft_left_key, &ft_right_key, less, left, between, right, greater, middle_3_exact);
     return 0;
 }
 
@@ -509,7 +517,10 @@ toku_db_key_range64(DB* db, DB_TXN* txn, DBT* key, uint64_t* less_p, uint64_t* e
 static int toku_db_get_key_after_bytes(DB *db, DB_TXN *txn, const DBT *start_key, uint64_t skip_len, void (*callback)(const DBT *end_key, uint64_t actually_skipped, void *extra), void *cb_extra, uint32_t UU(flags)) {
     HANDLE_PANICKED_DB(db);
     HANDLE_DB_ILLEGAL_WORKING_PARENT_TXN(db, txn);
-    return toku_ft_get_key_after_bytes(db->i->ft_handle, start_key, skip_len, callback, cb_extra);
+    DBT ft_key;
+    void* data = alloca(sizeof(uint64_t) + start_key->size);
+    db->i->dict->fill_ft_key(start_key, data, &ft_key);
+    return toku_ft_get_key_after_bytes(db->i->ft_handle, &ft_key, skip_len, callback, cb_extra);
 }
 
 // needed by loader.c
@@ -625,7 +636,14 @@ toku_db_hot_optimize(DB *db, DBT* left, DBT* right,
 {
     HANDLE_PANICKED_DB(db);
     int r = 0;
-    r = toku_ft_hot_optimize(db->i->ft_handle, left, right,
+    DBT ft_left_key;
+    void* left_data = alloca(sizeof(uint64_t) + left->size);
+    db->i->dict->fill_ft_key(left, left_data, &ft_left_key);
+    
+    DBT ft_right_key;
+    void* right_data = alloca(sizeof(uint64_t) + right->size);
+    db->i->dict->fill_ft_key(right, right_data, &ft_right_key);
+    r = toku_ft_hot_optimize(db->i->ft_handle, &ft_left_key, &ft_right_key,
                               progress_callback,
                               progress_extra, loops_run);
 

@@ -238,9 +238,12 @@ toku_db_del(DB *db, DB_TXN *txn, DBT *key, uint32_t flags, bool holds_mo_lock) {
         r = toku_db_get_point_write_lock(db, txn, key);
     }
     if (r == 0) {
+        DBT ft_key;
+        void* data = alloca(sizeof(uint64_t) + key->size);
+        db->i->dict->fill_ft_key(key, data, &ft_key);
         //Do the actual deleting.
         if (!holds_mo_lock) toku_multi_operation_client_lock();
-        toku_ft_delete(db->i->ft_handle, key, txn ? db_txn_struct_i(txn)->tokutxn : 0);
+        toku_ft_delete(db->i->ft_handle, &ft_key, txn ? db_txn_struct_i(txn)->tokutxn : 0);
         if (!holds_mo_lock) toku_multi_operation_client_unlock();
     }
 
@@ -267,11 +270,14 @@ db_put(DB *db, DB_TXN *txn, DBT *key, DBT *val, int flags, bool do_log) {
         r = EINVAL;
     }
     if (r == 0) {
+        DBT ft_key;
+        void* data = alloca(sizeof(uint64_t) + key->size);
+        db->i->dict->fill_ft_key(key, data, &ft_key);
         TOKUTXN ttxn = txn ? db_txn_struct_i(txn)->tokutxn : nullptr;
         if (unique) {
-            r = toku_ft_insert_unique(db->i->ft_handle, key, val, ttxn, do_log);
+            r = toku_ft_insert_unique(db->i->ft_handle, &ft_key, val, ttxn, do_log);
         } else {
-            toku_ft_maybe_insert(db->i->ft_handle, key, val, ttxn, false, ZERO_LSN, do_log, type);
+            toku_ft_maybe_insert(db->i->ft_handle, &ft_key, val, ttxn, false, ZERO_LSN, do_log, type);
         }
         invariant(r == DB_KEYEXIST || r == 0);
     }
@@ -337,13 +343,17 @@ toku_db_update(DB *db, DB_TXN *txn,
         if (r != 0) { goto cleanup; }
     }
 
-    TOKUTXN ttxn;
-    ttxn = txn ? db_txn_struct_i(txn)->tokutxn : NULL;
-    toku_multi_operation_client_lock();
-    toku_ft_maybe_update(db->i->ft_handle, key, update_function_extra, ttxn,
-                              false, ZERO_LSN, true);
-    toku_multi_operation_client_unlock();
-
+    {
+        TOKUTXN ttxn;
+        ttxn = txn ? db_txn_struct_i(txn)->tokutxn : NULL;
+        DBT ft_key;
+        void* data = alloca(sizeof(uint64_t) + key->size);
+        db->i->dict->fill_ft_key(key, data, &ft_key);
+        toku_multi_operation_client_lock();
+        toku_ft_maybe_update(db->i->ft_handle, &ft_key, update_function_extra, ttxn,
+                                  false, ZERO_LSN, true);
+        toku_multi_operation_client_unlock();
+    }
 cleanup:
     if (r == 0) 
         STATUS_VALUE(YDB_LAYER_NUM_UPDATES)++;  // accountability 
@@ -398,6 +408,7 @@ toku_db_update_broadcast(DB *db, DB_TXN *txn,
     TOKUTXN ttxn;
     ttxn = txn ? db_txn_struct_i(txn)->tokutxn : NULL;
     toku_multi_operation_client_lock();
+    assert(false); // need to fix this
     toku_ft_maybe_update_broadcast(db->i->ft_handle, update_function_extra, ttxn,
                                         false, ZERO_LSN, true, is_resetting_op);
     toku_multi_operation_client_unlock();
@@ -450,7 +461,11 @@ do_del_multiple(DB_TXN *txn, uint32_t num_dbs, DB *db_array[], DBT_ARRAY keys[],
         }
         if (do_delete) {
             for (uint32_t i = 0; i < keys[which_db].size; i++) {
-                toku_ft_maybe_delete(db->i->ft_handle, &keys[which_db].dbts[i], ttxn, false, ZERO_LSN, true);
+                DBT* key = &keys[which_db].dbts[i];
+                DBT ft_key;
+                void* data = alloca(sizeof(uint64_t) + key->size);
+                db->i->dict->fill_ft_key(key, data, &ft_key);
+                toku_ft_maybe_delete(db->i->ft_handle, &ft_key, ttxn, false, ZERO_LSN, true);
             }
         }
     }
