@@ -188,7 +188,7 @@ namespace toku {
                     return toku_dbt_infinite_compare(a, b);
                 } else if (__builtin_expect(aa.size == 0 || bb.size == 0, 0)) {
                     return aa.size < bb.size;
-                } else if (_memcmp_magic != MEMCMP_MAGIC_NONE
+                } else if (false && _memcmp_magic != MEMCMP_MAGIC_NONE
                            // If `a' has the memcmp magic..
                            && dbt_has_memcmp_magic(&aa)
                            // ..then we expect `b' to also have the memcmp magic
