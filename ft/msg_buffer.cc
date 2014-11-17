@@ -236,10 +236,20 @@ void message_buffer::enqueue(const ft_msg &msg, bool is_fresh, int32_t *offset) 
     entry->keylen = keylen;
     memcpy(e_key, msg.kdbt()->data, keylen);
     entry->vallen = datalen;
-    memcpy(e_key + keylen, msg.vdbt()->data, datalen);
+    char* pos = (char*)(e_key + keylen);
+    memcpy(pos, msg.vdbt()->data, datalen);
+    pos += datalen;
+    if (ft_msg_type_is_multicast(msg.type())) {
+        uint32_t max_keylen = msg.max_kdbt()->size;
+        memcpy(pos, &max_keylen, sizeof(max_keylen));
+        pos += sizeof(max_keylen);
+        memcpy(pos, msg.max_kdbt()->data, max_keylen);
+        pos += max_keylen;
+    }
     if (offset) {
         *offset = _memory_used;
     }
+    paranoid_invariant(_memory_used + need_space_here == (int)(pos - _memory));
     _num_entries++;
     _memory_used += need_space_here;
 }
@@ -263,6 +273,21 @@ ft_msg message_buffer::get_message(int32_t offset, DBT *keydbt, DBT *valdbt) con
     const XIDS xids = (XIDS) &entry->xids_s;
     const void *key = toku_xids_get_end_of_array(xids);
     const void *val = (uint8_t *) key + entry->keylen;
+    if (ft_msg_type_is_multicast(type)) {
+        char* pos = (char *)val + vallen;
+        uint32_t max_keylen = *(uint32_t *)pos;
+        pos += sizeof(max_keylen);
+        const void *max_key = pos;
+        DBT max_keydbt;
+        return ft_msg(
+            toku_fill_dbt(keydbt, key, keylen),
+            toku_fill_dbt(&max_keydbt, max_key, keylen),
+            toku_fill_dbt(valdbt, val, vallen),
+            type,
+            msn,
+            xids
+            );
+    }
     return ft_msg(toku_fill_dbt(keydbt, key, keylen), toku_fill_dbt(valdbt, val, vallen), type, msn, xids);
 }
 
@@ -314,5 +339,10 @@ size_t message_buffer::msg_memsize_in_buffer(const ft_msg &msg) {
     const uint32_t keylen = msg.kdbt()->size;
     const uint32_t datalen = msg.vdbt()->size;
     const size_t xidslen = toku_xids_get_size(msg.xids());
-    return sizeof(struct buffer_entry) + keylen + datalen + xidslen - sizeof(XIDS_S);
+    size_t ret = sizeof(struct buffer_entry) + keylen + datalen + xidslen - sizeof(XIDS_S);
+    if (ft_msg_type_is_multicast(msg.type())) {
+        uint32_t max_keylen = msg.max_kdbt()->size;
+        ret += sizeof(max_keylen) + max_keylen;
+    }
+    return ret;
 }

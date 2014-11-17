@@ -1571,7 +1571,7 @@ static void inject_message_in_locked_node(
     // node we're injecting into, we know no other thread will get an MSN
     // after us and get that message into our subtree before us.
     MSN msg_msn = { .msn = toku_sync_add_and_fetch(&ft->h->max_msn_in_ft.msn, 1) };
-    ft_msg msg_with_msn(msg.kdbt(), msg.vdbt(), msg.type(), msg_msn, msg.xids());
+    ft_msg msg_with_msn(msg.kdbt(), msg.max_kdbt(), msg.vdbt(), msg.type(), msg_msn, msg.xids());
     paranoid_invariant(msg_with_msn.msn().msn > node->max_msn_applied_to_node_on_disk.msn);
 
     STAT64INFO_S stats_delta = {0,0};

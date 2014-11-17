@@ -96,8 +96,18 @@ PATENT RIGHTS GRANT:
 
 ft_msg::ft_msg(const DBT *key, const DBT *val, enum ft_msg_type t, MSN m, XIDS x) :
     _key(key ? *key : toku_empty_dbt()),
+    _max_key(toku_empty_dbt()),
     _val(val ? *val : toku_empty_dbt()),
-    _type(t), _msn(m), _xids(x) {
+    _type(t), _msn(m), _xids(x)
+{
+}
+
+ft_msg::ft_msg(const DBT *min_key, const DBT *max_key, const DBT *val, enum ft_msg_type t, MSN m, XIDS x) :
+    _key(min_key ? *min_key : toku_empty_dbt()),
+    _max_key(max_key ? *max_key : toku_empty_dbt()),
+    _val(val ? *val : toku_empty_dbt()),
+    _type(t), _msn(m), _xids(x)
+{
 }
 
 ft_msg ft_msg::deserialize_from_rbuf(struct rbuf *rb, XIDS *x, bool *is_fresh) {
@@ -110,14 +120,28 @@ ft_msg ft_msg::deserialize_from_rbuf(struct rbuf *rb, XIDS *x, bool *is_fresh) {
     rbuf_bytes(rb, &keyp, &keylen);
     rbuf_bytes(rb, &valp, &vallen);
 
-    DBT k, v;
-    return ft_msg(toku_fill_dbt(&k, keyp, keylen), toku_fill_dbt(&v, valp, vallen), t, m, *x);
+    DBT key_dbt, val_dbt;
+    toku_fill_dbt(&key_dbt, keyp, keylen);
+    toku_fill_dbt(&val_dbt, valp, vallen);
+    if (ft_msg_type_is_multicast(t)) {
+        DBT max_key_dbt;
+        const void* max_keyp;
+        uint32_t max_key_len;        
+        rbuf_bytes(rb, &max_keyp, &max_key_len);
+        toku_fill_dbt(&max_key_dbt, max_keyp, max_key_len);
+        return ft_msg(&key_dbt, &val_dbt, &max_key_dbt, t, m, *x);
+    }
+    else {
+        return ft_msg(&key_dbt, &val_dbt, t, m, *x);
+    }
+
 }
 
 ft_msg ft_msg::deserialize_from_rbuf_v13(struct rbuf *rb, MSN m, XIDS *x) {
     const void *keyp, *valp;
     uint32_t keylen, vallen;
     enum ft_msg_type t = (enum ft_msg_type) rbuf_char(rb);
+    invariant(!ft_msg_type_is_multicast(t));
     toku_xids_create_from_buffer(rb, x);
     rbuf_bytes(rb, &keyp, &keylen);
     rbuf_bytes(rb, &valp, &vallen);
@@ -128,6 +152,10 @@ ft_msg ft_msg::deserialize_from_rbuf_v13(struct rbuf *rb, MSN m, XIDS *x) {
 
 const DBT *ft_msg::kdbt() const {
     return &_key;
+}
+
+const DBT *ft_msg::max_kdbt() const {
+    return &_max_key;
 }
 
 const DBT *ft_msg::vdbt() const {
@@ -155,9 +183,10 @@ size_t ft_msg::total_size() const {
 
     static const size_t total_overhead = key_val_overhead + msg_overhead;
 
-    const size_t keyval_size = _key.size + _val.size;
+    const size_t keyval_size = _key.size + _val.size + _max_key.size;
     const size_t xids_size = toku_xids_get_serialize_size(xids());
-    return total_overhead + keyval_size + xids_size;
+    size_t ret =  total_overhead + keyval_size + xids_size;
+    return ret;
 }
 
 void ft_msg::serialize_to_wbuf(struct wbuf *wb, bool is_fresh) const {
@@ -167,5 +196,8 @@ void ft_msg::serialize_to_wbuf(struct wbuf *wb, bool is_fresh) const {
     wbuf_nocrc_xids(wb, _xids);
     wbuf_nocrc_bytes(wb, _key.data, _key.size);
     wbuf_nocrc_bytes(wb, _val.data, _val.size);
+    if (ft_msg_type_is_multicast(_type)) {
+        wbuf_nocrc_bytes(wb, _max_key.data, _max_key.size);
+    }
 }
 

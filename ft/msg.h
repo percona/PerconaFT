@@ -238,6 +238,8 @@ class ft_msg {
 public:
     ft_msg(const DBT *key, const DBT *val, enum ft_msg_type t, MSN m, XIDS x);
 
+    ft_msg(const DBT *min_key, const DBT *max_key, const DBT *val, enum ft_msg_type t, MSN m, XIDS x);
+
     enum ft_msg_type type() const;
 
     MSN msn() const;
@@ -245,6 +247,8 @@ public:
     XIDS xids() const;
 
     const DBT *kdbt() const;
+
+    const DBT *max_kdbt() const; // for multicasts
 
     const DBT *vdbt() const;
 
@@ -261,7 +265,8 @@ public:
     static ft_msg deserialize_from_rbuf_v13(struct rbuf *rb, MSN m, XIDS *xids);
 
 private:
-    const DBT _key;
+    const DBT _key; // for normal messages, this is the key, for multicast, this is 
+    const DBT _max_key; // used only for multicast messages
     const DBT _val;
     enum ft_msg_type _type;
     MSN _msn;

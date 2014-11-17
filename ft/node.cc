@@ -1309,6 +1309,7 @@ static void find_idx_for_msg(
     const toku::comparator &cmp,
     BASEMENTNODE bn,
     const ft_msg &msg,
+    bool use_max, // for multicast messages
     uint32_t* idx, // output, position where we are to apply the message
     LEAFENTRY* old_le, // output, old leafentry we are to overwrite, if NULL, means we are to insert at idx
     void** key,
@@ -1316,7 +1317,7 @@ static void find_idx_for_msg(
     )
 {
     int r;
-    struct toku_msg_leafval_heaviside_extra be(cmp, msg.kdbt());
+    struct toku_msg_leafval_heaviside_extra be(cmp, use_max ? msg.max_kdbt() : msg.kdbt());
     bool is_insert = (msg.type() == FT_INSERT || msg.type() == FT_INSERT_NO_OVERWRITE);
     unsigned int doing_seqinsert = bn->seqinsert;
     bn->seqinsert = 0;
@@ -1402,7 +1403,7 @@ toku_ft_bn_apply_msg (
     case FT_INSERT_NO_OVERWRITE:
     case FT_INSERT: {
         uint32_t idx;
-        find_idx_for_msg(cmp, bn, msg, &idx, &storeddata, &key, &keylen);
+        find_idx_for_msg(cmp, bn, msg, false, &idx, &storeddata, &key, &keylen);
         toku_ft_bn_apply_msg_once(bn, msg, idx, keylen, storeddata, gc_info, workdone, stats_to_update);
         break;
     }
@@ -1410,7 +1411,7 @@ toku_ft_bn_apply_msg (
     case FT_ABORT_ANY:
     case FT_COMMIT_ANY: {
         uint32_t idx;
-        find_idx_for_msg(cmp, bn, msg, &idx, &storeddata, &key, &keylen);
+        find_idx_for_msg(cmp, bn, msg, false, &idx, &storeddata, &key, &keylen);
         if (storeddata == nullptr) break;
         toku_ft_bn_apply_msg_once(bn, msg, idx, keylen, storeddata, gc_info, workdone, stats_to_update);
 
@@ -1425,10 +1426,21 @@ toku_ft_bn_apply_msg (
     case FT_DELETE_MULTICAST:
     case FT_COMMIT_MULTICAST_TXN:
     case FT_COMMIT_MULTICAST_ALL:
-    case FT_ABORT_MULTICAST_TXN:
+    case FT_ABORT_MULTICAST_TXN: {
         // Apply to all leafentries
         num_klpairs = bn->data_buffer.num_klpairs();
-        for (uint32_t idx = 0; idx < num_klpairs; ) {
+        uint32_t start_idx = 0;
+        uint32_t end_idx = num_klpairs;
+        if (ft_msg_type_is_multicast(msg.type())) {
+            LEAFENTRY old_le = nullptr;
+            find_idx_for_msg(cmp, bn, msg, false, &start_idx, &old_le, &key, &keylen);
+            old_le = nullptr;
+            find_idx_for_msg(cmp, bn, msg, true, &end_idx, &old_le, &key, &keylen);
+            if (old_le == nullptr) {
+                end_idx--;
+            }
+        }
+        for (uint32_t idx = start_idx; idx <= end_idx; ) {
             void* curr_keyp = NULL;
             uint32_t curr_keylen = 0;
             r = bn->data_buffer.fetch_klpair(idx, &storeddata, &curr_keylen, &curr_keyp);
@@ -1451,18 +1463,18 @@ toku_ft_bn_apply_msg (
                 }
             }
             if (deleted) {
-                num_klpairs--;
+                end_idx--;
             }
             else {
                 idx++;
             }
         }
-        paranoid_invariant(bn->data_buffer.num_klpairs() == num_klpairs);
 
         break;
+    }
     case FT_UPDATE: {
         uint32_t idx;
-        find_idx_for_msg(cmp, bn, msg, &idx, &storeddata, &key, &keylen);
+        find_idx_for_msg(cmp, bn, msg, false, &idx, &storeddata, &key, &keylen);
         if (storeddata == nullptr) {
             r = do_update(update_info, bn, msg, idx, NULL, NULL, 0, gc_info, workdone, stats_to_update);
         } else {
@@ -1665,13 +1677,26 @@ void toku_ftnode_save_ct_pair(CACHEKEY UU(key), void *value_data, PAIR p) {
     node->ct_pair = p;
 }
 
+static void get_child_bounds_for_msg_put(const toku::comparator &cmp, FTNODE node, const ft_msg &msg, int* start, int* end) {
+    *start = 0;
+    *end = node->n_children-1;
+    if (ft_msg_type_is_multicast(msg.type())) {
+        *start = toku_ftnode_which_child(node, msg.kdbt(), cmp);
+        *end = toku_ftnode_which_child(node, msg.max_kdbt(), cmp);
+        paranoid_invariant(*start <= *end);
+    }
+}
+
 static void
-ft_nonleaf_msg_all(const toku::comparator &cmp, FTNODE node, const ft_msg &msg, bool is_fresh, size_t flow_deltas[])
+ft_nonleaf_msg_multiple(const toku::comparator &cmp, FTNODE node, const ft_msg &msg, bool is_fresh, size_t flow_deltas[])
 // Effect: Put the message into a nonleaf node.  We put it into all children, possibly causing the children to become reactive.
 //  We don't do the splitting and merging.  That's up to the caller after doing all the puts it wants to do.
 //  The re_array[i] gets set to the reactivity of any modified child i.         (And there may be several such children.)
 {
-    for (int i = 0; i < node->n_children; i++) {
+    int start;
+    int end;
+    get_child_bounds_for_msg_put(cmp, node, msg, &start, &end);
+    for (int i = start; i <= end; i++) {
         ft_nonleaf_msg_once_to_child(cmp, node, i, msg, is_fresh, flow_deltas);
     }
 }
@@ -1697,7 +1722,7 @@ ft_nonleaf_put_msg(const toku::comparator &cmp, FTNODE node, int target_childnum
     if (ft_msg_type_applies_once(msg.type())) {
         ft_nonleaf_msg_once_to_child(cmp, node, target_childnum, msg, is_fresh, flow_deltas);
     } else if (ft_msg_type_applies_multiple(msg.type())) {
-        ft_nonleaf_msg_all(cmp, node, msg, is_fresh, flow_deltas);
+        ft_nonleaf_msg_multiple(cmp, node, msg, is_fresh, flow_deltas);
     } else {
         paranoid_invariant(ft_msg_type_does_nothing(msg.type()));
     }
@@ -1943,7 +1968,10 @@ void toku_ft_leaf_apply_msg(
         }
     }
     else if (ft_msg_type_applies_multiple(msg.type())) {
-        for (int childnum=0; childnum<node->n_children; childnum++) {
+        int start;
+        int end;
+        get_child_bounds_for_msg_put(cmp, node, msg, &start, &end);
+        for (int childnum = start ; childnum < end; childnum++) {
             if (msg.msn().msn > BLB(node, childnum)->max_msn_applied.msn) {
                 BLB(node, childnum)->max_msn_applied = msg.msn();
                 toku_ft_bn_apply_msg(cmp,
