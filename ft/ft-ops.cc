@@ -1602,7 +1602,7 @@ static void inject_message_in_locked_node(
         STATUS_INC(FT_MSG_BYTES_IN, msgsize);
         STATUS_INC(FT_MSG_BYTES_CURR, msgsize);
         STATUS_INC(FT_MSG_NUM, 1);
-        if (ft_msg_type_applies_all(msg.type())) {
+        if (ft_msg_type_applies_multiple(msg.type())) {
             STATUS_INC(FT_MSG_NUM_BROADCAST, 1);
         }
     }

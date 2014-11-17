@@ -143,7 +143,7 @@ void message_buffer::deserialize_from_rbuf(struct rbuf *rb,
                 dest = stale_offsets ? *stale_offsets + (*nstale)++ : nullptr;
             }
         } else {
-            invariant(ft_msg_type_applies_all(msg.type()) || ft_msg_type_does_nothing(msg.type()));
+            invariant(ft_msg_type_applies_multiple(msg.type()) || ft_msg_type_does_nothing(msg.type()));
             dest = broadcast_offsets ? *broadcast_offsets + (*nbroadcast)++ : nullptr;
         }
 
@@ -188,7 +188,7 @@ MSN message_buffer::deserialize_from_rbuf_v13(struct rbuf *rb,
         if (ft_msg_type_applies_once(msg.type())) {
             dest = fresh_offsets ? *fresh_offsets + (*nfresh)++ : nullptr;
         } else {
-            invariant(ft_msg_type_applies_all(msg.type()) || ft_msg_type_does_nothing(msg.type()));
+            invariant(ft_msg_type_applies_multiple(msg.type()) || ft_msg_type_does_nothing(msg.type()));
             dest = broadcast_offsets ? *broadcast_offsets + (*nbroadcast)++ : nullptr;
         }
 

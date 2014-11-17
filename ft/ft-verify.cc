@@ -207,7 +207,7 @@ int verify_message_tree(const int32_t &offset, const uint32_t UU(idx), struct ve
     ft_msg msg = e->msg_buffer->get_message(offset, &k, &v);
     bool is_fresh = e->msg_buffer->get_freshness(offset);
     if (e->broadcast) {
-        VERIFY_ASSERTION(ft_msg_type_applies_all((enum ft_msg_type) msg.type()) || ft_msg_type_does_nothing((enum ft_msg_type) msg.type()),
+        VERIFY_ASSERTION(ft_msg_type_applies_multiple((enum ft_msg_type) msg.type()) || ft_msg_type_does_nothing((enum ft_msg_type) msg.type()),
                          e->i, "message found in broadcast list that is not a broadcast");
     } else {
         VERIFY_ASSERTION(ft_msg_type_applies_once((enum ft_msg_type) msg.type()),
@@ -363,7 +363,7 @@ struct verify_msg_fn {
             VERIFY_ASSERTION(total_count <= 1, msg_i, "a message was found in both message trees (or more than once in a single tree)");
             VERIFY_ASSERTION(total_count >= 1, msg_i, "a message was not found in either message tree");
         } else {
-            VERIFY_ASSERTION(ft_msg_type_applies_all(type) || ft_msg_type_does_nothing(type), msg_i, "a message was found that does not apply either to all or to only one key");
+            VERIFY_ASSERTION(ft_msg_type_applies_multiple(type) || ft_msg_type_does_nothing(type), msg_i, "a message was found that does not apply either to all or to only one key");
             struct count_msgs_extra extra = { .count = 0, .msn = msn, .msg_buffer = &bnc->msg_buffer };
             bnc->broadcast_list.iterate<struct count_msgs_extra, count_msgs>(&extra);
             VERIFY_ASSERTION(extra.count == 1, msg_i, "a broadcast message was not found in the broadcast list");

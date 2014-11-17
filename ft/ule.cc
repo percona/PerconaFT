@@ -685,6 +685,8 @@ msg_modify_ule(ULE ule, const ft_msg &msg) {
         ule_do_implicit_promotions(ule, xids);
     }
     switch (type) {
+    case FT_NONE:
+        break;
     case FT_INSERT_NO_OVERWRITE: {
         UXR old_innermost_uxr = ule_get_innermost_uxr(ule);
         //If something exists, quit (no overwrite).
@@ -699,17 +701,21 @@ msg_modify_ule(ULE ule, const ft_msg &msg) {
         ule_apply_insert(ule, xids, vallen, valp);
         break;
     }
+    case FT_DELETE_MULTICAST:
     case FT_DELETE_ANY:
         ule_apply_delete(ule, xids);
         break;
+    case FT_ABORT_MULTICAST_TXN:
     case FT_ABORT_ANY:
     case FT_ABORT_BROADCAST_TXN:
         ule_apply_abort(ule, xids);
         break;
+    case FT_COMMIT_MULTICAST_ALL:
     case FT_COMMIT_BROADCAST_ALL:
         ule_apply_broadcast_commit_all(ule);
         break;
     case FT_COMMIT_ANY:
+    case FT_COMMIT_MULTICAST_TXN:
     case FT_COMMIT_BROADCAST_TXN:
         ule_apply_commit(ule, xids);
         break;
@@ -720,9 +726,6 @@ msg_modify_ule(ULE ule, const ft_msg &msg) {
     case FT_UPDATE:
     case FT_UPDATE_BROADCAST_ALL:
         assert(false); // These messages don't get this far.  Instead they get translated (in setval_fun in do_update) into FT_INSERT messages.
-        break;
-    default:
-        assert(false); /* illegal ft msg type */
         break;
     }
 }

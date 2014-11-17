@@ -292,6 +292,10 @@ static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
                             case FT_OPTIMIZE_FOR_UPGRADE: printf("OPTIMIZE_FOR_UPGRADE"); goto ok;
                             case FT_UPDATE:   printf("UPDATE"); goto ok;
                             case FT_UPDATE_BROADCAST_ALL: printf("UPDATE_BROADCAST_ALL"); goto ok;
+                            case FT_DELETE_MULTICAST: printf("DELETE_MULTICAST"); goto ok;
+                            case FT_COMMIT_MULTICAST_TXN: printf("COMMIT_MULTICAST_TXN"); goto ok;
+                            case FT_COMMIT_MULTICAST_ALL: printf("COMMIT_MULTICAST_ALL"); goto ok;
+                            case FT_ABORT_MULTICAST_TXN: printf("ABORT_MULTICAST_TXN"); goto ok;
                         }
                         printf("HUH?");
 ok:

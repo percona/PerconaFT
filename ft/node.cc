@@ -1360,7 +1360,7 @@ static void find_idx_for_msg(
 }
 
 static bool le_needs_broadcast_msg_applied(const ft_msg &msg, LEAFENTRY le) {
-    invariant(ft_msg_type_applies_all(msg.type()));
+    invariant(ft_msg_type_applies_multiple(msg.type()));
     switch (msg.type()) {
     case FT_OPTIMIZE_FOR_UPGRADE:
     case FT_COMMIT_BROADCAST_ALL:
@@ -1422,6 +1422,10 @@ toku_ft_bn_apply_msg (
     case FT_OPTIMIZE:
     case FT_COMMIT_BROADCAST_TXN:
     case FT_ABORT_BROADCAST_TXN:
+    case FT_DELETE_MULTICAST:
+    case FT_COMMIT_MULTICAST_TXN:
+    case FT_COMMIT_MULTICAST_ALL:
+    case FT_ABORT_MULTICAST_TXN:
         // Apply to all leafentries
         num_klpairs = bn->data_buffer.num_klpairs();
         for (uint32_t idx = 0; idx < num_klpairs; ) {
@@ -1551,7 +1555,7 @@ static void bnc_insert_msg(NONLEAF_CHILDINFO bnc, const ft_msg &msg, bool is_fre
             assert_zero(r);
         }
     } else {
-        invariant(ft_msg_type_applies_all(type) || ft_msg_type_does_nothing(type));
+        invariant(ft_msg_type_applies_multiple(type) || ft_msg_type_does_nothing(type));
         const uint32_t idx = bnc->broadcast_list.size();
         r = bnc->broadcast_list.insert_at(offset, idx);
         assert_zero(r);
@@ -1692,7 +1696,7 @@ ft_nonleaf_put_msg(const toku::comparator &cmp, FTNODE node, int target_childnum
 
     if (ft_msg_type_applies_once(msg.type())) {
         ft_nonleaf_msg_once_to_child(cmp, node, target_childnum, msg, is_fresh, flow_deltas);
-    } else if (ft_msg_type_applies_all(msg.type())) {
+    } else if (ft_msg_type_applies_multiple(msg.type())) {
         ft_nonleaf_msg_all(cmp, node, msg, is_fresh, flow_deltas);
     } else {
         paranoid_invariant(ft_msg_type_does_nothing(msg.type()));
@@ -1938,7 +1942,7 @@ void toku_ft_leaf_apply_msg(
             toku_ft_status_note_msn_discard();
         }
     }
-    else if (ft_msg_type_applies_all(msg.type())) {
+    else if (ft_msg_type_applies_multiple(msg.type())) {
         for (int childnum=0; childnum<node->n_children; childnum++) {
             if (msg.msn().msn > BLB(node, childnum)->max_msn_applied.msn) {
                 BLB(node, childnum)->max_msn_applied = msg.msn();
