@@ -218,38 +218,32 @@ struct message_buffer::buffer_entry *message_buffer::get_buffer_entry(int32_t of
 }
 
 void message_buffer::enqueue(const ft_msg &msg, bool is_fresh, int32_t *offset) {
-    int need_space_here = msg_memsize_in_buffer(msg);
+    int need_space_here = msg.serialization_size_needed();
     int need_space_total = _memory_used + need_space_here;
     if (_memory == nullptr || need_space_total > _memory_size) {
         // resize the buffer to the next power of 2 greater than the needed space
         int next_2 = next_power_of_two(need_space_total);
         _resize(next_2);
     }
-    uint32_t keylen = msg.kdbt()->size;
-    uint32_t datalen = msg.vdbt()->size;
-    struct buffer_entry *entry = get_buffer_entry(_memory_used);
-    entry->type = (unsigned char) msg.type();
-    entry->msn = msg.msn();
-    toku_xids_cpy(&entry->xids_s, msg.xids());
-    entry->is_fresh = is_fresh;
-    unsigned char *e_key = toku_xids_get_end_of_array(&entry->xids_s);
-    entry->keylen = keylen;
-    memcpy(e_key, msg.kdbt()->data, keylen);
-    entry->vallen = datalen;
-    memcpy(e_key + keylen, msg.vdbt()->data, datalen);
+    struct wbuf wb;
+    wbuf_init(&wb, _memory + _memory_used, _memory_size - _memory_used);
+    msg.serialize_to_wbuf(&wb, is_fresh);
+
     if (offset) {
         *offset = _memory_used;
     }
     _num_entries++;
-    _memory_used += need_space_here;
+    _memory_used += wb.ndone;
 }
 
 void message_buffer::set_freshness(int32_t offset, bool is_fresh) {
+    asdf
     struct buffer_entry *entry = get_buffer_entry(offset);
     entry->is_fresh = is_fresh;
 }
 
 bool message_buffer::get_freshness(int32_t offset) const {
+    asdf
     struct buffer_entry *entry = get_buffer_entry(offset);
     return entry->is_fresh;
 }
@@ -311,8 +305,5 @@ void message_buffer::serialize_to_wbuf(struct wbuf *wb) const {
 }
 
 size_t message_buffer::msg_memsize_in_buffer(const ft_msg &msg) {
-    const uint32_t keylen = msg.kdbt()->size;
-    const uint32_t datalen = msg.vdbt()->size;
-    const size_t xidslen = toku_xids_get_size(msg.xids());
-    return sizeof(struct buffer_entry) + keylen + datalen + xidslen - sizeof(XIDS_S);
+    return msg.serialization_size_needed();
 }

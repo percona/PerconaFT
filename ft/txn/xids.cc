@@ -280,11 +280,14 @@ toku_xids_get_end_of_array(XIDS xids) {
 }
 
 void wbuf_nocrc_xids(struct wbuf *wb, XIDS xids) {
+    /*
     wbuf_nocrc_char(wb, (unsigned char)xids->num_xids);
     uint8_t index;
     for (index = 0; index < xids->num_xids; index++) {
         wbuf_nocrc_TXNID(wb, xids->ids[index]);
     }
+    */
+    wbuf_nocrc_literal_bytes(wb, xids, toku_xids_get_size(xids));
 }
 
 void

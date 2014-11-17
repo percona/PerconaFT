@@ -169,3 +169,15 @@ void ft_msg::serialize_to_wbuf(struct wbuf *wb, bool is_fresh) const {
     wbuf_nocrc_bytes(wb, _val.data, _val.size);
 }
 
+size_t ft_msg::serialization_size_needed() const {
+    // taken from amount of bytes written in serialize_to_wbuf
+    size_t ret = 0;
+    ret++; // for the type
+    ret++; // for the freshness bit
+    ret += sizeof(uint64_t); // MSN
+    ret += toku_xids_get_size(_xids); // xids
+    ret += sizeof(_key.size) + _key.size;
+    ret += sizeof(_val.size) + _val.size;
+    return ret;
+}
+

@@ -162,18 +162,6 @@ public:
 private:
     void _resize(size_t new_size);
 
-    // If this isn't packged, the compiler aligns the xids array and we waste a lot of space
-    struct __attribute__((__packed__)) buffer_entry {
-        unsigned int  keylen;
-        unsigned int  vallen;
-        unsigned char type;
-        bool          is_fresh;
-        MSN           msn;
-        XIDS_S        xids_s;
-    };
-
-    struct buffer_entry *get_buffer_entry(int32_t offset) const;
-
     int   _num_entries;
     char *_memory;       // An array of bytes into which buffer entries are embedded.
     int   _memory_size;  // How big is _memory
