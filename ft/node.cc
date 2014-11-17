@@ -1303,6 +1303,76 @@ static int do_update(ft_update_func update_fun, const DESCRIPTOR_S *desc, BASEME
     return r;
 }
 
+static void find_idx_for_msg(
+    const toku::comparator &cmp,
+    BASEMENTNODE bn,
+    const ft_msg &msg,
+    uint32_t* idx, // output, position where we are to apply the message
+    LEAFENTRY* old_le, // output, old leafentry we are to overwrite, if NULL, means we are to insert at idx
+    void** key,
+    uint32_t* keylen // output, keylen
+    )
+{
+    int r;
+    struct toku_msg_leafval_heaviside_extra be(cmp, msg.kdbt());
+    bool is_insert = (msg.type() == FT_INSERT || msg.type() == FT_INSERT_NO_OVERWRITE);
+    unsigned int doing_seqinsert = bn->seqinsert;
+    bn->seqinsert = 0;
+    if (is_insert && doing_seqinsert) {
+        *idx = bn->data_buffer.num_klpairs();
+        DBT kdbt;
+        r = bn->data_buffer.fetch_key_and_len((*idx)-1, &kdbt.size, &kdbt.data);
+        if (r != 0) goto fz;
+        int c = toku_msg_leafval_heaviside(kdbt, be);
+        if (c >= 0) goto fz;
+        r = DB_NOTFOUND;
+    } else {
+    fz:
+        r = bn->data_buffer.find_zero<decltype(be), toku_msg_leafval_heaviside>(
+            be,
+            old_le,
+            key,
+            keylen,
+            idx
+            );
+    }
+    if (r==DB_NOTFOUND) {
+        *old_le = nullptr;
+    } else {
+        assert_zero(r);
+    }
+    
+    // if the insertion point is within a window of the right edge of
+    // the leaf then it is sequential
+    // window = min(32, number of leaf entries/16)
+    if (is_insert) {
+        uint32_t s = bn->data_buffer.num_klpairs();
+        uint32_t w = s / 16;
+        if (w == 0) w = 1;
+        if (w > 32) w = 32;
+    
+        // within the window?
+        if (s - *idx <= w)
+            bn->seqinsert = doing_seqinsert + 1;
+    }
+}
+
+static bool le_needs_broadcast_msg_applied(const ft_msg &msg, LEAFENTRY le) {
+    invariant(ft_msg_type_applies_all(msg.type()));
+    switch (msg.type()) {
+    case FT_OPTIMIZE_FOR_UPGRADE:
+    case FT_COMMIT_BROADCAST_ALL:
+    case FT_OPTIMIZE:
+        return !le_is_clean(le);
+    case FT_COMMIT_BROADCAST_TXN:
+    case FT_ABORT_BROADCAST_TXN:
+        return le_has_xids(le, msg.xids());
+    default:
+        // in case we miss any in the future
+        return true;
+    }
+}
+
 // Should be renamed as something like "apply_msg_to_basement()."
 void
 toku_ft_bn_apply_msg (
@@ -1320,75 +1390,26 @@ toku_ft_bn_apply_msg (
 // The leaf could end up "too big" or "too small".  The caller must fix that up.
 {
     LEAFENTRY storeddata;
-    void* key = NULL;
     uint32_t keylen = 0;
+    void* key = nullptr;
 
     uint32_t num_klpairs;
     int r;
-    struct toku_msg_leafval_heaviside_extra be(cmp, msg.kdbt());
-
-    unsigned int doing_seqinsert = bn->seqinsert;
-    bn->seqinsert = 0;
 
     switch (msg.type()) {
     case FT_INSERT_NO_OVERWRITE:
     case FT_INSERT: {
         uint32_t idx;
-        if (doing_seqinsert) {
-            idx = bn->data_buffer.num_klpairs();
-            DBT kdbt;
-            r = bn->data_buffer.fetch_key_and_len(idx-1, &kdbt.size, &kdbt.data);
-            if (r != 0) goto fz;
-            int c = toku_msg_leafval_heaviside(kdbt, be);
-            if (c >= 0) goto fz;
-            r = DB_NOTFOUND;
-        } else {
-        fz:
-            r = bn->data_buffer.find_zero<decltype(be), toku_msg_leafval_heaviside>(
-                be,
-                &storeddata,
-                &key,
-                &keylen,
-                &idx
-                );
-        }
-        if (r==DB_NOTFOUND) {
-            storeddata = 0;
-        } else {
-            assert_zero(r);
-        }
+        find_idx_for_msg(cmp, bn, msg, &idx, &storeddata, &key, &keylen);
         toku_ft_bn_apply_msg_once(bn, msg, idx, keylen, storeddata, gc_info, workdone, stats_to_update);
-
-        // if the insertion point is within a window of the right edge of
-        // the leaf then it is sequential
-        // window = min(32, number of leaf entries/16)
-        {
-            uint32_t s = bn->data_buffer.num_klpairs();
-            uint32_t w = s / 16;
-            if (w == 0) w = 1;
-            if (w > 32) w = 32;
-
-            // within the window?
-            if (s - idx <= w)
-                bn->seqinsert = doing_seqinsert + 1;
-        }
         break;
     }
     case FT_DELETE_ANY:
     case FT_ABORT_ANY:
     case FT_COMMIT_ANY: {
         uint32_t idx;
-        // Apply to all the matches
-
-        r = bn->data_buffer.find_zero<decltype(be), toku_msg_leafval_heaviside>(
-            be,
-            &storeddata,
-            &key,
-            &keylen,
-            &idx
-            );
-        if (r == DB_NOTFOUND) break;
-        assert_zero(r);
+        find_idx_for_msg(cmp, bn, msg, &idx, &storeddata, &key, &keylen);
+        if (storeddata == nullptr) break;
         toku_ft_bn_apply_msg_once(bn, msg, idx, keylen, storeddata, gc_info, workdone, stats_to_update);
 
         break;
@@ -1397,6 +1418,8 @@ toku_ft_bn_apply_msg (
         // fall through so that optimize_for_upgrade performs rest of the optimize logic
     case FT_COMMIT_BROADCAST_ALL:
     case FT_OPTIMIZE:
+    case FT_COMMIT_BROADCAST_TXN:
+    case FT_ABORT_BROADCAST_TXN:
         // Apply to all leafentries
         num_klpairs = bn->data_buffer.num_klpairs();
         for (uint32_t idx = 0; idx < num_klpairs; ) {
@@ -1405,7 +1428,7 @@ toku_ft_bn_apply_msg (
             r = bn->data_buffer.fetch_klpair(idx, &storeddata, &curr_keylen, &curr_keyp);
             assert_zero(r);
             int deleted = 0;
-            if (!le_is_clean(storeddata)) { //If already clean, nothing to do.
+            if (le_needs_broadcast_msg_applied(msg, storeddata)) { //If already clean, nothing to do.
                 // message application code needs a key in order to determine how much
                 // work was done by this message. since this is a broadcast message,
                 // we have to create a new message whose key is the current le's key.
@@ -1421,66 +1444,23 @@ toku_ft_bn_apply_msg (
                     deleted = 1;
                 }
             }
-            if (deleted)
+            if (deleted) {
                 num_klpairs--;
-            else
-                idx++;
-        }
-        paranoid_invariant(bn->data_buffer.num_klpairs() == num_klpairs);
-
-        break;
-    case FT_COMMIT_BROADCAST_TXN:
-    case FT_ABORT_BROADCAST_TXN:
-        // Apply to all leafentries if txn is represented
-        num_klpairs = bn->data_buffer.num_klpairs();
-        for (uint32_t idx = 0; idx < num_klpairs; ) {
-            void* curr_keyp = NULL;
-            uint32_t curr_keylen = 0;
-            r = bn->data_buffer.fetch_klpair(idx, &storeddata, &curr_keylen, &curr_keyp);
-            assert_zero(r);
-            int deleted = 0;
-            if (le_has_xids(storeddata, msg.xids())) {
-                // message application code needs a key in order to determine how much
-                // work was done by this message. since this is a broadcast message,
-                // we have to create a new message whose key is the current le's key.
-                DBT curr_keydbt;
-                ft_msg curr_msg(toku_fill_dbt(&curr_keydbt, curr_keyp, curr_keylen),
-                                msg.vdbt(), msg.type(), msg.msn(), msg.xids());
-                toku_ft_bn_apply_msg_once(bn, curr_msg, idx, curr_keylen, storeddata, gc_info, workdone, stats_to_update);
-                uint32_t new_dmt_size = bn->data_buffer.num_klpairs();
-                if (new_dmt_size != num_klpairs) {
-                    paranoid_invariant(new_dmt_size + 1 == num_klpairs);
-                    //Item was deleted.
-                    deleted = 1;
-                }
             }
-            if (deleted)
-                num_klpairs--;
-            else
+            else {
                 idx++;
+            }
         }
         paranoid_invariant(bn->data_buffer.num_klpairs() == num_klpairs);
 
         break;
     case FT_UPDATE: {
         uint32_t idx;
-        r = bn->data_buffer.find_zero<decltype(be), toku_msg_leafval_heaviside>(
-            be,
-            &storeddata,
-            &key,
-            &keylen,
-            &idx
-            );
-        if (r==DB_NOTFOUND) {
-            {
-                //Point to msg's copy of the key so we don't worry about le being freed
-                //TODO: 46 MAYBE Get rid of this when le_apply message memory is better handled
-                key = msg.kdbt()->data;
-                keylen = msg.kdbt()->size;
-            }
-            r = do_update(update_fun, cmp.get_descriptor(), bn, msg, idx, NULL, NULL, 0, gc_info, workdone, stats_to_update);
-        } else if (r==0) {
-            r = do_update(update_fun, cmp.get_descriptor(), bn, msg, idx, storeddata, key, keylen, gc_info, workdone, stats_to_update);
+        find_idx_for_msg(cmp, bn, msg, &idx, &storeddata, &key, &keylen);
+        if (storeddata == nullptr) {
+            r = do_update(update_fun, bn, msg, idx, NULL, NULL, 0, gc_info, workdone, stats_to_update);
+        } else {
+            r = do_update(update_fun, bn, msg, idx, storeddata, key, keylen, gc_info, workdone, stats_to_update);
         } // otherwise, a worse error, just return it
         break;
     }
