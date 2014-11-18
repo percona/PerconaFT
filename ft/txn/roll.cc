@@ -291,6 +291,8 @@ done:
 // the operation (insert, delete, update, etc).
 static int do_insertion (enum ft_msg_type type, FILENUM filenum, BYTESTRING key, TOKUTXN txn, LSN oplsn,
                          bool reset_root_xid_that_created) {
+    BYTESTRING max = {.len=0, .data=nullptr};
+    return do_multicast_insertion(type, filenum, key, max, txn, oplsn, reset_root_xid_that_created);
 }
 
 
@@ -393,6 +395,7 @@ toku_commit_cmddeletemulti(FILENUM filenum,
                            BYTESTRING min_key,
                            BYTESTRING max_key,
                            bool is_resetting_op,
+                           TOKUTXN    txn,
                            LSN oplsn)
 {
     bool reset_root_xid_that_created = (is_resetting_op ? true : false);
@@ -404,7 +407,8 @@ int
 toku_rollback_cmddeletemulti(FILENUM filenum,
                              BYTESTRING min_key,
                              BYTESTRING max_key,
-                             bool is_resetting_op,
+                             bool is_resetting_op UU(),
+                             TOKUTXN    txn,
                              LSN oplsn)
 {
     return do_multicast_insertion(FT_ABORT_MULTICAST_TXN, filenum, min_key, max_key, txn, oplsn, false);

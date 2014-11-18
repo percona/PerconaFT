@@ -2699,9 +2699,11 @@ void toku_ft_maybe_delete_multicast(
                             // no messages above us, we can implicitly promote uxrs based on this xid
                             oldest_referenced_xid_estimate,
                             txn != nullptr ? !txn->for_recovery : false);
-        DBT val; toku_init_dbt(&val);
-        ft_msg msg(min_key, max_key, toku_init_dbt(&val), FT_DELETE_MULTICAST, ZERO_MSN, message_xids);
-        toku_ft_root_put_msg(ft_handle->ft, msg, gc_info);
+
+        DBT val;
+        toku_init_dbt(&val);
+        ft_msg msg(min_key, max_key, &val, FT_DELETE_MULTICAST, ZERO_MSN, message_xids);
+        toku_ft_root_put_msg(ft_h->ft, msg, &gc_info);
     }
 }
 

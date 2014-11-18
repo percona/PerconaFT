@@ -990,6 +990,39 @@ static int toku_recover_backward_enq_delete_any (struct logtype_enq_delete_any *
     return 0;
 }
 
+static int toku_recover_enq_delete_multi (struct logtype_enq_delete_multi *l, RECOVER_ENV UU(renv)) {
+    int r;
+    TOKUTXN txn = NULL;
+    toku_txnid2txn(renv->logger, l->xid, &txn);
+    assert(txn!=NULL);
+    struct file_map_tuple *tuple = NULL;
+    r = file_map_find(&renv->fmap, l->filenum, &tuple);
+    if (r==0) {
+        //Maybe do the deletion if we found the cachefile.
+        DBT minkeydbt;
+        toku_fill_dbt(&minkeydbt, l->min_key.data, l->min_key.len);
+        DBT maxkeydbt;
+        toku_fill_dbt(&maxkeydbt, l->max_key.data, l->max_key.len);
+        toku_ft_maybe_delete_multicast(
+            tuple->ft_handle,
+            &minkeydbt,
+            &maxkeydbt,
+            txn,
+            true,
+            l->lsn,
+            false,
+            l->is_resetting_op
+            );
+    }    
+    return 0;
+}
+
+static int toku_recover_backward_enq_delete_multi (struct logtype_enq_delete_multi *UU(l), RECOVER_ENV UU(renv)) {
+    // nothing
+    return 0;
+}
+
+
 static int toku_recover_enq_update(struct logtype_enq_update *l, RECOVER_ENV renv) {
     int r;
     TOKUTXN txn = NULL;
