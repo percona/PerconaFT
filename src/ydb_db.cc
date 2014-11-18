@@ -620,8 +620,13 @@ locked_db_create_new_db(DB *db, DB_TXN *txn, const char* dname, const char *grou
     DB_TXN *child_txn = NULL;
     int using_txns = env->i->open_flags & DB_INIT_TXN;
     if (!using_txns) {
-        r = toku_ydb_do_error(db->dbenv, EINVAL, "Must run with transactions to use create_new_db.\n");        
-        return EINVAL;
+        r = toku_ydb_do_error(db->dbenv, EINVAL, "Must run with transactions to use create_new_db.\n");
+        return r;
+    }
+    uint32_t supported_flags = DB_THREAD | DB_IS_HOT_INDEX;
+    if ((flags |= supported_flags) != supported_flags) {
+        r = toku_ydb_do_error(db->dbenv, EINVAL, "Invalid flags %d.\n", flags);
+        return r;
     }
     if (db_opened(db)) {
         // it was already open
