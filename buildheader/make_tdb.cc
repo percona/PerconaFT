@@ -552,6 +552,7 @@ static void print_db_struct (void) {
 			 "int (*update)(DB *, DB_TXN*, const DBT *key, const DBT *extra, uint32_t flags)",
 			 "int (*update_broadcast)(DB *, DB_TXN*, const DBT *extra, uint32_t flags)",
 			 "int (*get_fractal_tree_info64)(DB*,uint64_t*,uint64_t*,uint64_t*,uint64_t*)",
+             "void (*create_new_db)(DB *db, DB_TXN *txn, const char* dname, const char *groupname, uint32_t flags)"
 			 "int (*iterate_fractal_tree_block_map)(DB*,int(*)(uint64_t,int64_t,int64_t,int64_t,int64_t,void*),void*)",
                          "const char *(*get_dname)(DB *db)",
                          "int (*get_last_key)(DB *db, YDB_CALLBACK_FUNCTION func, void* extra)",

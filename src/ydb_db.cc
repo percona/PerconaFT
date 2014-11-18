@@ -206,6 +206,15 @@ toku_db_get (DB * db, DB_TXN * txn, DBT * key, DBT * data, uint32_t flags) {
     return r ? r : r2;
 }
 
+static void note_db_opened(DB* db, uint32_t flags) {
+    db->i->open_flags = flags;
+    STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) = db->dbenv->i->dict_manager.num_open_dictionaries();
+    STATUS_VALUE(YDB_LAYER_NUM_DB_OPEN)++;
+    if (STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) > STATUS_VALUE(YDB_LAYER_MAX_OPEN_DBS)) {
+        STATUS_VALUE(YDB_LAYER_MAX_OPEN_DBS) = STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS);
+    }
+}
+
 static int
 db_open_subdb(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYPE dbtype, uint32_t flags, int mode) {
     int r;
@@ -268,12 +277,7 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
     }
     int r =  db->dbenv->i->dict_manager.open_db(db, dname, txn, flags);
     if (r == 0) {
-        db->i->open_flags = flags;
-        STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) = db->dbenv->i->dict_manager.num_open_dictionaries();
-        STATUS_VALUE(YDB_LAYER_NUM_DB_OPEN)++;
-        if (STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) > STATUS_VALUE(YDB_LAYER_MAX_OPEN_DBS)) {
-            STATUS_VALUE(YDB_LAYER_MAX_OPEN_DBS) = STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS);
-        }
+        note_db_opened(db, flags);
     }
     return r;
 }
@@ -599,6 +603,51 @@ locked_db_open(DB *db, DB_TXN *txn, const char *fname, const char *dbname, DBTYP
     return r;
 }
 
+static int
+locked_create_new_db(DB *db, DB_TXN *txn, const char* dname, const char *groupname, uint32_t flags) {
+    int ret, r;
+    HANDLE_PANICKED_DB(db);
+    HANDLE_READ_ONLY_TXN(txn);
+    HANDLE_DB_ILLEGAL_WORKING_PARENT_TXN(db, txn);
+
+    //
+    // Note that this function opens a db with a transaction. Should
+    // the transaction abort, the user is responsible for closing the DB
+    // before aborting the transaction. Not doing so results in undefined
+    // behavior.
+    //
+    DB_ENV *env = db->dbenv;
+    DB_TXN *child_txn = NULL;
+    int using_txns = env->i->open_flags & DB_INIT_TXN;
+    if (!using_txns) {
+        r = toku_ydb_do_error(db->dbenv, EINVAL, "Must run with transactions to use create_new_db.\n");        
+        return EINVAL;
+    }
+    if (db_opened(db)) {
+        // it was already open
+        return EINVAL;
+    }
+    ret = toku_txn_begin(env, txn, &child_txn, DB_TXN_NOSYNC);
+    invariant_zero(ret);
+
+    // cannot begin a checkpoint
+    toku_multi_operation_client_lock();
+    r = db->dbenv->i->dict_manager.create_db_with_groupname(db, dname, groupname, txn, flags);
+    if (r == 0) {
+        note_db_opened(db, flags);
+    }
+    toku_multi_operation_client_unlock();
+
+    if (r == 0) {
+        ret = locked_txn_commit(child_txn, DB_TXN_NOSYNC);
+        invariant_zero(ret);
+    } else {
+        ret = locked_txn_abort(child_txn);
+        invariant_zero(ret);
+    }
+    return r;
+}
+
 static void 
 toku_db_set_errfile (DB *db, FILE *errfile) {
     db->dbenv->set_errfile(db->dbenv, errfile);
@@ -810,6 +859,7 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
 #define SDB(name) result->name = locked_db_ ## name
     SDB(close);
     SDB(open);
+    SDB(create_new_db);
     SDB(optimize);
 #undef SDB
     // methods that do not take the ydb lock
