@@ -172,6 +172,10 @@ class dictionary {
     DESCRIPTOR_S m_descriptor;
     uint8_t m_num_prepend_bytes;
     uint64_t m_prepend_id;
+    // important point: DO NOT STORE THE INAME in this class
+    // the iname is the one piece of information that can change
+    // while the db is open and active (thanks to the loader)
+    // As a result, we have challenges of cache invalidation
 public:
     void create(
         const dictionary_info* dinfo,
