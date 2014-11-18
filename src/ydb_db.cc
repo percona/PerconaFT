@@ -604,7 +604,7 @@ locked_db_open(DB *db, DB_TXN *txn, const char *fname, const char *dbname, DBTYP
 }
 
 static int
-locked_create_new_db(DB *db, DB_TXN *txn, const char* dname, const char *groupname, uint32_t flags) {
+locked_db_create_new_db(DB *db, DB_TXN *txn, const char* dname, const char *groupname, uint32_t flags) {
     int ret, r;
     HANDLE_PANICKED_DB(db);
     HANDLE_READ_ONLY_TXN(txn);
