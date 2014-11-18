@@ -172,6 +172,12 @@ const struct logtype rollbacks[] = {
     {"cmdupdatebroadcast", 'B', FA{{"FILENUM", "filenum", 0},
                                    {"bool",    "is_resetting_op", 0},
                                    NULLFIELD}, LOG_BEGIN_ACTION_NA},
+    {"cmddeletemulti", 'd', FA{
+                          {"FILENUM", "filenum", 0},
+                          {"BYTESTRING", "min_key", 0},
+                          {"BYTESTRING", "max_key", 0},
+                          {"bool",    "is_resetting_op", 0},
+                          NULLFIELD}, LOG_BEGIN_ACTION_NA},
     {0,0,FA{NULLFIELD}, LOG_BEGIN_ACTION_NA}
 };
 
@@ -258,6 +264,12 @@ const struct logtype logtypes[] = {
     {"enq_delete_any", 'E', FA{{"FILENUM",    "filenum", 0},
                                {"TXNID_PAIR",      "xid", 0},
                                {"BYTESTRING", "key", 0},
+                               NULLFIELD}, SHOULD_LOG_BEGIN},
+    {"enq_delete_multi", 'E', FA{{"FILENUM",    "filenum", 0},
+                               {"TXNID_PAIR",      "xid", 0},
+                               {"BYTESTRING", "min_key", 0},
+                               {"BYTESTRING", "max_key", 0},
+                               {"bool",       "is_resetting_op", 0},
                                NULLFIELD}, SHOULD_LOG_BEGIN},
     {"comment", 'T', FA{{"uint64_t", "timestamp", 0},
                         {"BYTESTRING", "comment", 0},

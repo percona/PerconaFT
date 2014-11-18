@@ -2658,6 +2658,53 @@ void toku_ft_maybe_delete(FT_HANDLE ft_h, DBT *key, TOKUTXN txn, bool oplsn_vali
     }
 }
 
+void toku_ft_maybe_delete_multicast(
+    FT_HANDLE ft_h,
+    DBT *min_key,
+    DBT *max_key,
+    TOKUTXN txn,
+    bool oplsn_valid,
+    LSN oplsn,
+    bool do_logging,
+    bool is_resetting_op
+    )
+{
+    XIDS message_xids = toku_xids_get_root_xids(); //By default use committed messages
+    TXNID_PAIR xid = toku_txn_get_txnid(txn);
+    uint8_t resetting = is_resetting_op ? 1 : 0;
+    if (txn) {
+        BYTESTRING minkeybs = {min_key->size, (char *) min_key->data};
+        BYTESTRING maxkeybs = {max_key->size, (char *) max_key->data};
+        toku_logger_save_rollback_cmddeletemulti(txn, toku_cachefile_filenum(ft_h->ft->cf), &minkeybs, &maxkeybs, resetting);
+        toku_txn_maybe_note_ft(txn, ft_h->ft);
+        message_xids = toku_txn_get_xids(txn);
+    }
+    TOKULOGGER logger = toku_txn_logger(txn);
+    if (do_logging && logger) {
+        BYTESTRING min_keybs = {.len=min_key->size, .data=(char *) min_key->data};
+        BYTESTRING max_keybs = {.len=max_key->size, .data=(char *) max_key->data};
+        toku_log_enq_delete_multi(logger, (LSN*)0, 0, txn, toku_cachefile_filenum(ft_h->ft->cf), xid, min_keybs, max_keybs, resetting);
+    }
+
+    LSN treelsn;
+    if (oplsn_valid && oplsn.lsn <= (treelsn = toku_ft_checkpoint_lsn(ft_h->ft)).lsn) {
+        // do nothing
+    } else {
+        TXN_MANAGER txn_manager = toku_ft_get_txn_manager(ft_h);
+        txn_manager_state txn_state_for_gc(txn_manager);
+
+        TXNID oldest_referenced_xid_estimate = toku_ft_get_oldest_referenced_xid_estimate(ft_h);
+        txn_gc_info gc_info(&txn_state_for_gc,
+                            oldest_referenced_xid_estimate,
+                            // no messages above us, we can implicitly promote uxrs based on this xid
+                            oldest_referenced_xid_estimate,
+                            txn != nullptr ? !txn->for_recovery : false);
+        DBT val; toku_init_dbt(&val);
+        ft_msg msg(min_key, max_key, toku_init_dbt(&val), FT_DELETE_MULTICAST, ZERO_MSN, message_xids);
+        toku_ft_root_put_msg(ft_handle->ft, msg, gc_info);
+    }
+}
+
 void toku_ft_send_delete(FT_HANDLE ft_handle, DBT *key, XIDS xids, txn_gc_info *gc_info) {
     DBT val; toku_init_dbt(&val);
     ft_msg msg(key, toku_init_dbt(&val), FT_DELETE_ANY, ZERO_MSN, xids);
