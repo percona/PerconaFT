@@ -608,42 +608,29 @@ exit:
     return r;
 }
 
-int persistent_dictionary_manager::remove(const char * dname, DB_TXN* txn, bool* unlink_iname) {
-    dictionary_info dinfo;
-    int r = get_dinfo(dname, txn, &dinfo);
-    if (r != 0) {
-        if (r == DB_NOTFOUND) {
-            r = ENOENT;
-        }
-        goto exit;
-    }
-    // verify that dname is what we expect it to be
-    if (strcmp(dname, dinfo.dname) != 0) {
-        printf("Error in remove, different dname found expected: %s, actual: %s", dname, dinfo.dname);
-    }
+int persistent_dictionary_manager::remove(dictionary_info* dinfo, DB_TXN* txn, bool* unlink_iname) {
     DBT dname_dbt;
-    toku_fill_dbt(&dname_dbt, dinfo.dname, strlen(dinfo.dname)+1);
+    toku_fill_dbt(&dname_dbt, dinfo->dname, strlen(dinfo->dname)+1);
     DBT id_dbt;
-    toku_fill_dbt(&id_dbt, &dinfo.id, sizeof(dinfo.id));
+    toku_fill_dbt(&id_dbt, &dinfo->id, sizeof(dinfo->id));
     // remove (dname,id) from directory
-    r = toku_db_del(m_directory, txn, &dname_dbt, DB_DELETE_ANY, true);
+    int r = toku_db_del(m_directory, txn, &dname_dbt, DB_DELETE_ANY, true);
     if (r != 0) { goto exit; }
 
     r = toku_db_del(m_detailsdb, txn, &id_dbt, DB_DELETE_ANY, true);
     if (r != 0) { goto exit; }
 
     // handle ref counting of iname
-    r = release_iname_reference(dinfo.iname, txn, unlink_iname);
+    r = release_iname_reference(dinfo->iname, txn, unlink_iname);
     if (r != 0) { goto exit; }
 
-    if (*unlink_iname && dinfo.groupname != nullptr) {
+    if (*unlink_iname && dinfo->groupname != nullptr) {
         // remove groupname information
-        r = remove_groupname_info(txn, dinfo.groupname);
+        r = remove_groupname_info(txn, dinfo->groupname);
         if (r != 0) { goto exit; }
     }
 
 exit:
-    dinfo.destroy();
     return r;
 }
 
@@ -1214,8 +1201,13 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
     bool unlink = false;
     dictionary_info dinfo;
     int r = pdm.get_dinfo(dname, txn, &dinfo);
-    if (r != 0) goto exit;
-    r = pdm.remove(dname, txn, &unlink);
+    if (r != 0) {
+        if (r == DB_NOTFOUND) {
+            r = ENOENT;
+        }
+        goto exit;
+    }
+    r = pdm.remove(&dinfo, txn, &unlink);
     if (r != 0) goto exit;
 
     r = toku_db_create(&db, env, 0);
@@ -1253,16 +1245,6 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
             r = DB_LOCK_NOTGRANTED;
             goto exit;
         }
-        // The ft will be unlinked when the txn commits
-        if (unlink) {
-            toku_ft_unlink_on_commit(db->i->ft_handle, db_txn_struct_i(txn)->tokutxn);
-        }
-    }
-    else {
-        // unlink the ft without a txn
-        if (unlink) {
-            toku_ft_unlink(db->i->ft_handle);
-        }
     }
 
     if (unlink) {
@@ -1270,7 +1252,7 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
             toku_ft_unlink_on_commit(db->i->ft_handle, db_txn_struct_i(txn)->tokutxn);
         }
         else {
-            toku_ft_unlink_on_commit(db->i->ft_handle, db_txn_struct_i(txn)->tokutxn);
+            toku_ft_unlink(db->i->ft_handle);
         }
     }
     else {

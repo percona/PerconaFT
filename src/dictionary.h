@@ -263,7 +263,7 @@ public:
     int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags);
     int pre_acquire_fileops_lock(DB_TXN* txn, char* dname);
     int create_new_db(DB_TXN* txn, const char* dname, const char* groupname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo);
-    int remove(const char * dname, DB_TXN* txn, bool* unlink_iname);
+    int remove(dictionary_info* dinfo, DB_TXN* txn, bool* unlink_iname);
     int rename(DB_TXN* txn, const char *old_dname, const char *new_dname);
     int change_descriptor(const char *dname, DB_TXN* txn, DBT *descriptor);
     void destroy();
