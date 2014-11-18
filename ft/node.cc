@@ -1436,6 +1436,11 @@ toku_ft_bn_apply_msg (
             find_idx_for_msg(cmp, bn, msg, false, &start_idx, &old_le, &key, &keylen);
             old_le = nullptr;
             find_idx_for_msg(cmp, bn, msg, true, &end_idx, &old_le, &key, &keylen);
+            if (old_le == nullptr && end_idx == 0) {
+                // in this case, we have no messages to apply this to
+                // get out.
+                break;
+            }
             if (old_le == nullptr) {
                 end_idx--;
             }
