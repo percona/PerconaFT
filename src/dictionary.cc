@@ -636,6 +636,12 @@ int persistent_dictionary_manager::remove(const char * dname, DB_TXN* txn, bool*
     r = release_iname_reference(dinfo.iname, txn, unlink_iname);
     if (r != 0) { goto exit; }
 
+    if (*unlink_iname && dinfo.groupname != nullptr) {
+        // remove groupname information
+        r = remove_groupname_info(txn, dinfo.groupname);
+        if (r != 0) { goto exit; }
+    }
+
 exit:
     dinfo.destroy();
     return r;
@@ -689,6 +695,16 @@ int persistent_dictionary_manager::get_groupname_info(
 cleanup:
     toku_free(info_dbt.data);
     return r;
+}
+
+int persistent_dictionary_manager::remove_groupname_info(
+    DB_TXN* txn,
+    const char* groupname
+    )
+{
+    DBT groupname_dbt;
+    toku_fill_dbt(&groupname_dbt, groupname, strlen(groupname) + 1);
+    return toku_db_del(m_groupnamedb, txn, &groupname_dbt, 0, true);
 }
 
 int persistent_dictionary_manager::create_new_groupname_info(
@@ -1247,6 +1263,38 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
         if (unlink) {
             toku_ft_unlink(db->i->ft_handle);
         }
+    }
+
+    if (unlink) {
+        if (txn) {
+            toku_ft_unlink_on_commit(db->i->ft_handle, db_txn_struct_i(txn)->tokutxn);
+        }
+        else {
+            toku_ft_unlink_on_commit(db->i->ft_handle, db_txn_struct_i(txn)->tokutxn);
+        }
+    }
+    else {
+        // make sure we are in the right case
+        invariant(dinfo.groupname != nullptr);
+        invariant(dinfo.num_prepend_bytes > 0);
+        DBT ft_min_key;
+        void* min_data = alloca(sizeof(uint64_t));
+        db->i->dict->fill_ft_key(nullptr, min_data, &ft_min_key);
+        DBT ft_max_key;
+        void* max_data = alloca(sizeof(uint64_t));
+        db->i->dict->fill_max_key(max_data, &ft_max_key);
+        // send a multicast delete that will get rid of all rows
+        // for this DB*
+        toku_ft_maybe_delete_multicast(
+            db->i->ft_handle,
+            &ft_min_key,
+            &ft_max_key,
+            txn ? db_txn_struct_i(txn)->tokutxn : nullptr,
+            false, //oplsn_valid
+            ZERO_LSN, 
+            true, // do_logging
+            true //is_resetting_op
+            );
     }
 
 exit:

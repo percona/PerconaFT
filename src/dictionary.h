@@ -241,6 +241,10 @@ private:
         DB_ENV* env,
         dictionary_info* dinfo // output parameter
         );
+    int remove_groupname_info(
+        DB_TXN* txn,
+        const char* groupname
+        );
 
 public:
     persistent_dictionary_manager() : 
