@@ -458,6 +458,7 @@ static void print_db_env_struct (void) {
                              "int (*set_lock_timeout_callback)            (DB_ENV *env, lock_timeout_callback callback)",
                              "int (*txn_xa_recover)                       (DB_ENV*, TOKU_XA_XID list[/*count*/], long count, /*out*/ long *retp, uint32_t flags)",
                              "int (*get_txn_from_xid)                     (DB_ENV*, /*in*/ TOKU_XA_XID *, /*out*/ DB_TXN **)",
+                             "DB* (*get_db_for_directory)                 (DB_ENV*)",
                              "int (*get_cursor_for_directory)             (DB_ENV*, /*in*/ DB_TXN *, /*out*/ DBC **)",
                              "int (*get_cursor_for_persistent_environment)(DB_ENV*, /*in*/ DB_TXN *, /*out*/ DBC **)",
                              "void (*change_fsync_log_period)             (DB_ENV*, uint32_t)",

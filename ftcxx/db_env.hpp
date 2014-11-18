@@ -8,8 +8,18 @@
 #include <db.h>
 
 #include "exceptions.hpp"
+#include "slice.hpp"
 
 namespace ftcxx {
+
+    template<class Comparator, class Handler>
+    class CallbackCursor;
+    template<class Comparator, class Predicate>
+    class BufferedCursor;
+    template<class Comparator>
+    class SimpleCursor;
+
+    class DBTxn;
 
     class DBEnv {
     public:
@@ -56,6 +66,18 @@ namespace ftcxx {
             int r = _env->log_flush(_env, NULL);
             handle_ft_retval(r);
         }
+
+        /**
+         * Constructs a Cursor over this DBEnv's directory.
+         */
+        template<class Comparator, class Handler>
+        CallbackCursor<Comparator, Handler> cursor(const DBTxn &txn, Comparator &&cmp, Handler &&handler) const;
+
+        template<class Comparator, class Predicate>
+        BufferedCursor<Comparator, Predicate> buffered_cursor(const DBTxn &txn, Comparator &&cmp, Predicate &&filter) const;
+
+        template<class Comparator>
+        SimpleCursor<Comparator> simple_cursor(const DBTxn &txn, Comparator &&cmp, Slice &key, Slice &val) const;
 
     private:
         DB_ENV *_env;

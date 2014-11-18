@@ -35,7 +35,7 @@ namespace ftcxx {
     };
 
     class Bounds {
-        const DB *_db;
+        const ::DB *_db;
         Slice _left;
         Slice _right;
         DBT _left_dbt;
@@ -45,8 +45,8 @@ namespace ftcxx {
         bool _end_exclusive;
 
     public:
-        Bounds(const DB *db, const Slice &left, const Slice &right, bool end_exclusive)
-            : _db(db),
+        Bounds(const DB &db, const Slice &left, const Slice &right, bool end_exclusive)
+            : _db(db.db()),
               _left(left.owned()),
               _right(right.owned()),
               _left_dbt(_left.dbt()),
@@ -58,8 +58,8 @@ namespace ftcxx {
 
         struct Infinite {};
 
-        Bounds(const DB *db, Infinite, const Slice &right, bool end_exclusive)
-            : _db(db),
+        Bounds(const DB &db, Infinite, const Slice &right, bool end_exclusive)
+            : _db(db.db()),
               _left(),
               _right(right.owned()),
               _left_dbt(_left.dbt()),
@@ -69,8 +69,8 @@ namespace ftcxx {
               _end_exclusive(end_exclusive)
         {}
 
-        Bounds(const DB *db, const Slice &left, Infinite, bool end_exclusive)
-            : _db(db),
+        Bounds(const DB &db, const Slice &left, Infinite, bool end_exclusive)
+            : _db(db.db()),
               _left(left.owned()),
               _right(),
               _left_dbt(_left.dbt()),
@@ -80,8 +80,8 @@ namespace ftcxx {
               _end_exclusive(end_exclusive)
         {}
 
-        Bounds(const DB *db, Infinite, Infinite, bool end_exclusive)
-            : _db(db),
+        Bounds(const DB &db, Infinite, Infinite, bool end_exclusive)
+            : _db(db.db()),
               _left(),
               _right(),
               _left_dbt(_left.dbt()),
@@ -123,7 +123,7 @@ namespace ftcxx {
 
         const DBT *left_dbt() const {
             if (_left_infinite) {
-                return _db->db()->dbt_neg_infty();
+                return _db->dbt_neg_infty();
             } else {
                 return &_left_dbt;
             }
@@ -131,7 +131,7 @@ namespace ftcxx {
 
         const DBT *right_dbt() const {
             if (_right_infinite) {
-                return _db->db()->dbt_pos_infty();
+                return _db->dbt_pos_infty();
             } else {
                 return &_right_dbt;
             }
@@ -163,6 +163,9 @@ namespace ftcxx {
     public:
         DBC(const DB &db, const DBTxn &txn=DBTxn(), int flags=0);
         ~DBC();
+
+        // Directory cursor.
+        DBC(const DBEnv &env, const DBTxn &txn=DBTxn());
 
         DBC(const DBC &) = delete;
         DBC& operator=(const DBC &) = delete;
@@ -207,6 +210,12 @@ namespace ftcxx {
     template<class Comparator, class Handler>
     class CallbackCursor {
     public:
+
+        /**
+         * Directory cursor.
+         */
+        CallbackCursor(const DBEnv &env, const DBTxn &txn,
+                       Comparator &&cmp, Handler &&handler);
 
         /**
          * Constructs an cursor.  Better to use DB::cursor instead to
@@ -280,6 +289,12 @@ namespace ftcxx {
     public:
 
         /**
+         * Directory cursor.
+         */
+        BufferedCursor(const DBEnv &env, const DBTxn &txn,
+                       Comparator &&cmp, Predicate &&filter);
+
+        /**
          * Constructs an buffered cursor.  Better to use
          * DB::buffered_cursor instead to avoid template parameters.
          */
@@ -315,6 +330,9 @@ namespace ftcxx {
     template<class Comparator>
     class SimpleCursor {
     public:
+        SimpleCursor(const DBEnv &env, const DBTxn &txn,
+                     Comparator &&cmp, Slice &key, Slice &val);
+
         SimpleCursor(const DB &db, const DBTxn &txn, int flags,
                      IterationStrategy iteration_strategy,
                      Bounds bounds, Comparator &&cmp,

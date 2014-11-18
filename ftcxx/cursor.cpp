@@ -28,6 +28,24 @@ namespace ftcxx {
         }
     }
 
+    DBC::DBC(const DBEnv &env, const DBTxn &txn)
+        : _txn(),
+          _dbc(nullptr)
+    {
+        if (env.env() != nullptr) {
+            DB_TXN *txnp = txn.txn();
+            if (txnp == nullptr) {
+                _txn = DBTxn(env, DB_TXN_READ_ONLY | DB_READ_UNCOMMITTED);
+                txnp = _txn.txn();
+            }
+
+            ::DBC *c;
+            int r = env.env()->get_cursor_for_directory(env.env(), txnp, &c);
+            handle_ft_retval(r);
+            _dbc = c;
+        }
+    }
+
     DBC::~DBC() {
         if (_dbc != nullptr) {
             close();
