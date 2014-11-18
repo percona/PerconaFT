@@ -235,6 +235,17 @@ void toku_ft_delete (FT_HANDLE ft_h, DBT *k, TOKUTXN txn);
 // Effect: Delete a key from an ft if the oplsn is newer than the ft lsn.  This function is called during recovery.
 void toku_ft_maybe_delete (FT_HANDLE ft_h, DBT *k, TOKUTXN txn, bool oplsn_valid, LSN oplsn, bool do_logging);
 
+void toku_ft_maybe_delete_multicast(
+    FT_HANDLE ft_h,
+    DBT *min_key,
+    DBT *max_key,
+    TOKUTXN txn,
+    bool oplsn_valid,
+    LSN oplsn,
+    bool do_logging,
+    bool is_resetting_op
+    );
+
 TXNID toku_ft_get_oldest_referenced_xid_estimate(FT_HANDLE ft_h);
 struct txn_manager *toku_ft_get_txn_manager(FT_HANDLE ft_h);
 

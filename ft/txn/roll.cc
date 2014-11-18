@@ -227,12 +227,15 @@ int find_ft_from_filenum (const FT &ft, const FILENUM &filenum) {
     return 0;
 }
 
-// Input arg reset_root_xid_that_created true means that this operation has changed the definition of this dictionary.
-// (Example use is for schema change committed with txn that inserted cmdupdatebroadcast message.)
-// The oplsn argument is ZERO_LSN for normal operation.  When this function is called for recovery, it has the LSN of
-// the operation (insert, delete, update, etc).
-static int do_insertion (enum ft_msg_type type, FILENUM filenum, BYTESTRING key, BYTESTRING *data, TOKUTXN txn, LSN oplsn,
-                         bool reset_root_xid_that_created) {
+static int do_multicast_insertion (
+    enum ft_msg_type type,
+    FILENUM filenum,
+    BYTESTRING key,
+    BYTESTRING max_key,
+    TOKUTXN txn,
+    LSN oplsn,
+    bool reset_root_xid_that_created)
+{
     int r = 0;
     //printf("%s:%d committing insert %s %s\n", __FILE__, __LINE__, key.data, data.data);
     FT ft = nullptr;
@@ -252,15 +255,16 @@ static int do_insertion (enum ft_msg_type type, FILENUM filenum, BYTESTRING key,
         }
     }
 
-    DBT key_dbt,data_dbt;
+    DBT key_dbt,max_key_dbt, data_dbt;
     XIDS xids;
     xids = toku_txn_get_xids(txn);
     {
         const DBT *kdbt = key.len > 0 ? toku_fill_dbt(&key_dbt, key.data, key.len) :
                                         toku_init_dbt(&key_dbt);
-        const DBT *vdbt = data ? toku_fill_dbt(&data_dbt, data->data, data->len) :
-                                 toku_init_dbt(&data_dbt);
-        ft_msg msg(kdbt, vdbt, type, ZERO_MSN, xids);
+        const DBT *max_kdbt = max_key.len > 0 ? toku_fill_dbt(&max_key_dbt, max_key.data, max_key.len) :
+                                        toku_init_dbt(&max_key_dbt);
+        const DBT *vdbt = toku_init_dbt(&data_dbt);
+        ft_msg msg(kdbt, max_kdbt, vdbt, type, ZERO_MSN, xids);
 
         TXN_MANAGER txn_manager = toku_logger_get_txn_manager(txn->logger);
         txn_manager_state txn_state_for_gc(txn_manager);
@@ -281,6 +285,16 @@ done:
     return r;
 }
 
+// Input arg reset_root_xid_that_created true means that this operation has changed the definition of this dictionary.
+// (Example use is for schema change committed with txn that inserted cmdupdatebroadcast message.)
+// The oplsn argument is ZERO_LSN for normal operation.  When this function is called for recovery, it has the LSN of
+// the operation (insert, delete, update, etc).
+static int do_insertion (enum ft_msg_type type, FILENUM filenum, BYTESTRING key, TOKUTXN txn, LSN oplsn,
+                         bool reset_root_xid_that_created) {
+    BYTESTRING max = {.len=0, .data=nullptr};
+    return do_multicast_insertion(type, filenum, key, max, txn, oplsn, reset_root_xid_that_created);
+}
+
 
 static int do_nothing_with_filenum(TOKUTXN UU(txn), FILENUM UU(filenum)) {
     return 0;
@@ -289,7 +303,7 @@ static int do_nothing_with_filenum(TOKUTXN UU(txn), FILENUM UU(filenum)) {
 
 int toku_commit_cmdinsert (FILENUM filenum, BYTESTRING UU(key), TOKUTXN txn, LSN UU(oplsn)) {
 #if TOKU_DO_COMMIT_CMD_INSERT
-    return do_insertion (FT_COMMIT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion (FT_COMMIT_ANY, filenum, key, txn, oplsn, false);
 #else
     return do_nothing_with_filenum(txn, filenum);
 #endif
@@ -301,7 +315,7 @@ toku_rollback_cmdinsert (FILENUM    filenum,
                          TOKUTXN    txn,
                          LSN        oplsn)
 {
-    return do_insertion (FT_ABORT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion (FT_ABORT_ANY, filenum, key, txn, oplsn, false);
 }
 
 int
@@ -311,7 +325,7 @@ toku_commit_cmdupdate(FILENUM    filenum,
                       LSN        UU(oplsn))
 {
 #if TOKU_DO_COMMIT_CMD_UPDATE
-    return do_insertion(FT_COMMIT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion(FT_COMMIT_ANY, filenum, key, txn, oplsn, false);
 #else
     return do_nothing_with_filenum(txn, filenum);
 #endif
@@ -323,7 +337,7 @@ toku_rollback_cmdupdate(FILENUM    filenum,
                         TOKUTXN    txn,
                         LSN        oplsn)
 {
-    return do_insertion(FT_ABORT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion(FT_ABORT_ANY, filenum, key, txn, oplsn, false);
 }
 
 int
@@ -339,7 +353,7 @@ toku_commit_cmdupdatebroadcast(FILENUM    filenum,
                                         ? FT_COMMIT_BROADCAST_ALL
                                         : FT_COMMIT_BROADCAST_TXN);
     BYTESTRING nullkey = { 0, NULL };
-    return do_insertion(msg_type, filenum, nullkey, 0, txn, oplsn, reset_root_xid_that_created);
+    return do_insertion(msg_type, filenum, nullkey, txn, oplsn, reset_root_xid_that_created);
 }
 
 int
@@ -349,7 +363,7 @@ toku_rollback_cmdupdatebroadcast(FILENUM    filenum,
                                  LSN        oplsn)
 {
     BYTESTRING nullkey = { 0, NULL };
-    return do_insertion(FT_ABORT_BROADCAST_TXN, filenum, nullkey, 0, txn, oplsn, false);
+    return do_insertion(FT_ABORT_BROADCAST_TXN, filenum, nullkey, txn, oplsn, false);
 }
 
 int
@@ -359,7 +373,7 @@ toku_commit_cmddelete (FILENUM    filenum,
                        LSN        oplsn)
 {
 #if TOKU_DO_COMMIT_CMD_DELETE
-    return do_insertion (FT_COMMIT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion (FT_COMMIT_ANY, filenum, key, txn, oplsn, false);
 #else
     key = key; oplsn = oplsn;
     return do_nothing_with_filenum(txn, filenum);
@@ -372,7 +386,32 @@ toku_rollback_cmddelete (FILENUM    filenum,
                          TOKUTXN    txn,
                          LSN        oplsn)
 {
-    return do_insertion (FT_ABORT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion (FT_ABORT_ANY, filenum, key, txn, oplsn, false);
+}
+
+
+int
+toku_commit_cmddeletemulti(FILENUM filenum,
+                           BYTESTRING min_key,
+                           BYTESTRING max_key,
+                           bool is_resetting_op,
+                           TOKUTXN    txn,
+                           LSN oplsn)
+{
+    bool reset_root_xid_that_created = (is_resetting_op ? true : false);
+    const enum ft_msg_type type = is_resetting_op ? FT_COMMIT_MULTICAST_ALL : FT_COMMIT_MULTICAST_TXN;
+    return do_multicast_insertion(type, filenum, min_key, max_key, txn, oplsn, reset_root_xid_that_created);
+}
+
+int
+toku_rollback_cmddeletemulti(FILENUM filenum,
+                             BYTESTRING min_key,
+                             BYTESTRING max_key,
+                             bool is_resetting_op UU(),
+                             TOKUTXN    txn,
+                             LSN oplsn)
+{
+    return do_multicast_insertion(FT_ABORT_MULTICAST_TXN, filenum, min_key, max_key, txn, oplsn, false);
 }
 
 static int
