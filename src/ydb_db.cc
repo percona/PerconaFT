@@ -637,7 +637,7 @@ locked_db_create_new_db(DB *db, DB_TXN *txn, const char* dname, const char *grou
 
     // cannot begin a checkpoint
     toku_multi_operation_client_lock();
-    r = db->dbenv->i->dict_manager.create_db_with_groupname(db, dname, groupname, txn, flags);
+    r = db->dbenv->i->dict_manager.create_db_with_groupname(db, dname, groupname, child_txn, flags);
     if (r == 0) {
         note_db_opened(db, flags);
     }
