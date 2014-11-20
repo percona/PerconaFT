@@ -375,4 +375,6 @@ public:
     toku::locktree_manager &get_ltm() {
         return idm.get_ltm();
     }
+
+    friend class dictionary_test;
 };

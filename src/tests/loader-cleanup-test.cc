@@ -406,9 +406,9 @@ verify_file(char * dirname, char * filename) {
     
     struct dirent *ent;
     while ((ent=readdir(dir))) {
-	if ((ent->d_type==DT_REG || ent->d_type==DT_UNKNOWN) && strcmp(ent->d_name, filename)==0) {
-	    n++;
-	}
+        if ((ent->d_type==DT_REG || ent->d_type==DT_UNKNOWN) && strcmp(ent->d_name, filename)==0) {
+            n++;
+        }
     }
     closedir(dir);
     return n;
@@ -418,15 +418,15 @@ static void
 get_inames(DBT* inames, DB** dbs UU()) {
     int i;
     for (i = 0; i < NUM_DBS; i++) {
-	DBT dname;
-	const char * dname_str = dbs[i]->get_dname(dbs[i]);
-	dbt_init(&dname, dname_str, strlen(dname_str)+1);
-	dbt_init(&(inames[i]), NULL, 0);
-	inames[i].flags |= DB_DBT_MALLOC;
-	int r = env->get_iname(env, &dname, &inames[i]);
-	CKERR(r);
-	char * iname_str = (char*) (inames[i].data);
-	if (verbose >= 2) printf("dname = %s, iname = %s\n", dname_str, iname_str);
+        DBT dname;
+        const char * dname_str = dbs[i]->get_dname(dbs[i]);
+        dbt_init(&dname, dname_str, strlen(dname_str)+1);
+        dbt_init(&(inames[i]), NULL, 0);
+        inames[i].flags |= DB_DBT_MALLOC;
+        int r = env->get_iname(env, &dname, &inames[i]);
+        CKERR(r);
+        char * iname_str = (char*) (inames[i].data);
+        if (verbose >= 2) printf("dname = %s, iname = %s\n", dname_str, iname_str);
     }
 }
 
@@ -436,13 +436,13 @@ assert_inames_missing(DBT* inames) {
     int i;
     char * dir = env->i->real_data_dir;
     for (i=0; i<NUM_DBS; i++) {
-	char * CAST_FROM_VOIDP(iname, inames[i].data);
-	int r = verify_file(dir, iname);
-	if (r) {
-	    printf("File %s exists, but it should not\n", iname);
-	}
-	assert(r == 0);
-	if (verbose) printf("File has been properly deleted: %s\n", iname);
+        char * CAST_FROM_VOIDP(iname, inames[i].data);
+        int r = verify_file(dir, iname);
+        if (r) {
+            printf("File %s exists, but it should not\n", iname);
+        }
+        assert(r == 0);
+        if (verbose) printf("File has been properly deleted: %s\n", iname);
     }
 }
 

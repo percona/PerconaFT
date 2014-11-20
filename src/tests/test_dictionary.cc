@@ -95,8 +95,59 @@ DB_TXN * const null_txn = 0;
 
 const char * const fname = "dict_test";
 
+// return non-zero if file exists
+static bool
+file_exists(DB_ENV* env, char * filename) {
+    char * dirname = env->i->real_data_dir;
+    int n = 0;
+    DIR * dir = opendir(dirname);
+    
+    struct dirent *ent;
+    while ((ent=readdir(dir))) {
+        if ((ent->d_type==DT_REG || ent->d_type==DT_UNKNOWN) && strcmp(ent->d_name, filename)==0) {
+            n++;
+        }
+    }
+    closedir(dir);
+    return n > 0;
+}
+
 class dictionary_test {
 public:
+
+    static void verify_db_solo(dictionary_info* dinfo, DB* db) {
+        assert(db->i->dict->m_id >= persistent_dictionary_manager::m_min_user_id);
+        assert(db->i->dict->m_num_prepend_bytes == 0);
+        assert(db->i->dict->m_prepend_id == PREPEND_ID_INVALID);
+
+        assert(strcmp(dinfo->dname, db->i->dict->m_dname) == 0);
+        assert(dinfo->id == db->i->dict->m_id);
+        assert(dinfo->groupname == NULL);
+        assert(dinfo->num_prepend_bytes == 0);
+        assert(dinfo->prepend_id == PREPEND_ID_INVALID);
+    }
+
+    static void verify_db_part_of_big_group(dictionary_info* dinfo, DB* db, const char* expected_groupname) {
+        assert(strcmp(dinfo->dname, db->i->dict->m_dname) == 0);
+        assert(db->i->dict->m_id >= persistent_dictionary_manager::m_min_user_id);
+        assert(dinfo->id == db->i->dict->m_id);
+        assert(dinfo->groupname != NULL);
+        assert(strcmp(dinfo->groupname, expected_groupname) == 0);
+        assert(dinfo->num_prepend_bytes == sizeof(uint64_t));
+        assert(dinfo->prepend_id == dinfo->id);
+        assert(dinfo->prepend_id != PREPEND_ID_INVALID);
+    }
+
+    static void verify_iname_refcount(DB_ENV* env, DB_TXN* txn, dictionary_info* dinfo, uint64_t expected_refcount) {
+        uint64_t found_refcount = 0;
+        int r = env->i->dict_manager.pdm.get_iname_refcount(dinfo->iname, txn, &found_refcount); CKERR(r);
+        assert(found_refcount == expected_refcount);
+    }
+
+    static bool iname_exists(DB_ENV* env, dictionary_info* dinfo) {
+        return file_exists(env, dinfo->iname);
+    }
+
     static DB_ENV* startup() {
         int r;
         toku_os_recursive_delete(TOKU_TEST_FILENAME);
@@ -298,7 +349,55 @@ public:
         r = db4->close(db4, 0); CKERR(r);
         r = db5->close(db5, 0); CKERR(r);
         shutdown(env);
+    }
 
+    // this tests that creating/renaming/removing dbs with no groupname
+    // work properly, that they have no prepend bytes, and that when
+    // we remove the dictionary, their inames dissappear
+    static void test_no_groupname() {
+        DB_ENV* env = startup();
+        const char* foo = "foo";
+        DB *db1;
+        // just creating some dummy dictionaries so that the metadata dictionaries
+        // we deal with have more than one entry
+        int r = db_create(&db1, env, 0); assert(r == 0);
+        r = db1->create_new_db(db1, null_txn, "aaa", NULL, 0); CKERR(r);
+        r = db1->close(db1, 0); CKERR(r);
+        r = db_create(&db1, env, 0); assert(r == 0);
+        r = db1->create_new_db(db1, null_txn, "ddd", NULL, 0); CKERR(r);
+        r = db1->close(db1, 0); CKERR(r);
+        r = db_create(&db1, env, 0); assert(r == 0);
+        r = db1->create_new_db(db1, null_txn, "mmm", NULL, 0); CKERR(r);
+        r = db1->close(db1, 0); CKERR(r);
+        r = db_create(&db1, env, 0); assert(r == 0);
+        r = db1->create_new_db(db1, null_txn, "zzz", NULL, 0); CKERR(r);
+        r = db1->close(db1, 0); CKERR(r);
+
+        // now the real test begins
+        r = db_create(&db1, env, 0); assert(r == 0);
+        r = db1->create_new_db(db1, null_txn, foo, NULL, 0);
+        CKERR(r);
+
+        DB_TXN* txn = NULL;
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        dictionary_info dinfo;
+        r = env->i->dict_manager.pdm.get_dinfo(foo, txn, &dinfo); CKERR(r);
+        // verify that the dinfo information is correct
+        verify_db_solo(&dinfo, db1);
+        assert(iname_exists(env, &dinfo));
+        verify_iname_refcount(env, txn, &dinfo, 1);
+        r = env->dbremove(env, txn, "foo", NULL, 0); CKERR2(r, EINVAL);
+        r = txn->commit(txn, 0); CKERR(r);
+        r = db1->close(db1, 0); CKERR(r);
+
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        r = env->dbremove(env, txn, "foo", NULL, 0); CKERR(r);
+        assert(iname_exists(env, &dinfo));
+        r = txn->commit(txn, 0); CKERR(r);
+        assert(!iname_exists(env, &dinfo));
+
+        shutdown(env);
+        dinfo.destroy();
     }
 };
 
@@ -307,9 +406,11 @@ int
 test_main(int argc, char *const argv[]) {
     parse_args(argc, argv);
 
+    /*
     dictionary_test::run_single_db_test();
     dictionary_test::run_multiple_db_test();
     dictionary_test::run_dictionary_id_generation_test();
-    
+*/
+    dictionary_test::test_no_groupname();
     return 0;
 }
