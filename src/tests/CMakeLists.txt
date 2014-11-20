@@ -48,11 +48,14 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
     )
 
   ## #5138 only reproduces when using the static library.
-  list(REMOVE_ITEM tdb_bins test-5138.tdb)
-  add_executable(test-5138.tdb test-5138)
-  target_link_libraries(test-5138.tdb ${LIBTOKUDB}_static z ${LIBTOKUPORTABILITY}_static ${CMAKE_THREAD_LIBS_INIT} ${EXTRA_SYSTEM_LIBS})
-  add_space_separated_property(TARGET test-5138.tdb COMPILE_FLAGS -fvisibility=hidden)
-  add_ydb_test(test-5138.tdb)
+  foreach(bin test-5138 test_dictionary)
+    list(REMOVE_ITEM tdb_bins ${bin}.tdb)
+    add_executable(${bin}.tdb ${bin})
+    target_link_libraries(${bin}.tdb ${LIBTOKUDB}_static z ${LIBTOKUPORTABILITY}_static ${CMAKE_THREAD_LIBS_INIT} ${EXTRA_SYSTEM_LIBS})
+    add_space_separated_property(TARGET ${bin}.tdb COMPILE_FLAGS -fvisibility=hidden)
+    add_ydb_test(${bin}.tdb)
+  endforeach(bin)
+
 
   foreach(bin ${tdb_bins})
     get_filename_component(base ${bin} NAME_WE)

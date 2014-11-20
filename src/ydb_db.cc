@@ -147,7 +147,7 @@ static int toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *db
 void
 toku_db_close(DB * db) {
     if (db_opened(db) && db->i->dict) {
-        db->i->dict->release();
+        dictionary::release(db->i->dict);
     }
     // close the ft handle, and possibly close the locktree
     toku_ft_handle_close(db->i->ft_handle);

@@ -212,17 +212,18 @@ void dictionary::destroy(){
     }
 }
 
-void dictionary::release(){
+void dictionary::release(dictionary* dict){
     bool do_destroy = false;
-    if (m_mgr) {
-        do_destroy = m_mgr->release_dictionary(this);
+    if (dict->m_mgr) {
+        do_destroy = dict->m_mgr->release_dictionary(dict);
     }
     else {
-        invariant(m_refcount == 0);
+        invariant(dict->m_refcount == 0);
         do_destroy = true;
     }
     if (do_destroy) {
-        destroy();
+        dict->destroy();
+        toku_free(dict);
     }
 }
 
@@ -437,7 +438,9 @@ int persistent_dictionary_manager::write_to_detailsdb(DB_TXN* txn, dictionary_in
     
     DBT details_dbt;
     toku_fill_dbt(&details_dbt, data, num_bytes);
-    return toku_db_put(m_detailsdb, txn, &id_dbt, &details_dbt, put_flags, true);
+    int r = toku_db_put(m_detailsdb, txn, &id_dbt, &details_dbt, put_flags, true);
+    toku_free(data);
+    return r;
 }
 
 int persistent_dictionary_manager::get_dinfo(const char* dname, DB_TXN* txn, dictionary_info* dinfo) {
@@ -725,7 +728,9 @@ int persistent_dictionary_manager::create_new_groupname_info(
     invariant((uint64_t)(pos - data) == num_bytes);
     DBT data_dbt;
     toku_fill_dbt(&data_dbt, data, num_bytes);
-    return toku_db_put(m_groupnamedb, txn, &groupname_dbt, &data_dbt, 0, true);
+    int r = toku_db_put(m_groupnamedb, txn, &groupname_dbt, &data_dbt, 0, true);
+    toku_free(data);
+    return r;
 }
 
 int persistent_dictionary_manager::fill_dinfo_from_groupname(

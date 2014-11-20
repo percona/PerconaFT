@@ -141,7 +141,7 @@ enum ft_msg_type {
 static inline bool
 ft_msg_type_applies_once(enum ft_msg_type type)
 {
-    bool ret_val;
+    bool ret_val = false;
     switch (type) {
     case FT_INSERT_NO_OVERWRITE:
     case FT_INSERT:
@@ -171,7 +171,7 @@ ft_msg_type_applies_once(enum ft_msg_type type)
 static inline bool
 ft_msg_type_applies_multiple(enum ft_msg_type type)
 {
-    bool ret_val;
+    bool ret_val = false;
     switch (type) {
     case FT_NONE:
     case FT_INSERT_NO_OVERWRITE:
@@ -201,7 +201,7 @@ ft_msg_type_applies_multiple(enum ft_msg_type type)
 static inline bool
 ft_msg_type_is_multicast(enum ft_msg_type type)
 {
-    bool ret_val;
+    bool ret_val = false;
     switch (type) {
     case FT_NONE:
     case FT_INSERT_NO_OVERWRITE:

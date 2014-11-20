@@ -100,6 +100,7 @@ PATENT RIGHTS GRANT:
 #include <locktree/locktree.h>
 
 class inmemory_dictionary_manager;
+class dictionary_test;
 
 #define PREPEND_ID_INVALID UINT64_MAX
 
@@ -185,7 +186,7 @@ public:
         toku::locktree_manager &ltm
         );
     void destroy();
-    void release();
+    static void release(dictionary* dict);
     char* get_dname() const;
     uint64_t get_id() const;
     toku::locktree* get_lt() const;
@@ -198,6 +199,7 @@ public:
     void fill_max_key(void* buf, DBT* out);
 
     friend class inmemory_dictionary_manager;
+    friend class dictionary_test;
 };
 
 typedef enum {
@@ -271,6 +273,8 @@ public:
     int rename(DB_TXN* txn, const char *old_dname, const char *new_dname);
     int change_descriptor(const char *dname, DB_TXN* txn, DBT *descriptor);
     void destroy();
+
+    friend class dictionary_test;
 };
 
 class inmemory_dictionary_manager {
