@@ -1356,6 +1356,7 @@ int dictionary_manager::open_db(
         r = pdm.create_new_db(txn, dname, nullptr, db->dbenv, is_db_hot_index, &dinfo);
         if (r != 0) goto cleanup;
     }
+    if (r != 0) goto cleanup;
     // we now have an iname
     r = finish_open_db(db, txn, &dinfo, flags, is_db_create);
 

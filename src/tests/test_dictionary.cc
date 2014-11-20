@@ -386,18 +386,69 @@ public:
         verify_db_solo(&dinfo, db1);
         assert(iname_exists(env, &dinfo));
         verify_iname_refcount(env, txn, &dinfo, 1);
-        r = env->dbremove(env, txn, "foo", NULL, 0); CKERR2(r, EINVAL);
+        r = env->dbremove(env, txn, foo, NULL, 0); CKERR2(r, EINVAL);
         r = txn->commit(txn, 0); CKERR(r);
         r = db1->close(db1, 0); CKERR(r);
 
         r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
-        r = env->dbremove(env, txn, "foo", NULL, 0); CKERR(r);
+        r = env->dbremove(env, txn, foo, NULL, 0); CKERR(r);
         assert(iname_exists(env, &dinfo));
+        r = env->i->dict_manager.pdm.get_dinfo(foo, txn, &dinfo); CKERR2(r, DB_NOTFOUND);
         r = txn->commit(txn, 0); CKERR(r);
         assert(!iname_exists(env, &dinfo));
+        r = db_create(&db1, env, 0); CKERR(r);
+        r = db1->open(db1, null_txn, foo, NULL, DB_BTREE, 0, 0666); CKERR2(r, ENOENT);
+        r = db1->close(db1, 0); CKERR(r);
 
         shutdown(env);
         dinfo.destroy();
+    }
+
+    // does a rename, verifies that all data is the same
+    // except for the dname
+    static void test_simple_rename() {
+        DB_ENV* env = startup();
+        const char* foo = "foo";
+        const char* bar = "bar";
+        DB *db1;
+
+        // now the real test begins
+        int r = db_create(&db1, env, 0); assert(r == 0);
+        r = db1->create_new_db(db1, null_txn, foo, NULL, 0);
+        CKERR(r);
+
+        DB_TXN* txn = NULL;
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        dictionary_info dinfo;
+        r = env->i->dict_manager.pdm.get_dinfo(foo, txn, &dinfo); CKERR(r);
+        // verify that the dinfo information is correct
+        verify_db_solo(&dinfo, db1);
+        r = txn->commit(txn, 0); CKERR(r);
+        r = db1->close(db1, 0); CKERR(r);
+
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        r = env->dbrename(env, txn, foo, NULL, bar, 0); CKERR(r);
+        assert(iname_exists(env, &dinfo));
+        r = env->i->dict_manager.pdm.get_dinfo(foo, txn, &dinfo); CKERR2(r, DB_NOTFOUND);
+        r = txn->commit(txn, 0); CKERR(r);
+        r = db_create(&db1, env, 0); CKERR(r);
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        r = db1->open(db1, null_txn, foo, NULL, DB_BTREE, 0, 0666); CKERR2(r, ENOENT);
+        r = db1->open(db1, null_txn, bar, NULL, DB_BTREE, 0, 0666); CKERR(r);
+        dictionary_info dinfo2;
+        r = env->i->dict_manager.pdm.get_dinfo(bar, txn, &dinfo2); CKERR(r);
+        verify_db_solo(&dinfo2, db1);
+        r = txn->commit(txn, 0); CKERR(r);
+        r = db1->close(db1, 0); CKERR(r);
+
+        // check that the dinfo's are the same outside of dname
+        assert(dinfo.id == dinfo2.id);
+        assert(strcmp(dinfo.iname, dinfo2.iname) == 0);
+        assert(iname_exists(env, &dinfo2));
+
+        shutdown(env);
+        dinfo.destroy();
+        dinfo2.destroy();
     }
 };
 
@@ -412,5 +463,6 @@ test_main(int argc, char *const argv[]) {
     dictionary_test::run_dictionary_id_generation_test();
 */
     dictionary_test::test_no_groupname();
+    dictionary_test::test_simple_rename();
     return 0;
 }
