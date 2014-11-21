@@ -134,7 +134,9 @@ public:
         assert(dinfo->groupname != NULL);
         assert(strcmp(dinfo->groupname, expected_groupname) == 0);
         assert(dinfo->num_prepend_bytes == sizeof(uint64_t));
+        assert(dinfo->num_prepend_bytes == db->i->dict->m_num_prepend_bytes);
         assert(dinfo->prepend_id == dinfo->id);
+        assert(dinfo->prepend_id == db->i->dict->m_prepend_id);
         assert(dinfo->prepend_id != PREPEND_ID_INVALID);
     }
 
@@ -450,6 +452,84 @@ public:
         dinfo.destroy();
         dinfo2.destroy();
     }
+
+    // test that dictionaries that have the same groupname work properly,
+    // that they share the same iname, the same ft,
+    // and that ref counting of inames works properly
+    static void test_groups() {
+        DB_ENV* env = startup();
+        const char* group = "group";
+        DB *db1;
+
+        // now the real test begins
+        int r = 0;
+        r = db_create(&db1, env, 0); assert(r == 0);
+        r = db1->create_new_db(db1, null_txn, "foo", group, 0);
+        CKERR(r);
+
+        DB_TXN* txn = NULL;
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        dictionary_info dinfo;
+        r = env->i->dict_manager.pdm.get_dinfo("foo", txn, &dinfo); CKERR(r);
+        // verify that the dinfo information is correct
+        verify_db_part_of_big_group(&dinfo, db1, group);
+        assert(iname_exists(env, &dinfo));
+        verify_iname_refcount(env, txn, &dinfo, 1);
+        r = txn->commit(txn, 0); CKERR(r);
+        r = db1->close(db1, 0); CKERR(r);
+
+        DB* db2;
+        r = db_create(&db2, env, 0); assert(r == 0);
+        r = db2->create_new_db(db2, null_txn, "bar", group, 0);
+        CKERR(r);
+
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        dictionary_info dinfo2;
+        r = env->i->dict_manager.pdm.get_dinfo("bar", txn, &dinfo2); CKERR(r);
+        // verify that the dinfo information is correct
+        verify_db_part_of_big_group(&dinfo2, db2, group);
+        assert(iname_exists(env, &dinfo2));
+        verify_iname_refcount(env, txn, &dinfo2, 2);
+        r = txn->commit(txn, 0); CKERR(r);
+        r = db2->close(db2, 0); CKERR(r);
+
+        // now let's verify that the two dinfo's have some of the same information
+        assert(strcmp(dinfo.groupname, dinfo2.groupname) == 0);
+        assert(strcmp(dinfo.iname, dinfo2.iname) == 0);
+        assert(dinfo.prepend_id != dinfo2.prepend_id);
+        assert(dinfo.num_prepend_bytes == dinfo2.num_prepend_bytes);
+
+        // verify that getting the ginfo gives the right information
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        groupname_info ginfo;
+        r = env->i->dict_manager.pdm.get_groupname_info(txn, group, &ginfo); CKERR(r);
+        assert(strcmp(ginfo.groupname, dinfo.groupname) == 0);
+        assert(strcmp(ginfo.iname, dinfo.iname) == 0);
+        assert(ginfo.num_prepend_bytes == dinfo.num_prepend_bytes);
+        r = txn->commit(txn, 0); CKERR(r);
+
+        // now let's remove these one by one, and verify the iname dissappears only
+        // after removing both        
+        assert(iname_exists(env, &dinfo));
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        verify_iname_refcount(env, txn, &dinfo, 2);
+        r = env->dbremove(env, txn, "foo", NULL, 0); CKERR(r);
+        verify_iname_refcount(env, txn, &dinfo, 1);
+        r = txn->commit(txn, 0); CKERR(r);
+        assert(iname_exists(env, &dinfo));
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        verify_iname_refcount(env, txn, &dinfo, 1);
+        r = env->dbremove(env, txn, "bar", NULL, 0); CKERR(r);
+        verify_iname_refcount(env, txn, &dinfo, 0);
+        assert(iname_exists(env, &dinfo));
+        r = txn->commit(txn, 0); CKERR(r);
+        assert(!iname_exists(env, &dinfo));
+
+        shutdown(env);
+        dinfo.destroy();
+        dinfo2.destroy();
+        ginfo.destroy();
+    }
 };
 
 
@@ -461,8 +541,9 @@ test_main(int argc, char *const argv[]) {
     dictionary_test::run_single_db_test();
     dictionary_test::run_multiple_db_test();
     dictionary_test::run_dictionary_id_generation_test();
-*/
     dictionary_test::test_no_groupname();
     dictionary_test::test_simple_rename();
+    */
+    dictionary_test::test_groups();
     return 0;
 }

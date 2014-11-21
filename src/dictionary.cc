@@ -273,6 +273,7 @@ void dictionary::fill_ft_key(const DBT* in, void* buf, DBT* out) {
         uint64_t swapped_prepend_id = SWAP64(m_prepend_id);
         memcpy(pos, &swapped_prepend_id, sizeof(uint64_t));
         pos += sizeof(uint64_t);
+        // when in is NULL, we are essentially filling in a minimum key
         memcpy(pos, in->data, in->size);
         toku_fill_dbt(out, buf, in->size+m_num_prepend_bytes);
     }
@@ -1270,8 +1271,10 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
         invariant(dinfo.groupname != nullptr);
         invariant(dinfo.num_prepend_bytes > 0);
         DBT ft_min_key;
+        DBT dummy;
+        toku_init_dbt(&dummy);
         void* min_data = alloca(sizeof(uint64_t));
-        db->i->dict->fill_ft_key(nullptr, min_data, &ft_min_key);
+        db->i->dict->fill_ft_key(&dummy, min_data, &ft_min_key);
         DBT ft_max_key;
         void* max_data = alloca(sizeof(uint64_t));
         db->i->dict->fill_max_key(max_data, &ft_max_key);
