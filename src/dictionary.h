@@ -329,6 +329,8 @@ private:
     int validate_metadata_db(DB_ENV* env, const char* iname, bool expect_newenv);
     // helper function for open_db and create_db_with_groupname
     int finish_open_db(DB* db, DB_TXN* txn, dictionary_info* dinfo, uint32_t flags, bool is_create);
+    // helper function for remove and rename
+    int verify_no_open_handles(const char * dname, DB_ENV* env);
 
 public:
     dictionary_manager() : 

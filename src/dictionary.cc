@@ -1157,11 +1157,17 @@ dictionary_manager::can_acquire_table_lock(DB_ENV *env, DB_TXN *txn, const dicti
 }
 
 int dictionary_manager::rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname) {
-    // TODO: possibly do an early check to see if handles open
+    // an early check to see if handles open, official check
+    // comes after we've grabbed the necessary locks, but this will
+    // prevent grabbing locks when we know it is unnecessary
     dictionary_info dinfo;
-    dictionary* old_dict = NULL;
-    dictionary* new_dict = NULL;
-    int r = pdm.get_dinfo(old_dname, txn, &dinfo);
+
+    int r = verify_no_open_handles(old_dname, env);
+    if (r != 0) goto exit;
+    r = verify_no_open_handles(new_dname, env);
+    if (r != 0) goto exit;
+
+    r = pdm.get_dinfo(old_dname, txn, &dinfo);
     if (r != 0) {
         if (r == DB_NOTFOUND) {
             r = ENOENT;
@@ -1176,19 +1182,11 @@ int dictionary_manager::rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, 
     // we can do perform the operation, namely,
     // make sure no open handles exist and make sure
     // we can grab a table lock on the dictionary
-    old_dict = idm.find(old_dname);
-    new_dict = idm.find(new_dname);
-    
-    if (old_dict) {
-        printf("Cannot rename dictionary with an open handle.\n");
-        r = EINVAL;
-        goto exit;
-    }
-    if (new_dict) {
-        printf("Cannot rename dictionary; Dictionary with target name has an open handle.\n");
-        r = EINVAL;
-        goto exit;
-    }
+    r = verify_no_open_handles(old_dname, env);
+    if (r != 0) goto exit;
+    r = verify_no_open_handles(new_dname, env);
+    if (r != 0) goto exit;
+
     // the dinfo below holds the old dname, even though the rename has happened
     // that should be ok, because the locktree does not depend on the dname
     if (txn && !can_acquire_table_lock(env, txn, &dinfo)) {
@@ -1200,12 +1198,24 @@ exit:
     return r;
 }
 
+int dictionary_manager::verify_no_open_handles(const char * dname, DB_ENV* env) {
+    dictionary* dict = NULL;
+    dict = idm.find(dname);
+    // Now that we have a writelock on dname, verify that there are still no handles open. (to prevent race conditions)
+    if (dict) {
+        return toku_ydb_do_error(env, EINVAL, "Cannot do fileops with an open handle on %s.\n", dname);
+    }
+    return 0;
+}
+
 int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
-    // TODO: perhaps add a fast path of bailing if open handles exist
     DB *db = NULL;
     bool unlink = false;
     dictionary_info dinfo;
-    int r = pdm.get_dinfo(dname, txn, &dinfo);
+    int r = verify_no_open_handles(dname, env);
+    if (r != 0) goto exit;
+    
+    r = pdm.get_dinfo(dname, txn, &dinfo);
     if (r != 0) {
         if (r == DB_NOTFOUND) {
             r = ENOENT;
@@ -1225,15 +1235,10 @@ int dictionary_manager::remove(const char * dname, DB_ENV* env, DB_TXN* txn) {
             r = toku_ydb_do_error(env, r, "toku dbremove failed\n");
         goto exit;
     }
-    {
-        dictionary* old_dict = NULL;
-        old_dict = idm.find(dname);
-        // Now that we have a writelock on dname, verify that there are still no handles open. (to prevent race conditions)
-        if (old_dict) {
-            r = toku_ydb_do_error(env, EINVAL, "Cannot remove dictionary with an open handle.\n");
-            goto exit;
-        }
-    }
+    // Now that we have a writelock on dname, verify that there are still no handles open. (to prevent race conditions)
+    r = verify_no_open_handles(dname, env);
+    if (r != 0) goto exit;
+
     if (txn) {
         // we know a live db handle does not exist.
         //
