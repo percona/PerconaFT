@@ -530,6 +530,87 @@ public:
         dinfo2.destroy();
         ginfo.destroy();
     }
+
+    static void try_remove(DB_ENV* env, const char* dname) {
+        DB_TXN* txn = NULL;
+        int r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        r = env->dbremove(env, txn, dname, NULL, 0);
+        CKERR2(r, DB_LOCK_NOTGRANTED);
+        r = txn->abort(txn); CKERR(r);
+    }
+
+    static void try_create(DB_ENV* env, const char* dname, const char* groupname) {
+        DB_TXN* txn = NULL;
+        DB* db;
+        int r = db_create(&db, env, 0); assert(r == 0);
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        r = db->create_new_db(db, txn, dname, groupname, 0);
+        CKERR2(r, DB_LOCK_NOTGRANTED);
+        r = txn->abort(txn); CKERR(r);
+        r = db->close(db, 0); CKERR(r);
+    }
+
+    static void check_rename_works(DB_ENV* env, const char* dname) {
+        DB_TXN* txn = NULL;
+        int r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        r = env->dbrename(env, txn, dname, NULL, "garbage", 0);
+        CKERR(r);
+        r = txn->abort(txn); CKERR(r);
+    }
+
+    // test that concurrent transactions doing fileops on the same
+    // groupname act in a predictable manner
+    static void test_group_conflicts() {
+        DB_ENV* env = startup();
+        const char* group = "group";
+        DB *db1;
+
+        // now the real test begins
+        int r = 0;
+        r = db_create(&db1, env, 0); assert(r == 0);
+        r = db1->create_new_db(db1, null_txn, "foo", group, 0);
+        CKERR(r);
+
+        DB_TXN* txn = NULL;
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        dictionary_info dinfo;
+        r = env->i->dict_manager.pdm.get_dinfo("foo", txn, &dinfo); CKERR(r);
+        // verify that the dinfo information is correct
+        verify_db_part_of_big_group(&dinfo, db1, group);
+        assert(iname_exists(env, &dinfo));
+        verify_iname_refcount(env, txn, &dinfo, 1);
+        r = txn->commit(txn, 0); CKERR(r);
+        r = db1->close(db1, 0); CKERR(r);
+
+        DB* db2;
+        r = db_create(&db2, env, 0); assert(r == 0);
+        r = db2->create_new_db(db2, null_txn, "bar", group, 0);  CKERR(r);
+        r = db2->close(db2, 0); CKERR(r);
+
+        DB* db3;
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        r = db_create(&db3, env, 0); assert(r == 0);
+        r = db3->create_new_db(db3, txn, "foof", group, 0); CKERR(r);
+        // now that we have a dictionary created, verify other ops
+        // on this groupname fail with DB_LOCK_NOTGRANTED
+        try_remove(env, "foo");
+        try_create(env, "asdf", group);
+        check_rename_works(env, "foo");
+        r = txn->commit(txn, 0); CKERR(r);
+        r = db3->close(db3, 0); CKERR(r);
+
+        r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
+        r = env->dbremove(env, txn, "bar", NULL, 0); CKERR(r);
+        // now that we have a dictionary created, verify other ops
+        // on this groupname fail with DB_LOCK_NOTGRANTED
+        try_remove(env, "foo");
+        try_create(env, "asdf", group);
+        check_rename_works(env, "foo");
+        r = txn->commit(txn, 0); CKERR(r);
+
+        shutdown(env);
+        dinfo.destroy();
+    }
 };
 
 
@@ -537,13 +618,12 @@ int
 test_main(int argc, char *const argv[]) {
     parse_args(argc, argv);
 
-    /*
     dictionary_test::run_single_db_test();
     dictionary_test::run_multiple_db_test();
     dictionary_test::run_dictionary_id_generation_test();
     dictionary_test::test_no_groupname();
     dictionary_test::test_simple_rename();
-    */
     dictionary_test::test_groups();
+    dictionary_test::test_group_conflicts();
     return 0;
 }
