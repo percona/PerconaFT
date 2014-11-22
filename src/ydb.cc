@@ -1853,28 +1853,6 @@ env_get_iname(DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt) {
     return env->i->dict_manager.get_iname_in_dbt(env, dname_dbt, iname_dbt);
 }
 
-// TODO 2216:  Patch out this (dangerous) function when loader is working and 
-//             we don't need to test the low-level redirect anymore.
-// for use by test programs only, just a wrapper around ft call:
-int
-toku_test_db_redirect_dictionary(DB * db, const char * dname_of_new_file, DB_TXN *dbtxn) {
-    int r;
-    char * new_iname_in_env;
-
-    FT_HANDLE ft_handle = db->i->ft_handle;
-    TOKUTXN tokutxn = db_txn_struct_i(dbtxn)->tokutxn;
-
-    r = db->dbenv->i->dict_manager.get_iname(dname_of_new_file, dbtxn, &new_iname_in_env);
-    assert_zero(r);
-
-    toku_multi_operation_client_lock(); //Must hold MO lock for dictionary_redirect.
-    r = toku_dictionary_redirect(new_iname_in_env, ft_handle, tokutxn);
-    toku_multi_operation_client_unlock();
-
-    toku_free(new_iname_in_env);
-    return r;
-}
-
 //Tets only function
 uint64_t
 toku_test_get_latest_lsn(DB_ENV *env) {

@@ -168,16 +168,7 @@ struct __toku_loader_internal {
     DBT err_val;   /* error val */
     int err_i;     /* error i   */
     int err_errno;
-
-    char **inames_in_env; /* [N]  inames of new files to be created */
 };
-
-static void free_inames(char **inames, int n) {
-    for (int i = 0; i < n; i++) {
-        toku_free(inames[i]);
-    }
-    toku_free(inames);
-}
 
 /*
  *  free_loader_resources() frees all of the resources associated with
@@ -191,10 +182,6 @@ static void free_loader_resources(DB_LOADER *loader)
         toku_destroy_dbt(&loader->i->err_key);
         toku_destroy_dbt(&loader->i->err_val);
 
-        if (loader->i->inames_in_env) {
-            free_inames(loader->i->inames_in_env, loader->i->N);
-            loader->i->inames_in_env = nullptr;
-        }
         toku_free(loader->i->temp_file_template);
         loader->i->temp_file_template = nullptr;
 
@@ -212,26 +199,6 @@ static void free_loader(DB_LOADER *loader)
 
 static const char *loader_temp_prefix = "tokuld"; // #2536
 static const char *loader_temp_suffix = "XXXXXX";
-
-static int ft_loader_close_and_redirect(DB_LOADER *loader) {
-    int r;
-    // use the bulk loader
-    // in case you've been looking - here is where the real work is done!
-    r = toku_ft_loader_close(loader->i->ft_loader,
-                              loader->i->error_callback, loader->i->error_extra,
-                              loader->i->poll_func,      loader->i->poll_extra);
-    if ( r==0 ) {
-        for (int i=0; i<loader->i->N; i++) {
-            toku_multi_operation_client_lock(); //Must hold MO lock for dictionary_redirect.
-            r = toku_dictionary_redirect(loader->i->inames_in_env[i],
-                                         loader->i->dbs[i]->i->ft_handle,
-                                         db_txn_struct_i(loader->i->txn)->tokutxn);
-            toku_multi_operation_client_unlock();
-            if ( r!=0 ) break;
-        }
-    }
-    return r;
-}
 
 
 // loader_flags currently has the following flags:
@@ -318,50 +285,22 @@ toku_loader_create_loader(DB_ENV *env,
             compare_functions[i] = env->i->bt_compare;
         }
 
-        // time to open the big kahuna
-        char **XMALLOC_N(N, new_inames_in_env);
-        for (int i = 0; i < N; i++) {
-            new_inames_in_env[i] = nullptr;
-        }
-        FT_HANDLE *XMALLOC_N(N, fts);
-        for (int i=0; i<N; i++) {
-            fts[i] = dbs[i]->i->ft_handle;
-        }
-        LSN load_lsn;
-        rval = locked_load_inames(env, loader_txn, N, dbs, new_inames_in_env, &load_lsn, puts_allowed);
-        if ( rval!=0 ) {
-            free_inames(new_inames_in_env, N);
-            toku_free(fts);
-            goto create_exit;
-        }
-        TOKUTXN ttxn = loader_txn ? db_txn_struct_i(loader_txn)->tokutxn : NULL;
         rval = toku_ft_loader_open(&loader->i->ft_loader,
                                  env->i->cachetable,
                                  env->i->generate_row_for_put,
                                  src_db,
                                  N,
-                                 fts, dbs,
-                                 (const char **)new_inames_in_env,
+                                 dbs,
                                  compare_functions,
                                  loader->i->temp_file_template,
-                                 load_lsn,
-                                 ttxn,
                                  puts_allowed,
                                  env->get_loader_memory_size(env),
-                                 compress_intermediates,
-                                 puts_allowed);
+                                 compress_intermediates);
         if ( rval!=0 ) {
-            free_inames(new_inames_in_env, N);
-            toku_free(fts);
             goto create_exit;
         }
 
-        loader->i->inames_in_env = new_inames_in_env;
-        toku_free(fts);
-
         if (!puts_allowed) {
-            rval = ft_loader_close_and_redirect(loader);
-            assert_zero(rval);
             loader->i->ft_loader = NULL;
             // close the ft_loader and skip to the redirection
             rval = 0;
@@ -458,24 +397,6 @@ int toku_loader_put(DB_LOADER *loader, DBT *key, DBT *val)
     return r;
 }
 
-static void redirect_loader_to_empty_dictionaries(DB_LOADER *loader) {
-    DB_LOADER* tmp_loader = NULL;
-    int r = toku_loader_create_loader(
-        loader->i->env,
-        loader->i->txn,
-        &tmp_loader,
-        loader->i->src_db,
-        loader->i->N,
-        loader->i->dbs,
-        loader->i->db_flags,
-        loader->i->dbt_flags,
-        LOADER_DISALLOW_PUTS,
-        false
-        );
-    lazy_assert_zero(r);
-    r = toku_loader_close(tmp_loader);
-}
-
 int toku_loader_close(DB_LOADER *loader) 
 {
     (void) toku_sync_fetch_and_sub(&STATUS_VALUE(LOADER_CURRENT), 1);
@@ -486,19 +407,12 @@ int toku_loader_close(DB_LOADER *loader)
         }
         if (!(loader->i->loader_flags & LOADER_DISALLOW_PUTS ) ) {
             r = toku_ft_loader_abort(loader->i->ft_loader, true);
-            redirect_loader_to_empty_dictionaries(loader);
         }
         else {
             r = loader->i->err_errno;
         }
     } 
     else { // no error outstanding 
-        if (!(loader->i->loader_flags & LOADER_DISALLOW_PUTS ) ) {
-            r = ft_loader_close_and_redirect(loader);
-            if (r) {
-                redirect_loader_to_empty_dictionaries(loader);
-            }
-        }
     }
     free_loader(loader);
     if (r==0)
@@ -524,7 +438,6 @@ int toku_loader_abort(DB_LOADER *loader)
         lazy_assert_zero(r);
     }
 
-    redirect_loader_to_empty_dictionaries(loader);
     free_loader(loader);
     return r;
 }

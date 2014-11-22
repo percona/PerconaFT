@@ -146,7 +146,6 @@ static int write_dbfile (char *tf_template, int n, char *output_name, bool expec
 	DBT val;
         toku_fill_dbt(&val, &i, sizeof i);
 	add_row(&aset, &key, &val);
-	size_est += ft_loader_leafentry_size(key.size, val.size, TXNID_NONE);
     }
 
     toku_ft_loader_set_n_rows(&bl, n);
@@ -182,7 +181,6 @@ static int write_dbfile (char *tf_template, int n, char *output_name, bool expec
 	    assert(row->klen==sizeof(int));
 	    assert(row->vlen==sizeof(int));
 	    assert((int)(num_found+i)==*(int*)(rs->data+row->off));
-	    found_size_est += ft_loader_leafentry_size(row->klen, row->vlen, TXNID_NONE);
 	}
 
 	num_found += rs->n_rows;

@@ -1097,23 +1097,6 @@ static int toku_recover_backward_shutdown (struct logtype_shutdown *UU(l), RECOV
     return 0;
 }
 
-static int toku_recover_load(struct logtype_load *UU(l), RECOVER_ENV UU(renv)) {
-    TOKUTXN txn = NULL;
-    toku_txnid2txn(renv->logger, l->xid, &txn);
-    assert(txn!=NULL);
-    char *new_iname = fixup_fname(&l->new_iname);
-
-    toku_ft_load_recovery(txn, l->old_filenum, new_iname, 0, 0, (LSN*)NULL);
-
-    toku_free(new_iname);
-    return 0;
-}
-
-static int toku_recover_backward_load(struct logtype_load *UU(l), RECOVER_ENV UU(renv)) {
-    // nothing
-    return 0;
-}
-
 // #2954
 static int toku_recover_hot_index(struct logtype_hot_index *UU(l), RECOVER_ENV UU(renv)) {
     TOKUTXN txn = NULL;

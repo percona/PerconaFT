@@ -484,25 +484,6 @@ int persistent_dictionary_manager::pre_acquire_fileops_lock(DB_TXN* txn, char* d
             toku::lock_request::type::WRITE);
 }
 
-int persistent_dictionary_manager::change_iname(
-    DB_TXN* txn,
-    const char* dname,
-    const char* new_iname,
-    uint32_t put_flags)
-{
-    dictionary_info dinfo;
-    int r = get_dinfo(dname, txn, &dinfo);
-    if (r != 0) goto cleanup;
-
-    toku_free(dinfo.iname);
-    dinfo.iname = toku_strdup(new_iname);
-    r = write_to_detailsdb(txn, &dinfo, put_flags);
-
-cleanup:
-    dinfo.destroy();
-    return r;
-}
-
 int persistent_dictionary_manager::rename(DB_TXN* txn, const char *old_dname, const char *new_dname) {
     dictionary_info dinfo;
     dictionary_info dummy; // used to verify an iname does not already exist for new_dname

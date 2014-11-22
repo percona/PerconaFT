@@ -144,8 +144,6 @@ toku_ft_init(
     uint32_t fanout
     );
 
-int toku_dictionary_redirect_abort(FT old_h, FT new_h, TOKUTXN txn) __attribute__ ((warn_unused_result));
-int toku_dictionary_redirect (const char *dst_fname_in_env, FT_HANDLE old_ft, TOKUTXN txn);
 void toku_reset_root_xid_that_created(FT ft, TXNID new_root_xid_that_created);
 // Reset the root_xid_that_created field to the given value.
 // This redefines which xid created the dictionary.

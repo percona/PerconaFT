@@ -2381,20 +2381,6 @@ void toku_ft_insert (FT_HANDLE ft_handle, DBT *key, DBT *val, TOKUTXN txn) {
     toku_ft_maybe_insert(ft_handle, key, val, txn, false, ZERO_LSN, true, FT_INSERT);
 }
 
-void toku_ft_load_recovery(TOKUTXN txn, FILENUM old_filenum, char const * new_iname, int do_fsync, int do_log, LSN *load_lsn) {
-    paranoid_invariant(txn);
-    toku_txn_force_fsync_on_commit(txn);  //If the txn commits, the commit MUST be in the log
-                                          //before the (old) file is actually unlinked
-    TOKULOGGER logger = toku_txn_logger(txn);
-
-    BYTESTRING new_iname_bs = {.len=(uint32_t) strlen(new_iname), .data=(char*)new_iname};
-    toku_logger_save_rollback_load(txn, old_filenum, &new_iname_bs);
-    if (do_log && logger) {
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        toku_log_load(logger, load_lsn, do_fsync, txn, xid, old_filenum, new_iname_bs);
-    }
-}
-
 // 2954
 // this function handles the tasks needed to be recoverable
 //  - write to rollback log
@@ -2447,12 +2433,6 @@ void toku_ft_optimize (FT_HANDLE ft_h) {
         toku_ft_root_put_msg(ft_h->ft, msg, &gc_info);
         toku_xids_destroy(&message_xids);
     }
-}
-
-void toku_ft_load(FT_HANDLE ft_handle, TOKUTXN txn, char const * new_iname, int do_fsync, LSN *load_lsn) {
-    FILENUM old_filenum = toku_cachefile_filenum(ft_handle->ft->cf);
-    int do_log = 1;
-    toku_ft_load_recovery(txn, old_filenum, new_iname, do_fsync, do_log, load_lsn);
 }
 
 // ft actions for logging hot index filenums

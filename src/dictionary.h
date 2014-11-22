@@ -266,7 +266,6 @@ public:
     int get_directory_cursor(DB_TXN* txn, DBC** c);
     int get_dinfo(const char* dname, DB_TXN* txn, dictionary_info* dinfo);
     int get_iname(const char* dname, DB_TXN* txn, char** iname);
-    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags);
     int pre_acquire_fileops_lock(DB_TXN* txn, char* dname);
     int create_new_db(DB_TXN* txn, const char* dname, const char* groupname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo);
     int remove(dictionary_info* dinfo, DB_TXN* txn, bool* unlink_iname);
@@ -351,10 +350,6 @@ public:
         return pdm.get_iname(dname, txn, iname);
     }
     int get_iname_in_dbt(DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt);
-    // used in a part of bulk loading
-    int change_iname(DB_TXN* txn, const char* dname, const char* new_iname, uint32_t put_flags) {
-        return pdm.change_iname(txn, dname, new_iname, put_flags);
-    }
     int pre_acquire_fileops_lock(DB_TXN* txn, char* dname) {
         return pdm.pre_acquire_fileops_lock(txn, dname);
     }

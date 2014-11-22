@@ -163,9 +163,6 @@ const struct logtype rollbacks[] = {
     // #2954
     {"hot_index", 'h', FA{{"FILENUMS",  "hot_index_filenums", 0},
                           NULLFIELD}, LOG_BEGIN_ACTION_NA},
-    {"dictionary_redirect", 'R', FA{{"FILENUM", "old_filenum", 0},
-                                    {"FILENUM", "new_filenum", 0},
-                                    NULLFIELD}, LOG_BEGIN_ACTION_NA},
     {"cmdupdate", 'u', FA{{"FILENUM", "filenum", 0},
                           {"BYTESTRING", "key", 0},
                           NULLFIELD}, LOG_BEGIN_ACTION_NA},
@@ -291,10 +288,6 @@ const struct logtype logtypes[] = {
     {"shutdown", '0', FA{{"uint64_t", "timestamp", 0},
                          {"TXNID", "last_xid", 0},
                          NULLFIELD}, IGNORE_LOG_BEGIN},
-    {"load", 'l', FA{{"TXNID_PAIR",      "xid", 0},
-                     {"FILENUM",    "old_filenum", 0},
-                     {"BYTESTRING", "new_iname", 0},
-                     NULLFIELD}, SHOULD_LOG_BEGIN},
     // #2954
     {"hot_index", 'h', FA{{"TXNID_PAIR",     "xid", 0},
                           {"FILENUMS",  "hot_index_filenums", 0},
