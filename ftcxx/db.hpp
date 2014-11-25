@@ -142,6 +142,11 @@ namespace ftcxx {
                                                    bool forward=true, bool end_exclusive=false, bool prelock=false) const;
 
         template<class Comparator, class Handler>
+        CallbackCursor<Comparator, Handler> cursor(const DBTxn &txn, const Slice &start_key,
+                                                   Comparator &&cmp, Handler &&handler, int flags=0,
+                                                   bool forward=true, bool end_exclusive=false, bool prelock=false) const;
+
+        template<class Comparator, class Handler>
         CallbackCursor<Comparator, Handler> cursor(const DBTxn &txn, const Slice &left, const Slice &right,
                                                    Comparator &&cmp, Handler &&handler, int flags=0,
                                                    bool forward=true, bool end_exclusive=false, bool prelock=false) const;
@@ -156,6 +161,11 @@ namespace ftcxx {
                                                               bool forward=true, bool end_exclusive=false, bool prelock=false) const;
 
         template<class Comparator, class Predicate>
+        BufferedCursor<Comparator, Predicate> buffered_cursor(const DBTxn &txn, const Slice &start_key,
+                                                              Comparator &&cmp, Predicate &&filter, int flags=0,
+                                                              bool forward=true, bool end_exclusive=false, bool prelock=false) const;
+
+        template<class Comparator, class Predicate>
         BufferedCursor<Comparator, Predicate> buffered_cursor(const DBTxn &txn, const Slice &left, const Slice &right,
                                                               Comparator &&cmp, Predicate &&filter, int flags=0,
                                                               bool forward=true, bool end_exclusive=false, bool prelock=false) const;
@@ -166,6 +176,11 @@ namespace ftcxx {
 
         template<class Comparator>
         SimpleCursor<Comparator> simple_cursor(const DBTxn &txn, DBT *left, DBT *right,
+                                               Comparator &&cmp, Slice &key, Slice &val, int flags=0,
+                                               bool forward=true, bool end_exclusive=false, bool prelock=false) const;
+
+        template<class Comparator>
+        SimpleCursor<Comparator> simple_cursor(const DBTxn &txn, const Slice &start_key,
                                                Comparator &&cmp, Slice &key, Slice &val, int flags=0,
                                                bool forward=true, bool end_exclusive=false, bool prelock=false) const;
 

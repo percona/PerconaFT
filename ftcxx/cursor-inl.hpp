@@ -253,6 +253,18 @@ namespace ftcxx {
     }
 
     template<class Comparator, class Handler>
+    CallbackCursor<Comparator, Handler> DB::cursor(const DBTxn &txn, const Slice &start_key,
+                                                   Comparator &&cmp, Handler &&handler, int flags,
+                                                   bool forward, bool end_exclusive, bool prelock) const {
+        IterationStrategy strategy(forward, prelock);
+        Bounds bounds = forward
+            ? Bounds(*this, start_key, Bounds::Infinite(), end_exclusive)
+            : Bounds(*this, Bounds::Infinite(), start_key, end_exclusive);
+        return CallbackCursor<Comparator, Handler>(*this, txn, flags, strategy, std::move(bounds),
+                                                   std::forward<Comparator>(cmp), std::forward<Handler>(handler));
+    }
+
+    template<class Comparator, class Handler>
     CallbackCursor<Comparator, Handler> DB::cursor(const DBTxn &txn, const Slice &left, const Slice &right,
                                                    Comparator &&cmp, Handler &&handler, int flags,
                                                    bool forward, bool end_exclusive, bool prelock) const {
@@ -282,6 +294,18 @@ namespace ftcxx {
     }
 
     template<class Comparator, class Predicate>
+    BufferedCursor<Comparator, Predicate> DB::buffered_cursor(const DBTxn &txn, const Slice &start_key,
+                                                              Comparator &&cmp, Predicate &&filter, int flags,
+                                                              bool forward, bool end_exclusive, bool prelock) const {
+        IterationStrategy strategy(forward, prelock);
+        Bounds bounds = forward
+            ? Bounds(*this, start_key, Bounds::Infinite(), end_exclusive)
+            : Bounds(*this, Bounds::Infinite(), start_key, end_exclusive);
+        return BufferedCursor<Comparator, Predicate>(*this, txn, flags, strategy, std::move(bounds),
+                                                     std::forward<Comparator>(cmp), std::forward<Predicate>(filter));
+    }
+
+    template<class Comparator, class Predicate>
     BufferedCursor<Comparator, Predicate> DB::buffered_cursor(const DBTxn &txn, const Slice &left, const Slice &right,
                                                               Comparator &&cmp, Predicate &&filter, int flags,
                                                               bool forward, bool end_exclusive, bool prelock) const {
@@ -307,6 +331,18 @@ namespace ftcxx {
         IterationStrategy strategy(forward, prelock);
         return SimpleCursor<Comparator>(*this, txn, flags, strategy,
                                         Bounds(*this, Slice(*left), Slice(*right), end_exclusive),
+                                        std::forward<Comparator>(cmp), key, val);
+    }
+
+    template<class Comparator>
+    SimpleCursor<Comparator> DB::simple_cursor(const DBTxn &txn, const Slice &start_key,
+                                               Comparator &&cmp, Slice &key, Slice &val, int flags,
+                                               bool forward, bool end_exclusive, bool prelock) const {
+        IterationStrategy strategy(forward, prelock);
+        Bounds bounds = forward
+            ? Bounds(*this, start_key, Bounds::Infinite(), end_exclusive)
+            : Bounds(*this, Bounds::Infinite(), start_key, end_exclusive);
+        return SimpleCursor<Comparator>(*this, txn, flags, strategy, std::move(bounds),
                                         std::forward<Comparator>(cmp), key, val);
     }
 
