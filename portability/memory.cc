@@ -373,7 +373,7 @@ void* toku_xmalloc_aligned(size_t alignment, size_t size)
         status.max_requested_size = size;
     }
     void *p = t_xmalloc_aligned ? t_xmalloc_aligned(alignment, size) : os_malloc_aligned(alignment,size);
-    if (p == NULL) {
+    if (p == NULL && size != 0) {
         status.last_failed_size = size;
         resource_assert(p);
     }
