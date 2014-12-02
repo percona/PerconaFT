@@ -402,7 +402,7 @@ static void test (const char *directory, bool is_error) {
     }
     LSN *XMALLOC(lsnp);
     {
-	int r = toku_ft_loader_internal_init (&bl,
+	int r = toku_ft_loader_internal_init (&bl, NULL, NULL,
 					       ct,
 					       (generate_row_for_put_func)NULL,
 					       (DB*)NULL,

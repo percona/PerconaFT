@@ -100,9 +100,13 @@ typedef void (*ft_loader_error_func)(DB *, int which_db, int err, DBT *key, DBT 
 
 typedef int (*ft_loader_poll_func)(void *extra, float progress);
 
+typedef int (*ft_loader_write_func)(DB *, DBT *k, DBT* val, void* extra);
+
 typedef struct ft_loader_s *FTLOADER;
 
 int toku_ft_loader_open (FTLOADER *bl,
+                          ft_loader_write_func write_func,
+                          void* write_func_extra,
                           CACHETABLE cachetable,
                           generate_row_for_put_func g,
                           DB *src_db,

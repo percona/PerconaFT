@@ -322,7 +322,7 @@ toku_indexer_create_indexer(DB_ENV *env,
     {
         assert(false); // poison this to remember to get back to fix this
         DB_LOADER* loader = NULL;
-        rval = toku_loader_create_loader(env, txn, &loader, NULL, N, &dest_dbs[0], NULL, NULL, DB_PRELOCKED_WRITE | LOADER_DISALLOW_PUTS, true);
+        rval = toku_loader_create_loader(env, txn, &loader, NULL, N, &dest_dbs[0], NULL, NULL, DB_PRELOCKED_WRITE | LOADER_DISALLOW_PUTS);
         if (rval) {
             goto create_exit;
         }

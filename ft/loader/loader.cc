@@ -514,6 +514,8 @@ static uint64_t memory_per_rowset_during_merge (FTLOADER bl, int merge_factor, b
 }
 
 int toku_ft_loader_internal_init (/* out */ FTLOADER *blp,
+                                   ft_loader_write_func write_func,
+                                   void* write_func_extra,
                                    CACHETABLE cachetable,
                                    generate_row_for_put_func g,
                                    DB *src_db,
@@ -527,7 +529,8 @@ int toku_ft_loader_internal_init (/* out */ FTLOADER *blp,
 {
     FTLOADER CALLOC(bl); // initialized to all zeros (hence CALLOC)
     if (!bl) return get_error_errno();
-
+    bl->write_func = write_func;
+    bl->write_func_extra = write_func_extra;
     bl->generate_row_for_put = g;
     bl->cachetable = cachetable;
     if (reserve_memory && bl->cachetable) {
@@ -597,6 +600,8 @@ int toku_ft_loader_internal_init (/* out */ FTLOADER *blp,
 }
 
 int toku_ft_loader_open (FTLOADER *blp, /* out */
+                          ft_loader_write_func write_func,
+                          void* write_func_extra,
                           CACHETABLE cachetable,
                           generate_row_for_put_func g,
                           DB *src_db,
@@ -620,7 +625,8 @@ int toku_ft_loader_open (FTLOADER *blp, /* out */
 // Return value: 0 on success, an error number otherwise.
     int result = 0;
     {
-        int r = toku_ft_loader_internal_init(blp, cachetable, g, src_db,
+        int r = toku_ft_loader_internal_init(blp, write_func, write_func_extra,
+                                              cachetable, g, src_db,
                                               N, dbs,
                                               bt_compare_functions,
                                               temp_file_template,
@@ -1572,6 +1578,7 @@ static int update_progress (int N,
 {
     // Must protect the increment and the call to the poll_function.
     toku_mutex_lock(&update_progress_lock);
+//printf("updateing with %d, %d\n", N, x);
     bl->progress+=N;
 
     int result;
@@ -2109,20 +2116,17 @@ static void drain_writer_q(QUEUE q) {
 }
 
 static int toku_loader_write_ft_from_q (FTLOADER bl,
-                                         int progress_allocation UU(),
+                                         int progress_allocation,
                                          QUEUE q,
                                          int which_db)
 // Effect: Consume a sequence of rowsets work from a queue, creating a fractal tree.  Closes fd.
 {
     // set the number of fractal tree writer threads so that we can partition memory in the merger
     ft_loader_set_fractal_workers_count(bl);
-
+    int progress_quantile = 2*(bl->n_rows)/100;
+    uint64_t n_rows_processed = 0;
     int result = 0;
     int r = 0;
-
-    //TXNID le_xid = leafentry_xid(bl, which_db);
-    uint64_t n_rows_remaining = bl->n_rows;
-
     while (result == 0) {
         void *item;
         {
@@ -2136,21 +2140,32 @@ static int toku_loader_write_ft_from_q (FTLOADER bl,
         struct rowset *output_rowset = (struct rowset *)item;
 
         for (unsigned int i = 0; i < output_rowset->n_rows; i++) {
-            DBT key UU() = make_dbt(output_rowset->data+output_rowset->rows[i].off, output_rowset->rows[i].klen);
-            DBT val UU() = make_dbt(output_rowset->data+output_rowset->rows[i].off + output_rowset->rows[i].klen, output_rowset->rows[i].vlen);
-
+            n_rows_processed++;
+            DBT key = make_dbt(output_rowset->data+output_rowset->rows[i].off, output_rowset->rows[i].klen);
+            DBT val = make_dbt(output_rowset->data+output_rowset->rows[i].off + output_rowset->rows[i].klen, output_rowset->rows[i].vlen);
+            // some unit tests may not set a write function
+            if (bl->write_func) {
+                int rr = bl->write_func(bl->dbs[which_db], &key, &val, bl->write_func_extra);
+                if (rr != 0) {
+                    ft_loader_set_panic(bl, rr, true, which_db, nullptr, nullptr);
+                    goto error;
+                }
+            }
             // TODO: need calls to update_progress to check if we should abort early
-            n_rows_remaining--;
+            if (progress_quantile && n_rows_processed % progress_quantile == 0) {
+                r = update_progress((progress_allocation/100), bl, "writing rows");
+                if (r) {
+                    result = r; goto error;
+                }
+            }
         }
 
-        if (result == 0) {
-            result = r;
-        }
         destroy_rowset(output_rowset);
         toku_free(output_rowset);
 
-        if (result == 0)
+        if (result == 0) {
             result = ft_loader_get_error(&bl->error_callback); // check if an error was posted and terminate this quickly
+        }
     }
 
     if (result == 0) {
@@ -2281,7 +2296,6 @@ static int toku_ft_loader_close_internal (FTLOADER bl)
     }
     invariant(bl->file_infos.n_files_open   == 0);
     invariant(bl->file_infos.n_files_extant == 0);
-    invariant(bl->progress == PROGRESS_MAX);
  error:
     toku_ft_loader_internal_destroy(bl, (bool)(result!=0));
     return result;
@@ -2298,9 +2312,12 @@ int toku_ft_loader_close (FTLOADER bl,
 
     //printf("Closing\n");
 
-    ft_loader_set_error_function(&bl->error_callback, error_function, error_extra);
-
-    ft_loader_set_poll_function(&bl->poll_callback, poll_function, poll_extra);
+    if (error_function) {
+        ft_loader_set_error_function(&bl->error_callback, error_function, error_extra);
+    }
+    if (poll_function) {
+        ft_loader_set_poll_function(&bl->poll_callback, poll_function, poll_extra);
+    }
 
     if (bl->extractor_live) {
         r = finish_extractor(bl);

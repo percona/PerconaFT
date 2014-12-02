@@ -175,7 +175,7 @@ static void test_extractor(int nrows, int nrowsets, bool expect_fail, const char
     sprintf(temp, "%s/%s", testdir, "tempXXXXXX");
 
     FTLOADER loader;
-    r = toku_ft_loader_open(&loader, NULL, generate, NULL, N, dbs, compares, "tempXXXXXX", true, 0, false);
+    r = toku_ft_loader_open(&loader, NULL, NULL, NULL, generate, NULL, N, dbs, compares, "tempXXXXXX", true, 0, false);
     assert(r == 0);
 
     struct rowset *rowset[nrowsets];

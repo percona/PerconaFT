@@ -105,6 +105,7 @@ PATENT RIGHTS GRANT:
 #include "ydb-internal.h"
 #include "ydb_db.h"
 #include "ydb_load.h"
+#include "ydb_write.h"
 
 #include "loader.h"
 #include <util/status.h>
@@ -200,6 +201,10 @@ static void free_loader(DB_LOADER *loader)
 static const char *loader_temp_prefix = "tokuld"; // #2536
 static const char *loader_temp_suffix = "XXXXXX";
 
+static int loader_put_callback(DB *db, DBT *key, DBT* val, void* extra) {
+    return toku_db_put(db,(DB_TXN *)extra, key, val, DB_PRELOCKED_WRITE, false);
+}
+
 
 // loader_flags currently has the following flags:
 //   LOADER_DISALLOW_PUTS     loader->put is not allowed.
@@ -214,8 +219,7 @@ toku_loader_create_loader(DB_ENV *env,
                           DB *dbs[],
                           uint32_t db_flags[/*N*/],
                           uint32_t dbt_flags[/*N*/],
-                          uint32_t loader_flags,
-                          bool check_empty) {
+                          uint32_t loader_flags) {
     int rval;
     HANDLE_READ_ONLY_TXN(txn);
     DB_TXN *loader_txn = nullptr;
@@ -263,12 +267,33 @@ toku_loader_create_loader(DB_ENV *env,
                 goto create_exit;
             }
         }
-        if (check_empty) {
-            bool empty = toku_ft_is_empty_fast(dbs[i]->i->ft_handle);
-            if (!empty) {
-                rval = ENOTEMPTY;
+        bool empty = true;
+        if (dbs[i]->i->dict->num_prepend_bytes() == 0) {
+            empty = toku_ft_is_empty_fast(dbs[i]->i->ft_handle);
+        }
+        else {
+            // make a cursor
+            DBC* c = NULL;
+            DBT key,val;
+            toku_init_dbt(&key);
+            toku_init_dbt(&val);
+            int rr = dbs[i]->cursor(dbs[i], txn, &c, DB_SERIALIZABLE);
+            assert_zero(rr);
+            rr = c->c_get(c, &key, &val, DB_LAST);
+            if (rr == DB_NOTFOUND) {
+                empty = true;
+            }
+            else if (rr == 0) {
+                empty = false;
+            }
+            else {
+                rval = rr;
                 goto create_exit;
             }
+        }
+        if (!empty) {
+            rval = ENOTEMPTY;
+            goto create_exit;
         }
     }
 
@@ -286,6 +311,8 @@ toku_loader_create_loader(DB_ENV *env,
         }
 
         rval = toku_ft_loader_open(&loader->i->ft_loader,
+                                 loader_put_callback,
+                                 txn,
                                  env->i->cachetable,
                                  env->i->generate_row_for_put,
                                  src_db,
@@ -298,12 +325,6 @@ toku_loader_create_loader(DB_ENV *env,
                                  compress_intermediates);
         if ( rval!=0 ) {
             goto create_exit;
-        }
-
-        if (!puts_allowed) {
-            loader->i->ft_loader = NULL;
-            // close the ft_loader and skip to the redirection
-            rval = 0;
         }
 
         rval = loader_txn->commit(loader_txn, 0);
@@ -413,6 +434,9 @@ int toku_loader_close(DB_LOADER *loader)
         }
     } 
     else { // no error outstanding 
+        r = toku_ft_loader_close(loader->i->ft_loader,
+                                  loader->i->error_callback, loader->i->error_extra,
+                                  loader->i->poll_func,      loader->i->poll_extra);
     }
     free_loader(loader);
     if (r==0)

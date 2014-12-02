@@ -218,6 +218,8 @@ struct ft_loader_s {
 
     generate_row_for_put_func generate_row_for_put;
     ft_compare_func *bt_compare_funs;
+    ft_loader_write_func write_func;
+    void* write_func_extra;
 
     DB *src_db;
     int N;
@@ -319,6 +321,8 @@ int ft_loader_fi_reopen (struct file_infos *fi, FIDX idx, const char *mode);
 int ft_loader_fi_unlink (struct file_infos *fi, FIDX idx);
 
 int toku_ft_loader_internal_init (/* out */ FTLOADER *blp,
+                                   ft_loader_write_func write_func,
+                                   void* write_func_extra,
                                    CACHETABLE cachetable,
                                    generate_row_for_put_func g,
                                    DB *src_db,
