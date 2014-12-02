@@ -98,6 +98,7 @@ namespace ftcxx {
         uint32_t _cleaner_iterations;
         uint32_t _checkpointing_period;
         uint32_t _fsync_log_period_msec;
+        int _fs_redzone;
 
         uint64_t _lk_max_memory;
         uint64_t _lock_wait_time_msec;
@@ -109,6 +110,9 @@ namespace ftcxx {
 
         uint32_t _cachesize_gbytes;
         uint32_t _cachesize_bytes;
+        uint32_t _cachetable_bucket_mutexes;
+
+        std::string _product_name;
 
         std::string _lg_dir;
         std::string _tmp_dir;
@@ -126,6 +130,7 @@ namespace ftcxx {
               _cleaner_iterations(0),
               _checkpointing_period(0),
               _fsync_log_period_msec(0),
+              _fs_redzone(0),
               _lk_max_memory(0),
               _lock_wait_time_msec(0),
               _get_lock_wait_time_cb(nullptr),
@@ -133,6 +138,8 @@ namespace ftcxx {
               _loader_memory_size_callback(nullptr),
               _cachesize_gbytes(0),
               _cachesize_bytes(0),
+              _cachetable_bucket_mutexes(0),
+              _product_name(""),
               _lg_dir(""),
               _tmp_dir(""),
               _direct_io(false),
@@ -142,6 +149,13 @@ namespace ftcxx {
         DBEnv open(const char *env_dir, uint32_t flags, int mode) const {
             db_env_set_direct_io(_direct_io);
             db_env_set_compress_buffers_before_eviction(_compress_buffers);
+            if (_cachetable_bucket_mutexes) {
+                db_env_set_num_bucket_mutexes(_cachetable_bucket_mutexes);
+            }
+
+            if (!_product_name.empty()) {
+                db_env_set_toku_product_name(_product_name.c_str());
+            }
 
             DB_ENV *env;
             int r = db_env_create(&env, 0);
@@ -193,6 +207,10 @@ namespace ftcxx {
             if (_cachesize_gbytes || _cachesize_bytes) {
                 r = env->set_cachesize(env, _cachesize_gbytes, _cachesize_bytes, 1);
                 handle_ft_retval(r);
+            }
+
+            if (_fs_redzone) {
+                env->set_redzone(env, _fs_redzone);
             }
 
             if (!_lg_dir.empty()) {
@@ -280,6 +298,11 @@ namespace ftcxx {
             return *this;
         }
 
+        DBEnvBuilder& set_fs_redzone(int fs_redzone) {
+            _fs_redzone = fs_redzone;
+            return *this;
+        }
+
         DBEnvBuilder& set_lk_max_memory(uint64_t sz) {
             _lk_max_memory = sz;
             return *this;
@@ -308,6 +331,16 @@ namespace ftcxx {
         DBEnvBuilder& set_cachesize(uint32_t gbytes, uint32_t bytes) {
             _cachesize_gbytes = gbytes;
             _cachesize_bytes = bytes;
+            return *this;
+        }
+
+        DBEnvBuilder& set_cachetable_bucket_mutexes(uint32_t mutexes) {
+            _cachetable_bucket_mutexes = mutexes;
+            return *this;
+        }
+
+        DBEnvBuilder& set_product_name(const char *product_name) {
+            _product_name = std::string(product_name);
             return *this;
         }
 
