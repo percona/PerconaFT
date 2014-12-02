@@ -67,6 +67,30 @@ namespace ftcxx {
             handle_ft_retval(r);
         }
 
+        int checkpointing_set_period(uint32_t period) {
+            if (!_env) {
+                return EINVAL;
+            }
+            _env->checkpointing_set_period(_env, period);
+            return 0;
+        }
+
+        int cleaner_set_iterations(uint32_t iterations) {
+            if (!_env) {
+                return EINVAL;
+            }
+            _env->cleaner_set_iterations(_env, iterations);
+            return 0;
+        }
+
+        int cleaner_set_period(uint32_t period) {
+            if (!_env) {
+                return EINVAL;
+            }
+            _env->cleaner_set_period(_env, period);
+            return 0;
+        }
+
         int change_fsync_log_period(uint32_t period) {
             if (!_env) {
                 return EINVAL;
