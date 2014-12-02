@@ -67,6 +67,14 @@ namespace ftcxx {
             handle_ft_retval(r);
         }
 
+        int change_fsync_log_period(uint32_t period) {
+            if (!_env) {
+                return EINVAL;
+            }
+            _env->change_fsync_log_period(_env, period);
+            return 0;
+        }
+
         /**
          * Constructs a Cursor over this DBEnv's directory.
          */
