@@ -90,10 +90,15 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2010-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
 
+#include <sys/time.h>
 #include "test.h"
 #include "serialize/compress.h"
 
-static void test_compress_buf_method (unsigned char *buf, int i, enum toku_compression_method m) {
+static float tdiff (struct timeval *start, struct timeval *end) {
+    return (end->tv_sec-start->tv_sec) + 1e-6*(end->tv_usec - start->tv_usec);
+}
+
+static uLongf test_compress_buf_method (unsigned char *buf, int i, enum toku_compression_method m) {
     int bound = toku_compress_bound(m, i);
     unsigned char *MALLOC_N(bound, cb);
     uLongf actual_clen = bound;
@@ -103,41 +108,89 @@ static void test_compress_buf_method (unsigned char *buf, int i, enum toku_compr
     assert(0==memcmp(ubuf, buf, i));
     toku_free(ubuf);
     toku_free(cb);
+    return actual_clen;
 }
 
-static void test_compress_buf (unsigned char *buf, int i) {
-    test_compress_buf_method(buf, i, TOKU_ZLIB_METHOD);
-    test_compress_buf_method(buf, i, TOKU_ZLIB_WITHOUT_CHECKSUM_METHOD);
-    test_compress_buf_method(buf, i, TOKU_QUICKLZ_METHOD);
-    test_compress_buf_method(buf, i, TOKU_LZMA_METHOD);
-}
-
-static void test_compress_i (int i) {
+static void test_compress_i (int i, enum toku_compression_method m, uLongf *compress_size, uLongf *uncompress_size) {
     unsigned char *MALLOC_N(i, b);
     for (int j=0; j<i; j++) b[j] = random()%256;
-    test_compress_buf (b, i);
+    *compress_size += test_compress_buf_method (b, i, m);
+    *uncompress_size += i;
+
     for (int j=0; j<i; j++) b[j] = 0;
-    test_compress_buf (b, i);
+    *compress_size += test_compress_buf_method (b, i, m);
+    *uncompress_size += i;
+
     for (int j=0; j<i; j++) b[j] = 0xFF;
-    test_compress_buf (b, i);
+    *compress_size += test_compress_buf_method(b, i, m);
+    *uncompress_size += i;
+
     toku_free(b);
 }
 
-static void test_compress (void) {
+static void test_compress (enum toku_compression_method m, uLongf *compress_size, uLongf *uncompress_size) {
     // unlike quicklz, we can handle length 0.
     for (int i=0; i<100; i++) {
-	test_compress_i(i);
+        test_compress_i(i, m, compress_size, uncompress_size);
     }
-    test_compress_i(1024);
-    test_compress_i(1024*1024*4);
-    test_compress_i(1024*1024*4 - 123); // just some random lengths
+    test_compress_i(1024, m, compress_size, uncompress_size);
+    test_compress_i(1024*1024*4, m, compress_size, uncompress_size);
+    test_compress_i(1024*1024*4 - 123, m, compress_size, uncompress_size); // just some random lengths
+}
+
+static void test_compress_methods () {
+    struct timeval start, end;
+    uLongf compress_size = 0;
+    uLongf uncompress_size = 0;
+
+    gettimeofday(&start, NULL);
+    test_compress(TOKU_ZLIB_METHOD, &compress_size, &uncompress_size);
+    gettimeofday(&end, NULL);
+    printf("TOKU_ZLIB_METHOD Time=%.6fs , Ratio=%.2f[%d/%d]\n",
+            tdiff(&start, &end),
+            (float)compress_size / (float)uncompress_size, (int)compress_size, (int)uncompress_size);
+
+    compress_size = 0;
+    uncompress_size = 0;
+    gettimeofday(&start, NULL);
+    test_compress(TOKU_ZLIB_WITHOUT_CHECKSUM_METHOD, &compress_size, &uncompress_size);
+    gettimeofday(&end, NULL);
+    printf("TOKU_ZLIB_WITHOUT_CHECKSUM_METHOD Time=%.6fs, Ratio=%.2f[%d/%d]\n",
+            tdiff(&start, &end),
+            (float)compress_size / (float)uncompress_size, (int)compress_size, (int)uncompress_size);
+
+    compress_size = 0;
+    uncompress_size = 0;
+    gettimeofday(&start, NULL);
+    test_compress(TOKU_QUICKLZ_METHOD, &compress_size, &uncompress_size);
+    gettimeofday(&end, NULL);
+    printf("TOKU_QUICKLZ_METHOD Time=%.6fs, Ratio=%.2f[%d/%d]\n",
+            tdiff(&start, &end),
+            (float)compress_size / (float)uncompress_size, (int)compress_size, (int)uncompress_size);
+
+    compress_size = 0;
+    uncompress_size = 0;
+    gettimeofday(&start, NULL);
+    test_compress(TOKU_LZMA_METHOD, &compress_size, &uncompress_size);
+    gettimeofday(&end, NULL);
+    printf("TOKU_LZMA_METHOD Time=%.6fs, Ratio=%.2f[%d/%d]\n",
+            tdiff(&start, &end),
+            (float)compress_size / (float)uncompress_size, (int)compress_size, (int)uncompress_size);
+
+    compress_size = 0;
+    uncompress_size = 0;
+    gettimeofday(&start, NULL);
+    test_compress(TOKU_SNAPPY_METHOD, &compress_size, &uncompress_size);
+    gettimeofday(&end, NULL);
+    printf("TOKU_SNAPPY_METHOD Time=%.6fs, Ratio=%.2f[%d/%d]\n",
+            tdiff(&start, &end),
+            (float)compress_size / (float)uncompress_size, (int)compress_size, (int)uncompress_size);
 }
 
 int test_main (int argc, const char *argv[]) {
     default_parse_args(argc, argv);
     
-    test_compress();
+    test_compress_methods();
 
     return 0;
 }
-
