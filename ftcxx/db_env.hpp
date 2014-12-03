@@ -99,6 +99,33 @@ namespace ftcxx {
             return 0;
         }
 
+        uint64_t get_engine_status_num_rows() {
+            if (!_env) {
+                handle_ft_retval(EINVAL); // throws
+            }
+            uint64_t ret;
+            int r = _env->get_engine_status_num_rows(_env, &ret);
+            handle_ft_retval(r);
+            return ret;
+        }
+
+        void get_engine_status(TOKU_ENGINE_STATUS_ROW_S *rows, uint64_t max_rows, uint64_t &num_rows,
+                               uint64_t &panic, std::string &panic_string,
+                               toku_engine_status_include_type include_type) {
+            if (!_env) {
+                handle_ft_retval(EINVAL);
+            }
+            fs_redzone_state dummy;  // this is duplicated in the actual engine status output
+            const size_t panic_string_len = 1024;
+            char panic_string_buf[panic_string_len];
+            panic_string_buf[0] = '\0';
+            int r = _env->get_engine_status(_env, rows, max_rows, &num_rows,
+                                            &dummy, &panic, panic_string_buf, panic_string_len,
+                                            include_type);
+            handle_ft_retval(r);
+            panic_string = panic_string_buf;
+        }
+
         /**
          * Constructs a Cursor over this DBEnv's directory.
          */
