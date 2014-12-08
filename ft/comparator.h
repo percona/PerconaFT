@@ -123,7 +123,7 @@ namespace toku {
             _cmp = cmp;
             _num_prepend_bytes = (ft_flags & TOKU_DB_HAS_PREPEND_BYTES) ? 8 : 0;
             toku_init_dbt(&_desc.dbt);
-            if (desc->dbt.data) {
+            if (desc && desc->dbt.data) {
                 toku_clone_dbt(&_desc.dbt, desc->dbt);
             }
             _memcmp_magic = memcmp_magic;
