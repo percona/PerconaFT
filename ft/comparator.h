@@ -187,7 +187,9 @@ namespace toku {
                 if (__builtin_expect(toku_dbt_is_infinite(a) || toku_dbt_is_infinite(b), 0)) {
                     return toku_dbt_infinite_compare(a, b);
                 } else if (__builtin_expect(aa.size == 0 || bb.size == 0, 0)) {
-                    return aa.size < bb.size;
+                    if (aa.size > bb.size) return 1;
+                    else if (aa.size < bb.size) return -1;
+                    else return 0;
                 } else if (false && _memcmp_magic != MEMCMP_MAGIC_NONE
                            // If `a' has the memcmp magic..
                            && dbt_has_memcmp_magic(&aa)

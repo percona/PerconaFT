@@ -252,17 +252,19 @@ uint64_t dictionary::prepend_id() const {
 }
 
 int dictionary::fill_db_key(const void *key, const uint32_t keylen, DBT* out) {
-    invariant(keylen >= m_num_prepend_bytes);
-    invariant(m_num_prepend_bytes == 0 || m_num_prepend_bytes == sizeof(uint64_t)); // this will need to change when we allow 1 prepend byte
-    if (m_num_prepend_bytes > 0) {
-        uint64_t found_prepend_id = SWAP64(*(uint64_t *)key);
-        if (found_prepend_id != m_prepend_id) {
-            return DB_NOTFOUND;
+    if (key) {
+        invariant(keylen >= m_num_prepend_bytes);
+        invariant(m_num_prepend_bytes == 0 || m_num_prepend_bytes == sizeof(uint64_t)); // this will need to change when we allow 1 prepend byte
+        if (m_num_prepend_bytes > 0) {
+            uint64_t found_prepend_id = SWAP64(*(uint64_t *)key);
+            if (found_prepend_id != m_prepend_id) {
+                return DB_NOTFOUND;
+            }
         }
+        char* pos = (char *)key;
+        pos += m_num_prepend_bytes;
+        toku_fill_dbt(out, pos, keylen - m_num_prepend_bytes);
     }
-    char* pos = (char *)key;
-    pos += m_num_prepend_bytes;
-    toku_fill_dbt(out, pos, keylen - m_num_prepend_bytes);
     return 0;
 }
 
@@ -274,8 +276,12 @@ void dictionary::fill_ft_key(const DBT* in, void* buf, DBT* out) {
         memcpy(pos, &swapped_prepend_id, sizeof(uint64_t));
         pos += sizeof(uint64_t);
         // when in is NULL, we are essentially filling in a minimum key
-        memcpy(pos, in->data, in->size);
-        toku_fill_dbt(out, buf, in->size+m_num_prepend_bytes);
+        uint32_t total_size = m_num_prepend_bytes;
+        if (in) {
+            memcpy(pos, in->data, in->size);
+            total_size += m_num_prepend_bytes;
+        }
+        toku_fill_dbt(out, buf, total_size);
     }
     else {
         toku_fill_dbt(out, in->data, in->size);
