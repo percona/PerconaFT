@@ -370,48 +370,6 @@ static void copy_dbt(DBT *dest, const DBT *src) {
     memcpy(dest->data, src->data, src->size);
 }
 
-// DBT_ARRAY is a toku-specific type
-UU()
-static int
-env_update_multiple_test_no_array(
-    DB_ENV *env, 
-    DB *src_db, 
-    DB_TXN *txn, 
-    DBT *old_src_key, DBT *old_src_data,
-    DBT *new_src_key, DBT *new_src_data,
-    uint32_t num_dbs, DB **db_array, uint32_t* flags_array,
-    uint32_t num_keys, DBT keys[],
-    uint32_t num_vals, DBT vals[]) {
-    int r;
-    DBT_ARRAY key_arrays[num_keys];
-    DBT_ARRAY val_arrays[num_vals];
-    for (uint32_t i = 0; i < num_keys; i++) {
-        toku_dbt_array_init(&key_arrays[i], 1);
-        key_arrays[i].dbts[0] = keys[i];
-    }
-    for (uint32_t i = 0; i < num_vals; i++) {
-        toku_dbt_array_init(&val_arrays[i], 1);
-        val_arrays[i].dbts[0] = vals[i];
-    }
-    r = env->update_multiple(env, src_db, txn, old_src_key, old_src_data, new_src_key, new_src_data,
-                          num_dbs, db_array, flags_array,
-                          num_keys, &key_arrays[0],
-                          num_vals, &val_arrays[0]);
-    for (uint32_t i = 0; i < num_keys; i++) {
-        invariant(key_arrays[i].size == 1);
-        invariant(key_arrays[i].capacity == 1);
-        keys[i] = key_arrays[i].dbts[0];
-        toku_dbt_array_destroy_shallow(&key_arrays[i]);
-    }
-    for (uint32_t i = 0; i < num_vals; i++) {
-        invariant(val_arrays[i].size == 1);
-        invariant(val_arrays[i].capacity == 1);
-        vals[i] = val_arrays[i].dbts[0];
-        toku_dbt_array_destroy_shallow(&val_arrays[i]);
-    }
-    return r;
-}
-
 UU()
 static int env_put_multiple_test_no_array(
     DB_ENV *env, 
@@ -444,34 +402,6 @@ static int env_put_multiple_test_no_array(
         vals[i] = val_arrays[i].dbts[0];
         toku_dbt_array_destroy_shallow(&key_arrays[i]);
         toku_dbt_array_destroy_shallow(&val_arrays[i]);
-    }
-    return r;
-}
-
-UU()
-static int env_del_multiple_test_no_array(
-    DB_ENV *env, 
-    DB *src_db, 
-    DB_TXN *txn, 
-    const DBT *src_key, 
-    const DBT *src_val, 
-    uint32_t num_dbs, 
-    DB **db_array, 
-    DBT *keys,
-    uint32_t *flags_array) 
-{
-    int r;
-    DBT_ARRAY key_arrays[num_dbs];
-    for (uint32_t i = 0; i < num_dbs; i++) {
-        toku_dbt_array_init(&key_arrays[i], 1);
-        key_arrays[i].dbts[0] = keys[i];
-    }
-    r = env->del_multiple(env, src_db, txn, src_key, src_val, num_dbs, db_array, &key_arrays[0], flags_array);
-    for (uint32_t i = 0; i < num_dbs; i++) {
-        invariant(key_arrays[i].size == 1);
-        invariant(key_arrays[i].capacity == 1);
-        keys[i] = key_arrays[i].dbts[0];
-        toku_dbt_array_destroy_shallow(&key_arrays[i]);
     }
     return r;
 }

@@ -1599,8 +1599,6 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
 #define USENV(name) result->name = env_ ## name
     // methods with locking done internally
     USENV(put_multiple);
-    USENV(del_multiple);
-    USENV(update_multiple);
     // unlocked methods
     USENV(open);
     USENV(close);
