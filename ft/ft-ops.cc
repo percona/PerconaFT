@@ -3043,10 +3043,6 @@ ft_handle_open(FT_HANDLE ft_h, const char *fname_in_env, int is_create, int only
         r = EINVAL;
         goto exit;
     }
-    if (ft_h->options.always_memcmp != ft->cmp.get_always_memcmp()) {
-        r = EINVAL;
-        goto exit;
-    }
     toku_ft_handle_inherit_options(ft_h, ft);
 
     if (!was_already_open) {
