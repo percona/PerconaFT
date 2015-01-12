@@ -14,6 +14,7 @@ include(CheckIncludeFiles)
 ## check for some include files
 check_include_files(alloca.h HAVE_ALLOCA_H)
 check_include_files(arpa/inet.h HAVE_ARPA_INET_H)
+check_include_files(bits/functexcept.h HAVE_BITS_FUNCTEXCEPT_H)
 check_include_files(byteswap.h HAVE_BYTESWAP_H)
 check_include_files(endian.h HAVE_ENDIAN_H)
 check_include_files(fcntl.h HAVE_FCNTL_H)

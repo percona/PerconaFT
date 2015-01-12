@@ -75,6 +75,7 @@ add_subdirectory(portability)
 add_subdirectory(ft)
 add_subdirectory(locktree)
 add_subdirectory(src)
+add_subdirectory(ftcxx)
 add_subdirectory(tools)
 
 install(

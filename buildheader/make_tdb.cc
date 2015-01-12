@@ -458,6 +458,7 @@ static void print_db_env_struct (void) {
                              "int (*set_lock_timeout_callback)            (DB_ENV *env, lock_timeout_callback callback)",
                              "int (*txn_xa_recover)                       (DB_ENV*, TOKU_XA_XID list[/*count*/], long count, /*out*/ long *retp, uint32_t flags)",
                              "int (*get_txn_from_xid)                     (DB_ENV*, /*in*/ TOKU_XA_XID *, /*out*/ DB_TXN **)",
+                             "DB* (*get_db_for_directory)                 (DB_ENV*)",
                              "int (*get_cursor_for_directory)             (DB_ENV*, /*in*/ DB_TXN *, /*out*/ DBC **)",
                              "int (*get_cursor_for_persistent_environment)(DB_ENV*, /*in*/ DB_TXN *, /*out*/ DBC **)",
                              "void (*change_fsync_log_period)             (DB_ENV*, uint32_t)",
@@ -548,6 +549,7 @@ static void print_db_struct (void) {
 			 "int (*get_fanout)(DB *db, uint32_t *fanout)",
 			 "int (*set_fanout)(DB *db, uint32_t fanout)",
 			 "int (*set_memcmp_magic)(DB *db, uint8_t magic)",
+			 "int (*set_always_memcmp)(DB *db, bool always_memcmp)",
 			 "int (*set_indexer)(DB*, DB_INDEXER*)",
 			 "void (*get_indexer)(DB*, DB_INDEXER**)",
 			 "int (*verify_with_progress)(DB *, int (*progress_callback)(void *progress_extra, float progress), void *progress_extra, int verbose, int keep_going)",
@@ -617,6 +619,7 @@ static void print_dbc_struct (void) {
 	"int (*c_set_bounds)(DBC*, const DBT*, const DBT*, bool pre_acquire, int out_of_range_error)",
         "void (*c_set_check_interrupt_callback)(DBC*, bool (*)(void*), void *)",
 	"void (*c_remove_restriction)(DBC*)",
+        "void (*c_set_txn)(DBC*, DB_TXN*)",
         "char _internal[512]",
 	NULL};
     sort_and_dump_fields("dbc", false, extra);
