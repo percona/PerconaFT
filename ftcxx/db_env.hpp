@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <errno.h>
+
 #include <map>
 #include <string>
 
