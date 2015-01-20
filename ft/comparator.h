@@ -110,19 +110,20 @@ namespace toku {
     // that points may be positive or negative infinity.
 
     class comparator {
-        void init(ft_compare_func cmp, DESCRIPTOR desc, uint8_t memcmp_magic) {
+        void init(ft_compare_func cmp, DESCRIPTOR desc, uint8_t memcmp_magic, bool always_memcmp) {
             _cmp = cmp;
             _fake_db->cmp_descriptor = desc;
             _memcmp_magic = memcmp_magic;
+            _always_memcmp = always_memcmp;
         }
 
     public:
         // This magic value is reserved to mean that the magic has not been set.
         static const uint8_t MEMCMP_MAGIC_NONE = 0;
 
-        void create(ft_compare_func cmp, DESCRIPTOR desc, uint8_t memcmp_magic = MEMCMP_MAGIC_NONE) {
+        void create(ft_compare_func cmp, DESCRIPTOR desc, uint8_t memcmp_magic = MEMCMP_MAGIC_NONE, bool always_memcmp = false) {
             XCALLOC(_fake_db);
-            init(cmp, desc, memcmp_magic);
+            init(cmp, desc, memcmp_magic, always_memcmp);
         }
 
         // inherit the attributes of another comparator, but keep our own
@@ -131,7 +132,7 @@ namespace toku {
             invariant_notnull(_fake_db);
             invariant_notnull(cmp._cmp);
             invariant_notnull(cmp._fake_db);
-            init(cmp._cmp, cmp._fake_db->cmp_descriptor, cmp._memcmp_magic);
+            init(cmp._cmp, cmp._fake_db->cmp_descriptor, cmp._memcmp_magic, cmp._always_memcmp);
         }
 
         // like inherit, but doesn't require that the this comparator
@@ -157,6 +158,10 @@ namespace toku {
             return _memcmp_magic;
         }
 
+        bool get_always_memcmp() const {
+            return _always_memcmp;
+        }
+
         bool valid() const {
             return _cmp != nullptr;
         }
@@ -168,11 +173,12 @@ namespace toku {
         int operator()(const DBT *a, const DBT *b) const {
             if (__builtin_expect(toku_dbt_is_infinite(a) || toku_dbt_is_infinite(b), 0)) {
                 return toku_dbt_infinite_compare(a, b);
-            } else if (_memcmp_magic != MEMCMP_MAGIC_NONE
-                       // If `a' has the memcmp magic..
-                       && dbt_has_memcmp_magic(a)
-                       // ..then we expect `b' to also have the memcmp magic
-                       && __builtin_expect(dbt_has_memcmp_magic(b), 1)) {
+            } else if (_always_memcmp ||
+                       (_memcmp_magic != MEMCMP_MAGIC_NONE
+                        // If `a' has the memcmp magic..
+                        && dbt_has_memcmp_magic(a)
+                        // ..then we expect `b' to also have the memcmp magic
+                        && __builtin_expect(dbt_has_memcmp_magic(b), 1))) {
                 return toku_builtin_compare_fun(nullptr, a, b);
             } else {
                 // yikes, const sadness here
@@ -184,6 +190,7 @@ namespace toku {
         DB *_fake_db;
         ft_compare_func _cmp;
         uint8_t _memcmp_magic;
+        bool _always_memcmp;
     };
 
 } /* namespace toku */
