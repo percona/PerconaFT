@@ -97,9 +97,7 @@ PATENT RIGHTS GRANT:
 #include <stdlib.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <string>
-#include <iostream>
-#include <string.h>
+
 #include "ft/serialize/block_table.h"
 #include "ft/cachetable/cachetable.h"
 #include "ft/ft.h"
@@ -107,13 +105,9 @@ PATENT RIGHTS GRANT:
 #include "ft/serialize/ft-serialize.h"
 #include "ft/serialize/ft_node-serialize.h"
 #include "ft/node.h"
-#include <cassert>
-using namespace std;
 
-
-static int do_dump_data = 0;
+static int do_dump_data = 1;
 static int do_interactive = 0;
-static int do_support = 1;
 static int do_header = 0;
 static int do_fragmentation = 0;
 static int do_garbage = 0;
@@ -122,40 +116,9 @@ static int do_rootnode = 0;
 static int do_node = 0;
 static BLOCKNUM do_node_num;
 static int do_tsv = 0;
-static int fanout=FT_DEFAULT_FANOUT;
+
 static const char *arg0;
 static const char *fname;
-typedef struct nodeMessage{
-    int id;
-    int *count;
-    int clean;
-    nodeMessage *nextNode;
-}NMC;
-enum { maxline = 128};
-
-static int printNodeMessagesInJSON(NMC* ptr);
-
-static int printNodeMessagesInXML(NMC* ptr);
-
-static int printNodeMessagesToSTDout(NMC* ptr);
-
-
-
-static int printLevelJSON(int* count);
-
-static int printLevelSTDout(int  *);
-
-static int printLevelXML(int *);
-
-
-
-
-static void treeToXML(NMC *msgs[], int height);
-
-static void treeToJSON(NMC *msgs[], int height);
-
-static void treeToSTDout(NMC *msgs[], int height);
-
 
 static void format_time(const uint64_t time_int, char *buf) {
     time_t timer = (time_t) time_int;
@@ -260,490 +223,13 @@ static void dump_header(FT ft) {
     printf(" estimated numbytes=%" PRId64 "\n", ft->in_memory_stats.numbytes);
 }
 
-static int64_t getRootNode(FT ft) {
-    return ft->h->root_blocknum.b;
-}
-
 static int print_le(const void* key, const uint32_t keylen, const LEAFENTRY &le, const uint32_t idx UU(), void *const ai UU()) {
     print_klpair(stdout, key, keylen, le);
     printf("\n");
     return 0;
 }
 
-
-static void getPivots(int fd, BLOCKNUM blocknum, FT ft){
-    FTNODE n;
-    FTNODE_DISK_DATA ndd = nullptr;
-    ftnode_fetch_extra bfe;
-    bfe.create_for_full_read(ft);
-    int r = toku_deserialize_ftnode_from (fd, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
-    assert_zero(r);
-    assert(n!=0);
-    for (int i=0; i<n->n_children-1; i++) {
-        const DBT piv = n->pivotkeys.get_pivot(i);
-        printf("  pivot %2d:", i);
-        if (n->flags)
-            printf(" flags=%x ", n->flags);
-        print_item(piv.data, piv.size);
-        printf("\n");
-    }
-}
-static int getHeight(int fd, BLOCKNUM blocknum, FT ft){
-    FTNODE n;
-    FTNODE_DISK_DATA ndd = nullptr;
-    ftnode_fetch_extra bfe;
-    bfe.create_for_full_read(ft);
-    int r = toku_deserialize_ftnode_from (fd, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
-    assert_zero(r);
-    assert(n!=0);
-    return n->height;
-}
-
-static int * dumpChildrens(int fd, BLOCKNUM blocknum, FT ft) {   
-    FTNODE n;
-    FTNODE_DISK_DATA ndd = nullptr;
-    
-    ftnode_fetch_extra bfe;
-    bfe.create_for_full_read(ft);
-    int r = toku_deserialize_ftnode_from (fd, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
-    int *childrens= new int[n->n_children+1];
-    if (n->height ==0){
-        childrens[0]=0;
-        toku_ftnode_free(&n);
-        toku_free(ndd);
-        return childrens;
-    }
-    childrens[0]=n->n_children;
-    assert_zero(r);;
-    
-    assert(n!=0);
-    
-    for (int i=0; i<n->n_children; i++) {
-            //printf("  %d: ", i);
-        if (n->height > 0) {
-            printf(" %" PRId64 ,BP_BLOCKNUM(n, i).b);
-            childrens[i+1]= BP_BLOCKNUM(n, i).b;
-            NONLEAF_CHILDINFO bnc = BNC(n, i);
-            unsigned int n_bytes = toku_bnc_nbytesinbuf(bnc); 
-            int n_entries = toku_bnc_n_entries(bnc);
-            if (n_bytes > 0 || n_entries > 0) {
-               // printf("   buffer contains %u bytes (%d items)\n", n_bytes, n_entries);
-            }
-        }
-         else {
-            printf(" n_bytes_in_buffer= %" PRIu64 "", BLB_DATA(n, i)->get_disk_size());
-            printf(" items_in_buffer=%u\n", BLB_DATA(n, i)->num_klpairs());
-            if (do_dump_data) {
-                BLB_DATA(n, i)->iterate<void, print_le>(NULL);
-            }
-        }
-    }
-    toku_ftnode_free(&n);
-    toku_free(ndd);
-    return childrens;
-}
-static void showMeTree(int fd, BLOCKNUM blocknum, FT ft){
-
-    
-    int *children=dumpChildrens(fd,blocknum,ft);
-    if (children[0]==0){
-        toku_free(children);
-        return;
-    }
-    for(int i=1;i<=children[0];i++){
-        if (children[0]==0){
-            toku_free(children);
-            return;
-        }
-        printf("\n  Parent %10d  height: :   ", children[i]) ;
-        blocknum=make_blocknum(children[i]);
-        if(children[0]>0)showMeTree(fd,blocknum,ft);
-    }
-    toku_free(children);
-}
-static FTNODE  getNode(int fd, BLOCKNUM blocknum, FT ft) {   
-    FTNODE n;
-    FTNODE_DISK_DATA ndd = nullptr;
-    
-    ftnode_fetch_extra bfe;
-    bfe.create_for_full_read(ft);
-    int r = toku_deserialize_ftnode_from (fd, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
-    assert_zero(r);;
-
-    return n;
-}
-
-
-static int countNodes(NMC *level){
-    int count=0;
-    NMC *ptr=level;
-    while(ptr!=NULL){
-        count++;
-        ptr=ptr->nextNode;
-    }
-    return count;
-}
-static int * countMessages(NMC *level){
-    int *counts=new int[fanout];
-    for(int i=0;i<fanout;i++){
-        counts[i]=0;
-    }
-    NMC *ptr=level;
-    while(ptr!=NULL){
-        for(int i=0;i<fanout;i++){
-            counts[i]+=ptr->count[i];
-        }
-        ptr=ptr->nextNode;
-    }
-    return counts;
-}
-
-
-static NMC * getLast(NMC *level){
-    if (level==NULL) return NULL;
-    NMC *ptr=level;
-    while(ptr->nextNode!=NULL){
-        ptr=ptr->nextNode;
-    } 
-    return ptr;
-}
-
-
-/*
- * Prints the total messages at each level in JSON format
- * 
- */
-static int  printLevelJSON(int *count){
-    int isEmpty=0;
-    for(int j=0;j<fanout;j++){
-        if(count[j]>0){
-            isEmpty++;
-            switch (j)   {
-                case FT_INSERT: cout <<"<INSERT>"<<count[j]<<"</INSERT>"; break;
-                case FT_INSERT_NO_OVERWRITE: cout <<"INSERT_NO_OVERWRITE>"<<count[j]<<"/INSERT_NO_OVERWRITE>>"; break;
-                case FT_DELETE_ANY: cout <<"<DELETE_ANY>"<<count[j]<<"</DELETE_ANY>"; break;
-                case FT_ABORT_ANY: cout <<"<ABORT_ANY>"<<count[j]<<"</ABORT_ANY>"; break;
-                case FT_COMMIT_ANY: cout <<"<COMMIT_ANY>"<<count[j]<<"</COMMIT_ANY>"; break;
-                case FT_COMMIT_BROADCAST_ALL: cout <<"<COMMIT_BROADCAST_ALL>"<<count[j]<<"</COMMIT_BROADCAST_ALL>"; break;
-                case FT_COMMIT_BROADCAST_TXN: cout <<"<COMMIT_BROADCAST_TXN>"<<count[j]<<"</COMMIT_BROADCAST_TXN>"; break;
-                case FT_ABORT_BROADCAST_TXN: cout <<"<ABORT_BROADCAST_TXN>"<<count[j]<<"</ABORT_BROADCAST_TXN>";break;
-                case FT_OPTIMIZE: cout <<"<OPTIMIZE>"<<count[j]<<"</OPTIMIZE>"; break;
-                case FT_OPTIMIZE_FOR_UPGRADE: cout <<"<OPTIMIZE_FOR_UPGRADE>"<<count[j]<<"</OPTIMIZE_FOR_UPGRADE>";break;
-                case FT_UPDATE:   cout <<"<UPDATE>"<<count[j]<<"</UPDATE>"; break;
-                case FT_UPDATE_BROADCAST_ALL: cout <<"<UPDATE_BROADCAST_ALL>"<<count[j]<<"</UPDATE_BROADCAST_ALL>"; break;
-            }
-            
-        }
-    }
-    return isEmpty;
-}
-
-/*
- * Prints the total messages at each to STDout 
- * 
- */
-static int  printLevelSTDout(int *count){
-    int isEmpty=0;
-    for(int j=0;j<fanout;j++){
-        if(count[j]>0){
-            cout <<count[j]<<" ";
-            isEmpty++;
-            switch (j)   {
-                case FT_INSERT: printf("INSERT(s) "); break;
-                case FT_INSERT_NO_OVERWRITE: printf("INSERT_NO_OVERWRITE(s) "); break;
-                case FT_DELETE_ANY: printf("DELETE_ANY(s) "); break;
-                case FT_ABORT_ANY: printf("ABORT_ANY(s) "); break;
-                case FT_COMMIT_ANY: printf("COMMIT_ANY(s) "); break;
-                case FT_COMMIT_BROADCAST_ALL: printf("COMMIT_BROADCAST_ALL(s) "); break;
-                case FT_COMMIT_BROADCAST_TXN: printf("COMMIT_BROADCAST_TXN(s) "); break;
-                case FT_ABORT_BROADCAST_TXN: printf("ABORT_BROADCAST_TXN(s) "); break;
-                case FT_OPTIMIZE: printf("OPTIMIZE(s) "); break;
-                case FT_OPTIMIZE_FOR_UPGRADE: printf("OPTIMIZE_FOR_UPGRADE(s) "); break;
-                case FT_UPDATE:   printf("UPDATE(s) "); break;
-                case FT_UPDATE_BROADCAST_ALL: printf("UPDATE_BROADCAST_ALL(s) "); break;
-            }
-            
-        }
-    }
-    return isEmpty;
-}
-
-/*
- * Prints the total messages at each in XMl format 
- * 
- */
-static int  printLevelXML(int *count){
-    int isEmpty=0;
-    for(int j=0;j<fanout;j++){
-        if(count[j]>0){
-            isEmpty++;
-            switch (j)   {
-                case FT_INSERT: cout <<"<INSERT>"<<count[j]<<"</INSERT>"; break;
-                case FT_INSERT_NO_OVERWRITE: cout <<"INSERT_NO_OVERWRITE>"<<count[j]<<"/INSERT_NO_OVERWRITE>>"; break;
-                case FT_DELETE_ANY: cout <<"<DELETE_ANY>"<<count[j]<<"</DELETE_ANY>"; break;
-                case FT_ABORT_ANY: cout <<"<ABORT_ANY>"<<count[j]<<"</ABORT_ANY>"; break;
-                case FT_COMMIT_ANY: cout <<"<COMMIT_ANY>"<<count[j]<<"</COMMIT_ANY>"; break;
-                case FT_COMMIT_BROADCAST_ALL: cout <<"<COMMIT_BROADCAST_ALL>"<<count[j]<<"</COMMIT_BROADCAST_ALL>"; break;
-                case FT_COMMIT_BROADCAST_TXN: cout <<"<COMMIT_BROADCAST_TXN>"<<count[j]<<"</COMMIT_BROADCAST_TXN>"; break;
-                case FT_ABORT_BROADCAST_TXN: cout <<"<ABORT_BROADCAST_TXN>"<<count[j]<<"</ABORT_BROADCAST_TXN>";break;
-                case FT_OPTIMIZE: cout <<"<OPTIMIZE>"<<count[j]<<"</OPTIMIZE>"; break;
-                case FT_OPTIMIZE_FOR_UPGRADE: cout <<"<OPTIMIZE_FOR_UPGRADE>"<<count[j]<<"</OPTIMIZE_FOR_UPGRADE>";break;
-                case FT_UPDATE:   cout <<"<UPDATE>"<<count[j]<<"</UPDATE>"; break;
-                case FT_UPDATE_BROADCAST_ALL: cout <<"<UPDATE_BROADCAST_ALL>"<<count[j]<<"</UPDATE_BROADCAST_ALL>"; break;
-            }
-            
-        }
-    }
-    return isEmpty;
-}
-
-
-
-
-/*
- * Prints the total # of messages in a node  in XMl format 
- * 
- */
-static int  printNodeMessagesInXML(NMC *ptr){
-    int isEmpty=0;
-    for(int j=0;j<fanout;j++){
-        if(ptr->count[j]>0){
-            isEmpty++;
-            switch (j)   {
-                case FT_INSERT: cout <<"<INSERT>"<<ptr->count[j]<<"</INSERT>"; break;
-                case FT_INSERT_NO_OVERWRITE: cout <<"INSERT_NO_OVERWRITE>"<<ptr->count[j]<<"/INSERT_NO_OVERWRITE>>"; break;
-                case FT_DELETE_ANY: cout <<"<DELETE_ANY>"<<ptr->count[j]<<"</DELETE_ANY>"; break;
-                case FT_ABORT_ANY: cout <<"<ABORT_ANY>"<<ptr->count[j]<<"</ABORT_ANY>"; break;
-                case FT_COMMIT_ANY: cout <<"<COMMIT_ANY>"<<ptr->count[j]<<"</COMMIT_ANY>"; break;
-                case FT_COMMIT_BROADCAST_ALL: cout <<"<COMMIT_BROADCAST_ALL>"<<ptr->count[j]<<"</COMMIT_BROADCAST_ALL>"; break;
-                case FT_COMMIT_BROADCAST_TXN: cout <<"<COMMIT_BROADCAST_TXN>"<<ptr->count[j]<<"</COMMIT_BROADCAST_TXN>"; break;
-                case FT_ABORT_BROADCAST_TXN: cout <<"<ABORT_BROADCAST_TXN>"<<ptr->count[j]<<"</ABORT_BROADCAST_TXN>";break;
-                case FT_OPTIMIZE: cout <<"<OPTIMIZE>"<<ptr->count[j]<<"</OPTIMIZE>"; break;
-                case FT_OPTIMIZE_FOR_UPGRADE: cout <<"<OPTIMIZE_FOR_UPGRADE>"<<ptr->count[j]<<"</OPTIMIZE_FOR_UPGRADE>";break;
-                case FT_UPDATE:   cout <<"<UPDATE>"<<ptr->count[j]<<"</UPDATE>"; break;
-                case FT_UPDATE_BROADCAST_ALL: cout <<"<UPDATE_BROADCAST_ALL>"<<ptr->count[j]<<"</UPDATE_BROADCAST_ALL>"; break;
-            }
-            
-        }
-    }
-    return isEmpty;
-}
-
-/*
- * Prints the total # of messages in a node  to STD output 
- * 
- */
-static int  printNodeMessagesToSTDout(NMC *ptr){
-    cout <<"\nNode :"<<ptr->id<<" has :";
-        for(int j=0;j<fanout;j++){
-        if(ptr->count[j]>0){
-            cout <<ptr->count[j]<<" ";switch (j)   {
-                case FT_INSERT: printf("INSERT(s) "); break;
-                case FT_INSERT_NO_OVERWRITE: printf("INSERT_NO_OVERWRITE(s) "); break;
-                case FT_DELETE_ANY: printf("DELETE_ANY(s) "); break;
-                case FT_ABORT_ANY: printf("ABORT_ANY(s) "); break;
-                case FT_COMMIT_ANY: printf("COMMIT_ANY(s) "); break;
-                case FT_COMMIT_BROADCAST_ALL: printf("COMMIT_BROADCAST_ALL(s) "); break;
-                case FT_COMMIT_BROADCAST_TXN: printf("COMMIT_BROADCAST_TXN(s) "); break;
-                case FT_ABORT_BROADCAST_TXN: printf("ABORT_BROADCAST_TXN(s) "); break;
-                case FT_OPTIMIZE: printf("OPTIMIZE(s) "); break;
-                case FT_OPTIMIZE_FOR_UPGRADE: printf("OPTIMIZE_FOR_UPGRADE(s) "); break;
-                case FT_UPDATE:   printf("UPDATE(s) "); break;
-                case FT_UPDATE_BROADCAST_ALL: printf("UPDATE_BROADCAST_ALL(s) "); break;
-            }
-            
-        }
-    }
-    return 1;
-}
-/*
- * Prints the total # of messages in a node  in JSON format 
- * 
- */
-static int  printNodeMessagesInJSON(NMC *ptr){
-    int isEmpty=0;
-    cout <<"{";
-    for(int j=0;j<fanout;j++){
-        if(ptr->count[j]>0){
-            isEmpty++;
-            switch (j)   {
-                case FT_INSERT: cout <<"\"Insert\":\""<<ptr->count[j]<<"\""; break;
-                case FT_INSERT_NO_OVERWRITE: cout <<"\"INSERT_NO_OVERWRITE\":\""<<ptr->count[j]; break;
-                case FT_DELETE_ANY: cout <<"\"DELETE_ANY\":\""<<ptr->count[j]; break;
-                case FT_ABORT_ANY: cout <<"\"ABORT_ANY\":\""<<ptr->count[j]; break;
-                case FT_COMMIT_ANY: cout <<"\"COMMIT_ANY\":\""<<ptr->count[j]; break;
-                case FT_COMMIT_BROADCAST_ALL: cout <<"\"COMMIT_BROADCAST_ALL\":\""<<ptr->count[j] ;    break;
-                case FT_COMMIT_BROADCAST_TXN: cout <<"\"COMMIT_BROADCAST_TXN\":\""<<ptr->count[j]; break;
-                case FT_ABORT_BROADCAST_TXN: cout <<"\"BORT_BROADCAST_TXN\":\""<<ptr->count[j];break;
-                case FT_OPTIMIZE: cout <<"\"OPTIMIZE\":\""<<ptr->count[j]; break;
-                case FT_OPTIMIZE_FOR_UPGRADE: cout <<"\"OPTIMIZE_FOR_UPGRADE\":\""<<ptr->count[j];break;
-                case FT_UPDATE:   cout <<"\"UPDATE\":\""<<ptr->count[j]; break;
-                case FT_UPDATE_BROADCAST_ALL: cout <<"\"UPDATE_BROADCAST_ALL:\""<<ptr->count[j]; break;
-            }
-            cout <<"\"";
-            if(j<fanout-1) cout <<", ";
-            
-        }
-    }
-    cout <<"}";
-    return isEmpty;
-}
-
-
-static void levelToXML(NMC *list, int level){
-    NMC *ptr=list;
-    cout <<"<Level>\n"<<"<Height>"<<level<<"</Height>\n";
-    while(ptr!=NULL){
-        cout <<"\n<Node> \n<ID>"<<ptr->id<<"</ID>\n";
-        if(ptr->clean!=0){
-            cout <<"<Messages>";
-            printNodeMessagesInXML(ptr);
-            cout <<"</Messages>\n";
-        }
-        else{
-            cout <<"<Messages>0</Messages>\n";
-            
-        } 
-        cout <<"</Node>";
-        ptr=ptr->nextNode;
-    }
-    
-}
-
-static void levelToJSON(NMC *list, int level){
-    NMC *ptr=list;
-    cout <<"{\"Level\":{\"Height\":\""<<level<<"\", ";
-    cout <<"\n\"Nodes\":[";
-    while(ptr!=NULL){
-        cout <<"ID:\""<<ptr->id<<"\",";
-        if(ptr->clean!=0){
-            cout <<"\"Messages\":";
-            printNodeMessagesInJSON(ptr);
-        }
-        else{
-            cout <<"{\"Messages\":\"0\"}";
-            
-        } 
-        cout <<"}";
-        ptr=ptr->nextNode;
-    }
-    cout <<"]}";
-}
-
-static void levelToSTDout(NMC *list, int level){
-    NMC *ptr=list;
-    cout <<"Height : "<<level<<"\n";
-    while(ptr!=NULL){
-        if(ptr->clean!=0){
-            printNodeMessagesToSTDout(ptr);
-        }
-        else{
-            cout << "\nNode : "<<ptr->id<<" has no messages";
-        } 
-        ptr=ptr->nextNode;
-    }
-    
-}
-
-/*prints the total # of nodes and total # of  messages at each height in :
- * XML
- * */
-static void treeToXML(NMC *msgs[], int height){
-    
-    for(int i=height; i>=0 ; i--){
-        cout <<"<Level>\n"<<"<Height>"<<i<<"</Height>\n";
-        int *counts=countMessages(msgs[i]); 
-        cout <<"<NodeCount>"<< countNodes(msgs[i])<<"</NodeCount>\n";
-        cout <<"<Messages>";
-        if(printLevelXML(counts)==0) cout <<"0";
-        cout <<"</Messages>\n";
-        cout <<"</Level>\n";   
-    }
-     
-}
-/*prints the total # of nodes and total # of  messages at each height in :
- * JSON
- * */
-static void treeToJSON(NMC *msgs[], int height){
-    for(int i=height; i>=0 ; i--){
-        int *counts=countMessages(msgs[i]); 
-        cout <<"{Level:\""<<i<<"\",";
-        cout <<"NodeCount: \""<< countNodes(msgs[i])<<"\"},";
-        cout <<"     Messages: \"";
-        if(printLevelJSON(counts)==0) cout <<"0\"\n>"; 
-        else cout <<"}\n";
-
-    }    
-}
-
-
-/*
- * prints the tree total # of nodes and total # of  messages at each height in :
- * STDout in human readable format 
- * 
- */
-static void treeToSTDout(NMC *msgs[], int height){
-    for(int i=height; i>=0 ; i--){
-        cout <<"At height "<<i;
-        int *counts=countMessages(msgs[i]); 
-        cout <<"\n     Node Count: "<< countNodes(msgs[i])<<"\n";
-        cout <<"           Messages: ";
-        if(printLevelSTDout(counts)==0) cout <<"0\n"; 
-        else cout <<"\n";
-
-    }
-}
-
-
-
-static void  countNumberOfNodesInLevels(int fd, BLOCKNUM blocknum, FT ft,NMC *msgs[]){
-    FTNODE n=getNode(fd,blocknum,ft);
-    
-    NMC *last=NULL;
-    if(ft->h->fanout!=FT_DEFAULT_FANOUT)fanout=ft->h->fanout;
-    if(msgs[n->height]==NULL){
-        last = msgs[n->height]=new NMC;
-    }else {
-        last=getLast(msgs[n->height]);
-        last->nextNode=new NMC;
-        last=last->nextNode;
-    }
-    last->id=blocknum.b;
-    last->count=new int[fanout];
-    for(int i=0;i<fanout;i++){
-        last->count[i]=0;
-    }
-    last->clean=0;
-    last->nextNode=NULL;
-    
-    if (n->height==0){
-        //printf("%5d",n->n_children);
-        toku_ftnode_free(&n);
-        return;
-    }
-    for(int i=0;i<n->n_children;i++){
-        NONLEAF_CHILDINFO bnc = BNC(n, i);
-//        if (n->height==1 && n->bp[i].ptr.tag==BCT_NULL){
-//            cout <<n->bp[i].ptr.tag;
-//        }
-        auto dump_fn=[&](const ft_msg &msg, bool UU(is_fresh)) {
-            enum ft_msg_type type = (enum ft_msg_type) msg.type();
-            last->count[type]++;
-            last->clean++;
-            return 0;
-        };
-        
-        bnc->msg_buffer.iterate(dump_fn);
-        
-//        print(last);
-        blocknum=make_blocknum(BP_BLOCKNUM(n, i).b);
-        countNumberOfNodesInLevels(fd,blocknum,ft, msgs);
-    }
-    
-    toku_ftnode_free(&n);
-}
-
-static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {   
+static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
     FTNODE n;
     FTNODE_DISK_DATA ndd = nullptr;
     ftnode_fetch_extra bfe;
@@ -788,7 +274,6 @@ static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
             printf("  child %d: ", i);
         if (n->height > 0) {
             printf("%" PRId64 "\n", BP_BLOCKNUM(n, i).b);
-            
             NONLEAF_CHILDINFO bnc = BNC(n, i);
             unsigned int n_bytes = toku_bnc_nbytesinbuf(bnc); 
             int n_entries = toku_bnc_n_entries(bnc);
@@ -849,7 +334,6 @@ ok:
     toku_ftnode_free(&n);
     toku_free(ndd);
 }
-
 
 static void dump_block_translation(FT ft, uint64_t offset) {
     ft->blocktable.blocknum_dump_translation(make_blocknum(offset));
@@ -1058,9 +542,6 @@ static uint64_t getuint64(const char *f) {
 static void interactive_help(void) {
     fprintf(stderr, "help\n");
     fprintf(stderr, "header\n");
-    fprintf(stderr, "nc [verbose]\n");
-    fprintf(stderr, "lc height\n");
-    fprintf(stderr, "rf/readFile ft-file\n");
     fprintf(stderr, "node NUMBER\n");
     fprintf(stderr, "bx OFFSET | block_translation OFFSET\n");
     fprintf(stderr, "dumpdata 0|1\n");
@@ -1071,42 +552,10 @@ static void interactive_help(void) {
     fprintf(stderr, "quit\n");
 }
 
-static void freeNMC(NMC *msgs[], int height){
-    for(int i=0;i<height;i++){
-        if(msgs[i]!=NULL){
-            delete(msgs[i]->count);
-
-            while(msgs[i]->nextNode!=NULL){
-                NMC* ptr=msgs[i]->nextNode;
-                msgs[i]=msgs[i]->nextNode;
-                delete ptr;
-                
-            }   
-            msgs[i]=NULL;
-        }
-    }
-     
-}
-
-
 static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
-    
-    toku_ft_free(ft);
-    open_header(fd, &ft, cf);
-    int root=getRootNode(ft);
-    BLOCKNUM off = make_blocknum(root);
-    int height=getHeight(fd,off, ft);
-    NMC *msgs[height];
-    for(int i=0;i<=height;i++){
-        msgs[i]=NULL;
-    }    
     while (1) {
-        
-        
-        if(do_support)printf("ftdump-support>"); 
-        else printf("ftdump>"); 
-        fflush(stdout);
-
+        printf("ftdump>"); fflush(stdout);
+        enum { maxline = 64};
         char line[maxline+1];
         int r = readline(line, maxline);
         if (r == EOF)
@@ -1121,90 +570,16 @@ static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
         } else if (strcmp(fields[0], "header") == 0) {
             toku_ft_free(ft);
             open_header(fd, &ft, cf);
-        } else if (strcmp(fields[0], "rn") == 0||strcmp(fields[0], "rootNode")==0||strcmp(fields[0], "rootnode") == 0) {
-            printf("Root node :%d\n",root);
+            dump_header(ft);
         } else if (strcmp(fields[0], "block") == 0 && nfields == 2) {
             BLOCKNUM blocknum = make_blocknum(getuint64(fields[1]));
             dump_block(fd, blocknum, ft);
-        }else if ((strcmp(fields[0], "readFile") == 0 ||strcmp(fields[0], "readfile") == 0 ||strcmp(fields[0], "rf") == 0 )&& nfields == 2) {
-            fname=fields[1];
-            fd = open(fname, O_RDWR + O_BINARY);
-            if (fd < 0) {
-                fprintf(stderr, "%s: can not open the FT dump %s errno %d\n", arg0, fname, errno);
-                continue;
-            }
-
         } else if (strcmp(fields[0], "node") == 0 && nfields == 2) {
-            off = make_blocknum(getuint64(fields[1]));
+            BLOCKNUM off = make_blocknum(getuint64(fields[1]));
             dump_node(fd, off, ft);
-        }else if ((strcmp(fields[0], "showMeTree") == 0 ||strcmp(fields[0], "smt") == 0 )) {
-            toku_ft_free(ft);
-            open_header(fd, &ft, cf);
-            root=getRootNode(ft);
-            off = make_blocknum(root);
-            showMeTree(fd, off, ft);
-            getPivots(fd,off, ft);
-        }else if ((strcmp(fields[0], "levelCount") == 0 ||strcmp(fields[0], "lc") == 0)) {
-            
-            if(msgs[0]==NULL){
-                toku_ft_free(ft);
-                open_header(fd, &ft, cf);
-                root=getRootNode(ft);
-                off = make_blocknum(root);
-                countNumberOfNodesInLevels(fd,off, ft,msgs);
-            }
-           
-            int level=1;
-            if(nfields >= 2) level=getuint64(fields[1]);
-            countMessages(msgs[level]);
-            cout <<"\n\n\n ====================Level Count==================== \n";
-            if(nfields > 2&&(strcmp(fields[2], "xml") == 0)){
-                cout <<"\n\n\nXML output: \n";
-                levelToXML(msgs[level],level);
-                cout <<"\n";
-            }
-            else if(nfields > 2&&(strcmp(fields[2], "json") == 0)){
-                cout <<"\n\n\n JSON output: \n";
-                levelToJSON(msgs[level],level);
-                cout <<"\n";
-            }
-            else  {
-                cout <<"\n\n\n Standard output: \n";
-                levelToSTDout(msgs[level],level); 
-                cout <<"\n";
-            }
-        }else if ((strcmp(fields[0], "nodesCount") == 0 ||strcmp(fields[0], "nc") == 0 )) {
-            freeNMC(msgs,height);
-            toku_ft_free(ft);
-            open_header(fd, &ft, cf);
-            root=getRootNode(ft);
-            off = make_blocknum(root);
-            countNumberOfNodesInLevels(fd,off, ft,msgs);
-            
-            if(nfields == 2&&(strcmp(fields[1], "xml") == 0)){
-                cout <<"\n\n\nXML output: \n";
-                treeToXML(msgs,height);
-            }
-            else if (nfields == 2&&(strcmp(fields[1], "json") == 0)){
-                cout <<"\n\n\n JSON output: \n";
-                treeToJSON(msgs,height);
-            }
-            else{
-                
-                cout <<"to STD output: \n";
-                treeToSTDout(msgs,height);
-            }
-            
-        }else if (strcmp(fields[0], "dumpdata") == 0 && nfields == 2) {
-
+        } else if (strcmp(fields[0], "dumpdata") == 0 && nfields == 2) {
             do_dump_data = strtol(fields[1], NULL, 10);
-        }
-        else if ((strcmp(fields[0], "messages") == 0||strcmp(fields[0], "m") == 0) && nfields == 2) {
-//            BLOCKNUM off = make_blocknum(getuint64(fields[1]));   
-//            messages(fd,off, ft);
-        }
-        
-        else if (strcmp(fields[0], "block_translation") == 0 || strcmp(fields[0], "bx") == 0) {
+        } else if (strcmp(fields[0], "block_translation") == 0 || strcmp(fields[0], "bx") == 0) {
             uint64_t offset = 0;
             if (nfields == 2)
                 offset = getuint64(fields[1]);
@@ -1227,18 +602,14 @@ static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
             unsigned char newc = getuint64(fields[2]);
             set_file(fd, offset, newc);
         } else if (strcmp(fields[0], "quit") == 0 || strcmp(fields[0], "q") == 0) {
-            toku_ft_free(ft);
-            exit(0);
+            break;
         }
-        
     }
-    freeNMC(msgs,height);
 }
 
 static int usage(void) {
     fprintf(stderr, "Usage: %s ", arg0);
     fprintf(stderr, "--interactive ");
-    fprintf(stderr, "--support ");
     fprintf(stderr, "--nodata ");
     fprintf(stderr, "--dumpdata 0|1 ");
     fprintf(stderr, "--header ");
@@ -1259,13 +630,10 @@ int main (int argc, const char *const argv[]) {
     while (argc>0) {
         if (strcmp(argv[0], "--interactive") == 0 || strcmp(argv[0], "--i") == 0) {
             do_interactive = 1;
-        }
-        else if ((strcmp(argv[0], "--support") == 0 || strcmp(argv[0], "--s")== 0)&& argc >= 2) {
-            do_interactive = 1;
-            fname=argv[1];
         } else if (strcmp(argv[0], "--nodata") == 0) {
             do_dump_data = 0;
         } else if (strcmp(argv[0], "--dumpdata") == 0 && argc > 1) {
+            argc--; argv++;
             do_dump_data = atoi(argv[0]);
         } else if (strcmp(argv[0], "--header") == 0) {
             do_header = 1;
@@ -1283,6 +651,8 @@ int main (int argc, const char *const argv[]) {
             do_tsv = 1;
         } else if (strcmp(argv[0], "--translation-table") == 0) {
             do_translation_table = 1;
+        } else if (strcmp(argv[0], "--dumpHeaders") == 0) {
+            do_translation_table = 1;
         } else if (strcmp(argv[0], "--help") == 0 || strcmp(argv[0], "-?") == 0 || strcmp(argv[0], "-h") == 0) {
             return usage();
         } else {
@@ -1290,35 +660,39 @@ int main (int argc, const char *const argv[]) {
         }
         argc--; argv++;
     }
-    if (argc != 1)
-    return usage();
-    
+    if (argc != 1) 
+        return usage();
+
     int r = toku_ft_layer_init();
     assert_zero(r);
-    if(fname==NULL)fname = argv[0];
+
+    fname = argv[0];
     int fd = open(fname, O_RDWR + O_BINARY);
     if (fd < 0) {
-    fprintf(stderr, "%s: can not open %s errno %d\n", arg0, fname, errno);
-    return 1;
+        fprintf(stderr, "%s: can not open %s errno %d\n", arg0, fname, errno);
+        return 1;
     }
+
     // create a cachefile for the header
     CACHETABLE ct = NULL;
     toku_cachetable_create(&ct, 1<<25, (LSN){0}, 0);
+
     CACHEFILE cf = NULL;
     r = toku_cachetable_openfd (&cf, ct, fd, fname);
     assert_zero(r);
+
     FT ft = NULL;
     open_header(fd, &ft, cf);
+
     if (do_interactive) {
         run_iteractive_loop(fd, ft, cf);
-    } 
-    else {
+    } else {
         if (do_header) {
             dump_header(ft);
         }
         if (do_rootnode) {
             dump_node(fd, ft->h->root_blocknum, ft);
-        }
+        } 
         if (do_node) {
             dump_node(fd, do_node_num, ft);
         }
@@ -1334,12 +708,14 @@ int main (int argc, const char *const argv[]) {
         if (!do_header && !do_rootnode && !do_fragmentation && !do_translation_table && !do_garbage) {
             printf("Block translation:");
             ft->blocktable.dump_translation_table(stdout);
+
             dump_header(ft);
+            
             struct __dump_node_extra info;
             info.fd = fd;
             info.ft = ft;
             ft->blocktable.iterate(block_table::TRANSLATION_CHECKPOINTED,
-            dump_node_wrapper, &info, true, true);
+                                   dump_node_wrapper, &info, true, true);
         }
     }
     toku_cachefile_close(&cf, false, ZERO_LSN);
@@ -1348,134 +724,3 @@ int main (int argc, const char *const argv[]) {
     toku_ft_layer_destroy();
     return 0;
 }
-
-//int main (int argc, const char *const argv[]) {
-//    arg0 = argv[0];
-//    const char *args[argc];
-//    int argcount=argc;
-//    argc--; argv++;
-//    for (int i=0;i<argc;i++){
-//        args[i]=argv[i];
-//        
-//    }
-//
-//    while (argc>0) {
-//        if (strcmp(argv[0], "--interactive") == 0 || strcmp(argv[0], "--i") == 0) {
-//            do_interactive = 1;
-//            
-//        }if (strcmp(argv[0], "--support") == 0 || strcmp(argv[0], "--s") == 0) {
-//            do_support = 1;
-//            do_interactive = 1;
-//            break;
-//        } else if (strcmp(argv[0], "--nodata") == 0) {
-//            do_dump_data = 0;
-//        } else if (strcmp(argv[0], "--dumpdata") == 0 && argc > 1) {
-//            argc--; argv++;
-//            do_dump_data = atoi(argv[0]);
-//        } else if (strcmp(argv[0], "--header") == 0) {
-//            do_header = 1;
-//        } else if (strcmp(argv[0], "--rootnode") == 0) {
-//            do_rootnode = 1;
-//        } else if (strcmp(argv[0], "--node") == 0 && argc > 1) {
-//            argc--; argv++;
-//            do_node = 1;
-//            do_node_num = make_blocknum(getuint64(argv[0]));
-//        } else if (strcmp(argv[0], "--fragmentation") == 0) {
-//            do_fragmentation = 1;
-//        } else if (strcmp(argv[0], "--garbage") == 0) {
-//            do_garbage = 1;
-//        } else if (strcmp(argv[0], "--tsv") == 0) {
-//            do_tsv = 1;
-//        } else if (strcmp(argv[0], "--translation-table") == 0) {
-//            do_translation_table = 1;
-//        } else if (strcmp(argv[0], "--help") == 0 || strcmp(argv[0], "-?") == 0 || strcmp(argv[0], "-h") == 0) {
-//            return usage();
-//        } else {
-//            break;
-//        }
-//        argc--; argv++;
-//    }
-//    
-//    if (argc >4|| argc<0)         return usage();
-//    int r = toku_ft_layer_init();
-//    assert_zero(r);
-////    char *name=new char[100];
-//    
-//    
-//    int fd ;          
-//    for (int i=0;i<argcount;i++);// cout <<"count  :"<<i<<"   files:\n"<<args[i]<<"\n";
-//    fname = args[1];
-//    fname="/data.ssd/data/_test_purchases_index_main_18633a_1_1b_B_0.tokudb";
-///*
-///data.ssd/data/_test_purchases_index_main_18633a_1_1b_B_0.tokudb
-//*/ 
-//    
-////    int numberOfTries=0;
-////    do{
-//        fd = open(fname, O_RDWR + O_BINARY);
-////        fflush(stdout);
-////         cout<<"We can't open the file please enter the FT's file:";
-////        readline(name, maxline);
-////        fname=name;
-////    }while(fd<0&&numberOfTries++<3);
-////    if (fd<0){
-////        cout<<"We tried several times still can't open the file";
-////        exit(1);
-////        
-////    
-////    }
-//    printf("Reading the FT's dump from file: %s \n",fname);
-//
-//    // create a cachefile for the header
-//    CACHETABLE ct = NULL;
-//    toku_cachetable_create(&ct, 1<<25, (LSN){0}, 0);
-//
-//    CACHEFILE cf = NULL;
-//    r = toku_cachetable_openfd (&cf, ct, fd, fname);
-//    assert_zero(r);
-//
-//    FT ft = NULL;
-//    open_header(fd, &ft, cf);
-//
-//     if (do_support) {
-//        run_iteractive_loop(fd, ft, cf);
-//    }else if (do_interactive) {
-//        run_iteractive_loop(fd, ft, cf);
-//    }else {
-//        if (do_header) {
-//            dump_header(ft);
-//        }
-//        if (do_rootnode) {
-//            dump_node(fd, ft->h->root_blocknum, ft);
-//        } 
-//        if (do_node) {
-//            dump_node(fd, do_node_num, ft);
-//        }
-//        if (do_fragmentation) {
-//            dump_fragmentation(fd, ft, do_tsv);
-//        }
-//        if (do_translation_table) {
-//            ft->blocktable.dump_translation_table_pretty(stdout);
-//        }
-//        if (do_garbage) {
-//            dump_garbage_stats(fd, ft);
-//        }
-//        if (!do_header && !do_rootnode && !do_fragmentation && !do_translation_table && !do_garbage) {
-//            printf("Block translation:");
-//            ft->blocktable.dump_translation_table(stdout);
-//
-//            dump_header(ft);
-//            
-//            struct __dump_node_extra info;
-//            info.fd = fd;
-//            info.ft = ft;
-//            ft->blocktable.iterate(block_table::TRANSLATION_CHECKPOINTED,
-//                                   dump_node_wrapper, &info, true, true);
-//        }
-//    }
-//    toku_cachefile_close(&cf, false, ZERO_LSN);
-//    toku_cachetable_close(&ct);
-//    toku_ft_free(ft);
-//    toku_ft_layer_destroy();
-//    return 0;
-//}
