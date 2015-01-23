@@ -340,7 +340,7 @@ namespace ftcxx {
         }
 
         DBBuilder& set_descriptor(const Slice &desc) {
-            _descriptor = desc;
+            _descriptor = desc.owned();
             return *this;
         }
     };
