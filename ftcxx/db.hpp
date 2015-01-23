@@ -6,7 +6,6 @@
 
 #include <db.h>
 
-#include "cursor.hpp"
 #include "db_env.hpp"
 #include "db_txn.hpp"
 #include "exceptions.hpp"
