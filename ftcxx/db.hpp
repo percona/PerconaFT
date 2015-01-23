@@ -115,6 +115,33 @@ namespace ftcxx {
             return _db->del(_db, txn.txn(), &kdbt, flags);
         }
 
+        template<class OptimizeCallback>
+        int hot_optimize(const Slice &left, const Slice &right, OptimizeCallback callback, uint64_t *loops_run = NULL) const {
+            DBT ldbt = left.dbt();
+            DBT rdbt = right.dbt();
+
+            class WrappedOptimizeCallback {
+                OptimizeCallback &_oc;
+                size_t _loops;
+
+            public:
+                WrappedOptimizeCallback(OptimizeCallback &oc)
+                    : _oc(oc),
+                      _loops(0)
+                {}
+
+                static int call(void *extra, float progress) {
+                    WrappedOptimizeCallback *e = static_cast<WrappedOptimizeCallback *>(extra);
+                    return e->_oc(progress, ++e->_loops);
+                }
+            } woc(callback);
+
+            uint64_t dummy;
+            return _db->hot_optimize(_db, &ldbt, &rdbt,
+                                     &WrappedOptimizeCallback::call, &woc,
+                                     loops_run == NULL ? &dummy : loops_run);
+        }
+
         Stats get_stats() const {
             Stats stats;
             DB_BTREE_STAT64 s = {0, 0, 0};
