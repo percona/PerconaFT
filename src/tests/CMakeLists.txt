@@ -436,7 +436,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
   ## give some tests, that time out normally, 1 hour to complete
   set(long_tests
     ydb/drd_test_groupcommit_count.tdb
-    ydb/env-put-multiple.tdb
     ydb/filesize.tdb
     ydb/loader-cleanup-test0.tdb
     ydb/loader-cleanup-test0z.tdb

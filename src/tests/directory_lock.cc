@@ -117,7 +117,6 @@ static int update_fun(const DBT *UU(key),
 static void verify_shared_ops_fail(DB_ENV* env, DB* db) {
     int r;
     DB_TXN* txn = NULL;
-    uint32_t flags = 0;
     DBT key,val;
     DBT in_key,in_val;
     uint32_t in_key_data, in_val_data = 0;
@@ -155,22 +154,6 @@ static void verify_shared_ops_fail(DB_ENV* env, DB* db) {
         DB_DELETE_ANY
         );
     CKERR2(r, DB_LOCK_NOTGRANTED);    
-    r = txn->commit(txn,0); CKERR(r);
-
-    r = env->txn_begin(env, NULL, &txn, 0); CKERR(r);
-    r = env_put_multiple_test_no_array(
-        env, db, txn,
-        &key, &val,
-        1, &db, &in_key, &in_val, &flags);
-    CKERR2(r, DB_LOCK_NOTGRANTED);
-    r = txn->commit(txn,0); CKERR(r);
-
-    r = env->txn_begin(env, NULL, &txn, 0); CKERR(r);
-    r = env_put_multiple_test_no_array(
-        env, NULL, txn,
-        &key, &val,
-        1, &db, &in_key, &in_val, &flags);
-    CKERR2(r, DB_LOCK_NOTGRANTED);
     r = txn->commit(txn,0); CKERR(r);
 
     flags = 0;
@@ -319,28 +302,6 @@ int test_main (int argc, char * const argv[]) {
     r = db->update_broadcast(db, txna, &val, 0); CKERR(r);
     verify_excl_ops_fail(env,"foo.db");
     r = txna->abort(txna); CKERR(r);
-
-    uint32_t flags = 0;
-
-    r = env->txn_begin(env, NULL, &txna, 0); CKERR(r);
-    r = env->txn_begin(env, NULL, &txnb, 0); CKERR(r);
-    dbt_init(&key, "a", 2);
-    dbt_init(&val, "a", 2);
-    env_put_multiple_test_no_array(
-        env, NULL, txna,
-        &key, &val,
-        1, &db, &in_key, &in_val, &flags);
-    CKERR(r);
-    dbt_init(&key, "b", 2);
-    dbt_init(&val, "b", 2);
-    env_put_multiple_test_no_array(
-        env, NULL, txnb,
-        &key, &val,
-        1, &db, &in_key, &in_val, &flags);
-    CKERR(r);
-    verify_excl_ops_fail(env,"foo.db");
-    r = txna->abort(txna); CKERR(r);
-    r = txnb->abort(txnb); CKERR(r);
 
     r = db->close(db, 0); CKERR(r);
     r = db2->close(db2, 0); CKERR(r);

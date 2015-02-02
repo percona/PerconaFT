@@ -378,7 +378,7 @@ int toku_loader_put(DB_LOADER *loader, DBT *key, DBT *val)
     int r = 0;
     int i = 0;
     //      err_i is unused now( always 0).  How would we know which dictionary
-    //      the error happens in?  (put_multiple and toku_ft_loader_put do NOT report
+    //      the error happens in?  (toku_ft_loader_put does NOT report
     //      which dictionary). 
 
     // skip put if error already found
