@@ -164,7 +164,6 @@ ydb_do_recovery (DB_ENV *env) {
                            env->i->logger,
                            env->i->dir, env->i->real_log_dir, env->i->bt_compare,
                            env->i->update_function,
-                           env->i->generate_row_for_put, env->i->generate_row_for_del,
                            env->i->cachetable_size);
     return r;
 }

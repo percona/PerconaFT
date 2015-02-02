@@ -537,12 +537,11 @@ indexer_generate_hot_keys_vals(DB_INDEXER *indexer, DB *hotdb, struct ule_prov_i
     toku_fill_dbt(&srcval, uxr_get_val(uxr), uxr_get_vallen(uxr));
 
     // generate the secondary row
-    DB_ENV *env = indexer->i->env;
     if (hotvals) {
-        result = env->i->generate_row_for_put(hotdb, indexer->i->src_db, hotkeys, hotvals, &srckey, &srcval);
+        result = indexer->i->generate_put(hotdb, indexer->i->src_db, hotkeys, hotvals, &srckey, &srcval);
     }
     else {
-        result = env->i->generate_row_for_del(hotdb, indexer->i->src_db, hotkeys, &srckey, &srcval);
+        result = indexer->i->generate_del(hotdb, indexer->i->src_db, hotkeys, &srckey, &srcval);
     }
     toku_destroy_dbt(&srckey);
     toku_destroy_dbt(&srcval);

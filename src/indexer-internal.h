@@ -142,6 +142,8 @@ struct __toku_indexer_internal {
     LE_CURSOR lec;
     FILENUM  *fnums; /* [N] */
     FILENUMS filenums;
+    generate_row_for_put_func generate_put;
+    generate_row_for_del_func generate_del;
 
     // undo state
     struct indexer_commit_keys commit_keys; // set of keys to commit

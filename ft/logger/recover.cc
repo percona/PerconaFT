@@ -186,8 +186,6 @@ struct recover_env {
     CHECKPOINTER cp;
     ft_compare_func bt_compare;
     ft_update_func update_function;
-    generate_row_for_put_func generate_row_for_put;
-    generate_row_for_del_func generate_row_for_del;
     DBT_ARRAY dest_keys;
     DBT_ARRAY dest_vals;
     struct scan_state ss;
@@ -286,8 +284,6 @@ static int recover_env_init (RECOVER_ENV renv,
                              TOKULOGGER logger,
                              ft_compare_func bt_compare,
                              ft_update_func update_function,
-                             generate_row_for_put_func generate_row_for_put,
-                             generate_row_for_del_func generate_row_for_del,
                              size_t cachetable_size) {
     int r = 0;
 
@@ -309,8 +305,6 @@ static int recover_env_init (RECOVER_ENV renv,
     renv->keep_cachetable_callback = keep_cachetable_callback;
     renv->bt_compare               = bt_compare;
     renv->update_function          = update_function;
-    renv->generate_row_for_put     = generate_row_for_put;
-    renv->generate_row_for_del     = generate_row_for_del;
     file_map_init(&renv->fmap);
     renv->goforward = false;
     renv->cp = toku_cachetable_get_checkpointer(renv->ct);
@@ -1467,8 +1461,6 @@ int tokuft_recover(DB_ENV *env,
                    const char *env_dir, const char *log_dir,
                    ft_compare_func bt_compare,
                    ft_update_func update_function,
-                   generate_row_for_put_func generate_row_for_put,
-                   generate_row_for_del_func generate_row_for_del,
                    size_t cachetable_size) {
     int r;
     int lockfd = -1;
@@ -1488,8 +1480,6 @@ int tokuft_recover(DB_ENV *env,
                              logger,
                              bt_compare,
                              update_function,
-                             generate_row_for_put,
-                             generate_row_for_del,
                              cachetable_size);
         assert(r == 0);
 

@@ -155,7 +155,7 @@ static void run_recovery(const char *testdir) {
         r = tokuft_recover(NULL,
                            NULL_prepared_txn_callback,
                            NULL_keep_cachetable_callback,
-                           NULL_logger, testdir, testdir, 0, 0, 0, NULL, 0);
+                           NULL_logger, testdir, testdir, 0, 0, 0);
         CKERR(r);
     }
 }
