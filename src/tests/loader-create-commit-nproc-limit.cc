@@ -138,7 +138,7 @@ static void run_test(int ndb) {
     assert(r == 0);
 
     DB_LOADER *loader;
-    int loader_r = env->create_loader(env, txn, &loader, ndb > 0 ? dbs[0] : NULL, ndb, dbs, db_flags, dbt_flags, loader_flags);
+    int loader_r = env->create_loader(env, txn, &loader, ndb > 0 ? dbs[0] : NULL, ndb, dbs, db_flags, dbt_flags, loader_flags, NULL);
 
     r = setrlimit(RLIMIT_NPROC, &current_nproc_limit);
     assert(r == 0);

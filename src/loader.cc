@@ -219,7 +219,8 @@ toku_loader_create_loader(DB_ENV *env,
                           DB *dbs[],
                           uint32_t db_flags[/*N*/],
                           uint32_t dbt_flags[/*N*/],
-                          uint32_t loader_flags) {
+                          uint32_t loader_flags,
+                          generate_row_for_put_func g) {
     int rval;
     HANDLE_READ_ONLY_TXN(txn);
     DB_TXN *loader_txn = nullptr;
@@ -314,7 +315,7 @@ toku_loader_create_loader(DB_ENV *env,
                                  loader_put_callback,
                                  txn,
                                  env->i->cachetable,
-                                 env->i->generate_row_for_put,
+                                 g,
                                  src_db,
                                  N,
                                  dbs,

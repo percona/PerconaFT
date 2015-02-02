@@ -195,7 +195,7 @@ static void test_loader_maxsize(DB **dbs, DB **check_dbs)
     // create and initialize loader
     r = env->txn_begin(env, NULL, &txn, 0);
     CKERR(r);
-    r = env->create_loader(env, txn, &loader, nullptr, NUM_DBS, dbs, db_flags, dbt_flags, loader_flags);
+    r = env->create_loader(env, txn, &loader, nullptr, NUM_DBS, dbs, db_flags, dbt_flags, loader_flags, put_multiple_generate);
     assert(which_db_to_fail != 0);
     CKERR(r);
     struct error_extra error_extra = {.bad_i=0,.error_count=0};

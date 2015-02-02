@@ -409,8 +409,14 @@ static int test_loader(DB **dbs)
 
     r = env->txn_begin(env, NULL, &txn, 0);                                                               
     CKERR(r);
-    r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags);
-    CKERR(r);
+    if (USE_REGION) {
+        r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags, generate_rows_for_region);
+        CKERR(r);
+    }
+    else {
+        r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags, generate_rows_for_lineitem);
+        CKERR(r);
+    }
     r = loader->set_error_callback(loader, NULL, NULL);
     CKERR(r);
     r = loader->set_poll_function(loader, poll_function, expect_poll_void);

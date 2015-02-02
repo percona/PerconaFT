@@ -156,8 +156,6 @@ static void verify_shared_ops_fail(DB_ENV* env, DB* db) {
     CKERR2(r, DB_LOCK_NOTGRANTED);    
     r = txn->commit(txn,0); CKERR(r);
 
-    flags = 0;
-    
     DBT extra_up;
     dbt_init(&extra_up, NULL, 0);
 
@@ -258,7 +256,7 @@ int test_main (int argc, char * const argv[]) {
     // create loader
     //
     r = env->txn_begin(env, NULL, &txna, 0); CKERR(r);
-    r = env->create_loader(env, txna, &loader, NULL, 1, &db, &put_flags, &dbt_flags, 0); CKERR(r);
+    r = env->create_loader(env, txna, &loader, NULL, 1, &db, &put_flags, &dbt_flags, 0, put_multiple_callback); CKERR(r);
     verify_shared_ops_fail(env,db);
     r = loader->abort(loader); CKERR(r);
     loader=NULL;

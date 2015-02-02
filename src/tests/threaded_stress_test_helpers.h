@@ -995,6 +995,7 @@ cleanup:
 struct loader_op_extra {
     struct scan_op_extra soe;
     int num_dbs;
+    generate_row_for_put_func g;
 };
 
 static int UU() loader_op(DB_TXN* txn, ARG arg, void* operation_extra, void *UU(stats_extra)) {
@@ -1019,7 +1020,7 @@ static int UU() loader_op(DB_TXN* txn, ARG arg, void* operation_extra, void *UU(
         }
         DB_LOADER *loader;
         uint32_t loader_flags = (num == 0) ? 0 : LOADER_COMPRESS_INTERMEDIATES;
-        r = env->create_loader(env, txn, &loader, dbs_load[0], extra->num_dbs, dbs_load, db_flags, dbt_flags, loader_flags);
+        r = env->create_loader(env, txn, &loader, dbs_load[0], extra->num_dbs, dbs_load, db_flags, dbt_flags, loader_flags, extra->g);
         CKERR(r);
 
         DBT key, val;
@@ -2071,7 +2072,7 @@ static void fill_single_table(DB_ENV *env, DB *db, struct cli_args *args, bool f
     if (args->num_elements >= min_size_for_loader) {
         uint32_t db_flags = DB_PRELOCKED_WRITE;
         uint32_t dbt_flags = 0;
-        r = env->create_loader(env, txn, &loader, db, 1, &db, &db_flags, &dbt_flags, 0); CKERR(r);
+        r = env->create_loader(env, txn, &loader, db, 1, &db, &db_flags, &dbt_flags, 0, args->env_args.generate_put_callback); CKERR(r);
     }
 
     for (int i = 0; i < args->num_elements; i++) {

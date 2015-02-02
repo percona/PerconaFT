@@ -121,7 +121,7 @@ static void loader_open_abort(void) {
     r = env->txn_begin(env, NULL, &txn, 0); CKERR(r);
 
     DB_LOADER *loader;
-    r = env->create_loader(env, txn, &loader, NULL, 0, NULL, NULL, NULL, loader_flags); CKERR(r);
+    r = env->create_loader(env, txn, &loader, NULL, 0, NULL, NULL, NULL, loader_flags, put_multiple_generate); CKERR(r);
     
     r = loader->abort(loader); CKERR(r);
 

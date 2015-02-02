@@ -141,7 +141,7 @@ test_loader_abort (bool do_compress, bool abort_loader, bool abort_txn) {
     r = env->txn_begin(env, NULL, &txn, 0);                                                               
     CKERR(r);
 
-    r = env->create_loader(env, txn, &loader, db, 1, &db, &db_flags, &dbt_flags, loader_flags);
+    r = env->create_loader(env, txn, &loader, db, 1, &db, &db_flags, &dbt_flags, loader_flags, put_multiple_generate);
     CKERR(r);
 
     DBT key, val;

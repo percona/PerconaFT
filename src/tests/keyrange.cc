@@ -183,7 +183,7 @@ run_test(void) {
     r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
     if (use_loader) {
         DB_LOADER *loader = NULL;
-        r = env->create_loader(env, txn, &loader, db, 1, &db, NULL, NULL, 0); CKERR(r);
+        r = env->create_loader(env, txn, &loader, db, 1, &db, NULL, NULL, 0, my_generate_row); CKERR(r);
         for (uint64_t i=0; i<nrows; i++) {
             char key[100],val[100];
             snprintf(key, sizeof key, "%08llu", (unsigned long long)keys[i]);

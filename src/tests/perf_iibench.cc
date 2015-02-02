@@ -431,7 +431,7 @@ static int iibench_fill_tables(DB_ENV *env, DB **dbs, struct cli_args *cli_args,
         dbt_flags[i] = DB_DBT_REALLOC;
     }
 
-    r = env->create_loader(env, txn, &loader, dbs[0], num_dbs, dbs, db_flags, dbt_flags, 0); CKERR(r);
+    r = env->create_loader(env, txn, &loader, dbs[0], num_dbs, dbs, db_flags, dbt_flags, 0, iibench_generate_row_for_put); CKERR(r);
     for (int i = 0; i < cli_args->num_elements; i++) {
         DBT key, val;
         uint64_t pk = i;

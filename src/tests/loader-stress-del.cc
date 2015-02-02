@@ -501,7 +501,7 @@ static void test_loader(DB **dbs)
     CKERR(r);
     hiwater_start = hiwater;
     if (footprint_print)  printf("%s:%d Hiwater=%ld water=%ld\n", __FILE__, __LINE__, hiwater, water);
-    r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags);
+    r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags, put_multiple_generate);
     CKERR(r);
     if (footprint_print)  printf("%s:%d Hiwater=%ld water=%ld\n", __FILE__, __LINE__, hiwater, water);
     r = loader->set_error_callback(loader, NULL, NULL);

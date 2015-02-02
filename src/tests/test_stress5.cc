@@ -134,6 +134,7 @@ stress_table(DB_ENV *env, DB **dbp, struct cli_args *cli_args) {
     struct loader_op_extra loe;
     loe.soe = soe[0];
     loe.num_dbs = 3;
+    loe.g = NULL;
     myargs[2].operation_extra = &loe;
     myargs[2].operation = loader_op;
     myargs[3].operation = keyrange_op;

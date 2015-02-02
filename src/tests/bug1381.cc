@@ -173,7 +173,8 @@ static void do_1381_maybe_lock (int do_loader, uint64_t *raw_count) {
                 &db, 
                 &mult_put_flags,
                 &mult_dbt_flags,
-                LOADER_COMPRESS_INTERMEDIATES
+                LOADER_COMPRESS_INTERMEDIATES,
+                generate_row_for_put
                 );
             CKERR(r);
 	}

@@ -184,7 +184,7 @@ static void test_invalid_ops(uint32_t iso_flags) {
     DB_LOADER* loader;
     uint32_t put_flags = 0;
     uint32_t dbt_flags = 0;
-    r = env->create_loader(env, txn, &loader, NULL, 1, &db, &put_flags, &dbt_flags, 0); 
+    r = env->create_loader(env, txn, &loader, NULL, 1, &db, &put_flags, &dbt_flags, 0, generate_row_for_put); 
     CKERR2(r, EINVAL);
 
     r = env->db_change_descriptor(env, txn, "foo.db", &key);

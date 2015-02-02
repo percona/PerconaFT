@@ -182,7 +182,7 @@ run_test(void) {
     // build a tree with 2 leaf nodes
     r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
     DB_LOADER *loader = NULL;
-    r = env->create_loader(env, txn, &loader, db, 1, &db, NULL, NULL, 0); CKERR(r);
+    r = env->create_loader(env, txn, &loader, db, 1, &db, NULL, NULL, 0, my_generate_row); CKERR(r);
     for (uint64_t i = 0; i < 5; i++) {
         uint64_t key = i;
         char val[800]; memset(val, 0, sizeof val);

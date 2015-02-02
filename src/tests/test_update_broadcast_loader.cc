@@ -206,7 +206,8 @@ static void run_test(void) {
             &db,
             &mult_db_flags,
             &mult_dbt_flags,
-            0
+            0,
+            generate_row_for_put
                     ); CKERR(chk_r); }
             { int chk_r = loader->put(loader, &key, &val); CKERR(chk_r); }
             { int chk_r = loader->close(loader); CKERR(chk_r); }
