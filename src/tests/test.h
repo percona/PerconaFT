@@ -370,42 +370,6 @@ static void copy_dbt(DBT *dest, const DBT *src) {
     memcpy(dest->data, src->data, src->size);
 }
 
-UU()
-static int env_put_multiple_test_no_array(
-    DB_ENV *env, 
-    DB *src_db, 
-    DB_TXN *txn, 
-    const DBT *src_key, 
-    const DBT *src_val, 
-    uint32_t num_dbs, 
-    DB **db_array, 
-    DBT *keys,
-    DBT *vals,
-    uint32_t *flags_array) 
-{
-    int r;
-    DBT_ARRAY key_arrays[num_dbs];
-    DBT_ARRAY val_arrays[num_dbs];
-    for (uint32_t i = 0; i < num_dbs; i++) {
-        toku_dbt_array_init(&key_arrays[i], 1);
-        toku_dbt_array_init(&val_arrays[i], 1);
-        key_arrays[i].dbts[0] = keys[i];
-        val_arrays[i].dbts[0] = vals[i];
-    }
-    r = env->put_multiple(env, src_db, txn, src_key, src_val, num_dbs, db_array, &key_arrays[0], &val_arrays[0], flags_array);
-    for (uint32_t i = 0; i < num_dbs; i++) {
-        invariant(key_arrays[i].size == 1);
-        invariant(key_arrays[i].capacity == 1);
-        invariant(val_arrays[i].size == 1);
-        invariant(val_arrays[i].capacity == 1);
-        keys[i] = key_arrays[i].dbts[0];
-        vals[i] = val_arrays[i].dbts[0];
-        toku_dbt_array_destroy_shallow(&key_arrays[i]);
-        toku_dbt_array_destroy_shallow(&val_arrays[i]);
-    }
-    return r;
-}
-
 /* Some macros for evaluating blocks or functions within the scope of a
  * transaction. */
 #define IN_TXN_COMMIT(env, parent, txn, flags, expr) ({                 \

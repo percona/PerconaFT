@@ -213,10 +213,10 @@ struct iibench_put_op_extra {
     uint64_t autoincrement;
 };
 
-static int UU() iibench_put_op(DB_TXN *txn, ARG arg, void *operation_extra, void *stats_extra) {
+static int UU() iibench_put_op(DB_TXN *txn UU(), ARG arg, void *operation_extra, void *stats_extra) {
     const int num_dbs = arg->cli->num_DBs;
-    DB **dbs = arg->dbp;
-    DB_ENV *env = arg->env;
+    DB **dbs = arg->dbp; dbs = dbs;
+    DB_ENV *env = arg->env; env = env;
     DBT_ARRAY mult_key_dbt[num_dbs];
     DBT_ARRAY mult_val_dbt[num_dbs];
     uint32_t mult_put_flags[num_dbs];
@@ -229,7 +229,8 @@ static int UU() iibench_put_op(DB_TXN *txn, ARG arg, void *operation_extra, void
     for (int i = 0; i < num_dbs; i++) {
         toku_dbt_array_init(&mult_key_dbt[i], 1);
         toku_dbt_array_init(&mult_val_dbt[i], 1);
-        mult_put_flags[i] = get_put_flags(arg->cli);
+        assert(false); // remove printf below
+        mult_put_flags[i] = get_put_flags(arg->cli); printf("%d", mult_put_flags[i]);
     }
     mult_key_dbt[0].dbts[0].flags = 0;
     mult_val_dbt[0].dbts[0].flags = 0;
@@ -251,7 +252,8 @@ static int UU() iibench_put_op(DB_TXN *txn, ARG arg, void *operation_extra, void
         iibench_fill_val_buf(pk, valbuf);
         dbt_init(&mult_key_dbt[0].dbts[0], keybuf, sizeof keybuf);
         dbt_init(&mult_val_dbt[0].dbts[0], valbuf, sizeof valbuf);
-
+        assert(false);
+        /*
         r = env->put_multiple(
             env, 
             dbs[0], // source db.
@@ -264,6 +266,7 @@ static int UU() iibench_put_op(DB_TXN *txn, ARG arg, void *operation_extra, void
             mult_val_dbt, // array of values
             mult_put_flags // array of flags
             );
+            */
         if (r != 0) {
             goto cleanup;
         }

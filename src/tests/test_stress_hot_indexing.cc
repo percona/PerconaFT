@@ -153,7 +153,7 @@ static int hi_inserts(DB_TXN* UU(txn), ARG arg, void* UU(operation_extra), void 
     toku_mutex_lock(&fops_lock);
     DB_ENV* env = arg->env;
     DB* db = arg->dbp[0];
-    uint32_t flags[2];
+    uint32_t flags[2] UU();
     flags[0] = 0;
     flags[1] = 0;
     DBT_ARRAY dest_keys[2];
@@ -173,11 +173,11 @@ static int hi_inserts(DB_TXN* UU(txn), ARG arg, void* UU(operation_extra), void 
     r = env->txn_begin(env, NULL, &hi_txn, 0);
     CKERR(r);
     for (i = 0; i < 1000; i++) {
-        DB* dbs[2];        
+        DB* dbs[2] UU();
         toku_mutex_lock(&hi_lock);
         dbs[0] = db;
         dbs[1] = hot_db;
-        int num_dbs = hot_db ? 2 : 1;
+        int num_dbs = hot_db ? 2 : 1; printf("%d", num_dbs);
         // do a random insertion. the assertion comes from the fact
         // that the code used to generate a random key and mod it
         // by the table size manually. fill_key_buf_random will
@@ -185,6 +185,8 @@ static int hi_inserts(DB_TXN* UU(txn), ARG arg, void* UU(operation_extra), void 
         invariant(arg->bounded_element_range);
         fill_key_buf_random(arg->random_data, keybuf, arg);
         fill_val_buf_random(arg->random_data, valbuf, arg->cli);
+        assert(false);
+        /*
         r = env->put_multiple(
             env, 
             db, 
@@ -197,6 +199,7 @@ static int hi_inserts(DB_TXN* UU(txn), ARG arg, void* UU(operation_extra), void 
             dest_vals, 
             flags
             );
+            */
         toku_mutex_unlock(&hi_lock);
         if (r != 0) {
             goto cleanup;

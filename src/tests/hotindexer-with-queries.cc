@@ -261,7 +261,7 @@ static void run_test(void)
         r = dbs[i]->open(dbs[i], NULL, key_name, NULL, DB_BTREE, DB_AUTO_COMMIT|DB_CREATE, 0666);   CKERR(r);
     }
 
-    // generate the src DB (do not use put_multiple)
+    // generate the src DB
     DB_TXN *txn;
     r = env->txn_begin(env, NULL, &txn, 0);                                      CKERR(r);
     r = generate_initial_table(dbs[0], txn, num_rows);                           CKERR(r);

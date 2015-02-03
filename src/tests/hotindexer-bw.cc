@@ -170,6 +170,8 @@ static void * client(void *arg)
 
         while ( retry++ < 10 ) {
             toku_mutex_lock(&put_lock);
+            assert(false);
+            /*
             rr = env_put_multiple_test_no_array(env,
                                    cs->dbs[0],
                                    txn,
@@ -180,12 +182,13 @@ static void * client(void *arg)
                                    dest_keys,
                                    dest_vals, 
                                    cs->flags);
+                                   */
             toku_mutex_unlock(&put_lock);
             if ( rr == 0 ) break;
             sleep(0);
         }
         if ( rr != 0 ) {
-            if ( verbose ) printf("client[%u] : put_multiple returns %d, i=%u, n=%u, key=%u\n", cs->client_number, rr, i, n, k);
+            if ( verbose ) printf("client[%u] : put returns %d, i=%u, n=%u, key=%u\n", cs->client_number, rr, i, n, k);
             r = txn->abort(txn); CKERR(r);
             break;
         }
@@ -426,7 +429,7 @@ static void run_test(void)
         r = dbs[i]->open(dbs[i], NULL, key_name, NULL, DB_BTREE, DB_AUTO_COMMIT|DB_CREATE, 0666);   CKERR(r);
     }
 
-    // generate the src DB (do not use put_multiple)
+    // generate the src DB
     DB_TXN *txn;
     r = env->txn_begin(env, NULL, &txn, 0);                                      CKERR(r);
     r = generate_initial_table(dbs[0], txn, num_rows);                           CKERR(r);
@@ -473,44 +476,3 @@ int test_main(int argc, char * const *argv) {
     return 0;
 }
 
-
-/*
- * Please ignore this code - I don't think I'm going to use it, but I don't want to lose it
- *   I will delete this later - Dave
-
-        if ( rr != 0 ) {  // possible lock deadlock
-            if (verbose > 1) {
-                printf("client[%u] : put_multiple returns %d, i=%u, n=%u, key=%u\n", cs->client_number, rr, i, n, k);
-                if ( verbose > 2 ) print_engine_status(env);
-            }
-            // abort the transaction, freeing up locks associated with previous put_multiples
-            if ( verbose > 1 ) printf("start txn abort\n");
-            r = txn->abort(txn); CKERR(r);
-            if ( verbose > 1 ) printf("      txn aborted\n");
-            sleep(2 + cs->client_number);
-            // now retry, waiting until the deadlock resolves itself
-            r = env->txn_begin(env, cs->txn, &txn, 0); CKERR(r);
-            if ( verbose > 1 ) printf("txn begin\n");
-            while ( rr != 0 ) {
-                rr = env->put_multiple(env,
-                                       cs->dbs[0],
-                                       txn,
-                                       &key, 
-                                       &val,
-                                       NUM_DBS,
-                                       cs->dbs, // dest dbs
-                                       dest_keys,
-                                       dest_vals, 
-                                       cs->flags,
-                                       NULL);
-                if ( rr != 0 ) {
-                    if ( verbose ) printf("client[%u] : put_multiple returns %d, i=%u, n=%u, key=%u\n", cs->client_number, rr, i, n, k);
-                    if ( verbose ) printf("start txn abort\n");
-                    r = txn->abort(txn); CKERR(r);
-                    if ( verbose ) printf("      txn aborted\n");
-                    sleep(2 + cs->client_number);
-                    r = env->txn_begin(env, cs->txn, &txn, 0); CKERR(r);
-                    if ( verbose ) printf("txn begin\n");
-                }
-            }
- */

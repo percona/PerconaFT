@@ -241,7 +241,7 @@ static void test_loader_maxsize(DB **dbs, DB **check_dbs)
         for (int i = 0; i < NUM_DBS; i++) {
             dbt_init_realloc(&keys[i]);
             dbt_init_realloc(&vals[i]);
-            flags[i] = 0;
+            flags[i] = 0; printf("%d", flags[i]);
         }
 
         for(uint32_t i=0;i<num_rows;i++) {
@@ -249,8 +249,11 @@ static void test_loader_maxsize(DB **dbs, DB **check_dbs)
             v = i;
             dbt_init(&key, &k, sizeof(unsigned int));
             dbt_init(&val, &v, sizeof(unsigned int));
+            assert(false);
+            /*
             r = env_put_multiple_test_no_array(env, nullptr, txn, &key, &val, NUM_DBS, check_dbs, keys, vals, flags);
             CKERR(r);
+            */
         }
         r = txn->commit(txn, 0);
         CKERR(r);
