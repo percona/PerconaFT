@@ -347,8 +347,6 @@ static void run_test(uint32_t nr, uint32_t wdb, uint32_t wrow, enum how_to_fail 
 
     r = db_env_create(&env, 0);                                                                               CKERR(r);
     r = env->set_default_bt_compare(env, uint_or_size_dbt_cmp);                                                       CKERR(r);
-    r = env->set_generate_row_callback_for_put(env, put_multiple_generate);
-    CKERR(r);
     int envflags = DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG | DB_CREATE | DB_PRIVATE;
     r = env->open(env, env_dir, envflags, S_IRWXU+S_IRWXG+S_IRWXO);                                            CKERR(r);
     env->set_errfile(env, stderr);

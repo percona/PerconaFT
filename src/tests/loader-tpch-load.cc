@@ -473,16 +473,6 @@ static int run_test(void)
     r = db_env_create(&env, 0);                                                                               CKERR(r);
     db_env_enable_engine_status(0);  // disable engine status on crash because test is expected to fail
     r = env->set_default_bt_compare(env, tpch_dbt_cmp);                                                       CKERR(r);
-    // select which TPC-H table to load
-    if ( USE_REGION ) {
-        r = env->set_generate_row_callback_for_put(env, generate_rows_for_region);                            CKERR(r);
-        NUM_DBS=1;
-    }
-    else {
-        r = env->set_generate_row_callback_for_put(env, generate_rows_for_lineitem);                          CKERR(r);
-        NUM_DBS=8;
-    }
-
     int envflags = DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE | DB_PRIVATE;
     r = env->open(env, envdir, envflags, S_IRWXU+S_IRWXG+S_IRWXO);                                            CKERR(r);
     env->set_errfile(env, stderr);

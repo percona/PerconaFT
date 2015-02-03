@@ -156,7 +156,6 @@ static void run_test(void)
     r = db_env_create(&env, 0);                                                  CKERR(r);
     r = env->set_lg_dir(env, "log");                                             CKERR(r);
     r = env->set_default_bt_compare(env, int64_dbt_cmp);                         CKERR(r);
-    r = env->set_generate_row_callback_for_put(env, put_multiple_generate_switch);      CKERR(r);
     int envflags = DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE | DB_PRIVATE | DB_INIT_LOG;
     r = env->open(env, TOKU_TEST_FILENAME, envflags, S_IRWXU+S_IRWXG+S_IRWXO);               CKERR(r);
     env->set_errfile(env, stderr);

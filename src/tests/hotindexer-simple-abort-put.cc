@@ -90,7 +90,7 @@ PATENT RIGHTS GRANT:
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 #include "test.h"
 
-static int
+static int UU()
 put_callback(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_val) {
     toku_dbt_array_resize(dest_keys, 1);
     toku_dbt_array_resize(dest_vals, 1);
@@ -113,8 +113,6 @@ run_test(void) {
     int r;
     DB_ENV *env = NULL;
     r = db_env_create(&env, 0); assert_zero(r);
-
-    r = env->set_generate_row_callback_for_put(env, put_callback); assert_zero(r);
 
     r = env->open(env, TOKU_TEST_FILENAME, DB_INIT_MPOOL|DB_CREATE|DB_THREAD |DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_TXN|DB_PRIVATE, S_IRWXU+S_IRWXG+S_IRWXO); assert_zero(r);
 

@@ -618,8 +618,6 @@ static void run_test(void)
     if (datadir) {
         r = env->set_data_dir(env, datadir);                                                                  CKERR(r);
     }
-    r = env->set_generate_row_callback_for_put(env, put_multiple_generate);
-    CKERR(r);
     int envflags = DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE | DB_PRIVATE;
     r = env->open(env, envdir, envflags, S_IRWXU+S_IRWXG+S_IRWXO);                                            CKERR(r);
     env->set_errfile(env, stderr);

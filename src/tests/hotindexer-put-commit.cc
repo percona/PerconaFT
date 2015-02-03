@@ -96,7 +96,7 @@ PATENT RIGHTS GRANT:
 // the concurrent operation occurs when the commit periodically releases the ydb lock which allows the hot indexer
 // to run.  the hot indexer erroneously append to the rollback log that is in the process of being committed.
 
-static int
+static int UU() 
 put_callback(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_val) {
     toku_dbt_array_resize(dest_keys, 1);
     toku_dbt_array_resize(dest_vals, 1);
@@ -191,8 +191,6 @@ run_test(void) {
     int r;
     DB_ENV *env = NULL;
     r = db_env_create(&env, 0); assert_zero(r);
-
-    r = env->set_generate_row_callback_for_put(env, put_callback); assert_zero(r);
 
     r = env->open(env, TOKU_TEST_FILENAME, DB_INIT_MPOOL|DB_CREATE|DB_THREAD |DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_TXN|DB_PRIVATE, S_IRWXU+S_IRWXG+S_IRWXO); assert_zero(r);
 

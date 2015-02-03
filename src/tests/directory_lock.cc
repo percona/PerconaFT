@@ -101,11 +101,6 @@ put_multiple_callback(DB *dest_db UU(), DB *src_db UU(), DBT_ARRAY *dest_keys UU
     return 0;
 }
 
-static int
-del_multiple_callback(DB *dest_db UU(), DB *src_db UU(), DBT_ARRAY *dest_keys UU(), const DBT *src_key UU(), const DBT *src_val UU()) {
-    return 0;
-}
-
 static int update_fun(const DBT *UU(key),
                       const DBT *UU(old_val), const DBT *UU(extra),
                       void UU((*set_val)(const DBT *new_val,
@@ -220,10 +215,6 @@ int test_main (int argc, char * const argv[]) {
     uint32_t dbt_flags = 0;
     r = db_env_create(&env, 0);                                                         CKERR(r);
     env->set_errfile(env, stderr);
-    r = env->set_generate_row_callback_for_put(env, put_multiple_callback);
-    CKERR(r);
-    r = env->set_generate_row_callback_for_del(env, del_multiple_callback);
-    CKERR(r);
     env->set_update(env, update_fun);
     r = env->open(env, TOKU_TEST_FILENAME, envflags, S_IRWXU+S_IRWXG+S_IRWXO);                      CKERR(r);
     

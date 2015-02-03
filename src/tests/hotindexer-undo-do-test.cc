@@ -229,7 +229,7 @@ print_dbt(DBT *dbt) {
     printf("%.*s ", dbt->size, (char *) dbt->data);
 }
 
-static int
+static int UU()
 put_callback(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_val) {
     toku_dbt_array_resize(dest_keys, 1);
     toku_dbt_array_resize(dest_vals, 1);
@@ -270,7 +270,7 @@ put_callback(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals
     return 0;
 }
 
-static int
+static int UU()
 del_callback(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, const DBT *src_key, const DBT *src_data) {
     toku_dbt_array_resize(dest_keys, 1);
     DBT *dest_key = &dest_keys->dbts[0];
@@ -538,9 +538,6 @@ run_test(char *envdir, char *testname) {
     DB_ENV *env = NULL;
     r = db_env_create(&env, 0); assert_zero(r);
     r = env->set_redzone(env, 0); assert_zero(r);
-
-    r = env->set_generate_row_callback_for_put(env, put_callback); assert_zero(r);
-    r = env->set_generate_row_callback_for_del(env, del_callback); assert_zero(r);
 
     r = env->open(env, envdir, DB_INIT_MPOOL|DB_CREATE|DB_THREAD |DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_TXN|DB_PRIVATE, S_IRWXU+S_IRWXG+S_IRWXO); assert_zero(r);
 

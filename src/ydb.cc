@@ -743,27 +743,6 @@ env_set_update (DB_ENV *env, int (*update_function)(const DBT *key, const DBT *o
 }
 
 static int
-env_set_generate_row_callback_for_put(DB_ENV *env, generate_row_for_put_func generate_row_for_put) {
-    HANDLE_PANICKED_ENV(env);
-    int r = 0;
-    if (env_opened(env)) r = EINVAL;
-    else {
-        env->i->generate_row_for_put = generate_row_for_put;
-    }
-    return r;
-}
-
-static int
-env_set_generate_row_callback_for_del(DB_ENV *env, generate_row_for_del_func generate_row_for_del) {
-    HANDLE_PANICKED_ENV(env);
-    int r = 0;
-    if (env_opened(env)) r = EINVAL;
-    else {
-        env->i->generate_row_for_del = generate_row_for_del;
-    }
-    return r;
-}
-static int
 env_set_redzone(DB_ENV *env, int redzone) {
     HANDLE_PANICKED_ENV(env);
     int r;
@@ -1598,15 +1577,11 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     //SENV(set_noticecall);
 #undef SENV
 #define USENV(name) result->name = env_ ## name
-    // methods with locking done internally
-    USENV(put_multiple);
     // unlocked methods
     USENV(open);
     USENV(close);
     USENV(set_default_bt_compare);
     USENV(set_update);
-    USENV(set_generate_row_callback_for_put);
-    USENV(set_generate_row_callback_for_del);
     USENV(set_lg_bsize);
     USENV(set_lg_dir);
     USENV(set_lg_max);

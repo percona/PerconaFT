@@ -144,8 +144,6 @@ struct __toku_db_env_internal {
     char *data_dir;
     ft_compare_func bt_compare;
     ft_update_func update_function;
-    generate_row_for_put_func generate_row_for_put;
-    generate_row_for_del_func generate_row_for_del;
 
     unsigned long cachetable_size;
     CACHETABLE cachetable;

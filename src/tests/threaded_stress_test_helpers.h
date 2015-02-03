@@ -705,7 +705,7 @@ static int scan_op_and_maybe_check_sum(
     return r;
 }
 
-static int generate_row_for_put(
+static int UU() generate_row_for_put(
     DB *dest_db,
     DB *src_db,
     DBT_ARRAY *dest_keys,
@@ -1984,18 +1984,6 @@ static int create_tables(DB_ENV **env_res, DB **db_res, int num_DBs,
     r = env->set_lk_max_memory(env, env_args.lk_max_memory); CKERR(r);
     r = env->set_cachesize(env, env_args.cachetable_size / (1 << 30), env_args.cachetable_size % (1 << 30), 1); CKERR(r);
     r = env->set_lg_bsize(env, env_args.rollback_node_size); CKERR(r);
-    if (env_args.generate_put_callback) {
-        r = env->set_generate_row_callback_for_put(env, env_args.generate_put_callback); 
-        CKERR(r);
-    }
-    else {
-        r = env->set_generate_row_callback_for_put(env, generate_row_for_put); 
-        CKERR(r);
-    }
-    if (env_args.generate_del_callback) {
-        r = env->set_generate_row_callback_for_del(env, env_args.generate_del_callback); 
-        CKERR(r);
-    }
     int env_flags = get_env_open_flags(cli_args);
     r = env->open(env, env_args.envdir, env_flags, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(r);
     r = env->checkpointing_set_period(env, env_args.checkpointing_period); CKERR(r);
@@ -2185,18 +2173,6 @@ static int open_tables(DB_ENV **env_res, DB **db_res, int num_DBs,
     env->set_update(env, env_args.update_function);
     r = env->set_cachesize(env, env_args.cachetable_size / (1 << 30), env_args.cachetable_size % (1 << 30), 1); CKERR(r);
     r = env->set_lg_bsize(env, env_args.rollback_node_size); CKERR(r);
-    if (env_args.generate_put_callback) {
-        r = env->set_generate_row_callback_for_put(env, env_args.generate_put_callback);
-        CKERR(r);
-    }
-    else {
-        r = env->set_generate_row_callback_for_put(env, generate_row_for_put);
-        CKERR(r);
-    }
-    if (env_args.generate_del_callback) {
-        r = env->set_generate_row_callback_for_del(env, env_args.generate_del_callback);
-        CKERR(r);
-    }
     int env_flags = get_env_open_flags(cli_args);
     r = env->open(env, env_args.envdir, DB_RECOVER | env_flags, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(r);
     do_xa_recovery(env);

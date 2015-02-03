@@ -432,11 +432,6 @@ static void print_db_env_struct (void) {
                              "int (*get_iname)                            (DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt) /* FOR TEST ONLY: lookup existing iname */",
                              "int (*create_loader)                        (DB_ENV *env, DB_TXN *txn, DB_LOADER **blp,    DB *src_db, int N, DB *dbs[/*N*/], uint32_t db_flags[/*N*/], uint32_t dbt_flags[/*N*/], uint32_t loader_flags, generate_row_for_put_func g)",
                              "int (*create_indexer)                       (DB_ENV *env, DB_TXN *txn, DB_INDEXER **idxrp, DB *src_db, int N, DB *dbs[/*N*/], uint32_t db_flags[/*N*/], uint32_t indexer_flags)",
-                             "int (*put_multiple)                         (DB_ENV *env, DB *src_db, DB_TXN *txn,\n"
-                             "                                               const DBT *src_key, const DBT *src_val,\n"
-                             "                                               uint32_t num_dbs, DB **db_array, DBT_ARRAY *keys, DBT_ARRAY *vals, uint32_t *flags_array) /* insert into multiple DBs */",
-                             "int (*set_generate_row_callback_for_put)    (DB_ENV *env, generate_row_for_put_func generate_row_for_put)",
-                             "int (*set_generate_row_callback_for_del)    (DB_ENV *env, generate_row_for_del_func generate_row_for_del)",
                              "int (*get_redzone)                          (DB_ENV *env, int *redzone) /* get the redzone limit */",
                              "int (*set_redzone)                          (DB_ENV *env, int redzone) /* set the redzone limit in percent of total space */",
                              "int (*set_lk_max_memory)                    (DB_ENV *env, uint64_t max)",

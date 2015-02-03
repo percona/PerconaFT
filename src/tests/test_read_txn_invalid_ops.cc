@@ -115,7 +115,7 @@ static int generate_row_for_put(
     return 0;
 }
 
-static int generate_row_for_del(
+static int UU() generate_row_for_del(
     DB *UU(dest_db), 
     DB *UU(src_db),
     DBT_ARRAY *UU(dest_key_arrays),
@@ -137,10 +137,6 @@ static void test_invalid_ops(uint32_t iso_flags) {
 
     // set things up
     r = db_env_create(&env, 0); 
-    CKERR(r);
-    r = env->set_generate_row_callback_for_put(env,generate_row_for_put); 
-    CKERR(r);
-    r = env->set_generate_row_callback_for_del(env,generate_row_for_del); 
     CKERR(r);
     env->set_update(env, update_fun);
     r = env->open(env, TOKU_TEST_FILENAME, DB_INIT_MPOOL|DB_CREATE|DB_THREAD |DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_TXN|DB_PRIVATE, 0755); 

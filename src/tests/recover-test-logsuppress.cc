@@ -226,8 +226,6 @@ do_x1_shutdown (void) {
     r=db_env_create(&env, 0);                                                  assert(r==0);
     env->set_errfile(env, stderr);
     r = env->set_default_bt_compare(env, uint_dbt_cmp);                                                       CKERR(r);
-    r = env->set_generate_row_callback_for_put(env, put_multiple_generate);
-    CKERR(r);
 
     r=env->open(env, TOKU_TEST_FILENAME, DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN|DB_CREATE|DB_PRIVATE|DB_THREAD, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(r);
     r = env->checkpointing_set_period(env, 0);                                 CKERR(r);

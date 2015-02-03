@@ -107,7 +107,7 @@ static int update_fun(const DBT *UU(key),
 }
 
 
-static int generate_row_for_del(
+static int UU() generate_row_for_del (
     DB *UU(dest_db), 
     DB *UU(src_db),
     DBT_ARRAY *dest_key_arrays,
@@ -152,8 +152,6 @@ static void setup (void) {
     { int chk_r = toku_os_mkdir(TOKU_TEST_FILENAME, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(chk_r); }
     { int chk_r = db_env_create(&env, 0); CKERR(chk_r); }
     env->set_errfile(env, stderr);
-    { int chk_r = env->set_generate_row_callback_for_put(env,generate_row_for_put); CKERR(chk_r); }
-    { int chk_r = env->set_generate_row_callback_for_del(env,generate_row_for_del); CKERR(chk_r); }
     env->set_update(env, update_fun);
     { int chk_r = env->open(env, TOKU_TEST_FILENAME, envflags, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(chk_r); }
 }
