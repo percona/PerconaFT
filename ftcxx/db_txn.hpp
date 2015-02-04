@@ -77,6 +77,13 @@ namespace ftcxx {
             return _flags & DB_TXN_READ_ONLY;
         }
 
+        uint64_t id() const {
+            if (!_txn) {
+                return 0;
+            }
+            return _txn->id64(_txn);
+        }
+
     private:
         int _flags;
         DB_TXN *_txn;
