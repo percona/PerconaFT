@@ -129,7 +129,7 @@ enum ft_msg_type {
     FT_ABORT_BROADCAST_TXN  = 10, // Broadcast to all leafentries, (commit specific transaction).
     FT_INSERT_NO_OVERWRITE = 11,
     FT_OPTIMIZE = 12,             // Broadcast
-    FT_OPTIMIZE_FOR_UPGRADE = 13, // same as FT_OPTIMIZE, but record version number in leafnode
+    //FT_OPTIMIZE_FOR_UPGRADE = 13, // same as FT_OPTIMIZE, but record version number in leafnode
     FT_UPDATE = 14,
     FT_UPDATE_BROADCAST_ALL = 15,
     FT_DELETE_MULTICAST = 16, // sending a multicast delete, where we have two inclusive endpoint keys
@@ -155,7 +155,6 @@ ft_msg_type_applies_once(enum ft_msg_type type)
     case FT_COMMIT_BROADCAST_TXN:
     case FT_ABORT_BROADCAST_TXN:
     case FT_OPTIMIZE:
-    case FT_OPTIMIZE_FOR_UPGRADE:
     case FT_UPDATE_BROADCAST_ALL:
     case FT_DELETE_MULTICAST:
     case FT_COMMIT_MULTICAST_TXN:
@@ -186,7 +185,6 @@ ft_msg_type_applies_multiple(enum ft_msg_type type)
     case FT_COMMIT_BROADCAST_TXN:
     case FT_ABORT_BROADCAST_TXN:
     case FT_OPTIMIZE:
-    case FT_OPTIMIZE_FOR_UPGRADE:
     case FT_UPDATE_BROADCAST_ALL:
     case FT_DELETE_MULTICAST:
     case FT_COMMIT_MULTICAST_TXN:
@@ -214,7 +212,6 @@ ft_msg_type_is_multicast(enum ft_msg_type type)
     case FT_COMMIT_BROADCAST_TXN:
     case FT_ABORT_BROADCAST_TXN:
     case FT_OPTIMIZE:
-    case FT_OPTIMIZE_FOR_UPGRADE:
     case FT_UPDATE_BROADCAST_ALL:
         ret_val = false;
         break;

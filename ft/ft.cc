@@ -206,22 +206,6 @@ static void ft_begin_checkpoint (LSN checkpoint_lsn, void *header_v) {
     toku_ft_unlock (ft);
 }
 
-// #4922: Hack to remove data corruption race condition.
-// Reading (and upgrading) a node up to version 19 causes this.
-// We COULD skip this if we know that no nodes remained (as of last checkpoint)
-// that are below version 19.
-// If there are no nodes < version 19 this is harmless (field is unused).
-// If there are, this will make certain the value is at least as low as necessary,
-// and not much lower.  (Too low is good, too high can cause data corruption).
-// TODO(yoni): If we ever stop supporting upgrades of nodes < version 19 we can delete this.
-// TODO(yoni): If we know no nodes are left to upgrade, we can skip this. (Probably not worth doing).
-static void
-ft_hack_highest_unused_msn_for_upgrade_for_checkpoint(FT ft) {
-    if (ft->h->layout_version_original < FT_LAYOUT_VERSION_19) {
-        ft->checkpoint_header->highest_unused_msn_for_upgrade = ft->h->highest_unused_msn_for_upgrade;
-    }
-}
-
 // maps to cf->checkpoint_userdata
 // Write checkpoint-in-progress versions of header and translation to disk (really to OS internal buffer).
 // Copy current header's version of checkpoint_staging stat64info to checkpoint header.
@@ -249,7 +233,6 @@ static void ft_checkpoint (CACHEFILE cf, int fd, void *header_v) {
         ft->h->time_of_last_modification = now;
         ch->time_of_last_modification = now;
         ch->checkpoint_count++;
-        ft_hack_highest_unused_msn_for_upgrade_for_checkpoint(ft);
                                                              
         // write translation and header to disk (or at least to OS internal buffer)
         toku_serialize_ft_to(fd, ch, &ft->blocktable, ft->cf);

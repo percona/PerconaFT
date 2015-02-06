@@ -101,7 +101,7 @@ enum ft_flags {
     //TOKU_DB_DUP             = (1<<0),  //Obsolete #2862
     //TOKU_DB_DUPSORT         = (1<<1),  //Obsolete #2862
     TOKU_DB_KEYCMP_BUILTIN  = (1<<2),
-    TOKU_DB_VALCMP_BUILTIN_13  = (1<<3),
+    //TOKU_DB_VALCMP_BUILTIN_13  = (1<<3),
     TOKU_DB_CMP_NO_DESC = (1<<4), // comparison function uses no descriptor, meaning it is NOT legacy
     TOKU_DB_HAS_PREPEND_BYTES = (1<<5) // meaning FT has prepend bytes
 };

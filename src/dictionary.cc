@@ -983,15 +983,6 @@ int dictionary_manager::maybe_upgrade_persistent_environment_dictionary(
         uint64_t upgrade_last_lsn_d = toku_htod64(last_lsn_of_clean_shutdown_read_from_log.lsn);
         for (int version = stored_env_version+1; version <= FT_LAYOUT_VERSION; version++) {
             uint32_t put_flag = DB_NOOVERWRITE;
-            if (version <= FT_LAYOUT_VERSION_19) {
-                // See #5902.
-                // To prevent a crash (and any higher complexity code) we'll simply
-                // silently not overwrite anything if it exists.
-                // The keys existing for version <= 19 is not necessarily an error.
-                // If this happens for versions > 19 it IS an error and we'll use DB_NOOVERWRITE.
-                put_flag = DB_NOOVERWRITE_NO_ERROR;
-            }
-
 
             char* upgrade_time_key = get_upgrade_time_key(version);
             toku_fill_dbt(&key, upgrade_time_key, strlen(upgrade_time_key));

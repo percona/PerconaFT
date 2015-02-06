@@ -252,26 +252,6 @@ struct check_block_table_extra {
     struct ft *h;
 };
 
-// Check non-upgraded (legacy) node.
-// NOTE: These nodes have less checksumming than more 
-// recent nodes.  This effectively means that we are 
-// skipping over these nodes.
-static int
-check_old_node(FTNODE node, struct rbuf *rb, int version)
-{
-    int r = 0;
-    read_legacy_node_info(node, rb, version);
-    // For version 14 nodes, advance the buffer to the end
-    // and verify the checksum.
-    if (version == FT_FIRST_LAYOUT_VERSION_WITH_END_TO_END_CHECKSUM) {
-        // Advance the buffer to the end.
-        rb->ndone = rb->size - 4;
-        r = check_legacy_end_checksum(rb);
-    }
-    
-    return r;
-}
-
 // Read, decompress, and check the given block.
 static int
 check_block(BLOCKNUM blocknum, int64_t UU(blocksize), int64_t UU(address), void *extra)
@@ -308,32 +288,6 @@ check_block(BLOCKNUM blocknum, int64_t UU(blocksize), int64_t UU(address), void 
     }
 
     int version = node->layout_version_read_from_disk;
-
-      ////////////////////////////
-     // UPGRADE FORK GOES HERE //
-    ////////////////////////////
-    
-    // Check nodes before major layout changes in version 15.
-    // All newer versions should follow the same layout, for now.
-    // This predicate would need to be changed if the layout
-    // of the nodes on disk does indeed change in the future.
-    if (version < FT_FIRST_LAYOUT_VERSION_WITH_BASEMENT_NODES)
-    {
-        struct rbuf nrb;
-        // Use old decompression method for legacy nodes.
-        r = decompress_from_raw_block_into_rbuf(rb.buf, rb.size, &nrb, blocknum);
-        if (r != 0) {
-            failure++;
-            goto cleanup;
-        }
-        
-        // Check the end-to-end checksum.
-        r = check_old_node(node, &nrb, version);
-        if (r != 0) {
-            failure++;
-        }
-        goto cleanup;
-    }
 
     read_node_info(node, &rb, version);
 
@@ -388,7 +342,6 @@ check_block(BLOCKNUM blocknum, int64_t UU(blocksize), int64_t UU(address), void 
 	// point.
     }
 
-cleanup:
     // Cleanup and error incrementing.
     if (failure) {
        	cbte->blocks_failed++;

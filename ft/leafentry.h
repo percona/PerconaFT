@@ -197,7 +197,6 @@ static_assert(1 == __builtin_offsetof(leafentry, u), "union is in the wrong plac
 
 
 typedef struct leafentry *LEAFENTRY;
-typedef struct leafentry_13 *LEAFENTRY_13;
 
 //
 // TODO: consistency among names is very poor.
@@ -234,16 +233,6 @@ void le_extract_val(LEAFENTRY le,
                     // should we return the entire leafentry as the val?
                     bool is_leaf_mode, bool is_snapshot_read,
                     TOKUTXN ttxn, uint32_t *vallen, void **val);
-
-size_t
-leafentry_disksize_13(LEAFENTRY_13 le);
-
-int
-toku_le_upgrade_13_14(LEAFENTRY_13 old_leafentry, // NULL if there was no stored data.
-                      void** keyp,
-                      uint32_t* keylen,
-                      size_t *new_leafentry_memorysize,
-                      LEAFENTRY *new_leafentry_p);
 
 class bn_data;
 

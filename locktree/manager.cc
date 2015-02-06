@@ -139,13 +139,11 @@ size_t locktree_manager::get_max_lock_memory(void) {
 
 int locktree_manager::set_max_lock_memory(size_t max_lock_memory) {
     int r = 0;
-    mutex_lock();
     if (max_lock_memory < m_current_lock_memory) {
         r = EDOM;
     } else {
         m_max_lock_memory = max_lock_memory;
     }
-    mutex_unlock();
     return r;
 }
 

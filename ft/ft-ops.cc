@@ -990,8 +990,7 @@ void toku_ftnode_pe_est_callback(
     paranoid_invariant(ftnode_pv != NULL);
     long bytes_to_free = 0;
     FTNODE node = static_cast<FTNODE>(ftnode_pv);
-    if (node->dirty || node->height == 0 ||
-        node->layout_version_read_from_disk < FT_FIRST_LAYOUT_VERSION_WITH_BASEMENT_NODES) {
+    if (node->dirty || node->height == 0) {
         *bytes_freed_estimate = 0;
         *cost = PE_CHEAP;
         goto exit;
@@ -1067,11 +1066,7 @@ int toku_ftnode_pe_callback(void *ftnode_pv, PAIR_ATTR old_attr, void *write_ext
     if (node->dirty) {
         goto exit;
     }
-    // Don't partially evict nodes whose partitions can't be read back
-    // from disk individually
-    if (node->layout_version_read_from_disk < FT_FIRST_LAYOUT_VERSION_WITH_BASEMENT_NODES) {
-        goto exit;
-    }
+
     //
     // partial eviction for nonleaf nodes
     //

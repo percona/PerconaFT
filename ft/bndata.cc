@@ -125,7 +125,6 @@ void bn_data::remove_key(uint32_t keylen) {
 void bn_data::initialize_from_separate_keys_and_vals(uint32_t num_entries, struct rbuf *rb, uint32_t data_size, uint32_t version UU(),
                                                      uint32_t key_data_size, uint32_t val_data_size, bool all_keys_same_length,
                                                      uint32_t fixed_klpair_length) {
-    paranoid_invariant(version >= FT_LAYOUT_VERSION_26);  // Support was added @26
     uint32_t ndone_before = rb->ndone;
     init_zero();
     invariant(all_keys_same_length);  // Until otherwise supported.
@@ -235,26 +234,24 @@ void bn_data::deserialize_from_rbuf(uint32_t num_entries, struct rbuf *rb, uint3
     bool keys_vals_separate = false;
     uint32_t fixed_klpair_length = 0;
 
-    // In version 25 and older there is no header.  Skip reading header for old version.
-    if (version >= FT_LAYOUT_VERSION_26) {
-        uint32_t ndone_before = rb->ndone;
-        key_data_size = rbuf_int(rb);
-        val_data_size = rbuf_int(rb);
-        fixed_klpair_length = rbuf_int(rb);  // 0 if !all_keys_same_length
-        all_keys_same_length = rbuf_char(rb);
-        keys_vals_separate = rbuf_char(rb);
-        invariant(all_keys_same_length == keys_vals_separate);  // Until we support otherwise
-        uint32_t header_size = rb->ndone - ndone_before;
-        data_size -= header_size;
-        invariant(header_size == HEADER_LENGTH);
-        if (keys_vals_separate) {
-            invariant(fixed_klpair_length >= sizeof(klpair_struct) || num_entries == 0);
-            initialize_from_separate_keys_and_vals(num_entries, rb, data_size, version,
-                                                   key_data_size, val_data_size, all_keys_same_length,
-                                                   fixed_klpair_length);
-            return;
-        }
+    uint32_t ndone_before = rb->ndone;
+    key_data_size = rbuf_int(rb);
+    val_data_size = rbuf_int(rb);
+    fixed_klpair_length = rbuf_int(rb);  // 0 if !all_keys_same_length
+    all_keys_same_length = rbuf_char(rb);
+    keys_vals_separate = rbuf_char(rb);
+    invariant(all_keys_same_length == keys_vals_separate);  // Until we support otherwise
+    uint32_t header_size = rb->ndone - ndone_before;
+    data_size -= header_size;
+    invariant(header_size == HEADER_LENGTH);
+    if (keys_vals_separate) {
+        invariant(fixed_klpair_length >= sizeof(klpair_struct) || num_entries == 0);
+        initialize_from_separate_keys_and_vals(num_entries, rb, data_size, version,
+                                               key_data_size, val_data_size, all_keys_same_length,
+                                               fixed_klpair_length);
+        return;
     }
+
     // Version >= 26 and version 25 deserialization are now identical except that <= 25 might allocate too much memory.
     const void *bytes;
     rbuf_literal_bytes(rb, &bytes, data_size);
@@ -339,14 +336,6 @@ void bn_data::deserialize_from_rbuf(uint32_t num_entries, struct rbuf *rb, uint3
     toku_mempool_init(&m_buffer_mempool, newmem, (size_t)(curr_dest_pos - newmem), allocated_bytes_vals);
 
     invariant(get_disk_size() == data_size);
-    // Versions older than 26 might have allocated too much memory.  Try to shrink the mempool now that we
-    // know how much memory we need.
-    if (version < FT_LAYOUT_VERSION_26) {
-        // Unnecessary after version 26
-        // Reallocate smaller mempool to save memory
-        invariant_zero(toku_mempool_get_frag_size(&m_buffer_mempool));
-        toku_mempool_realloc_larger(&m_buffer_mempool, toku_mempool_get_used_size(&m_buffer_mempool));
-    }
 }
 
 uint64_t bn_data::get_memory_size() {

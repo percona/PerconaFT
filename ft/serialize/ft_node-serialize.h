@@ -135,8 +135,6 @@ int read_and_check_version(FTNODE node, struct rbuf *rb);
 void read_node_info(FTNODE node, struct rbuf *rb, int version);
 void allocate_and_read_partition_offsets(FTNODE node, struct rbuf *rb, FTNODE_DISK_DATA *ndd);
 int check_node_info_checksum(struct rbuf *rb);
-void read_legacy_node_info(FTNODE node, struct rbuf *rb, int version);
-int check_legacy_end_checksum(struct rbuf *rb);
 
 // exported so the loader can dump bad blocks
 void dump_bad_block(unsigned char *vp, uint64_t size);

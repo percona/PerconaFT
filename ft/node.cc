@@ -1363,7 +1363,6 @@ static void find_idx_for_msg(
 static bool le_needs_broadcast_msg_applied(const ft_msg &msg, LEAFENTRY le) {
     invariant(ft_msg_type_applies_multiple(msg.type()));
     switch (msg.type()) {
-    case FT_OPTIMIZE_FOR_UPGRADE:
     case FT_COMMIT_BROADCAST_ALL:
     case FT_OPTIMIZE:
         return !le_is_clean(le);
@@ -1417,8 +1416,6 @@ toku_ft_bn_apply_msg (
 
         break;
     }
-    case FT_OPTIMIZE_FOR_UPGRADE:
-        // fall through so that optimize_for_upgrade performs rest of the optimize logic
     case FT_COMMIT_BROADCAST_ALL:
     case FT_OPTIMIZE:
     case FT_COMMIT_BROADCAST_TXN:
