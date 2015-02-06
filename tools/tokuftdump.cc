@@ -309,7 +309,6 @@ static int * dumpChildrens(int fd, BLOCKNUM blocknum, FT ft) {
             unsigned int n_bytes = toku_bnc_nbytesinbuf(bnc); 
             int n_entries = toku_bnc_n_entries(bnc);
             if (n_bytes > 0 || n_entries > 0) {
-               // printf("   buffer contains %u bytes (%d items)\n", n_bytes, n_entries);
             }
         }
          else {
@@ -907,34 +906,6 @@ static void writeTree(NMC *msgs[],int height,char *name){
 
 }
 
-//static int  printNodeMessagesInJSON(NMC *ptr, ofstream mytree){
-//    int isEmpty=0;
-//    mytree <<"{";
-//    for(int j=0;j<16;j++){
-//        if(ptr->count[j]>0){
-//            isEmpty++;
-//            switch (j)   {
-//                case FT_INSERT: mytree <<"\"Insert\":\""<<ptr->count[j]<<"\""; break;
-//                case FT_INSERT_NO_OVERWRITE: mytree <<"\"INSERT_NO_OVERWRITE\":\""<<ptr->count[j]; break;
-//                case FT_DELETE_ANY: mytree <<"\"DELETE_ANY\":\""<<ptr->count[j]; break;
-//                case FT_ABORT_ANY: mytree <<"\"ABORT_ANY\":\""<<ptr->count[j]; break;
-//                case FT_COMMIT_ANY: mytree <<"\"COMMIT_ANY\":\""<<ptr->count[j]; break;
-//                case FT_COMMIT_BROADCAST_ALL: mytree <<"\"COMMIT_BROADCAST_ALL\":\""<<ptr->count[j] ;    break;
-//                case FT_COMMIT_BROADCAST_TXN: mytree <<"\"COMMIT_BROADCAST_TXN\":\""<<ptr->count[j]; break;
-//                case FT_ABORT_BROADCAST_TXN: mytree <<"\"BORT_BROADCAST_TXN\":\""<<ptr->count[j];break;
-//                case FT_OPTIMIZE: mytree <<"\"OPTIMIZE\":\""<<ptr->count[j]; break;
-//                case FT_OPTIMIZE_FOR_UPGRADE: mytree <<"\"OPTIMIZE_FOR_UPGRADE\":\""<<ptr->count[j];break;
-//                case FT_UPDATE:   mytree <<"\"UPDATE\":\""<<ptr->count[j]; break;
-//                case FT_UPDATE_BROADCAST_ALL: mytree <<"\"UPDATE_BROADCAST_ALL:\""<<ptr->count[j]; break;
-//            }
-//            mytree <<"\"";
-//            if(j<16-1) mytree <<", ";
-//            
-//        }
-//    }
-//    mytree <<"}";
-//    return isEmpty;
-//}
 
 static void writeJson(NMC *msgs[],int height,const char *name){
     ofstream mytree (name,fstream::out);

@@ -51,7 +51,7 @@ list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE
   ydb/upgrade-test-4.tdb
   )
 
-if (NOT @RUN_HELGRIND_TESTS@)
+if (NOT ON)
   list(APPEND CTEST_CUSTOM_TESTS_IGNORE
     util/helgrind_test_circular_buffer
     util/helgrind_test_partitioned_counter
@@ -63,7 +63,7 @@ if (NOT @RUN_HELGRIND_TESTS@)
     )
 endif ()
 
-if (NOT @RUN_DRD_TESTS@)
+if (NOT ON)
   list(APPEND CTEST_CUSTOM_TESTS_IGNORE
     ydb/drd_test_groupcommit_count.tdb
     ydb/drd_test_4015.tdb
@@ -71,7 +71,7 @@ if (NOT @RUN_DRD_TESTS@)
 endif ()
 
 ## osx's pthreads prefer writers, so this test will deadlock
-if (@CMAKE_SYSTEM_NAME@ STREQUAL Darwin)
+if (Linux STREQUAL Darwin)
   list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE portability/test-pthread-rwlock-rwr)
   list(APPEND CTEST_CUSTOM_TESTS_IGNORE portability/test-pthread-rwlock-rwr)
 endif ()
@@ -109,12 +109,12 @@ foreach(test ${stress_tests})
     ydb/drd_mid_${test}
     ydb/drd_large_${test}
     )
-  if(NOT @RUN_LONG_TESTS@)
+  if(NOT OFF)
     list(APPEND CTEST_CUSTOM_TESTS_IGNORE
       ydb/drd_large_${test}
       )
   endif()
-  if (NOT @RUN_DRD_TESTS@)
+  if (NOT ON)
     list(APPEND CTEST_CUSTOM_TESTS_IGNORE
       ydb/drd_tiny_${test}
       ydb/drd_mid_${test}
@@ -124,7 +124,7 @@ foreach(test ${stress_tests})
 endforeach(test)
 
 ## upgrade stress tests are 5 minutes long, don't need to run them always
-if(NOT @RUN_LONG_TESTS@)
+if(NOT OFF)
   foreach(test ${stress_tests})
     if (NOT ${test} MATCHES test_stress_openclose)
       foreach(oldver 4.2.0 5.0.8 5.2.7 6.0.0 6.1.0 6.5.1 6.6.3)
@@ -151,7 +151,7 @@ set(recover_stress_tests
   )
 
 ## we run stress tests separately, only run them if asked to
-if(NOT @RUN_STRESS_TESTS@)
+if(NOT OFF)
   list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE ${stress_tests} ${recover_stress_tests})
   list(APPEND CTEST_CUSTOM_TESTS_IGNORE ${stress_tests} ${recover_stress_tests})
 endif()
@@ -168,7 +168,7 @@ set(perf_tests
   )
 
 ## we also don't need to run perf tests every time
-if(NOT @RUN_PERF_TESTS@)
+if(NOT OFF)
   list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE ${perf_tests})
   list(APPEND CTEST_CUSTOM_TESTS_IGNORE ${perf_tests})
 endif()
@@ -216,7 +216,7 @@ set(long_running_tests
   ydb/test_update_broadcast_stress.tdb
   ydb/test_update_stress.tdb
   )
-if(NOT @RUN_LONG_TESTS@)
+if(NOT OFF)
   list(APPEND CTEST_CUSTOM_MEMCHECK_IGNORE ${long_running_tests})
   list(APPEND CTEST_CUSTOM_TESTS_IGNORE ${long_running_tests})
 endif()
