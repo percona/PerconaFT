@@ -516,7 +516,6 @@ static void print_db_struct (void) {
 			 "const DBT* (*dbt_neg_infty)(void)/* Return the special DBT that refers to negative infinity in the lock table.*/",
 			 "void (*get_max_row_size) (DB*, uint32_t *max_key_size, uint32_t *max_row_size)",
 			 "DESCRIPTOR descriptor /* saved row/dictionary descriptor for aiding in comparisons */",
-			 "DESCRIPTOR cmp_descriptor /* saved row/dictionary descriptor for aiding in comparisons */",
 			 "int (*getf_set)(DB*, DB_TXN*, uint32_t, DBT*, YDB_CALLBACK_FUNCTION, void*) /* same as DBC->c_getf_set without a persistent cursor) */",
 			 "int (*optimize)(DB*) /* Run garbage collecion and promote all transactions older than oldest. Amortized (happens during flattening) */",
 			 "int (*hot_optimize)(DB*, DBT*, DBT*, int (*progress_callback)(void *progress_extra, float progress), void *progress_extra, uint64_t* loops_run)",

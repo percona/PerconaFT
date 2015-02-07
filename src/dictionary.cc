@@ -147,9 +147,6 @@ static int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, u
 
     db->i->opened = 1;
 
-    // now that the handle has successfully opened, a valid descriptor
-    // is in the ft. we need to set the db's descriptor pointers
-    db->cmp_descriptor = toku_ft_get_cmp_descriptor(ft_handle);
     r = 0;
  
 out:
@@ -1300,7 +1297,7 @@ exit:
 int dictionary_manager::finish_open_db(DB* db, DB_TXN* txn, dictionary_info* dinfo, uint32_t flags, bool is_create) {
     if (is_create) {
         // we only want to set flags when we create
-        uint32_t ft_flags = TOKU_DB_CMP_NO_DESC; // state that comparisons for this FT have no descriptor
+        uint32_t ft_flags = 0;
         if (dinfo->num_prepend_bytes > 0) {
             ft_flags |= TOKU_DB_HAS_PREPEND_BYTES; // state that this FT has some prepend bytes, used for comparisons and updates
         }

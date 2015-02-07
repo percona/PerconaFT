@@ -152,7 +152,6 @@ void locktree::create(locktree_manager *mgr, DICTIONARY_ID dict_id, const compar
 
 void locktree::destroy(void) {
     invariant(m_reference_count == 0);
-    m_cmp.destroy();
     m_rangetree->destroy();
     toku_free(m_rangetree);
     m_sto_buffer.destroy();

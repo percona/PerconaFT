@@ -208,13 +208,8 @@ struct ft {
 
     CACHEFILE cf;
 
-    // protected by locktree and user.
-    // User makes sure this is only changed when no activity on tree
-    DESCRIPTOR_S cmp_descriptor;
-    // contains a pointer to cmp_descriptor (above) - their lifetimes are bound
     toku::comparator cmp;
 
-    // the update function always utilizes the cmp_descriptor, not the regular one
     ft_update_info update_info;
 
     // These are not read-only:
@@ -260,12 +255,6 @@ struct ft {
     // - if our attempt fails because the key was not in range of the rightmost leaf, we reset the score back to 0
     uint32_t seqinsert_score;
 };
-
-// Allocate a DB struct off the stack and only set its comparison
-// descriptor. We don't bother setting any other fields because
-// the comparison function doesn't need it, and we would like to
-// reduce the CPU work done per comparison.
-#define FAKE_DB(db, desc) struct __toku_db db; do { db.cmp_descriptor = const_cast<DESCRIPTOR>(desc); } while (0)
 
 struct ft_options {
     unsigned int nodesize;

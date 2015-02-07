@@ -186,13 +186,8 @@ static void iibench_fill_val_buf(uint64_t pk, int64_t *buf) {
     memcpy(&buf[2], &row.c, sizeof(row.c));
 }
 
-static int iibench_get_db_idx(DB *db) {
-    DESCRIPTOR desc = db->cmp_descriptor;
-    invariant_notnull(desc->dbt.data);
-    invariant(desc->dbt.size == sizeof(int));
-    int db_idx;
-    memcpy(&db_idx, desc->dbt.data, desc->dbt.size);
-    return db_idx;
+static int iibench_get_db_idx(DB *db UU()) {
+    assert(false); return 0;
 }
 
 static void iibench_rangequery_cb(DB *db, const DBT *key, const DBT *val, void *extra) {
@@ -320,7 +315,6 @@ static int iibench_generate_row_for_put(DB *dest_db, DB *src_db, DBT_ARRAY *dest
 }
 
 // After each DB opens, set the descriptor to store the DB idx value.
-// Close and reopen the DB so we can use db->cmp_descriptor during comparisons.
 static DB *iibench_set_descriptor_after_db_opens(DB_ENV *env, DB *db, int idx, reopen_db_fn reopen, struct cli_args *cli_args) {
     int r;
     DBT desc_dbt;

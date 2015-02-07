@@ -1229,7 +1229,7 @@ int
 test_main (int argc, const char *argv[]) {
     parse_args(argc, argv);
 
-    dummy_cmp.create(cmp_fn, nullptr, 0);
+    dummy_cmp.create(cmp_fn, 0);
 
     initialize_dummymsn();
     int r;
@@ -1263,8 +1263,5 @@ test_main (int argc, const char *argv[]) {
 
     r = toku_close_ft_handle_nolsn(t, 0);          assert(r==0);
     toku_cachetable_close(&ct);
-
-    dummy_cmp.destroy();
-
     return 0;
 }

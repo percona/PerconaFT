@@ -98,12 +98,8 @@ PATENT RIGHTS GRANT:
 #include "util/dbt.h"
 
 enum ft_flags {
-    //TOKU_DB_DUP             = (1<<0),  //Obsolete #2862
-    //TOKU_DB_DUPSORT         = (1<<1),  //Obsolete #2862
-    TOKU_DB_KEYCMP_BUILTIN  = (1<<2),
-    //TOKU_DB_VALCMP_BUILTIN_13  = (1<<3),
-    TOKU_DB_CMP_NO_DESC = (1<<4), // comparison function uses no descriptor, meaning it is NOT legacy
-    TOKU_DB_HAS_PREPEND_BYTES = (1<<5) // meaning FT has prepend bytes
+    TOKU_DB_KEYCMP_BUILTIN  = (1<<0),
+    TOKU_DB_HAS_PREPEND_BYTES = (1<<1) // meaning FT has prepend bytes
 };
 
 typedef int (*ft_compare_func)(const DBT *a, const DBT *b);
@@ -119,13 +115,9 @@ namespace toku {
     // that points may be positive or negative infinity.
 
     class comparator {
-        void init(ft_compare_func cmp, const DESCRIPTOR_S* desc, uint32_t ft_flags, uint8_t memcmp_magic) {
+        void init(ft_compare_func cmp, uint32_t ft_flags, uint8_t memcmp_magic) {
             _cmp = cmp;
             _num_prepend_bytes = (ft_flags & TOKU_DB_HAS_PREPEND_BYTES) ? 8 : 0;
-            toku_init_dbt(&_desc.dbt);
-            if (desc && desc->dbt.data) {
-                toku_clone_dbt(&_desc.dbt, desc->dbt);
-            }
             _memcmp_magic = memcmp_magic;
         }
 
@@ -136,13 +128,12 @@ namespace toku {
 
     public:
         comparator() : _cmp(nullptr), _memcmp_magic(MEMCMP_MAGIC_NONE), _num_prepend_bytes(0) {
-            toku_init_dbt(&_desc.dbt);
         }
         // This magic value is reserved to mean that the magic has not been set.
         static const uint8_t MEMCMP_MAGIC_NONE = 0;
 
-        void create(ft_compare_func cmp, DESCRIPTOR desc, uint32_t ft_flags, uint8_t memcmp_magic = MEMCMP_MAGIC_NONE) {
-            init(cmp, desc, ft_flags, memcmp_magic);
+        void create(ft_compare_func cmp, uint32_t ft_flags, uint8_t memcmp_magic = MEMCMP_MAGIC_NONE) {
+            init(cmp, ft_flags, memcmp_magic);
         }
 
         // like inherit, but doesn't require that the this comparator
@@ -153,15 +144,8 @@ namespace toku {
         // out ft flags is one way to do it, but it's subtle. Ought to
         // think of a more understandable way of doing this
         void create_from(const comparator &cmp) {
-            destroy();
             invariant_notnull(cmp._cmp);
-            init(cmp._cmp, &cmp._desc, 0, cmp._memcmp_magic);
-        }
-
-        void destroy() {
-            if (_desc.dbt.data) {
-                toku_free(_desc.dbt.data);
-            }
+            init(cmp._cmp, 0, cmp._memcmp_magic);
         }
 
         ft_compare_func get_compare_func() const {
@@ -206,7 +190,6 @@ namespace toku {
         }
 
     private:
-        DESCRIPTOR_S _desc;
         ft_compare_func _cmp;
         uint8_t _memcmp_magic;
         uint8_t _num_prepend_bytes;

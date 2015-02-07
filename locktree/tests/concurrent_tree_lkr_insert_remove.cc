@@ -155,7 +155,7 @@ static uint64_t check_for_range_and_count(concurrent_tree::locked_keyrange *lkr,
 void concurrent_tree_unit_test::test_lkr_insert_remove(void) {
     verify_unique_keys();
     comparator cmp;
-    cmp.create(compare_dbts, nullptr, 0);
+    cmp.create(compare_dbts, 0);
 
     concurrent_tree tree;
     tree.create(&cmp);
@@ -199,7 +199,6 @@ void concurrent_tree_unit_test::test_lkr_insert_remove(void) {
 
     lkr.release();
     tree.destroy();
-    cmp.destroy();
 }
 
 } /* namespace toku */

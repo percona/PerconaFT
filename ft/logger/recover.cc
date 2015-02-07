@@ -152,16 +152,12 @@ struct file_map_tuple {
     FILENUM filenum;
     FT_HANDLE ft_handle;     // NULL ft_handle means it's a rollback file.
     char *iname;
-    struct __toku_db fake_db;
 };
 
 static void file_map_tuple_init(struct file_map_tuple *tuple, FILENUM filenum, FT_HANDLE ft_handle, char *iname) {
     tuple->filenum = filenum;
     tuple->ft_handle = ft_handle;
     tuple->iname = iname;
-    // use a fake DB for comparisons, using the ft's cmp descriptor
-    memset(&tuple->fake_db, 0, sizeof(tuple->fake_db));
-    tuple->fake_db.cmp_descriptor = &tuple->ft_handle->ft->cmp_descriptor;
 }
 
 static void file_map_tuple_destroy(struct file_map_tuple *tuple) {

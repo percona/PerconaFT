@@ -122,8 +122,6 @@ ft_destroy(FT ft) {
     //cannot destroy since it is still in use by CURRENT
     assert(ft->h->type == FT_CURRENT);
     ft->blocktable.destroy();
-    ft->cmp.destroy();
-    toku_destroy_dbt(&ft->cmp_descriptor.dbt);
     toku_ft_destroy_reflock(ft);
     toku_free(ft->h);
 }
@@ -363,7 +361,7 @@ static void ft_init(FT ft, FT_OPTIONS options, CACHEFILE cf) {
     toku_list_init(&ft->live_ft_handles);
 
     // intuitively, the comparator points to the FT's cmp descriptor
-    ft->cmp.create(options->compare_fun, &ft->cmp_descriptor, ft->h->flags, options->memcmp_magic);
+    ft->cmp.create(options->compare_fun, ft->h->flags, options->memcmp_magic);
     ft->update_info.init(options->update_fun, ft->h->flags);
 
     if (ft->cf != NULL) {
@@ -465,7 +463,7 @@ int toku_read_ft_and_store_in_cachefile (FT_HANDLE ft_handle, CACHEFILE cf, LSN 
 
     invariant_notnull(ft);
     // intuitively, the comparator points to the FT's cmp descriptor
-    ft->cmp.create(ft_handle->options.compare_fun, &ft->cmp_descriptor, ft->h->flags, ft_handle->options.memcmp_magic);
+    ft->cmp.create(ft_handle->options.compare_fun, ft->h->flags, ft_handle->options.memcmp_magic);
     ft->update_info.init(ft_handle->options.update_fun, ft->h->flags);
     ft->cf = cf;
     toku_cachefile_set_userdata(cf,
@@ -667,10 +665,6 @@ void toku_ft_get_fractal_tree_info64(FT ft, struct ftinfo64 *info) {
 int toku_ft_iterate_fractal_tree_block_map(FT ft, int (*iter)(uint64_t,int64_t,int64_t,int64_t,int64_t,void*), void *iter_extra) {
     uint64_t this_checkpoint_count = ft->h->checkpoint_count;
     return ft->blocktable.iterate_translation_tables(this_checkpoint_count, iter, iter_extra);
-}
-
-DESCRIPTOR toku_ft_get_cmp_descriptor(FT_HANDLE ft_handle) {
-    return &ft_handle->ft->cmp_descriptor;
 }
 
 void

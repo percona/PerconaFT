@@ -1050,7 +1050,7 @@ test_serialize_nonleaf(enum ftnode_verify_type bft, bool do_clone) {
     CKERR(r);
 
     toku::comparator cmp;
-    cmp.create(string_key_cmp, nullptr, 0);
+    cmp.create(string_key_cmp, 0);
 
     toku_bnc_insert_msg(BNC(&sn, 0), "a", 2, "aval", 5, FT_NONE, next_dummymsn(), xids_0, true, cmp);
     toku_bnc_insert_msg(BNC(&sn, 0), "b", 2, "bval", 5, FT_NONE, next_dummymsn(), xids_123, false, cmp);
@@ -1060,7 +1060,6 @@ test_serialize_nonleaf(enum ftnode_verify_type bft, bool do_clone) {
     toku_xids_destroy(&xids_0);
     toku_xids_destroy(&xids_123);
     toku_xids_destroy(&xids_234);
-    cmp.destroy();
 
     FT_HANDLE XMALLOC(ft);
     FT XCALLOC(ft_h);
@@ -1072,7 +1071,7 @@ test_serialize_nonleaf(enum ftnode_verify_type bft, bool do_clone) {
                  128*1024,
                  TOKU_DEFAULT_COMPRESSION_METHOD,
                  16);
-    ft_h->cmp.create(string_key_cmp, nullptr, 0);
+    ft_h->cmp.create(string_key_cmp, 0);
     ft->ft = ft_h;
     
     ft_h->blocktable.create();
@@ -1125,7 +1124,6 @@ test_serialize_nonleaf(enum ftnode_verify_type bft, bool do_clone) {
 
     ft_h->blocktable.block_free(block_allocator::BLOCK_ALLOCATOR_TOTAL_HEADER_RESERVE);
     ft_h->blocktable.destroy();
-    ft_h->cmp.destroy();
     toku_free(ft_h->h);
     toku_free(ft_h);
     toku_free(ft);

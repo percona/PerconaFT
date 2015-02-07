@@ -158,12 +158,6 @@ void toku_ft_stat64 (FT ft, struct ftstat64_s *s);
 void toku_ft_get_fractal_tree_info64 (FT ft, struct ftinfo64 *s);
 int toku_ft_iterate_fractal_tree_block_map(FT ft, int (*iter)(uint64_t,int64_t,int64_t,int64_t,int64_t,void*), void *iter_extra);
 
-// get the descriptor for a ft. safe to read as long as clients honor the
-// strict contract put forth by toku_ft_update_descriptor/toku_ft_change_descriptor
-// essentially, there should never be a reader while there is a writer, enforced
-// by the client, not the FT.
-DESCRIPTOR toku_ft_get_cmp_descriptor(FT_HANDLE ft_handle);
-
 typedef struct {
     // delta versions in basements could be negative
     int64_t numrows;
