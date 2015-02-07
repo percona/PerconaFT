@@ -2119,7 +2119,6 @@ deserialize_rollback_log_from_rbuf (BLOCKNUM blocknum, ROLLBACK_LOG_NODE *log_p,
     result->layout_version_read_from_disk = result->layout_version;
     result->build_id = rbuf_int(rb);
     result->dirty = false;
-    //TODO: Maybe add descriptor (or just descriptor version) here eventually?
     //TODO: This is hard.. everything is shared in a single dictionary.
     rbuf_TXNID_PAIR(rb, &result->txnid);
     result->sequence = rbuf_ulonglong(rb);

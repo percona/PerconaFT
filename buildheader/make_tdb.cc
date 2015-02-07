@@ -451,7 +451,6 @@ static void print_db_env_struct (void) {
                              "uint64_t (*get_loader_memory_size)(DB_ENV *env)",
                              "void (*set_killed_callback)(DB_ENV *env, uint64_t default_killed_time_msec, uint64_t (*get_killed_time_callback)(uint64_t default_killed_time_msec), int (*killed_callback)(void))",
                              "void (*do_backtrace)                        (DB_ENV *env)",
-                             "int (*db_change_descriptor)(DB_ENV *, DB_TXN *, const char *, DBT* descriptor)",
                              NULL};
 
         sort_and_dump_fields("db_env", true, extra);
@@ -515,7 +514,6 @@ static void print_db_struct (void) {
 			 "const DBT* (*dbt_pos_infty)(void) /* Return the special DBT that refers to positive infinity in the lock table.*/",
 			 "const DBT* (*dbt_neg_infty)(void)/* Return the special DBT that refers to negative infinity in the lock table.*/",
 			 "void (*get_max_row_size) (DB*, uint32_t *max_key_size, uint32_t *max_row_size)",
-			 "DESCRIPTOR descriptor /* saved row/dictionary descriptor for aiding in comparisons */",
 			 "int (*getf_set)(DB*, DB_TXN*, uint32_t, DBT*, YDB_CALLBACK_FUNCTION, void*) /* same as DBC->c_getf_set without a persistent cursor) */",
 			 "int (*optimize)(DB*) /* Run garbage collecion and promote all transactions older than oldest. Amortized (happens during flattening) */",
 			 "int (*hot_optimize)(DB*, DBT*, DBT*, int (*progress_callback)(void *progress_extra, float progress), void *progress_extra, uint64_t* loops_run)",
@@ -775,10 +773,6 @@ int main (int argc, char *const argv[] __attribute__((__unused__))) {
     print_db_key_range_struct();
     print_db_lsn_struct();
     print_dbt_struct();
-
-    printf("typedef struct __toku_descriptor {\n");
-    printf("    DBT       dbt;\n");
-    printf("} *DESCRIPTOR, DESCRIPTOR_S;\n");
 
     //file fragmentation info
     //a block is just a contiguous region in a file.

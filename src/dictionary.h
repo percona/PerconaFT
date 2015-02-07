@@ -113,7 +113,6 @@ public:
     uint64_t id;
     uint64_t prepend_id;
     uint8_t num_prepend_bytes;
-    DBT descriptor;
 
     dictionary_info() : 
         dname(nullptr),
@@ -122,7 +121,6 @@ public:
         prepend_id(PREPEND_ID_INVALID),
         num_prepend_bytes(0)
     {
-        toku_init_dbt(&descriptor);
     }
     void destroy() {
         if (dname) {
@@ -134,7 +132,6 @@ public:
         if (groupname) {
             toku_free(groupname);
         }
-        toku_destroy_dbt(&descriptor);
     }
 };
 
@@ -170,7 +167,6 @@ class dictionary {
     inmemory_dictionary_manager* m_mgr;
     toku::locktree *m_lt;
     toku::locktree_manager *m_ltm;
-    DESCRIPTOR_S m_descriptor;
     uint8_t m_num_prepend_bytes;
     uint64_t m_prepend_id;
     // important point: DO NOT STORE THE INAME in this class
@@ -190,7 +186,6 @@ public:
     char* get_dname() const;
     uint64_t get_id() const;
     toku::locktree* get_lt() const;
-    DESCRIPTOR_S* get_descriptor();
     uint8_t num_prepend_bytes() const;
     uint64_t prepend_id() const;
     int fill_db_key(const void *key, const uint32_t keylen, DBT* out);
@@ -206,7 +201,6 @@ typedef enum {
     ENV_ID = 0, // id for persistent environment dictionary
     DIRECTORY_ID, // id for directory
     INAME_ID, // id for inamedb
-    DESC_ID, // id for descriptordb
     INAME_REFS_ID, // id for m_iname_refs_db
     GROUPNAMES_ID // id for m_groupnamedb
 } RESERVED_DICTIONARY_ID;
@@ -219,7 +213,6 @@ private:
     DB* m_directory; // maps dname to dictionary id
     DB* m_detailsdb; // maps dictionary id to iname
     DB* m_groupnamedb; // maps groupname to information about it (such as num prepend bytes and iname used)
-    DB* m_descriptordb; // maps dictionary id to descriptor
     DB* m_iname_refs_db; // maps iname to number of dictionaries that are using the iname to store data
     uint64_t m_next_id;
     toku_mutex_t m_mutex;
@@ -257,7 +250,6 @@ public:
         m_directory(nullptr),
         m_detailsdb(nullptr),
         m_groupnamedb(nullptr),
-        m_descriptordb(nullptr),
         m_iname_refs_db(nullptr),
         m_next_id(0)
     {
@@ -270,7 +262,6 @@ public:
     int create_new_db(DB_TXN* txn, const char* dname, const char* groupname, DB_ENV* env, bool is_db_hot_index, dictionary_info* dinfo);
     int remove(dictionary_info* dinfo, DB_TXN* txn, bool* unlink_iname);
     int rename(DB_TXN* txn, const char *old_dname, const char *new_dname);
-    int change_descriptor(const char *dname, DB_TXN* txn, DBT *descriptor);
     void destroy();
 
     friend class dictionary_test;
@@ -355,7 +346,6 @@ public:
     }
     int rename(DB_ENV* env, DB_TXN *txn, const char *old_dname, const char *new_dname);
     int remove(const char * dname, DB_ENV* env, DB_TXN* txn);
-    int change_descriptor(const char *dname, DB_TXN* txn, DBT *descriptor);
     void create();
     void destroy();
     int open_db(DB* db, const char * dname, DB_TXN * txn, uint32_t flags);    

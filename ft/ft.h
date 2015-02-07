@@ -208,7 +208,6 @@ struct toku_product_name_strings_struct {
     char environmentdictionary[sizeof(toku_product_name) + sizeof(".environment")];
     char fileopsdirectory[sizeof(toku_product_name) + sizeof(".directory")];
     char fileopsinames[sizeof(toku_product_name) + sizeof(".inames")];
-    char fileopsdesc[sizeof(toku_product_name) + sizeof(".descriptors")];
     char fileops_iname_refs[sizeof(toku_product_name) + sizeof(".inamerefs")];
     char fileops_groupnames[sizeof(toku_product_name) + sizeof(".groupnames")];
     char single_process_lock[sizeof(toku_product_name) + sizeof("___lock_dont_delete_me")];

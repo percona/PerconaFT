@@ -360,7 +360,6 @@ static void ft_init(FT ft, FT_OPTIONS options, CACHEFILE cf) {
 
     toku_list_init(&ft->live_ft_handles);
 
-    // intuitively, the comparator points to the FT's cmp descriptor
     ft->cmp.create(options->compare_fun, ft->h->flags, options->memcmp_magic);
     ft->update_info.init(options->update_fun, ft->h->flags);
 
@@ -462,7 +461,6 @@ int toku_read_ft_and_store_in_cachefile (FT_HANDLE ft_handle, CACHEFILE cf, LSN 
     }
 
     invariant_notnull(ft);
-    // intuitively, the comparator points to the FT's cmp descriptor
     ft->cmp.create(ft_handle->options.compare_fun, ft->h->flags, ft_handle->options.memcmp_magic);
     ft->update_info.init(ft_handle->options.update_fun, ft->h->flags);
     ft->cf = cf;
@@ -864,13 +862,6 @@ void tokuft_update_product_name_strings(void) {
                          "%s.inames", toku_product_name);
         assert(n >= 0);
         assert((unsigned)n < sizeof(toku_product_name_strings.fileopsinames));
-    }
-    {
-        int n = snprintf(toku_product_name_strings.fileopsdesc,
-                         sizeof(toku_product_name_strings.fileopsdesc),
-                         "%s.descriptors", toku_product_name);
-        assert(n >= 0);
-        assert((unsigned)n < sizeof(toku_product_name_strings.fileopsdesc));
     }
     {
         int n = snprintf(toku_product_name_strings.fileops_iname_refs,

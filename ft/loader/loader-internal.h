@@ -291,14 +291,12 @@ int sort_and_write_rows (struct rowset rows, struct merge_fileset *fs, FTLOADER 
 
 int mergesort_row_array (struct row rows[/*n*/], int n, int which_db, DB *dest_db, ft_compare_func, FTLOADER, struct rowset *);
 
-//int write_file_to_dbfile (int outfile, FIDX infile, FTLOADER bl, const DESCRIPTOR descriptor, int progress_allocation);
 int toku_merge_some_files_using_dbufio (const bool to_q, FIDX dest_data, QUEUE q, int n_sources, DBUFIO_FILESET bfs, FIDX srcs_fidxs[/*n_sources*/], FTLOADER bl, int which_db, DB *dest_db, ft_compare_func compare, int progress_allocation);
 
 int ft_loader_sort_and_write_rows (struct rowset *rows, struct merge_fileset *fs, FTLOADER bl, int which_db, DB *dest_db, ft_compare_func);
 
 // This is probably only for testing.
 int toku_loader_write_ft_from_q_in_C (FTLOADER                 bl,
-				      const DESCRIPTOR         descriptor,
 				      int                      fd, // write to here
 				      int                      progress_allocation,
 				      QUEUE                    q,
@@ -310,8 +308,6 @@ int toku_loader_write_ft_from_q_in_C (FTLOADER                 bl,
                                       uint32_t                 fanout);
 
 int ft_loader_mergesort_row_array (struct row rows[/*n*/], int n, int which_db, DB *dest_db, ft_compare_func, FTLOADER, struct rowset *);
-
-int ft_loader_write_file_to_dbfile (int outfile, FIDX infile, FTLOADER bl, const DESCRIPTOR descriptor, int progress_allocation);
 
 int ft_loader_init_file_infos (struct file_infos *fi);
 void ft_loader_fi_destroy (struct file_infos *fi, bool is_error);

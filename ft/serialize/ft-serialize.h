@@ -94,8 +94,6 @@ PATENT RIGHTS GRANT:
 size_t toku_serialize_ft_size(struct ft_header *h);
 void toku_serialize_ft_to(int fd, struct ft_header *h, block_table *bt, CACHEFILE cf);
 void toku_serialize_ft_to_wbuf(struct wbuf *wbuf, struct ft_header *h, DISKOFF translation_location_on_disk, DISKOFF translation_size_on_disk);
-void toku_serialize_descriptor_contents_to_fd(int fd, DESCRIPTOR desc, DISKOFF offset);
-void toku_serialize_descriptor_contents_to_wbuf(struct wbuf *wb, DESCRIPTOR desc);
 
 int toku_deserialize_ft_from(int fd, LSN max_acceptable_lsn, FT *ft);
 

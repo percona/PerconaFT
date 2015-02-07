@@ -197,9 +197,6 @@ static int write_dbfile (char *tf_template, int n, char *output_name, bool expec
     r = toku_queue_destroy(q);
     assert(r==0);
 
-    DESCRIPTOR_S desc;
-    toku_fill_dbt(&desc.dbt, "abcd", 4);
-
     int fd = open(output_name, O_RDWR | O_CREAT | O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO);
     assert(fd>=0);
 
@@ -211,7 +208,7 @@ static int write_dbfile (char *tf_template, int n, char *output_name, bool expec
     ft_loader_set_error_function(&bl.error_callback, NULL, NULL);
     ft_loader_set_poll_function(&bl.poll_callback, loader_poll_callback, NULL);
 
-    result = toku_loader_write_ft_from_q_in_C(&bl, &desc, fd, 1000, q2, size_est, 0, 0, 0, TOKU_DEFAULT_COMPRESSION_METHOD, 16);
+    result = toku_loader_write_ft_from_q_in_C(&bl, fd, 1000, q2, size_est, 0, 0, 0, TOKU_DEFAULT_COMPRESSION_METHOD, 16);
 
     toku_set_func_malloc_only(NULL);
     toku_set_func_realloc_only(NULL);

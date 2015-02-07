@@ -109,8 +109,7 @@ namespace toku {
 
 // A locktree represents the set of row locks owned by all transactions
 // over an open dictionary. Read and write ranges are represented as
-// a left and right key which are compared with the given descriptor 
-// and comparison fn.
+// a left and right key which are compared with the comparison fn.
 //
 // Each locktree has a reference count which it manages
 // but does nothing based on the value of the reference count - it is

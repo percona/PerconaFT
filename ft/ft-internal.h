@@ -490,7 +490,6 @@ void toku_le_get_status(LE_STATUS);
 typedef enum {
     FT_UPDATES = 0,
     FT_UPDATES_BROADCAST,
-    FT_DESCRIPTOR_SET,
     FT_MSN_DISCARDS,                           // how many messages were ignored by leaf because of msn
     FT_TOTAL_RETRIES,                          // total number of search retries due to TRY_AGAIN
     FT_SEARCH_TRIES_GT_HEIGHT,                 // number of searches that required more tries than the height of the tree

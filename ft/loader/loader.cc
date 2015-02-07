@@ -2182,7 +2182,6 @@ static int toku_loader_write_ft_from_q (FTLOADER bl,
 }
 
 int toku_loader_write_ft_from_q_in_C (FTLOADER                bl,
-                                      const DESCRIPTOR descriptor UU(),
                                       int                      fd UU(), // write to here
                                       int                      progress_allocation,
                                       QUEUE                    q,

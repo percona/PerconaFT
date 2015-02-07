@@ -189,7 +189,6 @@ void dictionary::create(
     m_ltm = &ltm;
     m_num_prepend_bytes = dinfo->num_prepend_bytes;
     m_prepend_id = dinfo->prepend_id;
-    toku_clone_dbt(&m_descriptor.dbt, dinfo->descriptor);
     if (need_locktree) {
         DICTIONARY_ID dict_id = {
             .dictid = m_id
@@ -234,10 +233,6 @@ uint64_t dictionary::get_id() const {
 
 toku::locktree* dictionary::get_lt() const {
     return m_lt;
-}
-
-DESCRIPTOR_S* dictionary::get_descriptor() {
-    return &m_descriptor;
 }
 
 uint8_t dictionary::num_prepend_bytes() const {
@@ -321,8 +316,6 @@ int persistent_dictionary_manager::initialize(DB_ENV* env, DB_TXN* txn, toku::lo
     int r = setup_internal_db(&m_directory, env, txn, toku_product_name_strings.fileopsdirectory, DIRECTORY_ID, ltm);
     if (r != 0) goto cleanup;
     r = setup_internal_db(&m_detailsdb, env, txn, toku_product_name_strings.fileopsinames, INAME_ID, ltm);
-    if (r != 0) goto cleanup;
-    r = setup_internal_db(&m_descriptordb, env, txn, toku_product_name_strings.fileopsdesc, DESC_ID, ltm);
     if (r != 0) goto cleanup;
     r = setup_internal_db(&m_iname_refs_db, env, txn, toku_product_name_strings.fileops_iname_refs, INAME_REFS_ID, ltm);
     if (r != 0) goto cleanup;
@@ -463,15 +456,6 @@ int persistent_dictionary_manager::get_dinfo(const char* dname, DB_TXN* txn, dic
     dinfo->id = id;
 
     r = read_from_detailsdb(id, txn, dinfo);
-    if (r != 0) goto cleanup;
-
-    // get descriptor
-    toku_init_dbt_flags(&dinfo->descriptor, DB_DBT_MALLOC);
-    r = toku_db_get(m_descriptordb, txn, &id_dbt, &dinfo->descriptor, DB_SERIALIZABLE);  // allocates memory for iname
-    if (r == DB_NOTFOUND) {
-        // it's ok for a descriptor to not exist
-        r = 0;
-    }
     if (r != 0) goto cleanup;
     
     dinfo->dname = toku_strdup(dname);
@@ -619,25 +603,6 @@ int persistent_dictionary_manager::remove(dictionary_info* dinfo, DB_TXN* txn, b
     }
 
 exit:
-    return r;
-}
-
-int persistent_dictionary_manager::change_descriptor(const char *dname, DB_TXN* txn, DBT *descriptor) {
-    dictionary_info dinfo;
-    int r = get_dinfo(dname, txn, &dinfo);
-    if (r != 0) {
-        if (r == DB_NOTFOUND) {
-            r = ENOENT;
-        }
-        goto exit;
-    }
-    DBT id_dbt;
-    toku_fill_dbt(&id_dbt, &dinfo.id, sizeof(dinfo.id));
-    r = toku_db_put(m_descriptordb, txn, &id_dbt, descriptor, 0, true);
-    if (r != 0) { goto exit; }
-
-exit:
-    dinfo.destroy();
     return r;
 }
 
@@ -806,9 +771,6 @@ void persistent_dictionary_manager::destroy() {
     if (m_groupnamedb) {
         toku_db_close(m_groupnamedb);
     }
-    if (m_descriptordb) {
-        toku_db_close(m_descriptordb);
-    }
     if (m_iname_refs_db) {
         toku_db_close(m_iname_refs_db);
     }
@@ -891,8 +853,6 @@ int dictionary_manager::validate_environment(DB_ENV* env, bool* valid_newenv) {
     r = validate_metadata_db(env, toku_product_name_strings.fileopsdirectory, expect_newenv);
     if (r != 0) goto cleanup;
     r = validate_metadata_db(env, toku_product_name_strings.fileopsinames, expect_newenv);
-    if (r != 0) goto cleanup;
-    r = validate_metadata_db(env, toku_product_name_strings.fileopsdesc, expect_newenv);
     if (r != 0) goto cleanup;
     r = validate_metadata_db(env, toku_product_name_strings.fileops_iname_refs, expect_newenv);
     if (r != 0) goto cleanup;
@@ -1275,25 +1235,6 @@ exit:
     return r;
 }
 
-int dictionary_manager::change_descriptor(const char *dname, DB_TXN* txn, DBT *descriptor) {
-    dictionary_info dinfo;
-    dictionary* old_dict = NULL;
-    int r = pdm.get_dinfo(dname, txn, &dinfo);
-    if (r != 0) goto exit;
-    r = pdm.change_descriptor(dname, txn, descriptor);
-    if (r != 0) goto exit;
-    old_dict = idm.find(dname);
-    if (old_dict) {
-        r = EINVAL;
-        printf("Cannot change descriptor of dictionary with an open handle.\n");
-        goto exit;
-    }
-
-exit:
-    dinfo.destroy();
-    return r;
-}
-
 int dictionary_manager::finish_open_db(DB* db, DB_TXN* txn, dictionary_info* dinfo, uint32_t flags, bool is_create) {
     if (is_create) {
         // we only want to set flags when we create
@@ -1307,7 +1248,6 @@ int dictionary_manager::finish_open_db(DB* db, DB_TXN* txn, dictionary_info* din
     if (r == 0) {
         // now that the directory has been updated, create the dictionary
         db->i->dict = idm.get_dictionary(dinfo, toku_ft_get_comparator(db->i->ft_handle));
-        db->descriptor = db->i->dict->get_descriptor();
     }
     return r;
 }

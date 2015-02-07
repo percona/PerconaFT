@@ -156,15 +156,6 @@ public:
     }
 };
 
-
-// effect: changes the descriptor for the ft of the given handle.
-// requires: 
-// - cannot change descriptor for same ft in two threads in parallel. 
-// - can only update cmp descriptor immidiately after opening the FIRST ft handle for this ft and before 
-//   ANY operations. to update the cmp descriptor after any operations have already happened, all handles 
-//   and transactions must close and reopen before the change, then you can update the cmp descriptor
-uint32_t toku_serialize_descriptor_size(DESCRIPTOR desc);
-
 void toku_ft_handle_create(ft_compare_func cmp_func, ft_update_func update_func, FT_HANDLE *ft);
 void toku_ft_add_flags(FT_HANDLE ft_handle, unsigned int flags);
 void toku_ft_set_flags(FT_HANDLE, unsigned int flags);

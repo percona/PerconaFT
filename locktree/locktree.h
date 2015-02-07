@@ -380,13 +380,6 @@ namespace toku {
         DICTIONARY_ID m_dict_id;
         uint32_t m_reference_count;
 
-        // Since the memory referenced by this comparator is not owned by the
-        // locktree, the user must guarantee it will outlive the locktree.
-        //
-        // The ydb API accomplishes this by opening an ft_handle in the on_create
-        // callback, which will keep the underlying FT (and its descriptor) in memory
-        // for as long as the handle is open. The ft_handle is stored opaquely in the
-        // userdata pointer below. see locktree_manager::get_lt w/ on_create_extra
         comparator m_cmp;
 
         concurrent_tree *m_rangetree;

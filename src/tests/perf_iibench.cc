@@ -315,19 +315,8 @@ static int iibench_generate_row_for_put(DB *dest_db, DB *src_db, DBT_ARRAY *dest
 }
 
 // After each DB opens, set the descriptor to store the DB idx value.
-static DB *iibench_set_descriptor_after_db_opens(DB_ENV *env, DB *db, int idx, reopen_db_fn reopen, struct cli_args *cli_args) {
-    int r;
-    DBT desc_dbt;
-    desc_dbt.data = &idx;
-    desc_dbt.size = sizeof(idx);
-    desc_dbt.ulen = 0;
-    desc_dbt.flags = 0;
-    char * dname_str = toku_strdup(db->get_dname(db));
-    r = db->close(db, 0); CKERR(r);
-    r = env->db_change_descriptor(env, nullptr, dname_str, &desc_dbt); CKERR(r);
-    r = db_create(&db, env, 0); CKERR(r);
-    reopen(db, idx, cli_args);
-    toku_free(dname_str);
+static DB *iibench_set_descriptor_after_db_opens(DB_ENV *env UU(), DB *db UU(), int idx UU(), reopen_db_fn reopen UU(), struct cli_args *cli_args UU()) {
+    assert(false);
     return db;
 }
 
