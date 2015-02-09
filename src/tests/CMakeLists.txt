@@ -18,10 +18,8 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
     add_ydb_drd_test_aux(drd_${bin} ${bin} ${ARGN})
   endfunction(add_ydb_drd_test)
 
-  file(GLOB transparent_upgrade_srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" upgrade*.cc)
 
   file(GLOB srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" *.cc)
-  list(REMOVE_ITEM srcs ${transparent_upgrade_srcs})
 
   set(recover_srcs test_log2.cc test_log3.cc test_log4.cc test_log5.cc test_log6.cc test_log7.cc test_log8.cc test_log9.cc test_log10.cc)
   file(GLOB abortrecover_srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" recover-*.cc)
@@ -369,19 +367,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
   add_ydb_test_aux(maxsize-for-loader-Az.tdb maxsize-for-loader.tdb -f -z -c)
   add_ydb_test_aux(maxsize-for-loader-Bz.tdb maxsize-for-loader.tdb -z -c)
 
-  declare_custom_tests(hotindexer-undo-do-test.tdb)
-  file(GLOB hotindexer_tests RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "hotindexer-undo-do-tests/*.test")
-  file(GLOB hotindexer_results RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "hotindexer-undo-do-tests/*.result")
-  configure_file(run-hotindexer-undo-do-tests.bash . COPYONLY)
-  foreach(result ${hotindexer_results})
-    configure_file(${result} ${result} COPYONLY)
-  endforeach(result)
-  foreach(test ${hotindexer_tests})
-    configure_file(${test} ${test} COPYONLY)
-    add_test(NAME ydb/${test} COMMAND run-hotindexer-undo-do-tests.bash ${test})
-    setup_toku_test_properties(ydb/${test} ${test})
-  endforeach()
-
   foreach(test ${tdb_tests})
     add_ydb_test(${test})
   endforeach(test)
@@ -466,7 +451,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
   set_tests_properties(${long_tests} PROPERTIES TIMEOUT 3600)
   ## some take even longer, with valgrind
   set(extra_long_tests
-    ydb/hotindexer-with-queries.tdb
     ydb/hot-optimize-table-tests.tdb
     ydb/loader-cleanup-test2.tdb
     ydb/loader-cleanup-test2z.tdb

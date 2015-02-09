@@ -103,7 +103,6 @@ PATENT RIGHTS GRANT:
 #include "ydb_write.h"
 #include "ydb-internal.h"
 #include "ydb_load.h"
-#include "indexer.h"
 #include <portability/toku_atomic.h>
 #include <util/status.h>
 #include <ft/le-cursor.h>
@@ -482,22 +481,30 @@ toku_db_get_dname(DB *db) {
     return db->i->dict->get_dname();
 }
 
+// need to make this function nicer
 static int 
 toku_db_keys_range64(DB* db, DB_TXN* txn __attribute__((__unused__)), DBT* keyleft, DBT* keyright, uint64_t* less, uint64_t* left, uint64_t* between, uint64_t *right, uint64_t *greater, bool* middle_3_exact) {
     HANDLE_PANICKED_DB(db);
     HANDLE_DB_ILLEGAL_WORKING_PARENT_TXN(db, txn);
 
     // note that we ignore the txn param.  It would be more complicated to support it.
-    // TODO(yoni): Maybe add support for txns later?  How would we do this?  ydb lock comment about db_keyrange64 is obsolete.
     DBT ft_left_key;
-    void* left_data = alloca(sizeof(uint64_t) + keyleft->size);
+    void* left_data = alloca(sizeof(uint64_t) + (keyleft ? keyleft->size : 0));
     db->i->dict->fill_ft_key(keyleft, left_data, &ft_left_key);
     
     DBT ft_right_key;
-    void* right_data = alloca(sizeof(uint64_t) + keyright->size);
-    db->i->dict->fill_ft_key(keyright, right_data, &ft_right_key);
+    void* right_data = alloca(sizeof(uint64_t) + (keyright ? keyright->size : 0));
+    bool has_prepend = db->i->dict->num_prepend_bytes() > 0;
+    if (has_prepend) {
+        if (keyright) {
+            db->i->dict->fill_ft_key(keyright, right_data, &ft_right_key);
+        }
+        else {
+            db->i->dict->fill_max_key(right_data, &ft_right_key);
+        }
+    }
 
-    toku_ft_keysrange(db->i->ft_handle, &ft_left_key, &ft_right_key, less, left, between, right, greater, middle_3_exact);
+    toku_ft_keysrange(db->i->ft_handle, has_prepend ? &ft_left_key : keyleft, has_prepend ? &ft_right_key : keyright, less, left, between, right, greater, middle_3_exact);
     return 0;
 }
 
@@ -731,14 +738,39 @@ db_get_last_key_callback(uint32_t keylen, const void *key, uint32_t vallen UU(),
     return 0;
 }
 
+static void
+create_le_cursor_for_db(DB* src_db, DB_TXN* txn, LE_CURSOR *le_cursor_result) {
+    DBT min_key;
+    DBT max_key;
+    bool has_bounds = false;
+    if (src_db->i->dict->num_prepend_bytes() > 0) {
+        has_bounds = true;
+        void* data = alloca(sizeof(uint64_t));
+        src_db->i->dict->fill_max_key(data, &max_key);
+
+        DBT dummy;
+        toku_init_dbt(&dummy);
+        void* min_data = alloca(sizeof(uint64_t));
+        src_db->i->dict->fill_ft_key(&dummy, min_data, &min_key);
+    }
+
+    toku_le_cursor_create(
+        le_cursor_result,
+        db_struct_i(src_db)->ft_handle,
+        db_txn_struct_i(txn)->tokutxn,
+        has_bounds ? &min_key : NULL,
+        has_bounds ? &max_key : NULL
+        );
+}
+
+
+
 static int
 toku_db_get_last_key(DB * db, DB_TXN *txn, YDB_CALLBACK_FUNCTION func, void* extra) {
     int r;
     LE_CURSOR cursor = nullptr;
     struct last_key_extra last_extra = { .func = func, .extra = extra };
-
-    r = toku_le_cursor_create(&cursor, db->i->ft_handle, db_txn_struct_i(txn)->tokutxn);
-    if (r != 0) { goto cleanup; }
+    create_le_cursor_for_db(db, txn, &cursor);
 
     // Goes in reverse order.  First key returned is last in dictionary.
     r = toku_le_cursor_next(cursor, db_get_last_key_callback, &last_extra);
@@ -772,29 +804,6 @@ toku_db_get_fragmentation(DB * db, TOKU_DB_FRAGMENTATION report) {
     else
         r = toku_ft_get_fragmentation(db->i->ft_handle, report);
     return r;
-}
-
-int 
-toku_db_set_indexer(DB *db, DB_INDEXER * indexer) {
-    int r = 0;
-    if ( db->i->indexer != NULL && indexer != NULL ) {
-        // you are trying to overwrite a valid indexer
-        r = EINVAL;
-    }
-    else {
-        db->i->indexer = indexer;
-    }
-    return r;
-}
-
-DB_INDEXER *
-toku_db_get_indexer(DB *db) {
-    return db->i->indexer;
-}
-
-static void 
-db_get_indexer(DB *db, DB_INDEXER **indexer_ptr) {
-    *indexer_ptr = toku_db_get_indexer(db);
 }
 
 struct ydb_verify_context {
@@ -887,7 +896,6 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     USDB(get_flags);
     USDB(fd);
     USDB(get_max_row_size);
-    USDB(set_indexer);
     USDB(pre_acquire_table_lock);
     USDB(pre_acquire_fileops_lock);
     USDB(key_range64);
@@ -904,7 +912,6 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     USDB(dbt_neg_infty);
     USDB(get_fragmentation);
 #undef USDB
-    result->get_indexer = db_get_indexer;
     result->del = autotxn_db_del;
     result->put = autotxn_db_put;
     result->update = autotxn_db_update;
@@ -916,7 +923,6 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     result->getf_set = autotxn_db_getf_set;
     
     result->i->opened = 0;
-    result->i->indexer = NULL;
     *db = result;
     return 0;
 }

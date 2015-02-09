@@ -198,8 +198,7 @@ walk_tree(const char *fname, int n) {
     assert(error == 0);
 
     LE_CURSOR cursor = NULL;
-    error = toku_le_cursor_create(&cursor, ft, NULL);
-    assert(error == 0);
+    toku_le_cursor_create(&cursor, ft, NULL, NULL, NULL);
 
     DBT key;
     toku_init_dbt(&key); key.flags = DB_DBT_REALLOC;

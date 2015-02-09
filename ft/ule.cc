@@ -1743,8 +1743,8 @@ ule_apply_delete(ULE ule, XIDS xids) {
 static void 
 ule_prepare_for_new_uxr(ULE ule, XIDS xids) {
     TXNID this_xid = toku_xids_get_innermost_xid(xids);
-    //This is for LOADER_USE_PUTS or transactionless environment
-    //where messages use XIDS of 0
+    //This used to be for LOADER_USE_PUTS or transactionless environment
+    //where messages use XIDS of 0, need to check if it is obsolete
     if (this_xid == TXNID_NONE && ule_get_innermost_xid(ule) == TXNID_NONE) {
         ule_remove_innermost_uxr(ule);
     }
@@ -1895,8 +1895,9 @@ ule_remove_innermost_uxr(ULE ule) {
         ule->num_puxrs--;
     }
     else {
-        //This is for LOADER_USE_PUTS or transactionless environment
-        //where messages use XIDS of 0
+        // This used to be for LOADER_USE_PUTS or transactionless environment
+        // where messages use XIDS of 0
+        // need to check if this is obsolete
         invariant(ule->num_cuxrs == 1);
         invariant(ule_get_innermost_xid(ule)==TXNID_NONE);
         ule->num_cuxrs--;

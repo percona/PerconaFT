@@ -366,7 +366,6 @@ static void print_defines (void) {
     printf("/* LOADER flags */\n");
     {
         uint32_t loader_flags = 0;
-        dodefine_from_track(loader_flags, LOADER_DISALLOW_PUTS); // Loader is only used for side effects.
         dodefine_from_track(loader_flags, LOADER_COMPRESS_INTERMEDIATES);
     }
 }
@@ -431,7 +430,6 @@ static void print_db_env_struct (void) {
                              "int (*crash)                                (DB_ENV*, const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/)",
                              "int (*get_iname)                            (DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt) /* FOR TEST ONLY: lookup existing iname */",
                              "int (*create_loader)                        (DB_ENV *env, DB_TXN *txn, DB_LOADER **blp,    DB *src_db, int N, DB *dbs[/*N*/], uint32_t db_flags[/*N*/], uint32_t dbt_flags[/*N*/], uint32_t loader_flags, generate_row_for_put_func g)",
-                             "int (*create_indexer)                       (DB_ENV *env, DB_TXN *txn, DB_INDEXER **idxrp, DB *src_db, int N, DB *dbs[/*N*/], uint32_t db_flags[/*N*/], uint32_t indexer_flags)",
                              "int (*get_redzone)                          (DB_ENV *env, int *redzone) /* get the redzone limit */",
                              "int (*set_redzone)                          (DB_ENV *env, int redzone) /* set the redzone limit in percent of total space */",
                              "int (*set_lk_max_memory)                    (DB_ENV *env, uint64_t max)",
@@ -529,8 +527,6 @@ static void print_db_struct (void) {
 			 "int (*get_fanout)(DB *db, uint32_t *fanout)",
 			 "int (*set_fanout)(DB *db, uint32_t fanout)",
 			 "int (*set_memcmp_magic)(DB *db, uint8_t magic)",
-			 "int (*set_indexer)(DB*, DB_INDEXER*)",
-			 "void (*get_indexer)(DB*, DB_INDEXER**)",
 			 "int (*verify_with_progress)(DB *, int (*progress_callback)(void *progress_extra, float progress), void *progress_extra, int verbose, int keep_going)",
 			 "int (*update)(DB *, DB_TXN*, const DBT *key, const DBT *extra, uint32_t flags)",
 			 "int (*update_broadcast)(DB *, DB_TXN*, const DBT *extra, uint32_t flags)",
@@ -695,18 +691,6 @@ int main (int argc, char *const argv[] __attribute__((__unused__))) {
     printf("  int (*put)(DB_LOADER *loader, DBT *key, DBT* val);                                                      /* give a row to the loader */\n");
     printf("  int (*close)(DB_LOADER *loader);                                                                        /* finish loading, free memory */\n");
     printf("  int (*abort)(DB_LOADER *loader);                                                                        /* abort loading, free memory */\n");
-    printf("};\n");
-
-    //indexer
-    printf("typedef struct __toku_indexer DB_INDEXER;\n");
-    printf("struct __toku_indexer_internal;\n");
-    printf("struct __toku_indexer {\n");
-    printf("  struct __toku_indexer_internal *i;\n");
-    printf("  int (*set_error_callback)(DB_INDEXER *indexer, void (*error_cb)(DB *db, int i, int err, DBT *key, DBT *val, void *error_extra), void *error_extra); /* set the error callback */\n");
-    printf("  int (*set_poll_function)(DB_INDEXER *indexer, int (*poll_func)(void *extra, float progress), void *poll_extra);             /* set the polling function */\n");
-    printf("  int (*build)(DB_INDEXER *indexer);  /* build the indexes */\n");
-    printf("  int (*close)(DB_INDEXER *indexer);  /* finish indexing, free memory */\n");
-    printf("  int (*abort)(DB_INDEXER *indexer);  /* abort  indexing, free memory */\n");
     printf("};\n");
 
     // Filesystem redzone state

@@ -159,21 +159,6 @@ static void test_invalid_ops(uint32_t iso_flags) {
     dbt_init(&key, &k, sizeof k);
     dbt_init(&val, &v, sizeof v);
 
-    uint32_t db_flags = 0;
-    uint32_t indexer_flags = 0;
-    DB_INDEXER* indexer;
-    r = env->create_indexer(
-        env,
-        txn,
-        &indexer,
-        db,
-        1,
-        &db,
-        &db_flags,
-        indexer_flags
-        );
-    CKERR2(r, EINVAL);
-
 
     // test invalid operations of ydb_db.cc,
     // db->open tested above

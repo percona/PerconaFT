@@ -1088,13 +1088,19 @@ static int toku_recover_backward_shutdown (struct logtype_shutdown *UU(l), RECOV
 }
 
 // #2954
-static int toku_recover_hot_index(struct logtype_hot_index *UU(l), RECOVER_ENV UU(renv)) {
+static int toku_recover_hot_index(struct logtype_hot_index *l, RECOVER_ENV renv) {
     TOKUTXN txn = NULL;
     toku_txnid2txn(renv->logger, l->xid, &txn);
     assert(txn!=NULL);
     // just make an entry in the rollback log 
     //   - set do_log = 0 -> don't write to recovery log
-    toku_ft_hot_index_recovery(txn, l->hot_index_filenums, 0, 0, (LSN*)NULL);
+    DBT min, max;
+    toku_init_dbt(&min); toku_init_dbt(&max);
+    if (l->has_bounds) {
+        toku_fill_dbt(&min, l->min_key.data, l->min_key.len);
+        toku_fill_dbt(&max, l->max_key.data, l->max_key.len);
+    }
+    toku_ft_hot_index_recovery(txn, l->hot_index_filenum, false, l->has_bounds, &min, &max);
     return 0;
 }
 

@@ -104,36 +104,38 @@ struct le_cursor {
     FT_CURSOR ft_cursor;
     bool neg_infinity; // true when the le cursor is positioned at -infinity (initial setting)
     bool pos_infinity; // true when the le cursor is positioned at +infinity (when _next returns DB_NOTFOUND)
+    bool has_bounds;
+    DBT min_key;
+    DBT max_key;
 };
 
-int 
-toku_le_cursor_create(LE_CURSOR *le_cursor_result, FT_HANDLE ft_handle, TOKUTXN txn) {
+void 
+toku_le_cursor_create(LE_CURSOR *le_cursor_result, FT_HANDLE ft_handle, TOKUTXN txn, DBT* min_key, DBT* max_key) {
     int result = 0;
-    LE_CURSOR MALLOC(le_cursor);
-    if (le_cursor == NULL) {
-        result = get_error_errno();
-    }
-    else {
-        result = toku_ft_cursor(ft_handle, &le_cursor->ft_cursor, txn, false, false);
-        if (result == 0) {
-            // TODO move the leaf mode to the ft cursor constructor
-            toku_ft_cursor_set_leaf_mode(le_cursor->ft_cursor);
-            le_cursor->neg_infinity = false;
-            le_cursor->pos_infinity = true;
-        }
+    LE_CURSOR le_cursor = NULL;
+    XCALLOC(le_cursor); // zeroes out struct, including min_key and max_key
+
+    result = toku_ft_cursor(ft_handle, &le_cursor->ft_cursor, txn, false, false);
+    lazy_assert(result == 0);
+    // TODO move the leaf mode to the ft cursor constructor
+    toku_ft_cursor_set_leaf_mode(le_cursor->ft_cursor);
+    le_cursor->neg_infinity = false;
+    le_cursor->pos_infinity = true;
+    le_cursor->has_bounds = false;
+
+    if (min_key || max_key) {
+        le_cursor->has_bounds = true;
+        toku_clone_dbt(&le_cursor->min_key, *min_key);
+        toku_clone_dbt(&le_cursor->max_key, *max_key);
     }
 
-    if (result == 0) {
-        *le_cursor_result = le_cursor;
-    } else {
-        toku_free(le_cursor);
-    }
-
-    return result;
+    *le_cursor_result = le_cursor;
 }
 
 void toku_le_cursor_close(LE_CURSOR le_cursor) {
     toku_ft_cursor_close(le_cursor->ft_cursor);
+    toku_destroy_dbt(&le_cursor->min_key);
+    toku_destroy_dbt(&le_cursor->max_key);
     toku_free(le_cursor);
 }
 
@@ -145,13 +147,37 @@ toku_le_cursor_next(LE_CURSOR le_cursor, FT_GET_CALLBACK_FUNCTION getf, void *ge
     int result;
     if (le_cursor->neg_infinity) {
         result = DB_NOTFOUND;
-    } else {
+    } 
+    else if (le_cursor->pos_infinity) {
+        if (le_cursor->has_bounds) {
+            result = toku_ft_cursor_set_range_reverse(
+                le_cursor->ft_cursor,
+                &le_cursor->max_key,
+                getf,
+                getf_v
+                );
+        }
+        else {
+            result = toku_ft_cursor_last(le_cursor->ft_cursor, getf, getf_v);
+        }
+        le_cursor->pos_infinity = false;
+    }
+    else {
         le_cursor->pos_infinity = false;
         // TODO replace this with a non deprecated function. Which?
         result = toku_ft_cursor_get(le_cursor->ft_cursor, NULL, getf, getf_v, DB_PREV);
-        if (result == DB_NOTFOUND) {
-            le_cursor->neg_infinity = true;
+    }
+
+    if (result == 0 && le_cursor->has_bounds) {
+        FT ft = le_cursor->ft_cursor->ft_handle->ft;
+        // get the current position from the cursor and compare it to the given key.
+        int cmp = ft->cmp(&le_cursor->min_key, &le_cursor->ft_cursor->key);
+        if (cmp >= 0) {
+            result = DB_NOTFOUND;
         }
+    }
+    if (result == DB_NOTFOUND) {
+        le_cursor->neg_infinity = true;
     }
     return result;
 }

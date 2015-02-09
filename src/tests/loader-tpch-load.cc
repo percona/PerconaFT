@@ -531,7 +531,6 @@ static void do_args(int argc, char * const argv[]) {
 	    fprintf(stderr, "Usage: -h -p -g\n%s\n", cmd);
 	    exit(resultcode);
         } else if (strcmp(argv[0], "-p")==0) {
-            DISALLOW_PUTS = LOADER_DISALLOW_PUTS;
         } else if (strcmp(argv[0], "-z")==0) {
             COMPRESS = LOADER_COMPRESS_INTERMEDIATES;
         } else if (strcmp(argv[0], "-g")==0) {

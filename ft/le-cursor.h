@@ -106,7 +106,7 @@ typedef struct le_cursor *LE_CURSOR;
 // Create a leaf cursor for a tree (ft_h) within a transaction (txn)
 // Success: returns 0, stores the LE_CURSOR in the le_cursor_result
 // Failure: returns a non-zero error number
-int toku_le_cursor_create(LE_CURSOR *le_cursor_result, FT_HANDLE ft_h, TOKUTXN txn);
+void toku_le_cursor_create(LE_CURSOR *le_cursor_result, FT_HANDLE ft_handle, TOKUTXN txn, DBT* min_key, DBT* max_key);
 
 // Close and free the LE_CURSOR
 void toku_le_cursor_close(LE_CURSOR le_cursor);

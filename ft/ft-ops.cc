@@ -2379,17 +2379,27 @@ void toku_ft_insert (FT_HANDLE ft_handle, DBT *key, DBT *val, TOKUTXN txn) {
 // this function handles the tasks needed to be recoverable
 //  - write to rollback log
 //  - write to recovery log
-void toku_ft_hot_index_recovery(TOKUTXN txn, FILENUMS filenums, int do_fsync, int do_log, LSN *hot_index_lsn)
+void toku_ft_hot_index_recovery(TOKUTXN txn, FILENUM filenum, int do_log, bool has_bounds, DBT* min, DBT* max)
 {
     paranoid_invariant(txn);
     TOKULOGGER logger = toku_txn_logger(txn);
 
     // write to the rollback log
-    toku_logger_save_rollback_hot_index(txn, &filenums);
+    BYTESTRING minBS;
+    memset(&minBS, 0, sizeof(BYTESTRING));
+    BYTESTRING maxBS;
+    memset(&maxBS, 0, sizeof(BYTESTRING));
+    if (has_bounds) {
+        minBS.len = min->size;
+        minBS.data = (char *)min->data;
+        maxBS.len = max->size;
+        maxBS.data = (char *)max->data;
+    }
+    toku_logger_save_rollback_hot_index(txn, filenum, has_bounds, &minBS, &maxBS);
     if (do_log && logger) {
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
         // write to the recovery log
-        toku_log_hot_index(logger, hot_index_lsn, do_fsync, txn, xid, filenums);
+        TXNID_PAIR xid = toku_txn_get_txnid(txn);
+        toku_log_hot_index(logger, NULL, 0, txn, filenum, xid, has_bounds, minBS, maxBS);
     }
 }
 
@@ -2430,9 +2440,15 @@ void toku_ft_optimize (FT_HANDLE ft_h) {
 }
 
 // ft actions for logging hot index filenums
-void toku_ft_hot_index(FT_HANDLE ft_handle __attribute__ ((unused)), TOKUTXN txn, FILENUMS filenums, int do_fsync, LSN *lsn) {
-    int do_log = 1;
-    toku_ft_hot_index_recovery(txn, filenums, do_fsync, do_log, lsn);
+void toku_ft_hot_index(FT_HANDLE ft_handle, TOKUTXN txn) {
+    toku_ft_hot_index_recovery(
+        txn,
+        toku_cachefile_filenum(ft_handle->ft->cf),
+        true,
+        false,
+        NULL,
+        NULL
+        );
 }
 
 TXN_MANAGER toku_ft_get_txn_manager(FT_HANDLE ft_h) {

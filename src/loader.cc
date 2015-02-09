@@ -207,8 +207,6 @@ static int loader_put_callback(DB *db, DBT *key, DBT* val, void* extra) {
 
 
 // loader_flags currently has the following flags:
-//   LOADER_DISALLOW_PUTS     loader->put is not allowed.
-//                            Loader is only being used for its side effects
 //   DB_PRELOCKED_WRITE       Table lock is already held, no need to relock.
 int
 toku_loader_create_loader(DB_ENV *env,
@@ -228,7 +226,6 @@ toku_loader_create_loader(DB_ENV *env,
     *blp = NULL;           // set later when created
 
     DB_LOADER *loader = NULL;
-    bool puts_allowed = !(loader_flags & LOADER_DISALLOW_PUTS);
     bool compress_intermediates = (loader_flags & LOADER_COMPRESS_INTERMEDIATES) != 0;
     XCALLOC(loader);       // init to all zeroes (thus initializing the error_callback and poll_func)
     XCALLOC(loader->i);    // init to all zeroes (thus initializing all pointers to NULL)
@@ -321,7 +318,7 @@ toku_loader_create_loader(DB_ENV *env,
                                  dbs,
                                  compare_functions,
                                  loader->i->temp_file_template,
-                                 puts_allowed,
+                                 true,
                                  env->get_loader_memory_size(env),
                                  compress_intermediates);
         if ( rval!=0 ) {
@@ -388,16 +385,10 @@ int toku_loader_put(DB_LOADER *loader, DBT *key, DBT *val)
         goto cleanup;
     }
 
-    if (loader->i->loader_flags & LOADER_DISALLOW_PUTS) {
-        r = EINVAL;
-        goto cleanup;
-    }
-    else {
-        // calling toku_ft_loader_put without a lock assumes that the 
-        //  handlerton is guaranteeing single access to the loader
-        // future multi-threaded solutions may need to protect this call
-        r = toku_ft_loader_put(loader->i->ft_loader, key, val);
-    }
+    // calling toku_ft_loader_put without a lock assumes that the 
+    //  handlerton is guaranteeing single access to the loader
+    // future multi-threaded solutions may need to protect this call
+    r = toku_ft_loader_put(loader->i->ft_loader, key, val);
     if ( r != 0 ) {
         // spec says errors all happen on close
         //   - have to save key, val, errno (r) and i for duplicate callback
@@ -427,12 +418,7 @@ int toku_loader_close(DB_LOADER *loader)
         if ( loader->i->error_callback != NULL ) {
             loader->i->error_callback(loader->i->dbs[loader->i->err_i], loader->i->err_i, loader->i->err_errno, &loader->i->err_key, &loader->i->err_val, loader->i->error_extra);
         }
-        if (!(loader->i->loader_flags & LOADER_DISALLOW_PUTS ) ) {
-            r = toku_ft_loader_abort(loader->i->ft_loader, true);
-        }
-        else {
-            r = loader->i->err_errno;
-        }
+        r = toku_ft_loader_abort(loader->i->ft_loader, true);
     } 
     else { // no error outstanding 
         r = toku_ft_loader_close(loader->i->ft_loader,
@@ -458,10 +444,8 @@ int toku_loader_abort(DB_LOADER *loader)
         }
     }
 
-    if (!(loader->i->loader_flags & LOADER_DISALLOW_PUTS) ) {
-        r = toku_ft_loader_abort(loader->i->ft_loader, true);
-        lazy_assert_zero(r);
-    }
+    r = toku_ft_loader_abort(loader->i->ft_loader, true);
+    lazy_assert_zero(r);
 
     free_loader(loader);
     return r;

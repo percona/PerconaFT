@@ -1091,7 +1091,6 @@ static void do_args(int argc, char * const argv[]) {
         } else if (strcmp(argv[0], "-z")==0) {
             COMPRESS = LOADER_COMPRESS_INTERMEDIATES;
         } else if (strcmp(argv[0], "-p")==0) {
-            DISALLOW_PUTS = LOADER_DISALLOW_PUTS;
 	    printf("DISABLED Using puts as part of #4503\n");
         } else if (strcmp(argv[0], "-k")==0) {
 	    test_only_abort_via_poll = 1;

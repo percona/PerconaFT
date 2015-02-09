@@ -119,7 +119,6 @@ const char *toku_copyright_string = "Copyright (c) 2007-2013 Tokutek Inc.  All r
 #include "src/ydb_write.h"
 #include "src/ydb_txn.h"
 #include "src/loader.h"
-#include "src/indexer.h"
 #include "util/status.h"
 #include "util/context.h"
 #include "ydb_env_open_close.h"
@@ -916,7 +915,6 @@ env_get_engine_status_num_rows (DB_ENV * UU(env), uint64_t * num_rowsp) {
     num_rows += LOGGER_STATUS_NUM_ROWS;
     num_rows += MEMORY_STATUS_NUM_ROWS;
     num_rows += FS_STATUS_NUM_ROWS;
-    num_rows += INDEXER_STATUS_NUM_ROWS;
     num_rows += LOADER_STATUS_NUM_ROWS;
     num_rows += CTX_STATUS_NUM_ROWS;
 #if 0
@@ -1066,15 +1064,6 @@ env_get_engine_status (DB_ENV * env, TOKU_ENGINE_STATUS_ROW engstat, uint64_t ma
             }
         }
 
-        {
-            INDEXER_STATUS_S indexerstat;
-            toku_indexer_get_status(&indexerstat);
-            for (int i = 0; i < INDEXER_STATUS_NUM_ROWS && row < maxrows; i++) {
-                if (indexerstat.status[i].include & include_flags) {
-                    engstat[row++] = indexerstat.status[i];
-                }
-            }
-        }
         {
             LOADER_STATUS_S loaderstat;
             toku_loader_get_status(&loaderstat);
@@ -1597,7 +1586,6 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
 #undef USENV
     
     // unlocked methods
-    result->create_indexer = toku_indexer_create_indexer;
     result->txn_checkpoint = toku_env_txn_checkpoint;
     result->checkpointing_postpone = env_checkpointing_postpone;
     result->checkpointing_resume = env_checkpointing_resume;

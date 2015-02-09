@@ -232,8 +232,7 @@ test_provdel(const char *logdir, const char *fname, int n) {
     assert(error == 0);
 
     LE_CURSOR cursor = NULL;
-    error = toku_le_cursor_create(&cursor, ft, cursortxn);
-    assert(error == 0);
+    toku_le_cursor_create(&cursor, ft, cursortxn, NULL, NULL);
 
     DBT key;
     toku_init_dbt(&key); key.flags = DB_DBT_REALLOC;

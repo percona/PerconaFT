@@ -179,7 +179,7 @@ static void reset_random(void) {
     }
 }
 
-static void test_loader_maxsize(DB **dbs, DB **check_dbs)
+static void test_loader_maxsize(DB **dbs, DB **check_dbs UU())
 {
     int r;
     DB_TXN    *txn;
@@ -230,86 +230,6 @@ static void test_loader_maxsize(DB **dbs, DB **check_dbs)
  checked:
     r = txn->commit(txn, 0);
     CKERR(r);
-
-    if (do_check && how_to_fail==FAIL_NONE) {
-        r = env->txn_begin(env, NULL, &txn, 0);
-        CKERR(r);
-        reset_random();
-        DBT keys[NUM_DBS];
-        DBT vals[NUM_DBS];
-        uint32_t flags[NUM_DBS];
-        for (int i = 0; i < NUM_DBS; i++) {
-            dbt_init_realloc(&keys[i]);
-            dbt_init_realloc(&vals[i]);
-            flags[i] = 0; printf("%d", flags[i]);
-        }
-
-        for(uint32_t i=0;i<num_rows;i++) {
-            k = i;
-            v = i;
-            dbt_init(&key, &k, sizeof(unsigned int));
-            dbt_init(&val, &v, sizeof(unsigned int));
-            assert(false);
-            /*
-            r = env_put_multiple_test_no_array(env, nullptr, txn, &key, &val, NUM_DBS, check_dbs, keys, vals, flags);
-            CKERR(r);
-            */
-        }
-        r = txn->commit(txn, 0);
-        CKERR(r);
-        r = env->txn_begin(env, NULL, &txn, 0);
-        CKERR(r);
-
-        for (int i = 0; i < NUM_DBS; i++) {
-            DBC *loader_cursor;
-            DBC *check_cursor;
-            r = dbs[i]->cursor(dbs[i], txn, &loader_cursor, 0);
-            CKERR(r);
-            r = dbs[i]->cursor(check_dbs[i], txn, &check_cursor, 0);
-            CKERR(r);
-            DBT loader_key;
-            DBT loader_val;
-            DBT check_key;
-            DBT check_val;
-            dbt_init_realloc(&loader_key);
-            dbt_init_realloc(&loader_val);
-            dbt_init_realloc(&check_key);
-            dbt_init_realloc(&check_val);
-            for (uint32_t x = 0; x <= num_rows; x++) {
-                int r_loader = loader_cursor->c_get(loader_cursor, &loader_key, &loader_val, DB_NEXT);
-                int r_check = check_cursor->c_get(check_cursor, &check_key, &check_val, DB_NEXT);
-                assert(r_loader == r_check);
-                if (x == num_rows) {
-                    CKERR2(r_loader, DB_NOTFOUND);
-                    CKERR2(r_check, DB_NOTFOUND);
-                } else {
-                    CKERR(r_loader);
-                    CKERR(r_check);
-                }
-                assert(loader_key.size == check_key.size);
-                assert(loader_val.size == check_val.size);
-                assert(memcmp(loader_key.data, check_key.data, loader_key.size) == 0);
-                assert(memcmp(loader_val.data, check_val.data, loader_val.size) == 0);
-            }
-            toku_free(loader_key.data);
-            toku_free(loader_val.data);
-            toku_free(check_key.data);
-            toku_free(check_val.data);
-            loader_cursor->c_close(loader_cursor);
-            check_cursor->c_close(check_cursor);
-        }
-
-        for (int i = 0; i < NUM_DBS; i++) {
-            toku_free(keys[i].data);
-            toku_free(vals[i].data);
-            dbt_init_realloc(&keys[i]);
-            dbt_init_realloc(&vals[i]);
-        }
-        r = txn->commit(txn, 0);
-        CKERR(r);
-    }
-
-
 }
 
 char *free_me = NULL;

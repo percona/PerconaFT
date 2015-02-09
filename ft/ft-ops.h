@@ -215,8 +215,8 @@ void toku_ft_maybe_update(FT_HANDLE ft_h, const DBT *key, const DBT *update_func
 // is called during recovery.
 void toku_ft_maybe_update_broadcast(FT_HANDLE ft_h, const DBT *update_function_extra, TOKUTXN txn, bool oplsn_valid, LSN oplsn, bool do_logging, bool is_resetting_op);
 
-void toku_ft_hot_index_recovery(TOKUTXN txn, FILENUMS filenums, int do_fsync, int do_log, LSN *hot_index_lsn);
-void toku_ft_hot_index(FT_HANDLE ft_h, TOKUTXN txn, FILENUMS filenums, int do_fsync, LSN *lsn);
+void toku_ft_hot_index_recovery(TOKUTXN txn, FILENUM filenum, int do_log, bool has_bounds, DBT* min, DBT* max);
+void toku_ft_hot_index(FT_HANDLE ft_handle, TOKUTXN txn);
 
 // Effect: Delete a key from an ft
 void toku_ft_delete (FT_HANDLE ft_h, DBT *k, TOKUTXN txn);

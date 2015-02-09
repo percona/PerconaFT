@@ -11,8 +11,6 @@ set(tokudb_srcs
   ydb_write
   errors
   loader
-  indexer
-  indexer-undo-do
   toku_patent
   dictionary
   iname_helpers

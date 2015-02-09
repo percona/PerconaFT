@@ -117,7 +117,6 @@ extern const char *toku_patent_string;
 #include "src/ydb_write.h"
 #include "src/ydb_txn.h"
 #include "src/loader.h"
-#include "src/indexer.h"
 #include "util/status.h"
 #include "util/context.h"
 

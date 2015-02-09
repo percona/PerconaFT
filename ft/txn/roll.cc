@@ -496,21 +496,40 @@ toku_rollback_rollinclude (TXNID_PAIR      xid,
     return r;
 }
 
-//2954
 int
-toku_commit_hot_index (FILENUMS UU(hot_index_filenums),
-                       TOKUTXN  UU(txn), 
-                       LSN      UU(oplsn))
-{
+toku_commit_hot_index (FILENUM hot_index_filenum UU(),
+                            bool has_bounds UU(),
+                            BYTESTRING min_key UU(),
+                            BYTESTRING max_key UU(),
+                            TOKUTXN    txn UU(),
+                            LSN        oplsn UU()) {
     // nothing
     return 0;
 }
 
 int
-toku_rollback_hot_index (FILENUMS UU(hot_index_filenums),
-                         TOKUTXN  UU(txn), 
-                         LSN      UU(oplsn))
-{
+toku_rollback_hot_index(FILENUM hot_index_filenum,
+                            bool has_bounds,
+                            BYTESTRING min_key,
+                            BYTESTRING max_key,
+                            TOKUTXN    txn,
+                            LSN        oplsn) {
+    // nothing
+    if (has_bounds) {        
+        return do_multicast_insertion(
+            FT_KILL_MULTICAST,
+            hot_index_filenum,
+            min_key,
+            max_key,
+            txn,
+            oplsn,
+            false
+            );
+    }
+    else {
+        BYTESTRING nullkey = { 0, NULL };
+        return do_insertion(FT_KILL_ALL, hot_index_filenum, nullkey, txn, oplsn, false);
+    }
     return 0;
 }
 

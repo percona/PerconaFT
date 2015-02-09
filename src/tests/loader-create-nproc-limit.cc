@@ -142,13 +142,7 @@ static void run_test(int ndb) {
     r = setrlimit(RLIMIT_NPROC, &current_nproc_limit);
     assert(r == 0);
 
-    if (loader_flags & LOADER_DISALLOW_PUTS)  {
-        CKERR(loader_r);
-        loader_r = loader->close(loader);
-        CKERR(loader_r);
-    } else {
-        CKERR2(loader_r, EAGAIN);
-    }
+    CKERR2(loader_r, EAGAIN);
 
     r = txn->abort(txn); CKERR(r);
 
@@ -175,7 +169,6 @@ static void do_args(int argc, char * const argv[]) {
 	    verbose--;
 	    if (verbose<0) verbose=0;
         } else if (strcmp(argv[0], "-p") == 0) {
-            loader_flags |= LOADER_DISALLOW_PUTS;
         } else if (strcmp(argv[0], "-z") == 0) {
             loader_flags |= LOADER_COMPRESS_INTERMEDIATES;
         } else if (strcmp(argv[0], "-e") == 0) {

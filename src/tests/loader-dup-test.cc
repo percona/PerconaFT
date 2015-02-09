@@ -477,7 +477,6 @@ static void do_args(int argc, char * const argv[]) {
         } else if (strcmp(argv[0], "-z")==0) {
             COMPRESS = LOADER_COMPRESS_INTERMEDIATES;
         } else if (strcmp(argv[0], "-p")==0) {
-            DISALLOW_PUTS = LOADER_DISALLOW_PUTS;
         } else if (strcmp(argv[0], "-s")==0) {
 	    db_env_set_loader_size_factor(1);            
 	} else if (strcmp(argv[0], "-E")==0) {

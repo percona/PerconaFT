@@ -146,7 +146,6 @@ static void do_args(int argc, char * const argv[]) {
         } else if (strcmp(argv[0], "-p") == 0) {
             loader_flags |= LOADER_COMPRESS_INTERMEDIATES;
         } else if (strcmp(argv[0], "-z") == 0) {
-            loader_flags |= LOADER_DISALLOW_PUTS;
         } else if (strcmp(argv[0], "-e") == 0) {
             argc--; argv++;
             if (argc > 0)
