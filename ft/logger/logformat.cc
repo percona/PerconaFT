@@ -157,9 +157,6 @@ const struct logtype rollbacks[] = {
                             {"BLOCKNUM",  "spilled_head", 0},
                             {"BLOCKNUM",  "spilled_tail", 0},
                             NULLFIELD}, LOG_BEGIN_ACTION_NA},
-    {"load", 'l', FA{{"FILENUM",    "old_filenum", 0},
-                     {"BYTESTRING", "new_iname", 0},
-                     NULLFIELD}, LOG_BEGIN_ACTION_NA},
     // #2954
     {"hot_index", 'h', FA{{"FILENUMS",  "hot_index_filenums", 0},
                           NULLFIELD}, LOG_BEGIN_ACTION_NA},
