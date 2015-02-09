@@ -696,6 +696,7 @@ static bool msg_supports_implicit_promotion(const enum ft_msg_type type) {
     case FT_COMMIT_MULTICAST_ALL:
     case FT_ABORT_MULTICAST_TXN:
     case FT_KILL_MULTICAST:
+    case FT_KILL_ALL:
     case FT_NONE:
         ret_val = false;
         break;
@@ -756,6 +757,7 @@ msg_modify_ule(ULE ule, const ft_msg &msg) {
         assert(false); // These messages don't get this far.  Instead they get translated (in setval_fun in do_update) into FT_INSERT messages.
         break;
     case FT_KILL_MULTICAST:
+    case FT_KILL_ALL:
         ule_kill(ule);
         break;
     }

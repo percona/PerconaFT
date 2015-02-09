@@ -296,6 +296,7 @@ static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
                             case FT_COMMIT_MULTICAST_ALL: printf("COMMIT_MULTICAST_ALL"); goto ok;
                             case FT_ABORT_MULTICAST_TXN: printf("ABORT_MULTICAST_TXN"); goto ok;
                             case FT_KILL_MULTICAST: printf("KILL_MULTICAST"); goto ok;
+                            case FT_KILL_ALL: printf("KILL_ALL"); goto ok;
                         }
                         printf("HUH?");
 ok:
