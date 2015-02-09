@@ -260,6 +260,11 @@ namespace ftcxx {
                 handle_ft_retval(r);
             }
 
+            if (_compression_method) {
+                r = db->set_compression_method(db, _compression_method);
+                handle_ft_retval(r);
+            }
+
             if (_fanout) {
                 r = db->set_fanout(db, _fanout);
                 handle_ft_retval(r);
@@ -289,11 +294,6 @@ namespace ftcxx {
 
             r = db->open(db, txnp->txn(), fname, dbname, dbtype, flags, mode);
             handle_ft_retval(r);
-
-            if (_compression_method) {
-                r = db->change_compression_method(db, _compression_method);
-                handle_ft_retval(r);
-            }
 
             if (!_descriptor.empty()) {
                 DBT desc = _descriptor.dbt();
