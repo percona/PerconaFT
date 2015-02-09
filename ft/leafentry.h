@@ -183,19 +183,6 @@ static_assert(1 == __builtin_offsetof(leafentry, u), "union is in the wrong plac
     +sizeof(((LEAFENTRY)NULL)->u.clean.vallen)  /* vallen */     \
     +(_vallen))                                   /* actual val */
 
-#define LE_MVCC_COMMITTED_HEADER_MEMSIZE                          \
-    (sizeof(((LEAFENTRY)NULL)->type)            /* type */        \
-    +sizeof(((LEAFENTRY)NULL)->u.mvcc.num_cxrs) /* committed */   \
-    +sizeof(((LEAFENTRY)NULL)->u.mvcc.num_pxrs) /* provisional */ \
-    +sizeof(TXNID)                              /* transaction */ \
-    +sizeof(uint32_t)                           /* length+bit */  \
-    +sizeof(uint32_t))                          /* length+bit */ 
-
-#define LE_MVCC_COMMITTED_MEMSIZE(_vallen)    \
-    (LE_MVCC_COMMITTED_HEADER_MEMSIZE                \
-    +(_vallen))                       /* actual val */
-
-
 typedef struct leafentry *LEAFENTRY;
 
 //

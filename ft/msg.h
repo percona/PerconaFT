@@ -135,7 +135,8 @@ enum ft_msg_type {
     FT_DELETE_MULTICAST = 16, // sending a multicast delete, where we have two inclusive endpoint keys
     FT_COMMIT_MULTICAST_TXN = 17, // txn commit for multicasts
     FT_COMMIT_MULTICAST_ALL = 18, // multicast that commits all leafentries (like FT_COMMIT_BROADCAST_ALL)
-    FT_ABORT_MULTICAST_TXN = 19 // multicast that aborts
+    FT_ABORT_MULTICAST_TXN = 19, // multicast that aborts
+    FT_KILL_MULTICAST = 20 // deletes all entries in this range, used for aborting a hot index or possibly a bulk load
 };
 
 static inline bool
@@ -160,6 +161,7 @@ ft_msg_type_applies_once(enum ft_msg_type type)
     case FT_COMMIT_MULTICAST_TXN:
     case FT_COMMIT_MULTICAST_ALL:
     case FT_ABORT_MULTICAST_TXN:
+    case FT_KILL_MULTICAST:
     case FT_NONE:
         ret_val = false;
         break;
@@ -190,6 +192,7 @@ ft_msg_type_applies_multiple(enum ft_msg_type type)
     case FT_COMMIT_MULTICAST_TXN:
     case FT_COMMIT_MULTICAST_ALL:
     case FT_ABORT_MULTICAST_TXN:
+    case FT_KILL_MULTICAST:
         ret_val = true;
         break;
     }
@@ -219,6 +222,7 @@ ft_msg_type_is_multicast(enum ft_msg_type type)
     case FT_COMMIT_MULTICAST_TXN:
     case FT_COMMIT_MULTICAST_ALL:
     case FT_ABORT_MULTICAST_TXN:
+    case FT_KILL_MULTICAST:
         ret_val = true;
         break;
     }

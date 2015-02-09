@@ -239,6 +239,7 @@ static TXNID ule_get_xid(ULE ule, uint32_t index);
 static void ule_remove_innermost_placeholders(ULE ule);
 static void ule_add_placeholders(ULE ule, XIDS xids);
 static void ule_optimize(ULE ule, XIDS xids);
+static void ule_kill(ULE ule);
 static inline bool uxr_type_is_insert(uint8_t type);
 static inline bool uxr_type_is_delete(uint8_t type);
 static inline bool uxr_type_is_placeholder(uint8_t type);
@@ -674,6 +675,34 @@ msg_init_empty_ule(ULE ule) {
     ule_init_empty_ule(ule);
 }
 
+static bool msg_supports_implicit_promotion(const enum ft_msg_type type) {
+    bool ret_val = false;
+    switch (type) {
+    case FT_INSERT_NO_OVERWRITE:
+    case FT_INSERT:
+    case FT_DELETE_ANY:
+    case FT_UPDATE:
+    case FT_UPDATE_BROADCAST_ALL:
+    case FT_DELETE_MULTICAST:
+        ret_val = true;
+        break;
+    case FT_ABORT_ANY:
+    case FT_COMMIT_ANY:
+    case FT_COMMIT_BROADCAST_ALL:
+    case FT_COMMIT_BROADCAST_TXN:
+    case FT_ABORT_BROADCAST_TXN:
+    case FT_OPTIMIZE:
+    case FT_COMMIT_MULTICAST_TXN:
+    case FT_COMMIT_MULTICAST_ALL:
+    case FT_ABORT_MULTICAST_TXN:
+    case FT_KILL_MULTICAST:
+    case FT_NONE:
+        ret_val = false;
+        break;
+    }
+    return ret_val;
+}
+
 // Purpose is to modify the unpacked leafentry in our private workspace.
 //
 static void 
@@ -681,7 +710,7 @@ msg_modify_ule(ULE ule, const ft_msg &msg) {
     XIDS xids = msg.xids();
     invariant(toku_xids_get_num_xids(xids) < MAX_TRANSACTION_RECORDS);
     enum ft_msg_type type = msg.type();
-    if (type != FT_OPTIMIZE) {
+    if (msg_supports_implicit_promotion(type)) {
         ule_do_implicit_promotions(ule, xids);
     }
     switch (type) {
@@ -726,6 +755,9 @@ msg_modify_ule(ULE ule, const ft_msg &msg) {
     case FT_UPDATE_BROADCAST_ALL:
         assert(false); // These messages don't get this far.  Instead they get translated (in setval_fun in do_update) into FT_INSERT messages.
         break;
+    case FT_KILL_MULTICAST:
+        ule_kill(ule);
+        break;
     }
 }
 
@@ -746,6 +778,11 @@ static void ule_optimize(ULE ule, XIDS xids) {
             ule_promote_provisional_innermost_to_committed(ule);
         }
     }
+}
+
+static void ule_kill(ULE ule) {
+    ule_cleanup(ule);
+    ule_init_empty_ule(ule);
 }
 
 /////////////////////////////////////////////////////////////////////////////////

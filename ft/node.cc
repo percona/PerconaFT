@@ -1423,7 +1423,8 @@ toku_ft_bn_apply_msg (
     case FT_DELETE_MULTICAST:
     case FT_COMMIT_MULTICAST_TXN:
     case FT_COMMIT_MULTICAST_ALL:
-    case FT_ABORT_MULTICAST_TXN: {
+    case FT_ABORT_MULTICAST_TXN: 
+    case FT_KILL_MULTICAST: {
         // Apply to all leafentries
         num_klpairs = bn->data_buffer.num_klpairs();
         uint32_t start_idx = 0;
