@@ -232,7 +232,7 @@ namespace ftcxx {
 
     class DBBuilder {
         uint32_t _readpagesize;
-        TOKU_COMPRESSION_METHOD _compression_method;
+        int _compression_method;
         uint32_t _fanout;
         uint8_t _memcmp_magic;
         bool _always_memcmp;
@@ -242,7 +242,7 @@ namespace ftcxx {
     public:
         DBBuilder()
             : _readpagesize(0),
-              _compression_method(TOKU_COMPRESSION_METHOD(0)),
+              _compression_method(-1),
               _fanout(0),
               _memcmp_magic(0),
               _always_memcmp(false),
@@ -260,8 +260,8 @@ namespace ftcxx {
                 handle_ft_retval(r);
             }
 
-            if (_compression_method) {
-                r = db->set_compression_method(db, _compression_method);
+            if (_compression_method >= 0) {
+                r = db->set_compression_method(db, TOKU_COMPRESSION_METHOD(_compression_method));
                 handle_ft_retval(r);
             }
 
@@ -314,7 +314,7 @@ namespace ftcxx {
         }
 
         DBBuilder& set_compression_method(TOKU_COMPRESSION_METHOD _compressionmethod) {
-            _compression_method = _compressionmethod;
+            _compression_method = int(_compressionmethod);
             return *this;
         }
 
