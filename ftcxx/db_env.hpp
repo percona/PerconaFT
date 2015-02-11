@@ -146,14 +146,11 @@ namespace ftcxx {
     };
 
     class DBEnvBuilder {
-        typedef int (*bt_compare_func)(DB *, const DBT *, const DBT *);
+        typedef int (*bt_compare_func)(const DBT *, const DBT *);
         bt_compare_func _bt_compare;
 
-        typedef int (*update_func)(DB *, const DBT *, const DBT *, const DBT *, void (*)(const DBT *, void *), void *);
+        typedef int (*update_func)(const DBT *, const DBT *, const DBT *, void (*)(const DBT *, void *), void *);
         update_func _update_function;
-
-        generate_row_for_put_func _generate_row_for_put;
-        generate_row_for_del_func _generate_row_for_del;
 
         uint32_t _cleaner_period;
         uint32_t _cleaner_iterations;
@@ -185,8 +182,6 @@ namespace ftcxx {
         DBEnvBuilder()
             : _bt_compare(nullptr),
               _update_function(nullptr),
-              _generate_row_for_put(nullptr),
-              _generate_row_for_del(nullptr),
               _cleaner_period(0),
               _cleaner_iterations(0),
               _checkpointing_period(0),
@@ -229,16 +224,6 @@ namespace ftcxx {
 
             if (_update_function) {
                 env->set_update(env, _update_function);
-            }
-
-            if (_generate_row_for_put) {
-                r = env->set_generate_row_callback_for_put(env, _generate_row_for_put);
-                handle_ft_retval(r);
-            }
-
-            if (_generate_row_for_del) {
-                r = env->set_generate_row_callback_for_del(env, _generate_row_for_del);
-                handle_ft_retval(r);
             }
 
             if (_lk_max_memory) {
@@ -326,16 +311,6 @@ namespace ftcxx {
 
         DBEnvBuilder& set_update(update_func update_function) {
             _update_function = update_function;
-            return *this;
-        }
-
-        DBEnvBuilder& set_generate_row_callback_for_put(generate_row_for_put_func generate_row_for_put) {
-            _generate_row_for_put = generate_row_for_put;
-            return *this;
-        }
-
-        DBEnvBuilder& set_generate_row_callback_for_del(generate_row_for_del_func generate_row_for_del) {
-            _generate_row_for_del = generate_row_for_del;
             return *this;
         }
 

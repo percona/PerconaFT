@@ -1342,12 +1342,12 @@ env_get_cursor_for_directory(DB_ENV* env, DB_TXN* txn, DBC** c) {
     return env->i->dict_manager.get_directory_cursor(txn, c);
 }
 
-static DB *
+static DB*
 env_get_db_for_directory(DB_ENV* env) {
     if (!env_opened(env)) {
         return NULL;
     }
-    return env->i->directory;
+    return env->i->dict_manager.get_directory_db();
 }
 
 struct ltm_iterate_requests_callback_extra {

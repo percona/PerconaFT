@@ -58,10 +58,6 @@ namespace ftcxx {
 
         ::DB *db() const { return _db; }
 
-        Slice descriptor() const {
-            return Slice(_db->cmp_descriptor->dbt);
-        }
-
         template<typename Callback>
         int getf_set(const DBTxn &txn, const Slice &key, int flags, Callback cb) const {
             class WrappedCallback {
@@ -237,7 +233,6 @@ namespace ftcxx {
         uint8_t _memcmp_magic;
         bool _always_memcmp;
         uint32_t _pagesize;
-        Slice _descriptor;
 
     public:
         DBBuilder()
@@ -246,8 +241,7 @@ namespace ftcxx {
               _fanout(0),
               _memcmp_magic(0),
               _always_memcmp(false),
-              _pagesize(0),
-              _descriptor()
+              _pagesize(0)
         {}
 
         DB open(const DBEnv &env, const DBTxn &txn, const char *fname, const char *dbname, DBTYPE dbtype, uint32_t flags, int mode) const {
@@ -295,12 +289,6 @@ namespace ftcxx {
             r = db->open(db, txnp->txn(), fname, dbname, dbtype, flags, mode);
             handle_ft_retval(r);
 
-            if (!_descriptor.empty()) {
-                DBT desc = _descriptor.dbt();
-                r = db->change_descriptor(db, txnp->txn(), &desc, DB_UPDATE_CMP_DESCRIPTOR);
-                handle_ft_retval(r);
-            }
-
             if (txn.is_read_only()) {
                 writeTxn.commit();
             }
@@ -338,10 +326,6 @@ namespace ftcxx {
             return *this;
         }
 
-        DBBuilder& set_descriptor(const Slice &desc) {
-            _descriptor = desc.owned();
-            return *this;
-        }
     };
 
 } // namespace ftcxx

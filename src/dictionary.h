@@ -255,6 +255,7 @@ public:
     {
     }
     int initialize(DB_ENV* env, DB_TXN* txn, toku::locktree_manager &ltm);
+    DB* get_directory_db();
     int get_directory_cursor(DB_TXN* txn, DBC** c);
     int get_dinfo(const char* dname, DB_TXN* txn, dictionary_info* dinfo);
     int get_iname(const char* dname, DB_TXN* txn, char** iname);
@@ -336,6 +337,9 @@ public:
         );
     int get_directory_cursor(DB_TXN* txn, DBC** c) {
         return pdm.get_directory_cursor(txn, c);
+    }
+    DB* get_directory_db() {
+        return pdm.get_directory_db();
     }
     int get_iname(const char* dname, DB_TXN* txn, char** iname) {
         return pdm.get_iname(dname, txn, iname);

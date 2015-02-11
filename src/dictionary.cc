@@ -781,6 +781,10 @@ int persistent_dictionary_manager::get_directory_cursor(DB_TXN* txn, DBC** c) {
     return toku_db_cursor(m_directory, txn, c, 0);
 }
 
+DB* persistent_dictionary_manager::get_directory_db() {
+    return m_directory;
+}
+
 // get the iname for the given dname and set it in the variable iname
 // responsibility of caller to free iname
 int persistent_dictionary_manager::get_iname(const char* dname, DB_TXN* txn, char** iname) {

@@ -676,7 +676,7 @@ msg_init_empty_ule(ULE ule) {
 }
 
 static bool do_implicit_promotion(enum ft_msg_type type, XIDS xids, ULE ule) {
-    if (type == FT_OPTIMIZE || type == FT_OPTIMIZE_FOR_UPGRADE) {
+    if (type == FT_OPTIMIZE) {
         return false;
     }
     // as part of FT-603, commit messages may now hit a leafentry
@@ -723,7 +723,7 @@ msg_modify_ule(ULE ule, const ft_msg &msg) {
     XIDS xids = msg.xids();
     invariant(toku_xids_get_num_xids(xids) < MAX_TRANSACTION_RECORDS);
     enum ft_msg_type type = msg.type();
-    if (msg_supports_implicit_promotion(type)) {
+    if (do_implicit_promotion(type, xids, ule)) {
         ule_do_implicit_promotions(ule, xids);
     }
     switch (type) {

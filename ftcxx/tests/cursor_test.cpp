@@ -34,7 +34,7 @@ struct UIntComparator {
     int operator()(const ftcxx::Slice &a, const ftcxx::Slice &b) {
         DBT adbt = a.dbt();
         DBT bdbt = b.dbt();
-        return uint_dbt_cmp((DB *) this /*lol*/, &adbt, &bdbt);
+        return uint_dbt_cmp(&adbt, &bdbt);
     }
 };
 
