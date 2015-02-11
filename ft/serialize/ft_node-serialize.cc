@@ -885,86 +885,6 @@ toku_serialize_ftnode_to (int fd, BLOCKNUM blocknum, FTNODE node, FTNODE_DISK_DA
 }
 
 static void
-sort_and_steal_offset_arrays(NONLEAF_CHILDINFO bnc,
-                             const toku::comparator &cmp,
-                             int32_t **fresh_offsets, int32_t nfresh,
-                             int32_t **stale_offsets, int32_t nstale,
-                             int32_t **broadcast_offsets, int32_t nbroadcast) {
-    // We always have fresh / broadcast offsets (even if they are empty)
-    // but we may not have stale offsets, in the case of v13 upgrade.
-    invariant(fresh_offsets != nullptr);
-    invariant(broadcast_offsets != nullptr);
-    invariant(cmp.valid());
-
-    typedef toku::sort<int32_t, const struct toku_msg_buffer_key_msn_cmp_extra, toku_msg_buffer_key_msn_cmp> msn_sort;
-
-    const int32_t n_in_this_buffer = nfresh + nstale + nbroadcast;
-    struct toku_msg_buffer_key_msn_cmp_extra extra(cmp, &bnc->msg_buffer);
-    msn_sort::mergesort_r(*fresh_offsets, nfresh, extra);
-    bnc->fresh_message_tree.destroy();
-    bnc->fresh_message_tree.create_steal_sorted_array(fresh_offsets, nfresh, n_in_this_buffer);
-    if (stale_offsets) {
-        msn_sort::mergesort_r(*stale_offsets, nstale, extra);
-        bnc->stale_message_tree.destroy();
-        bnc->stale_message_tree.create_steal_sorted_array(stale_offsets, nstale, n_in_this_buffer);
-    }
-    bnc->broadcast_list.destroy();
-    bnc->broadcast_list.create_steal_sorted_array(broadcast_offsets, nbroadcast, n_in_this_buffer);
-}
-
-static MSN
-deserialize_child_buffer_v13(FT ft, NONLEAF_CHILDINFO bnc, struct rbuf *rb) {
-    // We skip 'stale' offsets for upgraded nodes.
-    int32_t nfresh = 0, nbroadcast = 0;
-    int32_t *fresh_offsets = nullptr, *broadcast_offsets = nullptr;
-
-    // Only sort buffers if we have a valid comparison function. In certain scenarios,
-    // like deserialie_ft_versioned() or tokuftdump, we'll need to deserialize ftnodes
-    // for simple inspection and don't actually require that the message buffers are
-    // properly sorted. This is very ugly, but correct.
-    const bool sort = ft->cmp.valid();
-
-    MSN highest_msn_in_this_buffer =
-        bnc->msg_buffer.deserialize_from_rbuf_v13(rb, &ft->h->highest_unused_msn_for_upgrade,
-                                                  sort ? &fresh_offsets : nullptr, &nfresh,
-                                                  sort ? &broadcast_offsets : nullptr, &nbroadcast);
-
-    if (sort) {
-        sort_and_steal_offset_arrays(bnc, ft->cmp,
-                                     &fresh_offsets, nfresh,
-                                     nullptr, 0, // no stale offsets
-                                     &broadcast_offsets, nbroadcast);
-    }
-
-    return highest_msn_in_this_buffer;
-}
-
-static void
-deserialize_child_buffer_v26(NONLEAF_CHILDINFO bnc, struct rbuf *rb, const toku::comparator &cmp) {
-    int32_t nfresh = 0, nstale = 0, nbroadcast = 0;
-    int32_t *fresh_offsets, *stale_offsets, *broadcast_offsets;
-
-    // Only sort buffers if we have a valid comparison function. In certain scenarios,
-    // like deserialie_ft_versioned() or tokuftdump, we'll need to deserialize ftnodes
-    // for simple inspection and don't actually require that the message buffers are
-    // properly sorted. This is very ugly, but correct.
-    const bool sort = cmp.valid();
-
-    // read in the message buffer
-    bnc->msg_buffer.deserialize_from_rbuf(rb,
-                                          sort ? &fresh_offsets : nullptr, &nfresh,
-                                          sort ? &stale_offsets : nullptr, &nstale,
-                                          sort ? &broadcast_offsets : nullptr, &nbroadcast);
-
-    if (sort) {
-        sort_and_steal_offset_arrays(bnc, cmp,
-                                     &fresh_offsets, nfresh,
-                                     &stale_offsets, nstale,
-                                     &broadcast_offsets, nbroadcast);
-    }
-}
-
-static void
 deserialize_child_buffer(NONLEAF_CHILDINFO bnc, struct rbuf *rb) {
     // read in the message buffer
     bnc->msg_buffer.deserialize_from_rbuf(rb,
@@ -1243,12 +1163,7 @@ deserialize_ftnode_info(
     (void)rbuf_int(&rb);
     node->flags = rbuf_int(&rb);
     node->height = rbuf_int(&rb);
-    if (node->layout_version_read_from_disk < FT_LAYOUT_VERSION_19) {
-        (void) rbuf_int(&rb); // optimized_for_upgrade
-    }
-    if (node->layout_version_read_from_disk >= FT_LAYOUT_VERSION_22) {
-        rbuf_TXNID(&rb, &node->oldest_referenced_xid_known);
-    }
+    rbuf_TXNID(&rb, &node->oldest_referenced_xid_known);
 
     // now create the basement nodes or childinfos, depending on whether this is a
     // leaf node or internal node
@@ -1394,8 +1309,7 @@ static int
 deserialize_ftnode_partition(
     struct sub_block *sb,
     FTNODE node,
-    int childnum,      // which partition to deserialize
-    const toku::comparator &cmp
+    int childnum // which partition to deserialize
     )
 {
     int r = 0;
@@ -1415,12 +1329,7 @@ deserialize_ftnode_partition(
     if (node->height > 0) {
         assert(ch == FTNODE_PARTITION_MSG_BUFFER);
         NONLEAF_CHILDINFO bnc = BNC(node, childnum);
-        if (node->layout_version_read_from_disk <= FT_LAYOUT_VERSION_26) {
-            // Layout version <= 26 did not serialize sorted message trees to disk.
-            deserialize_child_buffer_v26(bnc, &rb, cmp);
-        } else {
-            deserialize_child_buffer(bnc, &rb);
-        }
+        deserialize_child_buffer(bnc, &rb);
         BP_WORKDONE(node, childnum) = 0;
     }
     else {
@@ -1440,7 +1349,7 @@ exit:
 
 static int
 decompress_and_deserialize_worker(struct rbuf curr_rbuf, struct sub_block curr_sb, FTNODE node, int child,
-                                 const toku::comparator &cmp, tokutime_t *decompress_time)
+                                 tokutime_t *decompress_time)
 {
     int r = 0;
     tokutime_t t0 = toku_time_now();
@@ -1448,7 +1357,7 @@ decompress_and_deserialize_worker(struct rbuf curr_rbuf, struct sub_block curr_s
     tokutime_t t1 = toku_time_now();
     if (r == 0) {
         // at this point, sb->uncompressed_ptr stores the serialized node partition
-        r = deserialize_ftnode_partition(&curr_sb, node, child, cmp);
+        r = deserialize_ftnode_partition(&curr_sb, node, child);
     }
     *decompress_time = t1 - t0;
 
@@ -1524,11 +1433,6 @@ deserialize_ftnode_header_from_rbuf_if_small_enough (FTNODE *ftnode,
     }
 
     node->layout_version_read_from_disk = rbuf_int(rb);
-    if (node->layout_version_read_from_disk < FT_FIRST_LAYOUT_VERSION_WITH_BASEMENT_NODES) {
-        // This code path doesn't have to worry about upgrade.
-        r = toku_db_badformat();
-        goto cleanup;
-    }
 
     // If we get here, we know the node is at least
     // FT_FIRST_LAYOUT_VERSION_WITH_BASEMENT_NODES.  We haven't changed
@@ -1666,281 +1570,6 @@ cleanup:
     return r;
 }
 
-// This function takes a deserialized version 13 or 14 buffer and
-// constructs the associated internal, non-leaf ftnode object.  It
-// also creates MSN's for older messages created in older versions
-// that did not generate MSN's for messages.  These new MSN's are
-// generated from the root downwards, counting backwards from MIN_MSN
-// and persisted in the ft header.
-static int
-deserialize_and_upgrade_internal_node(FTNODE node,
-                                      struct rbuf *rb,
-                                      ftnode_fetch_extra *bfe,
-                                      STAT64INFO info)
-{
-    int version = node->layout_version_read_from_disk;
-
-    if (version == FT_LAST_LAYOUT_VERSION_WITH_FINGERPRINT) {
-        (void) rbuf_int(rb);                          // 10. fingerprint
-    }
-
-    node->n_children = rbuf_int(rb);                  // 11. n_children
-
-    // Sub-tree esitmates...
-    for (int i = 0; i < node->n_children; ++i) {
-        if (version == FT_LAST_LAYOUT_VERSION_WITH_FINGERPRINT) {
-            (void) rbuf_int(rb);                      // 12. fingerprint
-        }
-        uint64_t nkeys = rbuf_ulonglong(rb);          // 13. nkeys
-        uint64_t ndata = rbuf_ulonglong(rb);          // 14. ndata
-        uint64_t dsize = rbuf_ulonglong(rb);          // 15. dsize
-        (void) rbuf_char(rb);                         // 16. exact (char)
-        invariant(nkeys == ndata);
-        if (info) {
-            // info is non-null if we're trying to upgrade old subtree
-            // estimates to stat64info
-            info->numrows += nkeys;
-            info->numbytes += dsize;
-        }
-    }
-
-    // Pivot keys
-    node->pivotkeys.deserialize_from_rbuf(rb, node->n_children - 1);
-
-    // Create space for the child node buffers (a.k.a. partitions).
-    XMALLOC_N(node->n_children, node->bp);
-
-    // Set the child blocknums.
-    for (int i = 0; i < node->n_children; ++i) {
-        BP_BLOCKNUM(node, i) = rbuf_blocknum(rb);    // 18. blocknums
-        BP_WORKDONE(node, i) = 0;
-    }
-
-    // Read in the child buffer maps.
-    for (int i = 0; i < node->n_children; ++i) {
-        // The following fields were previously used by the `sub_block_map'
-        // They include:
-        // - 4 byte index
-        (void) rbuf_int(rb);
-        // - 4 byte offset
-        (void) rbuf_int(rb);
-        // - 4 byte size
-        (void) rbuf_int(rb);
-    }
-
-    // We need to setup this node's partitions, but we can't call the
-    // existing call (setup_ftnode_paritions.) because there are
-    // existing optimizations that would prevent us from bringing all
-    // of this node's partitions into memory.  Instead, We use the
-    // existing bfe and node to set the bfe's child_to_search member.
-    // Then we create a temporary bfe that needs all the nodes to make
-    // sure we properly intitialize our partitions before filling them
-    // in from our soon-to-be-upgraded node.
-    update_bfe_using_ftnode(node, bfe);
-    ftnode_fetch_extra temp_bfe;
-    temp_bfe.create_for_full_read(nullptr);
-    setup_partitions_using_bfe(node, &temp_bfe, true);
-
-    // Cache the highest MSN generated for the message buffers.  This
-    // will be set in the ftnode.
-    //
-    // The way we choose MSNs for upgraded messages is delicate.  The
-    // field `highest_unused_msn_for_upgrade' in the header is always an
-    // MSN that no message has yet.  So when we have N messages that need
-    // MSNs, we decrement it by N, and then use it and the N-1 MSNs less
-    // than it, but we do not use the value we decremented it to.
-    //
-    // In the code below, we initialize `lowest' with the value of
-    // `highest_unused_msn_for_upgrade' after it is decremented, so we
-    // need to be sure to increment it once before we enqueue our first
-    // message.
-    MSN highest_msn;
-    highest_msn.msn = 0;
-
-    // Deserialize de-compressed buffers.
-    for (int i = 0; i < node->n_children; ++i) {
-        NONLEAF_CHILDINFO bnc = BNC(node, i);
-        MSN highest_msn_in_this_buffer = deserialize_child_buffer_v13(bfe->ft, bnc, rb);
-        if (highest_msn.msn == 0) {
-            highest_msn.msn = highest_msn_in_this_buffer.msn;
-        }
-    }
-
-    // Assign the highest msn from our upgrade message buffers
-    node->max_msn_applied_to_node_on_disk = highest_msn;
-    // Since we assigned MSNs to this node's messages, we need to dirty it.
-    node->dirty = 1;
-
-    // Must compute the checksum now (rather than at the end, while we
-    // still have the pointer to the buffer).
-    if (version >= FT_FIRST_LAYOUT_VERSION_WITH_END_TO_END_CHECKSUM) {
-        uint32_t expected_xsum = toku_dtoh32(*(uint32_t*)(rb->buf+rb->size-4)); // 27. checksum
-        uint32_t actual_xsum   = toku_x1764_memory(rb->buf, rb->size-4);
-        if (expected_xsum != actual_xsum) {
-            fprintf(stderr, "%s:%d: Bad checksum: expected = %" PRIx32 ", actual= %" PRIx32 "\n",
-                    __FUNCTION__,
-                    __LINE__,
-                    expected_xsum,
-                    actual_xsum);
-            fprintf(stderr,
-                    "Checksum failure while reading node in file %s.\n",
-                    toku_cachefile_fname_in_env(bfe->ft->cf));
-            fflush(stderr);
-            return toku_db_badformat();
-        }
-    }
-
-    return 0;
-}
-
-// This function takes a deserialized version 13 or 14 buffer and
-// constructs the associated leaf ftnode object.
-static int
-deserialize_and_upgrade_leaf_node(FTNODE node,
-                                  struct rbuf *rb,
-                                  ftnode_fetch_extra *bfe,
-                                  STAT64INFO info)
-{
-    int r = 0;
-    int version = node->layout_version_read_from_disk;
-
-    // This is a leaf node, so the offsets in the buffer will be
-    // different from the internal node offsets above.
-    uint64_t nkeys = rbuf_ulonglong(rb);                // 10. nkeys
-    uint64_t ndata = rbuf_ulonglong(rb);                // 11. ndata
-    uint64_t dsize = rbuf_ulonglong(rb);                // 12. dsize
-    invariant(nkeys == ndata);
-    if (info) {
-        // info is non-null if we're trying to upgrade old subtree
-        // estimates to stat64info
-        info->numrows += nkeys;
-        info->numbytes += dsize;
-    }
-
-    // This is the optimized for upgrade field.
-    if (version == FT_LAYOUT_VERSION_14) {
-        (void) rbuf_int(rb);                            // 13. optimized
-    }
-
-    // npartitions - This is really the number of leaf entries in
-    // our single basement node.  There should only be 1 (ONE)
-    // partition, so there shouldn't be any pivot key stored.  This
-    // means the loop will not iterate.  We could remove the loop and
-    // assert that the value is indeed 1.
-    int npartitions = rbuf_int(rb);                     // 14. npartitions
-    assert(npartitions == 1);
-
-    // Set number of children to 1, since we will only have one
-    // basement node.
-    node->n_children = 1;
-    XMALLOC_N(node->n_children, node->bp);
-    node->pivotkeys.create_empty();
-
-    // Create one basement node to contain all the leaf entries by
-    // setting up the single partition and updating the bfe.
-    update_bfe_using_ftnode(node, bfe);
-    ftnode_fetch_extra temp_bfe;
-    temp_bfe.create_for_full_read(bfe->ft);
-    setup_partitions_using_bfe(node, &temp_bfe, true);
-
-    // 11. Deserialize the partition maps, though they are not used in the
-    // newer versions of ftnodes.
-    for (int i = 0; i < node->n_children; ++i) {
-        // The following fields were previously used by the `sub_block_map'
-        // They include:
-        // - 4 byte index
-        (void) rbuf_int(rb);
-        // - 4 byte offset
-        (void) rbuf_int(rb);
-        // - 4 byte size
-        (void) rbuf_int(rb);
-    }
-
-    // Copy all of the leaf entries into the single basement node.
-
-    // The number of leaf entries in buffer.
-    int n_in_buf = rbuf_int(rb);                        // 15. # of leaves
-    BLB_SEQINSERT(node,0) = 0;
-    BASEMENTNODE bn = BLB(node, 0);
-
-    // Read the leaf entries from the buffer, advancing the buffer
-    // as we go.
-    bool has_end_to_end_checksum = (version >= FT_FIRST_LAYOUT_VERSION_WITH_END_TO_END_CHECKSUM);
-    if (version <= FT_LAYOUT_VERSION_13) {
-        // Create our mempool.
-        // Loop through
-        for (int i = 0; i < n_in_buf; ++i) {
-            LEAFENTRY_13 le = reinterpret_cast<LEAFENTRY_13>(&rb->buf[rb->ndone]);
-            uint32_t disksize = leafentry_disksize_13(le);
-            rb->ndone += disksize;                       // 16. leaf entry (13)
-            invariant(rb->ndone<=rb->size);
-            LEAFENTRY new_le;
-            size_t new_le_size;
-            void* key = NULL;
-            uint32_t keylen = 0;
-            r = toku_le_upgrade_13_14(le,
-                                      &key,
-                                      &keylen,
-                                      &new_le_size,
-                                      &new_le);
-            assert_zero(r);
-            // Copy the pointer value straight into the OMT
-            LEAFENTRY new_le_in_bn = nullptr;
-            void *maybe_free;
-            bn->data_buffer.get_space_for_insert(
-                i,
-                key,
-                keylen,
-                new_le_size,
-                &new_le_in_bn,
-                &maybe_free
-                );
-            if (maybe_free) {
-                toku_free(maybe_free);
-            }
-            memcpy(new_le_in_bn, new_le, new_le_size);
-            toku_free(new_le);
-        }
-    } else {
-        uint32_t data_size = rb->size - rb->ndone;
-        if (has_end_to_end_checksum) {
-            data_size -= sizeof(uint32_t);
-        }
-        bn->data_buffer.deserialize_from_rbuf(n_in_buf, rb, data_size, node->layout_version_read_from_disk);
-    }
-
-    // Whatever this is must be less than the MSNs of every message above
-    // it, so it's ok to take it here.
-    bn->max_msn_applied = bfe->ft->h->highest_unused_msn_for_upgrade;
-    bn->stale_ancestor_messages_applied = false;
-    node->max_msn_applied_to_node_on_disk = bn->max_msn_applied;
-
-    // Checksum (end to end) is only on version 14
-    if (has_end_to_end_checksum) {
-        uint32_t expected_xsum = rbuf_int(rb);             // 17. checksum 
-        uint32_t actual_xsum = toku_x1764_memory(rb->buf, rb->size - 4);
-        if (expected_xsum != actual_xsum) {
-            fprintf(stderr, "%s:%d: Bad checksum: expected = %" PRIx32 ", actual= %" PRIx32 "\n",
-                    __FUNCTION__,
-                    __LINE__,
-                    expected_xsum,
-                    actual_xsum);
-            fprintf(stderr,
-                    "Checksum failure while reading node in file %s.\n",
-                    toku_cachefile_fname_in_env(bfe->ft->cf));
-            fflush(stderr);
-            return toku_db_badformat();
-        }
-    }
-
-    // We should have read the whole block by this point.
-    if (rb->ndone != rb->size) {
-        // TODO: Error handling.
-        return 1;
-    }
-
-    return r;
-}
 
 static int
 read_and_decompress_block_from_fd_into_rbuf(int fd, BLOCKNUM blocknum,
@@ -1949,97 +1578,6 @@ read_and_decompress_block_from_fd_into_rbuf(int fd, BLOCKNUM blocknum,
                                             struct rbuf *rb,
                                             /* out */ int *layout_version_p);
 
-// This function upgrades a version 14 or 13 ftnode to the current
-// verison. NOTE: This code assumes the first field of the rbuf has
-// already been read from the buffer (namely the layout_version of the
-// ftnode.)
-static int
-deserialize_and_upgrade_ftnode(FTNODE node,
-                                FTNODE_DISK_DATA* ndd,
-                                BLOCKNUM blocknum,
-                                ftnode_fetch_extra *bfe,
-                                STAT64INFO info,
-                                int fd)
-{
-    int r = 0;
-    int version;
-
-    // I. First we need to de-compress the entire node, only then can
-    // we read the different sub-sections.
-    // get the file offset and block size for the block
-    DISKOFF offset, size;
-    bfe->ft->blocktable.translate_blocknum_to_offset_size(blocknum, &offset, &size);
-
-    struct rbuf rb;
-    r = read_and_decompress_block_from_fd_into_rbuf(fd,
-                                                    blocknum,
-                                                    offset,
-                                                    size,
-                                                    bfe->ft,
-                                                    &rb,
-                                                    &version);
-    if (r != 0) {
-        goto exit;
-    }
-
-    // Re-read the magic field from the previous call, since we are
-    // restarting with a fresh rbuf.
-    {
-        const void *magic;
-        rbuf_literal_bytes(&rb, &magic, 8);              // 1. magic
-    }
-
-    // II. Start reading ftnode fields out of the decompressed buffer.
-
-    // Copy over old version info.
-    node->layout_version_read_from_disk = rbuf_int(&rb); // 2. layout version
-    version = node->layout_version_read_from_disk;
-    assert(version <= FT_LAYOUT_VERSION_14);
-    // Upgrade the current version number to the current version.
-    node->layout_version = FT_LAYOUT_VERSION;
-
-    node->layout_version_original = rbuf_int(&rb);      // 3. original layout
-    node->build_id = rbuf_int(&rb);                     // 4. build id
-
-    // The remaining offsets into the rbuf do not map to the current
-    // version, so we need to fill in the blanks and ignore older
-    // fields.
-    (void)rbuf_int(&rb);                                // 5. nodesize
-    node->flags = rbuf_int(&rb);                        // 6. flags
-    node->height = rbuf_int(&rb);                       // 7. height
-
-    // If the version is less than 14, there are two extra ints here.
-    // we would need to ignore them if they are there.
-    // These are the 'fingerprints'.
-    if (version == FT_LAYOUT_VERSION_13) {
-        (void) rbuf_int(&rb);                           // 8. rand4
-        (void) rbuf_int(&rb);                           // 9. local
-    }
-
-    // The next offsets are dependent on whether this is a leaf node
-    // or not.
-
-    // III. Read in Leaf and Internal Node specific data.
-
-    // Check height to determine whether this is a leaf node or not.
-    if (node->height > 0) {
-        r = deserialize_and_upgrade_internal_node(node, &rb, bfe, info);
-    } else {
-        r = deserialize_and_upgrade_leaf_node(node, &rb, bfe, info);
-    }
-
-    XMALLOC_N(node->n_children, *ndd);
-    // Initialize the partition locations to zero, because version 14
-    // and below have no notion of partitions on disk.
-    for (int i=0; i<node->n_children; i++) {
-        BP_START(*ndd,i) = 0;
-        BP_SIZE (*ndd,i) = 0;
-    }
-
-    toku_free(rb.buf);
-exit:
-    return r;
-}
 
 static int
 deserialize_ftnode_from_rbuf(
@@ -2048,9 +1586,7 @@ deserialize_ftnode_from_rbuf(
     BLOCKNUM blocknum,
     uint32_t fullhash,
     ftnode_fetch_extra *bfe,
-    STAT64INFO info,
-    struct rbuf *rb,
-    int fd
+    struct rbuf *rb
     )
 // Effect: deserializes a ftnode that is in rb (with pointer of rb just past the magic) into a FTNODE.
 {
@@ -2077,26 +1613,6 @@ deserialize_ftnode_from_rbuf(
 
     node->layout_version_read_from_disk = rbuf_int(rb);
     lazy_assert(node->layout_version_read_from_disk >= FT_LAYOUT_MIN_SUPPORTED_VERSION);
-
-    // Check if we are reading in an older node version.
-    if (node->layout_version_read_from_disk <= FT_LAYOUT_VERSION_14) {
-        int version = node->layout_version_read_from_disk;
-        // Perform the upgrade.
-        r = deserialize_and_upgrade_ftnode(node, ndd, blocknum, bfe, info, fd);
-        if (r != 0) {
-            goto cleanup;
-        }
-
-        if (version <= FT_LAYOUT_VERSION_13) {
-            // deprecate 'TOKU_DB_VALCMP_BUILTIN'. just remove the flag
-            node->flags &= ~TOKU_DB_VALCMP_BUILTIN_13;
-        }
-
-        // If everything is ok, just re-assign the ftnode and retrn.
-        *ftnode = node;
-        r = 0;
-        goto cleanup;
-    }
 
     // Upgrade versions after 14 to current.  This upgrade is trivial, it
     // removes the optimized for upgrade field, which has already been
@@ -2187,7 +1703,7 @@ deserialize_ftnode_from_rbuf(
                 //  case where we read and decompress the partition
                 tokutime_t partition_decompress_time;
                 r = decompress_and_deserialize_worker(curr_rbuf, curr_sb, node, i,
-                                                      bfe->ft->cmp, &partition_decompress_time);
+                                                      &partition_decompress_time);
                 decompress_time += partition_decompress_time;
                 if (r != 0) {
                     goto cleanup;
@@ -2290,7 +1806,7 @@ toku_deserialize_bp_from_disk(FTNODE node, FTNODE_DISK_DATA ndd, int childnum, i
     // deserialize
     tokutime_t t2 = toku_time_now();
 
-    r = deserialize_ftnode_partition(&curr_sb, node, childnum, bfe->ft->cmp);
+    r = deserialize_ftnode_partition(&curr_sb, node, childnum);
 
     tokutime_t t3 = toku_time_now();
 
@@ -2334,7 +1850,7 @@ toku_deserialize_bp_from_compressed(FTNODE node, int childnum, ftnode_fetch_extr
 
     tokutime_t t1 = toku_time_now();
 
-    r = deserialize_ftnode_partition(curr_sb, node, childnum, bfe->ft->cmp);
+    r = deserialize_ftnode_partition(curr_sb, node, childnum);
 
     tokutime_t t2 = toku_time_now();
 
@@ -2355,8 +1871,7 @@ deserialize_ftnode_from_fd(int fd,
                             uint32_t fullhash,
                             FTNODE *ftnode,
                             FTNODE_DISK_DATA *ndd,
-                            ftnode_fetch_extra *bfe,
-                            STAT64INFO info)
+                            ftnode_fetch_extra *bfe)
 {
     struct rbuf rb = RBUF_INITIALIZER;
 
@@ -2366,7 +1881,7 @@ deserialize_ftnode_from_fd(int fd,
 
     // Decompress and deserialize the ftnode. Time statistics
     // are taken inside this function.
-    int r = deserialize_ftnode_from_rbuf(ftnode, ndd, blocknum, fullhash, bfe, info, &rb, fd);
+    int r = deserialize_ftnode_from_rbuf(ftnode, ndd, blocknum, fullhash, bfe, &rb);
     if (r != 0) {
         dump_bad_block(rb.buf,rb.size);
     }
@@ -2402,7 +1917,7 @@ toku_deserialize_ftnode_from (int fd,
     }
     if (r != 0) {
         // Something went wrong, go back to doing it the old way.
-        r = deserialize_ftnode_from_fd(fd, blocknum, fullhash, ftnode, ndd, bfe, NULL);
+        r = deserialize_ftnode_from_fd(fd, blocknum, fullhash, ftnode, ndd, bfe);
     }
 
     toku_free(rb.buf);
@@ -2598,13 +2113,12 @@ deserialize_rollback_log_from_rbuf (BLOCKNUM blocknum, ROLLBACK_LOG_NODE *log_p,
     lazy_assert(!memcmp(magic, "tokuroll", 8));
 
     result->layout_version    = rbuf_int(rb);
-    lazy_assert((FT_LAYOUT_VERSION_25 <= result->layout_version && result->layout_version <= FT_LAYOUT_VERSION_27) ||
+    lazy_assert((result->layout_version <= FT_LAYOUT_VERSION_27) ||
                 (result->layout_version == FT_LAYOUT_VERSION));
     result->layout_version_original = rbuf_int(rb);
     result->layout_version_read_from_disk = result->layout_version;
     result->build_id = rbuf_int(rb);
     result->dirty = false;
-    //TODO: Maybe add descriptor (or just descriptor version) here eventually?
     //TODO: This is hard.. everything is shared in a single dictionary.
     rbuf_TXNID_PAIR(rb, &result->txnid);
     result->sequence = rbuf_ulonglong(rb);
@@ -2659,7 +2173,7 @@ deserialize_rollback_log_from_rbuf_versioned (uint32_t version, BLOCKNUM blocknu
                                               struct rbuf *rb) {
     int r = 0;
     ROLLBACK_LOG_NODE rollback_log_node = NULL;
-    invariant((FT_LAYOUT_VERSION_25 <= version && version <= FT_LAYOUT_VERSION_27) || version == FT_LAYOUT_VERSION);
+    invariant((version <= FT_LAYOUT_VERSION_27) || version == FT_LAYOUT_VERSION);
     r = deserialize_rollback_log_from_rbuf(blocknum, &rollback_log_node, rb);
     if (r==0) {
         *log = rollback_log_node;
@@ -2756,16 +2270,10 @@ exit:
     return r;
 }
 
-static int decompress_from_raw_block_into_rbuf_versioned(uint32_t version, uint8_t *raw_block, size_t raw_block_size, struct rbuf *rb, BLOCKNUM blocknum) {
+static int decompress_from_raw_block_into_rbuf_versioned(uint8_t *raw_block, size_t raw_block_size, struct rbuf *rb, BLOCKNUM blocknum) {
     // This function exists solely to accomodate future changes in compression.
     int r = 0;
-    if ((version == FT_LAYOUT_VERSION_13 || version == FT_LAYOUT_VERSION_14) ||
-        (FT_LAYOUT_VERSION_25 <= version && version <= FT_LAYOUT_VERSION_27) ||
-        version == FT_LAYOUT_VERSION) {
-        r = decompress_from_raw_block_into_rbuf(raw_block, raw_block_size, rb, blocknum);
-    } else {
-        abort();
-    }
+    r = decompress_from_raw_block_into_rbuf(raw_block, raw_block_size, rb, blocknum);
     return r;
 }
 
@@ -2804,7 +2312,7 @@ read_and_decompress_block_from_fd_into_rbuf(int fd, BLOCKNUM blocknum,
         }
     }
 
-    r = decompress_from_raw_block_into_rbuf_versioned(layout_version, raw_block, size, rb, blocknum);
+    r = decompress_from_raw_block_into_rbuf_versioned(raw_block, size, rb, blocknum);
     if (r != 0) {
         // We either failed the checksome, or there is a bad format in
         // the buffer.
@@ -2872,53 +2380,6 @@ cleanup:
     if (rb.buf) {
         toku_free(rb.buf);
     }
-    return r;
-}
-
-int
-toku_upgrade_subtree_estimates_to_stat64info(int fd, FT ft)
-{
-    int r = 0;
-    // 15 was the last version with subtree estimates
-    invariant(ft->layout_version_read_from_disk <= FT_LAYOUT_VERSION_15);
-
-    FTNODE unused_node = NULL;
-    FTNODE_DISK_DATA unused_ndd = NULL;
-    ftnode_fetch_extra bfe;
-    bfe.create_for_min_read(ft);
-    r = deserialize_ftnode_from_fd(fd, ft->h->root_blocknum, 0, &unused_node, &unused_ndd,
-                                   &bfe, &ft->h->on_disk_stats);
-    ft->in_memory_stats = ft->h->on_disk_stats;
-
-    if (unused_node) {
-        toku_ftnode_free(&unused_node);
-    }
-    if (unused_ndd) {
-        toku_free(unused_ndd);
-    }
-    return r;
-}
-
-int
-toku_upgrade_msn_from_root_to_header(int fd, FT ft)
-{
-    int r;
-    // 21 was the first version with max_msn_in_ft in the header
-    invariant(ft->layout_version_read_from_disk <= FT_LAYOUT_VERSION_20);
-
-    FTNODE node;
-    FTNODE_DISK_DATA ndd;
-    ftnode_fetch_extra bfe;
-    bfe.create_for_min_read(ft);
-    r = deserialize_ftnode_from_fd(fd, ft->h->root_blocknum, 0, &node, &ndd, &bfe, nullptr);
-    if (r != 0) {
-        goto exit;
-    }
-
-    ft->h->max_msn_in_ft = node->max_msn_applied_to_node_on_disk;
-    toku_ftnode_free(&node);
-    toku_free(ndd);
- exit:
     return r;
 }
 

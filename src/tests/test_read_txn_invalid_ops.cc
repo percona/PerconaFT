@@ -91,8 +91,7 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 
 
-static int update_fun(DB *UU(db),
-                      const DBT *UU(key),
+static int update_fun(const DBT *UU(key),
                       const DBT *UU(old_val), const DBT *UU(extra),
                       void (*set_val)(const DBT *new_val,
                                       void *set_extra),
@@ -116,7 +115,7 @@ static int generate_row_for_put(
     return 0;
 }
 
-static int generate_row_for_del(
+static int UU() generate_row_for_del(
     DB *UU(dest_db), 
     DB *UU(src_db),
     DBT_ARRAY *UU(dest_key_arrays),
@@ -139,10 +138,6 @@ static void test_invalid_ops(uint32_t iso_flags) {
     // set things up
     r = db_env_create(&env, 0); 
     CKERR(r);
-    r = env->set_generate_row_callback_for_put(env,generate_row_for_put); 
-    CKERR(r);
-    r = env->set_generate_row_callback_for_del(env,generate_row_for_del); 
-    CKERR(r);
     env->set_update(env, update_fun);
     r = env->open(env, TOKU_TEST_FILENAME, DB_INIT_MPOOL|DB_CREATE|DB_THREAD |DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_TXN|DB_PRIVATE, 0755); 
     CKERR(r);
@@ -164,33 +159,15 @@ static void test_invalid_ops(uint32_t iso_flags) {
     dbt_init(&key, &k, sizeof k);
     dbt_init(&val, &v, sizeof v);
 
-    uint32_t db_flags = 0;
-    uint32_t indexer_flags = 0;
-    DB_INDEXER* indexer;
-    r = env->create_indexer(
-        env,
-        txn,
-        &indexer,
-        db,
-        1,
-        &db,
-        &db_flags,
-        indexer_flags
-        );
-    CKERR2(r, EINVAL);
-
 
     // test invalid operations of ydb_db.cc,
     // db->open tested above
     DB_LOADER* loader;
     uint32_t put_flags = 0;
     uint32_t dbt_flags = 0;
-    r = env->create_loader(env, txn, &loader, NULL, 1, &db, &put_flags, &dbt_flags, 0); 
+    r = env->create_loader(env, txn, &loader, NULL, 1, &db, &put_flags, &dbt_flags, 0, generate_row_for_put); 
     CKERR2(r, EINVAL);
 
-    r = db->change_descriptor(db, txn, &key, 0);
-    CKERR2(r, EINVAL);
-    
     //
     // test invalid operations return EINVAL from ydb_write.cc
     //
@@ -203,21 +180,6 @@ static void test_invalid_ops(uint32_t iso_flags) {
     r = db->update_broadcast(db, txn, &val, 0);
     CKERR2(r, EINVAL);
     
-    r = env_put_multiple_test_no_array(env, NULL, txn, &key, &val, 1, &db, &key, &val, 0);
-    CKERR2(r, EINVAL);
-    r = env_del_multiple_test_no_array(env, NULL, txn, &key, &val, 1, &db, &key, 0);
-    CKERR2(r, EINVAL);
-    uint32_t flags;
-    r = env_update_multiple_test_no_array(
-        env, NULL, txn, 
-        &key, &val, 
-        &key, &val, 
-        1, &db, &flags, 
-        1, &key, 
-        1, &val
-        );
-    CKERR2(r, EINVAL);
-
     r = db->close(db, 0); 
     CKERR(r);
 

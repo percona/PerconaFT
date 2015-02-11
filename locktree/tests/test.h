@@ -139,9 +139,7 @@ namespace toku {
     }
 
     __attribute__((__unused__))
-    static int compare_dbts(DB *db, const DBT *key1, const DBT *key2) {
-        (void) db;
-
+    static int compare_dbts(const DBT *key1, const DBT *key2) {
         // this emulates what a "infinity-aware" comparator object does
         if (toku_dbt_is_infinite(key1) || toku_dbt_is_infinite(key2)) {
             return toku_dbt_infinite_compare(key1, key2);
@@ -164,12 +162,11 @@ namespace toku {
 
     __attribute__((__constructor__))
     static void construct_dbt_comparator(void) {
-        dbt_comparator.create(compare_dbts, nullptr); 
+        dbt_comparator.create(compare_dbts, 0); 
     }
 
     __attribute__((__destructor__))
     static void destruct_dbt_comparator(void) {
-        dbt_comparator.destroy();
     }
 
 } /* namespace toku */

@@ -100,8 +100,7 @@ const unsigned int NUM_KEYS = 100;
 
 static inline unsigned int _v(const unsigned int i) { return 10 - i; }
 
-static int update_fun(DB *UU(db),
-                      const DBT *key,
+static int update_fun(const DBT *key,
                       const DBT *old_val, const DBT *extra,
                       void (*set_val)(const DBT *new_val,
                                       void *set_extra),

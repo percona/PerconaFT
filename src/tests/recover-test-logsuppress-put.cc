@@ -192,7 +192,7 @@ load(DB **dbs) {
     // create and initialize loader
     r = env->txn_begin(env, NULL, &txn, 0);                                                               
     CKERR(r);
-    r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags);
+    r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags, put_multiple_generate);
     CKERR(r);
 
     // using loader->put, put values into DB
@@ -229,14 +229,9 @@ do_x1_shutdown (void) {
     r=db_env_create(&env, 0);                                                  assert(r==0);
     env->set_errfile(env, stderr);
     r = env->set_default_bt_compare(env, uint_dbt_cmp);                                                       CKERR(r);
-    r = env->set_generate_row_callback_for_put(env, put_multiple_generate);
-    CKERR(r);
 
     r=env->open(env, TOKU_TEST_FILENAME, DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN|DB_CREATE|DB_PRIVATE|DB_THREAD, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(r);
     r = env->checkpointing_set_period(env, 0);                                 CKERR(r);
-
-    DBT desc;
-    dbt_init(&desc, "foo", sizeof("foo"));
 
     char name[128];
 
@@ -249,9 +244,6 @@ do_x1_shutdown (void) {
         dbs[i]->app_private = &idx[i];
         snprintf(name, sizeof(name), "db_%04x", i);
         r = dbs[i]->open(dbs[i], NULL, name, NULL, DB_BTREE, DB_CREATE, 0666);                                CKERR(r);
-        IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-                { int chk_r = dbs[i]->change_descriptor(dbs[i], txn_desc, &desc, 0); CKERR(chk_r); }
-        });
     }
 
     load(dbs);

@@ -244,13 +244,6 @@ db_startup(DICTIONARY d, DB_TXN *open_txn) {
         r = db->open(db, open_txn, name, NULL, DB_BTREE, DB_CREATE, 0666);
             CKERR(r);
     }
-    {
-        DBT desc;
-        IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-            dbt_init(&desc, "foo", sizeof("foo"));
-            { int chk_r = db->change_descriptor(db, txn_desc, &desc,0); CKERR(chk_r); }
-            });
-    }
 }
 
 static void UU()

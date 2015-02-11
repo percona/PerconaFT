@@ -238,7 +238,7 @@ int main(int argc, const char *argv[]) {
 
     // create a manager
     locktree_manager mgr;
-    mgr.create(nullptr, nullptr, e_callback, nullptr);
+    mgr.create(e_callback, nullptr);
     mgr.set_max_lock_memory(max_lock_memory);
 
     // create lock trees
@@ -247,11 +247,11 @@ int main(int argc, const char *argv[]) {
     locktree *big_lt[n_big];
     for (int i = 0; i < n_big; i++) {
         dict_id = { next_dict_id }; next_dict_id++;
-        big_lt[i] = mgr.get_lt(dict_id, dbt_comparator, nullptr);
+        big_lt[i] = mgr.get_lt(dict_id, dbt_comparator);
     }
 
     dict_id = { next_dict_id }; next_dict_id++;
-    locktree *small_lt = mgr.get_lt(dict_id, dbt_comparator, nullptr);
+    locktree *small_lt = mgr.get_lt(dict_id, dbt_comparator);
 
     // create the worker threads
     struct big_arg big_arg = { &mgr, big_lt, n_big, 1000 };

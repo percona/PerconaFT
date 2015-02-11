@@ -104,8 +104,7 @@ static inline unsigned int _v(const unsigned int i) { return 10 - i; }
 static inline unsigned int _e(const unsigned int i) { return i + 4; }
 static inline unsigned int _u(const unsigned int v, const unsigned int e) { return v + 2 * e; }
 
-static int update_fun(DB *UU(db),
-                      const DBT *key,
+static int update_fun(const DBT *key,
                       const DBT *old_val, const DBT *extra,
                       void (*set_val)(const DBT *new_val,
                                       void *set_extra),
@@ -128,7 +127,7 @@ static int update_fun(DB *UU(db),
 }
 
 static int
-int_cmp(DB *UU(db), const DBT *a, const DBT *b) {
+int_cmp(const DBT *a, const DBT *b) {
     unsigned int *ap, *bp;
     assert(a->size == sizeof(*ap));
     CAST_FROM_VOIDP(ap, a->data);

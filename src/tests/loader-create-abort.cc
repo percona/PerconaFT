@@ -111,8 +111,6 @@ static void loader_open_abort(void) {
 
     DB_ENV *env;
     r = db_env_create(&env, 0);                                                                               CKERR(r);
-    r = env->set_generate_row_callback_for_put(env, put_multiple_generate);
-    CKERR(r);
     int envflags = DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE | DB_PRIVATE;
     r = env->open(env, envdir, envflags, S_IRWXU+S_IRWXG+S_IRWXO);                                            CKERR(r); 
     env->set_errfile(env, stderr);
@@ -121,7 +119,7 @@ static void loader_open_abort(void) {
     r = env->txn_begin(env, NULL, &txn, 0); CKERR(r);
 
     DB_LOADER *loader;
-    r = env->create_loader(env, txn, &loader, NULL, 0, NULL, NULL, NULL, loader_flags); CKERR(r);
+    r = env->create_loader(env, txn, &loader, NULL, 0, NULL, NULL, NULL, loader_flags, put_multiple_generate); CKERR(r);
     
     r = loader->abort(loader); CKERR(r);
 
@@ -148,7 +146,6 @@ static void do_args(int argc, char * const argv[]) {
         } else if (strcmp(argv[0], "-p") == 0) {
             loader_flags |= LOADER_COMPRESS_INTERMEDIATES;
         } else if (strcmp(argv[0], "-z") == 0) {
-            loader_flags |= LOADER_DISALLOW_PUTS;
         } else if (strcmp(argv[0], "-e") == 0) {
             argc--; argv++;
             if (argc > 0)

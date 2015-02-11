@@ -379,27 +379,27 @@ test_fileops_2(void) {
     //  open x2, c3, should succeed
     //  close x2, c3
     {
-	DB * db_e;
-	DB * db_c3;
-	DB * db_x2;
+        DB * db_e;
+        DB * db_c3;
+        DB * db_x2;
 
- 	r=env->txn_begin(env, 0, &txn_a, 0); CKERR(r);
-	r=db_create(&db_e, env, 0); CKERR(r);
-	r=db_create(&db_x2, env, 0); CKERR(r);
-	r=db_create(&db_c3, env, 0); CKERR(r);
+        r=env->txn_begin(env, 0, &txn_a, 0); CKERR(r);
+        r=db_create(&db_e, env, 0); CKERR(r);
+        r=db_create(&db_x2, env, 0); CKERR(r);
+        r=db_create(&db_c3, env, 0); CKERR(r);
 
-	r = env->dbremove(env, txn_a, "a.db", NULL, 0);  CKERR(r);
-	r=db_e->open(db_e, txn_a, "e.db", 0, DB_BTREE, DB_CREATE, S_IRWXU|S_IRWXG|S_IRWXO); CKERR(r);
-	r = env->dbrename(env, txn_a, "x.db", NULL, "x2.db", 0); CKERR(r);
-	r = env->dbrename(env, txn_a, "c2.db", NULL, "c3.db", 0); CKERR(r);
+        r = env->dbremove(env, txn_a, "a.db", NULL, 0);  CKERR(r);
+        r=db_e->open(db_e, txn_a, "e.db", 0, DB_BTREE, DB_CREATE, S_IRWXU|S_IRWXG|S_IRWXO); CKERR(r);
+        r = env->dbrename(env, txn_a, "x.db", NULL, "x2.db", 0); CKERR(r);
+        r = env->dbrename(env, txn_a, "c2.db", NULL, "c3.db", 0); CKERR(r);
 
-	r=db_x2->open(db_x2, txn_a, "x2.db", 0, DB_BTREE, 0, S_IRWXU|S_IRWXG|S_IRWXO); CKERR(r);
-	r=db_c3->open(db_c3, txn_a, "c3.db", 0, DB_BTREE, 0, S_IRWXU|S_IRWXG|S_IRWXO); CKERR(r);
+        r=db_x2->open(db_x2, txn_a, "x2.db", 0, DB_BTREE, 0, S_IRWXU|S_IRWXG|S_IRWXO); CKERR(r);
+        r=db_c3->open(db_c3, txn_a, "c3.db", 0, DB_BTREE, 0, S_IRWXU|S_IRWXG|S_IRWXO); CKERR(r);
 
-	r=db_e->close(db_e, 0);   CKERR(r);  // abort requires db be closed first
-	r=db_x2->close(db_x2, 0); CKERR(r);  // abort requires db be closed first
-	r=db_c3->close(db_c3, 0); CKERR(r);  // abort requires db be closed first
-	
+        r=db_e->close(db_e, 0);   CKERR(r);  // abort requires db be closed first
+        r=db_x2->close(db_x2, 0); CKERR(r);  // abort requires db be closed first
+        r=db_c3->close(db_c3, 0); CKERR(r);  // abort requires db be closed first
+
     }
 
     // within another transaction:

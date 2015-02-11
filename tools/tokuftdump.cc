@@ -141,13 +141,6 @@ static void print_item(const void *val, uint32_t len) {
     printf("\"");
 }
 
-static void simple_hex_dump(unsigned char *vp, uint64_t size) {
-    for (uint64_t i = 0; i < size; i++) {
-        unsigned char c = vp[i];
-        printf("%2.2X", c);
-    }
-}
-
 static void hex_dump(unsigned char *vp, uint64_t offset, uint64_t size) {
     uint64_t n = size / 32;
     for (uint64_t i = 0; i < n; i++) {
@@ -176,12 +169,6 @@ static void hex_dump(unsigned char *vp, uint64_t offset, uint64_t size) {
         if (((i+1) % 32) == 0)
             printf("\n");
     }
-    printf("\n");
-}
-
-static void dump_descriptor(DESCRIPTOR d) {
-    printf(" descriptor size %u ", d->dbt.size);
-    simple_hex_dump((unsigned char*) d->dbt.data, d->dbt.size);
     printf("\n");
 }
 
@@ -218,7 +205,6 @@ static void dump_header(FT ft) {
     printf(" compression_method=%u\n", (unsigned) ft->h->compression_method);
     printf(" unnamed_root=%" PRId64 "\n", ft->h->root_blocknum.b);
     printf(" flags=%u\n", ft->h->flags);
-    dump_descriptor(&ft->descriptor);
     printf(" estimated numrows=%" PRId64 "\n", ft->in_memory_stats.numrows);
     printf(" estimated numbytes=%" PRId64 "\n", ft->in_memory_stats.numbytes);
 }
@@ -303,9 +289,14 @@ static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
                             case FT_COMMIT_BROADCAST_TXN: printf("COMMIT_BROADCAST_TXN"); goto ok;
                             case FT_ABORT_BROADCAST_TXN: printf("ABORT_BROADCAST_TXN"); goto ok;
                             case FT_OPTIMIZE: printf("OPTIMIZE"); goto ok;
-                            case FT_OPTIMIZE_FOR_UPGRADE: printf("OPTIMIZE_FOR_UPGRADE"); goto ok;
                             case FT_UPDATE:   printf("UPDATE"); goto ok;
                             case FT_UPDATE_BROADCAST_ALL: printf("UPDATE_BROADCAST_ALL"); goto ok;
+                            case FT_DELETE_MULTICAST: printf("DELETE_MULTICAST"); goto ok;
+                            case FT_COMMIT_MULTICAST_TXN: printf("COMMIT_MULTICAST_TXN"); goto ok;
+                            case FT_COMMIT_MULTICAST_ALL: printf("COMMIT_MULTICAST_ALL"); goto ok;
+                            case FT_ABORT_MULTICAST_TXN: printf("ABORT_MULTICAST_TXN"); goto ok;
+                            case FT_KILL_MULTICAST: printf("KILL_MULTICAST"); goto ok;
+                            case FT_KILL_ALL: printf("KILL_ALL"); goto ok;
                         }
                         printf("HUH?");
 ok:

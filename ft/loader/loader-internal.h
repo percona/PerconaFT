@@ -218,15 +218,12 @@ struct ft_loader_s {
 
     generate_row_for_put_func generate_row_for_put;
     ft_compare_func *bt_compare_funs;
+    ft_loader_write_func write_func;
+    void* write_func_extra;
 
     DB *src_db;
     int N;
     DB **dbs; // N of these
-    DESCRIPTOR *descriptors; // N of these.
-    TXNID      *root_xids_that_created; // N of these.
-    const char **new_fnames_in_env; // N of these.  The file names that the final data will be written to (relative to env).
-
-    uint64_t *extracted_datasizes; // N of these.
 
     struct rowset primary_rowset; // the primary rows that have been put, but the secondary rows haven't been generated.
     struct rowset primary_rowset_temp; // the primary rows that are being worked on by the extractor_thread.
@@ -235,8 +232,6 @@ struct ft_loader_s {
     toku_pthread_t     extractor_thread;     // the thread that takes primary rowset and does extraction and the first level sort and write to file.
     bool extractor_live;
 
-    DBT  *last_key;         // for each rowset, remember the most recently output key.  The system may choose not to keep this up-to-date when a rowset is unsorted.  These keys are malloced and ulen maintains the size of the malloced block.
-    
     struct rowset *rows; // secondary rows that have been put, but haven't been sorted and written to a file.
     uint64_t n_rows; // how many rows have been put?
     struct merge_fileset *fs;
@@ -246,7 +241,6 @@ struct ft_loader_s {
     CACHETABLE cachetable;
     bool did_reserve_memory;
     bool compress_intermediates;
-    bool allow_puts;
     uint64_t   reserved_memory; // how much memory are we allowed to use?
 
     /* To make it easier to recover from errors, we don't use FILE*, instead we use an index into the file_infos. */
@@ -257,9 +251,6 @@ struct ft_loader_s {
     // We use an integer so that we can add to the progress using a fetch-and-add instruction.
 
     int progress_callback_result; // initially zero, if any call to the poll function callback returns nonzero, we save the result here (and don't call the poll callback function again).
-
-    LSN load_lsn; //LSN of the fsynced 'load' log entry.  Write this LSN (as checkpoint_lsn) in ft headers made by this loader.
-    TXNID load_root_xid; //(Root) transaction that performed the load.
 
     QUEUE *fractal_queues; // an array of work queues, one for each secondary index.
     toku_pthread_t *fractal_threads;
@@ -280,17 +271,10 @@ uint64_t toku_ft_loader_get_n_rows(FTLOADER bl);
 // The data passed into a fractal_thread via pthread_create.
 struct fractal_thread_args {
     FTLOADER                bl;
-    const DESCRIPTOR descriptor;
-    int                      fd; // write the ft into fd.
     int                      progress_allocation;
     QUEUE                    q;
-    uint64_t                 total_disksize_estimate;
     int                      errno_result; // the final result.
     int                      which_db;
-    uint32_t                 target_nodesize;
-    uint32_t                 target_basementnodesize;
-    enum toku_compression_method target_compression_method;
-    uint32_t                 target_fanout;
 };
 
 void toku_ft_loader_set_n_rows(FTLOADER bl, uint64_t n_rows);
@@ -307,14 +291,12 @@ int sort_and_write_rows (struct rowset rows, struct merge_fileset *fs, FTLOADER 
 
 int mergesort_row_array (struct row rows[/*n*/], int n, int which_db, DB *dest_db, ft_compare_func, FTLOADER, struct rowset *);
 
-//int write_file_to_dbfile (int outfile, FIDX infile, FTLOADER bl, const DESCRIPTOR descriptor, int progress_allocation);
 int toku_merge_some_files_using_dbufio (const bool to_q, FIDX dest_data, QUEUE q, int n_sources, DBUFIO_FILESET bfs, FIDX srcs_fidxs[/*n_sources*/], FTLOADER bl, int which_db, DB *dest_db, ft_compare_func compare, int progress_allocation);
 
 int ft_loader_sort_and_write_rows (struct rowset *rows, struct merge_fileset *fs, FTLOADER bl, int which_db, DB *dest_db, ft_compare_func);
 
 // This is probably only for testing.
 int toku_loader_write_ft_from_q_in_C (FTLOADER                 bl,
-				      const DESCRIPTOR         descriptor,
 				      int                      fd, // write to here
 				      int                      progress_allocation,
 				      QUEUE                    q,
@@ -327,8 +309,6 @@ int toku_loader_write_ft_from_q_in_C (FTLOADER                 bl,
 
 int ft_loader_mergesort_row_array (struct row rows[/*n*/], int n, int which_db, DB *dest_db, ft_compare_func, FTLOADER, struct rowset *);
 
-int ft_loader_write_file_to_dbfile (int outfile, FIDX infile, FTLOADER bl, const DESCRIPTOR descriptor, int progress_allocation);
-
 int ft_loader_init_file_infos (struct file_infos *fi);
 void ft_loader_fi_destroy (struct file_infos *fi, bool is_error);
 int ft_loader_fi_close (struct file_infos *fi, FIDX idx, bool require_open);
@@ -337,19 +317,17 @@ int ft_loader_fi_reopen (struct file_infos *fi, FIDX idx, const char *mode);
 int ft_loader_fi_unlink (struct file_infos *fi, FIDX idx);
 
 int toku_ft_loader_internal_init (/* out */ FTLOADER *blp,
-				   CACHETABLE cachetable,
-				   generate_row_for_put_func g,
-				   DB *src_db,
-				   int N, FT_HANDLE ft_hs[/*N*/], DB* dbs[/*N*/],
-				   const char *new_fnames_in_env[/*N*/],
-				   ft_compare_func bt_compare_functions[/*N*/],
-				   const char *temp_file_template,
-				   LSN load_lsn,
-                                   TOKUTXN txn,
+                                   ft_loader_write_func write_func,
+                                   void* write_func_extra,
+                                   CACHETABLE cachetable,
+                                   generate_row_for_put_func g,
+                                   DB *src_db,
+                                   int N, DB* dbs[/*N*/],
+                                   ft_compare_func bt_compare_functions[/*N*/],
+                                   const char *temp_file_template,
                                    bool reserve_memory,
                                    uint64_t reserve_memory_size,
-                                   bool compress_intermediates,
-                                   bool allow_puts);
+                                   bool compress_intermediates);
 
 void toku_ft_loader_internal_destroy (FTLOADER bl, bool is_error);
 

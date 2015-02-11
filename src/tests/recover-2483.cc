@@ -132,7 +132,7 @@ do_x1_shutdown (void) {
         uint32_t dbt_flags[1] = {0};
         uint32_t loader_flags = 0;
 
-        r = env->create_loader(env, tid, &loader, NULL, 1, dbs, db_flags, dbt_flags, loader_flags);
+        r = env->create_loader(env, tid, &loader, NULL, 1, dbs, db_flags, dbt_flags, loader_flags, NULL);
         CKERR(r);
         r = loader->set_error_callback(loader, NULL, NULL);
         CKERR(r);

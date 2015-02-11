@@ -109,7 +109,7 @@ static int qsort_compare_ints (const void *a, const void *b) {
 
 }
 
-static int compare_ints (DB *UU(desc), const DBT *akey, const DBT *bkey) {
+static int compare_ints (const DBT *akey, const DBT *bkey) {
     assert(akey->size==sizeof(int));
     assert(bkey->size==sizeof(int));
     return qsort_compare_ints(akey->data, bkey->data);
@@ -146,7 +146,6 @@ static int write_dbfile (char *tf_template, int n, char *output_name, bool expec
 	DBT val;
         toku_fill_dbt(&val, &i, sizeof i);
 	add_row(&aset, &key, &val);
-	size_est += ft_loader_leafentry_size(key.size, val.size, TXNID_NONE);
     }
 
     toku_ft_loader_set_n_rows(&bl, n);
@@ -182,7 +181,6 @@ static int write_dbfile (char *tf_template, int n, char *output_name, bool expec
 	    assert(row->klen==sizeof(int));
 	    assert(row->vlen==sizeof(int));
 	    assert((int)(num_found+i)==*(int*)(rs->data+row->off));
-	    found_size_est += ft_loader_leafentry_size(row->klen, row->vlen, TXNID_NONE);
 	}
 
 	num_found += rs->n_rows;
@@ -199,9 +197,6 @@ static int write_dbfile (char *tf_template, int n, char *output_name, bool expec
     r = toku_queue_destroy(q);
     assert(r==0);
 
-    DESCRIPTOR_S desc;
-    toku_fill_dbt(&desc.dbt, "abcd", 4);
-
     int fd = open(output_name, O_RDWR | O_CREAT | O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO);
     assert(fd>=0);
 
@@ -213,7 +208,7 @@ static int write_dbfile (char *tf_template, int n, char *output_name, bool expec
     ft_loader_set_error_function(&bl.error_callback, NULL, NULL);
     ft_loader_set_poll_function(&bl.poll_callback, loader_poll_callback, NULL);
 
-    result = toku_loader_write_ft_from_q_in_C(&bl, &desc, fd, 1000, q2, size_est, 0, 0, 0, TOKU_DEFAULT_COMPRESSION_METHOD, 16);
+    result = toku_loader_write_ft_from_q_in_C(&bl, fd, 1000, q2, size_est, 0, 0, 0, TOKU_DEFAULT_COMPRESSION_METHOD, 16);
 
     toku_set_func_malloc_only(NULL);
     toku_set_func_realloc_only(NULL);

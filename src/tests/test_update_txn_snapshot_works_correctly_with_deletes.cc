@@ -101,8 +101,7 @@ const int to_delete[] = { 0, 1, 1, 1, 0, 0, 1, 0, 1, 0 };
 
 static inline unsigned int _v(const unsigned int i) { return 10 - i; }
 
-static int update_fun(DB *UU(db),
-                      const DBT *UU(key),
+static int update_fun(const DBT *UU(key),
                       const DBT *UU(old_val), const DBT *extra,
                       void (*set_val)(const DBT *new_val,
                                       void *set_extra),

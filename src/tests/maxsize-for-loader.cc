@@ -179,7 +179,7 @@ static void reset_random(void) {
     }
 }
 
-static void test_loader_maxsize(DB **dbs, DB **check_dbs)
+static void test_loader_maxsize(DB **dbs, DB **check_dbs UU())
 {
     int r;
     DB_TXN    *txn;
@@ -195,7 +195,7 @@ static void test_loader_maxsize(DB **dbs, DB **check_dbs)
     // create and initialize loader
     r = env->txn_begin(env, NULL, &txn, 0);
     CKERR(r);
-    r = env->create_loader(env, txn, &loader, nullptr, NUM_DBS, dbs, db_flags, dbt_flags, loader_flags);
+    r = env->create_loader(env, txn, &loader, nullptr, NUM_DBS, dbs, db_flags, dbt_flags, loader_flags, put_multiple_generate);
     assert(which_db_to_fail != 0);
     CKERR(r);
     struct error_extra error_extra = {.bad_i=0,.error_count=0};
@@ -230,83 +230,6 @@ static void test_loader_maxsize(DB **dbs, DB **check_dbs)
  checked:
     r = txn->commit(txn, 0);
     CKERR(r);
-
-    if (do_check && how_to_fail==FAIL_NONE) {
-        r = env->txn_begin(env, NULL, &txn, 0);
-        CKERR(r);
-        reset_random();
-        DBT keys[NUM_DBS];
-        DBT vals[NUM_DBS];
-        uint32_t flags[NUM_DBS];
-        for (int i = 0; i < NUM_DBS; i++) {
-            dbt_init_realloc(&keys[i]);
-            dbt_init_realloc(&vals[i]);
-            flags[i] = 0;
-        }
-
-        for(uint32_t i=0;i<num_rows;i++) {
-            k = i;
-            v = i;
-            dbt_init(&key, &k, sizeof(unsigned int));
-            dbt_init(&val, &v, sizeof(unsigned int));
-            r = env_put_multiple_test_no_array(env, nullptr, txn, &key, &val, NUM_DBS, check_dbs, keys, vals, flags);
-            CKERR(r);
-        }
-        r = txn->commit(txn, 0);
-        CKERR(r);
-        r = env->txn_begin(env, NULL, &txn, 0);
-        CKERR(r);
-
-        for (int i = 0; i < NUM_DBS; i++) {
-            DBC *loader_cursor;
-            DBC *check_cursor;
-            r = dbs[i]->cursor(dbs[i], txn, &loader_cursor, 0);
-            CKERR(r);
-            r = dbs[i]->cursor(check_dbs[i], txn, &check_cursor, 0);
-            CKERR(r);
-            DBT loader_key;
-            DBT loader_val;
-            DBT check_key;
-            DBT check_val;
-            dbt_init_realloc(&loader_key);
-            dbt_init_realloc(&loader_val);
-            dbt_init_realloc(&check_key);
-            dbt_init_realloc(&check_val);
-            for (uint32_t x = 0; x <= num_rows; x++) {
-                int r_loader = loader_cursor->c_get(loader_cursor, &loader_key, &loader_val, DB_NEXT);
-                int r_check = check_cursor->c_get(check_cursor, &check_key, &check_val, DB_NEXT);
-                assert(r_loader == r_check);
-                if (x == num_rows) {
-                    CKERR2(r_loader, DB_NOTFOUND);
-                    CKERR2(r_check, DB_NOTFOUND);
-                } else {
-                    CKERR(r_loader);
-                    CKERR(r_check);
-                }
-                assert(loader_key.size == check_key.size);
-                assert(loader_val.size == check_val.size);
-                assert(memcmp(loader_key.data, check_key.data, loader_key.size) == 0);
-                assert(memcmp(loader_val.data, check_val.data, loader_val.size) == 0);
-            }
-            toku_free(loader_key.data);
-            toku_free(loader_val.data);
-            toku_free(check_key.data);
-            toku_free(check_val.data);
-            loader_cursor->c_close(loader_cursor);
-            check_cursor->c_close(check_cursor);
-        }
-
-        for (int i = 0; i < NUM_DBS; i++) {
-            toku_free(keys[i].data);
-            toku_free(vals[i].data);
-            dbt_init_realloc(&keys[i]);
-            dbt_init_realloc(&vals[i]);
-        }
-        r = txn->commit(txn, 0);
-        CKERR(r);
-    }
-
-
 }
 
 char *free_me = NULL;
@@ -314,8 +237,6 @@ const char *env_dir = TOKU_TEST_FILENAME; // the default env_dir
 
 static void create_and_open_dbs(DB **dbs, const char *suffix, int *idx) {
     int r;
-    DBT desc;
-    dbt_init(&desc, "foo", sizeof("foo"));
     enum {MAX_NAME=128};
     char name[MAX_NAME*2];
 
@@ -325,17 +246,14 @@ static void create_and_open_dbs(DB **dbs, const char *suffix, int *idx) {
         dbs[i]->app_private = &idx[i];
         snprintf(name, sizeof(name), "db_%04x_%s", i, suffix);
         r = dbs[i]->open(dbs[i], NULL, name, NULL, DB_BTREE, DB_CREATE, 0666);                                CKERR(r);
-        IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-                { int chk_r = dbs[i]->change_descriptor(dbs[i], txn_desc, &desc, 0); CKERR(chk_r); }
-        });
     }
 }
 
 static int
-uint_or_size_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
-  assert(db && a && b);
+uint_or_size_dbt_cmp (const DBT *a, const DBT *b) {
+  assert(a && b);
   if (a->size == sizeof(unsigned int) && b->size == sizeof(unsigned int)) {
-      return uint_dbt_cmp(db, a, b);
+      return uint_dbt_cmp(a, b);
   }
   return a->size - b->size;
 }
@@ -349,8 +267,6 @@ static void run_test(uint32_t nr, uint32_t wdb, uint32_t wrow, enum how_to_fail 
 
     r = db_env_create(&env, 0);                                                                               CKERR(r);
     r = env->set_default_bt_compare(env, uint_or_size_dbt_cmp);                                                       CKERR(r);
-    r = env->set_generate_row_callback_for_put(env, put_multiple_generate);
-    CKERR(r);
     int envflags = DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG | DB_CREATE | DB_PRIVATE;
     r = env->open(env, env_dir, envflags, S_IRWXU+S_IRWXG+S_IRWXO);                                            CKERR(r);
     env->set_errfile(env, stderr);

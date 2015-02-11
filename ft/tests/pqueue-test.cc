@@ -97,7 +97,7 @@ PATENT RIGHTS GRANT:
 int found_dup = -1;
 
 // simple compare func
-static int test_compare(DB * UU(db), const DBT *dbta, const DBT *dbtb)
+static int test_compare(const DBT *dbta, const DBT *dbtb)
 {
     int a = *((int*)dbta->data);
     int b = *((int*)dbtb->data);

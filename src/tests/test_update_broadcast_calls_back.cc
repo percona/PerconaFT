@@ -101,8 +101,7 @@ int updates_called[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 // the commands are: byte 1 is "nop" "add" or "del".  Byte 2 is the amount to add.
 enum cmd { CNOP, CADD, CDEL };
 
-static int update_fun(DB *UU(db),
-                      const DBT *key,
+static int update_fun(const DBT *key,
                       const DBT *UU(old_val), const DBT *UU(extra),
                       void UU((*set_val)(const DBT *new_val,
                                          void *set_extra)),

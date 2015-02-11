@@ -97,8 +97,7 @@ DB_ENV *env;
 // the commands are: byte 1 is "nop" "add" or "del".  Byte 2 is the amount to add.
 enum cmd { CNOP, CADD, CDEL };
 
-static int increment_update (DB *db __attribute__((__unused__)),
-                             const DBT *key __attribute__((__unused__)),
+static int increment_update (const DBT *key __attribute__((__unused__)),
                              const DBT *old_val, const DBT *extra,
                              void (*set_val)(const DBT *new_val,
                                              void *set_extra),

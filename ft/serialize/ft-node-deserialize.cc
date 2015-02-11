@@ -205,35 +205,3 @@ check_node_info_checksum(struct rbuf *rb)
     return r;
 }
 
-// Reads node info from older (13 and 14) fractal tree nodes
-// out of the given buffer.
-void
-read_legacy_node_info(FTNODE node, struct rbuf *rb, int version)
-{
-    (void)rbuf_int(rb); // 1. nodesize
-    node->flags = rbuf_int(rb);    // 2. flags
-    node->height = rbuf_int(rb);   // 3. height
-    
-    // If the version is less than 14, there are two extra ints here.
-    // we would need to ignore them if they are there.
-    if (version == FT_LAYOUT_VERSION_13) {
-        (void) rbuf_int(rb);       // 4. rand4
-        (void) rbuf_int(rb);       // 5. local
-    }
-}
-
-// Assuming the given buffer is in the correct position,
-// this checks to see if the stored checksum matches the
-// checksum of the entire buffer.
-int
-check_legacy_end_checksum(struct rbuf *rb)
-{
-    int r = 0;
-    uint32_t expected_xsum = rbuf_int(rb);
-    uint32_t actual_xsum = toku_x1764_memory(rb->buf, rb->size - 4);
-    if (expected_xsum != actual_xsum) {
-        r = TOKUDB_BAD_CHECKSUM;
-    }
-    
-    return r;
-}

@@ -91,7 +91,7 @@ PATENT RIGHTS GRANT:
 #include "test.h"
 
 static  int
-int64_key_cmp (DB *db UU(), const DBT *a, const DBT *b) {
+int64_key_cmp (const DBT *a, const DBT *b) {
     int64_t x = *(int64_t *) a->data;
     int64_t y = *(int64_t *) b->data;
 
@@ -419,7 +419,7 @@ test_prefetching(void) {
                  128*1024,
                  TOKU_DEFAULT_COMPRESSION_METHOD,
                  16);
-    ft_h->cmp.create(int64_key_cmp, nullptr);
+    ft_h->cmp.create(int64_key_cmp, 0);
     ft->ft = ft_h;
     ft_h->blocktable.create();
     { int r_truncate = ftruncate(fd, 0); CKERR(r_truncate); }
@@ -451,7 +451,6 @@ test_prefetching(void) {
 
     ft_h->blocktable.block_free(block_allocator::BLOCK_ALLOCATOR_TOTAL_HEADER_RESERVE);
     ft_h->blocktable.destroy();
-    ft_h->cmp.destroy();
     toku_free(ft_h->h);
     toku_free(ft_h);
     toku_free(ft);

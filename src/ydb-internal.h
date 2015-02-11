@@ -108,22 +108,16 @@ PATENT RIGHTS GRANT:
 #include <locktree/range_buffer.h>
 
 #include <toku_list.h>
+#include "dictionary.h"
 
 struct __toku_db_internal {
     int opened;
-    uint32_t open_flags;
-    int open_mode;
     FT_HANDLE ft_handle;
-    DICTIONARY_ID dict_id;        // unique identifier used by locktree logic
-    toku::locktree *lt;
+    dictionary* dict;
     struct simple_dbt skey, sval; // static key and value
-    bool key_compare_was_set;     // true if a comparison function was provided before call to db->open()  (if false, use environment's comparison function).  
-    char *dname;                  // dname is constant for this handle (handle must be closed before file is renamed)
-    DB_INDEXER *indexer;
+    uint32_t open_flags;
 };
 
-int toku_db_set_indexer(DB *db, DB_INDEXER *indexer);
-DB_INDEXER *toku_db_get_indexer(DB *db);
 
 #if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1
 typedef void (*toku_env_errcall_t)(const char *, char *);
@@ -145,22 +139,14 @@ struct __toku_db_env_internal {
     char *tmp_dir;
     char *lg_dir;
     char *data_dir;
-    int (*bt_compare)  (DB *, const DBT *, const DBT *);
-    int (*update_function)(DB *, const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra);
-    generate_row_for_put_func generate_row_for_put;
-    generate_row_for_del_func generate_row_for_del;
+    ft_compare_func bt_compare;
+    ft_update_func update_function;
 
     unsigned long cachetable_size;
     CACHETABLE cachetable;
     TOKULOGGER logger;
-    toku::locktree_manager ltm;
+    dictionary_manager dict_manager;
     lock_timeout_callback lock_wait_timeout_callback;   // Called when a lock request times out waiting for a lock.
-
-    DB *directory;                                      // Maps dnames to inames
-    DB *persistent_environment;                         // Stores environment settings, can be used for upgrade
-    toku::omt<DB *> *open_dbs_by_dname;                              // Stores open db handles, sorted first by dname and then by numerical value of pointer to the db (arbitrarily assigned memory location)
-    toku::omt<DB *> *open_dbs_by_dict_id;                            // Stores open db handles, sorted by dictionary id and then by numerical value of pointer to the db (arbitrarily assigned memory location)
-    toku_pthread_rwlock_t open_dbs_rwlock;              // rwlock that protects the OMT of open dbs.
 
     char *real_data_dir;                                // data dir used when the env is opened (relative to cwd, or absolute with leading /)
     char *real_log_dir;                                 // log dir used when the env is opened  (relative to cwd, or absolute with leading /)
@@ -192,7 +178,7 @@ struct __toku_db_env_internal {
 
 // test-only environment function for running lock escalation
 static inline void toku_env_run_lock_escalation_for_test(DB_ENV *env) {
-    toku::locktree_manager *mgr = &env->i->ltm;
+    toku::locktree_manager *mgr = &env->i->dict_manager.get_ltm();
     mgr->run_escalation_for_test();
 }
 
@@ -323,5 +309,14 @@ txn_is_read_only(DB_TXN* txn) {
 #define HANDLE_READ_ONLY_TXN(txn) if(txn_is_read_only(txn)) return EINVAL;
 
 void env_panic(DB_ENV * env, int cause, const char * msg);
-void env_note_db_opened(DB_ENV *env, DB *db);
-void env_note_db_closed(DB_ENV *env, DB *db);
+
+void ydb_layer_status_init (void);
+int
+env_get_engine_status_num_rows (DB_ENV * UU(env), uint64_t * num_rowsp);
+// intended for use by toku_assert logic, when env is not known
+int 
+toku_maybe_get_engine_status_text (char * buff, int buffsize);
+
+int
+toku_maybe_err_engine_status (void);
+

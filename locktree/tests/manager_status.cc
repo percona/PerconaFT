@@ -113,7 +113,7 @@ static void assert_status(LTM_STATUS ltm_status, const char *keyname, uint64_t v
 
 void manager_unit_test::test_status(void) {
     locktree_manager mgr;
-    mgr.create(nullptr, nullptr, nullptr, nullptr);
+    mgr.create(nullptr, nullptr);
 
     LTM_STATUS_S status;
     mgr.get_status(&status);
@@ -121,7 +121,7 @@ void manager_unit_test::test_status(void) {
     assert_status(&status, "LTM_TIMEOUT_COUNT", 0);
 
     DICTIONARY_ID dict_id = { .dictid = 1 };
-    locktree *lt = mgr.get_lt(dict_id, dbt_comparator, nullptr);
+    locktree *lt = mgr.get_lt(dict_id, dbt_comparator);
     int r;
     TXNID txnid_a = 1001;
     TXNID txnid_b = 2001;

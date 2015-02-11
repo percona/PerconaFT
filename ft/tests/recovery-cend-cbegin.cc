@@ -126,7 +126,7 @@ run_test(void) {
 		       NULL_keep_cachetable_callback,
 		       NULL_logger, TOKU_TEST_FILENAME, TOKU_TEST_FILENAME,
                        toku_builtin_compare_fun,
-                       NULL, NULL, NULL,
+                       NULL,
                        0);
     assert(r == 0);
 

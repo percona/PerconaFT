@@ -150,7 +150,7 @@ run_test(void) {
 			   NULL_prepared_txn_callback,
 			   NULL_keep_cachetable_callback,
 			   NULL_logger,
-			   TOKU_TEST_FILENAME, TOKU_TEST_FILENAME, 0, 0, 0, NULL, 0); 
+			   TOKU_TEST_FILENAME, TOKU_TEST_FILENAME, 0, 0, 0); 
         assert(r == 0);
         
         trim += 1;

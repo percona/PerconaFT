@@ -18,10 +18,8 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
     add_ydb_drd_test_aux(drd_${bin} ${bin} ${ARGN})
   endfunction(add_ydb_drd_test)
 
-  file(GLOB transparent_upgrade_srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" upgrade*.cc)
 
   file(GLOB srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" *.cc)
-  list(REMOVE_ITEM srcs ${transparent_upgrade_srcs})
 
   set(recover_srcs test_log2.cc test_log3.cc test_log4.cc test_log5.cc test_log6.cc test_log7.cc test_log8.cc test_log9.cc test_log10.cc)
   file(GLOB abortrecover_srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" recover-*.cc)
@@ -48,11 +46,14 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
     )
 
   ## #5138 only reproduces when using the static library.
-  list(REMOVE_ITEM tdb_bins test-5138.tdb)
-  add_executable(test-5138.tdb test-5138)
-  target_link_libraries(test-5138.tdb ${LIBTOKUDB}_static z ${LIBTOKUPORTABILITY}_static ${CMAKE_THREAD_LIBS_INIT} ${EXTRA_SYSTEM_LIBS})
-  add_space_separated_property(TARGET test-5138.tdb COMPILE_FLAGS -fvisibility=hidden)
-  add_ydb_test(test-5138.tdb)
+  foreach(bin test-5138 test_dictionary)
+    list(REMOVE_ITEM tdb_bins ${bin}.tdb)
+    add_executable(${bin}.tdb ${bin})
+    target_link_libraries(${bin}.tdb ${LIBTOKUDB}_static z ${LIBTOKUPORTABILITY}_static ${CMAKE_THREAD_LIBS_INIT} ${EXTRA_SYSTEM_LIBS})
+    add_space_separated_property(TARGET ${bin}.tdb COMPILE_FLAGS -fvisibility=hidden)
+    add_ydb_test(${bin}.tdb)
+  endforeach(bin)
+
 
   foreach(bin ${tdb_bins})
     get_filename_component(base ${bin} NAME_WE)
@@ -176,8 +177,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
   add_ydb_test(test_groupcommit_count.tdb -n 1)
   add_ydb_helgrind_test(test_groupcommit_count.tdb -n 1)
   add_ydb_drd_test(test_groupcommit_count.tdb -n 1)
-
-  add_ydb_drd_test(test_4015.tdb)
 
   # We link the locktree so that stress test 0 can call some
   # functions (ie: lock escalation) directly.
@@ -368,19 +367,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
   add_ydb_test_aux(maxsize-for-loader-Az.tdb maxsize-for-loader.tdb -f -z -c)
   add_ydb_test_aux(maxsize-for-loader-Bz.tdb maxsize-for-loader.tdb -z -c)
 
-  declare_custom_tests(hotindexer-undo-do-test.tdb)
-  file(GLOB hotindexer_tests RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "hotindexer-undo-do-tests/*.test")
-  file(GLOB hotindexer_results RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "hotindexer-undo-do-tests/*.result")
-  configure_file(run-hotindexer-undo-do-tests.bash . COPYONLY)
-  foreach(result ${hotindexer_results})
-    configure_file(${result} ${result} COPYONLY)
-  endforeach(result)
-  foreach(test ${hotindexer_tests})
-    configure_file(${test} ${test} COPYONLY)
-    add_test(NAME ydb/${test} COMMAND run-hotindexer-undo-do-tests.bash ${test})
-    setup_toku_test_properties(ydb/${test} ${test})
-  endforeach()
-
   foreach(test ${tdb_tests})
     add_ydb_test(${test})
   endforeach(test)
@@ -435,7 +421,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
   ## give some tests, that time out normally, 1 hour to complete
   set(long_tests
     ydb/drd_test_groupcommit_count.tdb
-    ydb/env-put-multiple.tdb
     ydb/filesize.tdb
     ydb/loader-cleanup-test0.tdb
     ydb/loader-cleanup-test0z.tdb
@@ -466,8 +451,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
   set_tests_properties(${long_tests} PROPERTIES TIMEOUT 3600)
   ## some take even longer, with valgrind
   set(extra_long_tests
-    ydb/drd_test_4015.tdb
-    ydb/hotindexer-with-queries.tdb
     ydb/hot-optimize-table-tests.tdb
     ydb/loader-cleanup-test2.tdb
     ydb/loader-cleanup-test2z.tdb

@@ -227,12 +227,15 @@ int find_ft_from_filenum (const FT &ft, const FILENUM &filenum) {
     return 0;
 }
 
-// Input arg reset_root_xid_that_created true means that this operation has changed the definition of this dictionary.
-// (Example use is for schema change committed with txn that inserted cmdupdatebroadcast message.)
-// The oplsn argument is ZERO_LSN for normal operation.  When this function is called for recovery, it has the LSN of
-// the operation (insert, delete, update, etc).
-static int do_insertion (enum ft_msg_type type, FILENUM filenum, BYTESTRING key, BYTESTRING *data, TOKUTXN txn, LSN oplsn,
-                         bool reset_root_xid_that_created) {
+static int do_multicast_insertion (
+    enum ft_msg_type type,
+    FILENUM filenum,
+    BYTESTRING key,
+    BYTESTRING max_key,
+    TOKUTXN txn,
+    LSN oplsn,
+    bool reset_root_xid_that_created)
+{
     int r = 0;
     //printf("%s:%d committing insert %s %s\n", __FILE__, __LINE__, key.data, data.data);
     FT ft = nullptr;
@@ -252,15 +255,16 @@ static int do_insertion (enum ft_msg_type type, FILENUM filenum, BYTESTRING key,
         }
     }
 
-    DBT key_dbt,data_dbt;
+    DBT key_dbt,max_key_dbt, data_dbt;
     XIDS xids;
     xids = toku_txn_get_xids(txn);
     {
         const DBT *kdbt = key.len > 0 ? toku_fill_dbt(&key_dbt, key.data, key.len) :
                                         toku_init_dbt(&key_dbt);
-        const DBT *vdbt = data ? toku_fill_dbt(&data_dbt, data->data, data->len) :
-                                 toku_init_dbt(&data_dbt);
-        ft_msg msg(kdbt, vdbt, type, ZERO_MSN, xids);
+        const DBT *max_kdbt = max_key.len > 0 ? toku_fill_dbt(&max_key_dbt, max_key.data, max_key.len) :
+                                        toku_init_dbt(&max_key_dbt);
+        const DBT *vdbt = toku_init_dbt(&data_dbt);
+        ft_msg msg(kdbt, max_kdbt, vdbt, type, ZERO_MSN, xids);
 
         TXN_MANAGER txn_manager = toku_logger_get_txn_manager(txn->logger);
         txn_manager_state txn_state_for_gc(txn_manager);
@@ -281,6 +285,16 @@ done:
     return r;
 }
 
+// Input arg reset_root_xid_that_created true means that this operation has changed the definition of this dictionary.
+// (Example use is for schema change committed with txn that inserted cmdupdatebroadcast message.)
+// The oplsn argument is ZERO_LSN for normal operation.  When this function is called for recovery, it has the LSN of
+// the operation (insert, delete, update, etc).
+static int do_insertion (enum ft_msg_type type, FILENUM filenum, BYTESTRING key, TOKUTXN txn, LSN oplsn,
+                         bool reset_root_xid_that_created) {
+    BYTESTRING max = {.len=0, .data=nullptr};
+    return do_multicast_insertion(type, filenum, key, max, txn, oplsn, reset_root_xid_that_created);
+}
+
 
 static int do_nothing_with_filenum(TOKUTXN UU(txn), FILENUM UU(filenum)) {
     return 0;
@@ -289,7 +303,7 @@ static int do_nothing_with_filenum(TOKUTXN UU(txn), FILENUM UU(filenum)) {
 
 int toku_commit_cmdinsert (FILENUM filenum, BYTESTRING UU(key), TOKUTXN txn, LSN UU(oplsn)) {
 #if TOKU_DO_COMMIT_CMD_INSERT
-    return do_insertion (FT_COMMIT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion (FT_COMMIT_ANY, filenum, key, txn, oplsn, false);
 #else
     return do_nothing_with_filenum(txn, filenum);
 #endif
@@ -301,7 +315,7 @@ toku_rollback_cmdinsert (FILENUM    filenum,
                          TOKUTXN    txn,
                          LSN        oplsn)
 {
-    return do_insertion (FT_ABORT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion (FT_ABORT_ANY, filenum, key, txn, oplsn, false);
 }
 
 int
@@ -311,7 +325,7 @@ toku_commit_cmdupdate(FILENUM    filenum,
                       LSN        UU(oplsn))
 {
 #if TOKU_DO_COMMIT_CMD_UPDATE
-    return do_insertion(FT_COMMIT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion(FT_COMMIT_ANY, filenum, key, txn, oplsn, false);
 #else
     return do_nothing_with_filenum(txn, filenum);
 #endif
@@ -323,7 +337,7 @@ toku_rollback_cmdupdate(FILENUM    filenum,
                         TOKUTXN    txn,
                         LSN        oplsn)
 {
-    return do_insertion(FT_ABORT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion(FT_ABORT_ANY, filenum, key, txn, oplsn, false);
 }
 
 int
@@ -339,7 +353,7 @@ toku_commit_cmdupdatebroadcast(FILENUM    filenum,
                                         ? FT_COMMIT_BROADCAST_ALL
                                         : FT_COMMIT_BROADCAST_TXN);
     BYTESTRING nullkey = { 0, NULL };
-    return do_insertion(msg_type, filenum, nullkey, 0, txn, oplsn, reset_root_xid_that_created);
+    return do_insertion(msg_type, filenum, nullkey, txn, oplsn, reset_root_xid_that_created);
 }
 
 int
@@ -349,7 +363,7 @@ toku_rollback_cmdupdatebroadcast(FILENUM    filenum,
                                  LSN        oplsn)
 {
     BYTESTRING nullkey = { 0, NULL };
-    return do_insertion(FT_ABORT_BROADCAST_TXN, filenum, nullkey, 0, txn, oplsn, false);
+    return do_insertion(FT_ABORT_BROADCAST_TXN, filenum, nullkey, txn, oplsn, false);
 }
 
 int
@@ -359,7 +373,7 @@ toku_commit_cmddelete (FILENUM    filenum,
                        LSN        oplsn)
 {
 #if TOKU_DO_COMMIT_CMD_DELETE
-    return do_insertion (FT_COMMIT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion (FT_COMMIT_ANY, filenum, key, txn, oplsn, false);
 #else
     key = key; oplsn = oplsn;
     return do_nothing_with_filenum(txn, filenum);
@@ -372,7 +386,32 @@ toku_rollback_cmddelete (FILENUM    filenum,
                          TOKUTXN    txn,
                          LSN        oplsn)
 {
-    return do_insertion (FT_ABORT_ANY, filenum, key, 0, txn, oplsn, false);
+    return do_insertion (FT_ABORT_ANY, filenum, key, txn, oplsn, false);
+}
+
+
+int
+toku_commit_cmddeletemulti(FILENUM filenum,
+                           BYTESTRING min_key,
+                           BYTESTRING max_key,
+                           bool is_resetting_op,
+                           TOKUTXN    txn,
+                           LSN oplsn)
+{
+    bool reset_root_xid_that_created = (is_resetting_op ? true : false);
+    const enum ft_msg_type type = is_resetting_op ? FT_COMMIT_MULTICAST_ALL : FT_COMMIT_MULTICAST_TXN;
+    return do_multicast_insertion(type, filenum, min_key, max_key, txn, oplsn, reset_root_xid_that_created);
+}
+
+int
+toku_rollback_cmddeletemulti(FILENUM filenum,
+                             BYTESTRING min_key,
+                             BYTESTRING max_key,
+                             bool is_resetting_op UU(),
+                             TOKUTXN    txn,
+                             LSN oplsn)
+{
+    return do_multicast_insertion(FT_ABORT_MULTICAST_TXN, filenum, min_key, max_key, txn, oplsn, false);
 }
 
 static int
@@ -458,175 +497,39 @@ toku_rollback_rollinclude (TXNID_PAIR      xid,
 }
 
 int
-toku_commit_load (FILENUM    old_filenum,
-                  BYTESTRING UU(new_iname),
-                  TOKUTXN    txn,
-                  LSN        UU(oplsn))
-{
-    int r;
-    CACHEFILE old_cf;
-    CACHETABLE ct = txn->logger->ct;
-
-    // To commit a dictionary load, we delete the old file
-    //
-    // Try to get the cachefile for the old filenum. A missing file on recovery
-    // is not an error, but a missing file outside of recovery is.
-    r = toku_cachefile_of_filenum(ct, old_filenum, &old_cf);
-    if (r == ENOENT) {
-        invariant(txn->for_recovery);
-        r = 0;
-        goto done;
-    }
-    lazy_assert(r == 0);
-
-    // bug fix for #4718
-    // bug was introduced in with fix for #3590
-    // Before Maxwell (and fix for #3590), 
-    // the recovery log was fsynced after the xcommit was loged but 
-    // before we processed rollback entries and before we released
-    // the row locks (in the lock tree). Due to performance concerns,
-    // the fsync was moved to after the release of row locks, which comes
-    // after processing rollback entries. As a result, we may be unlinking a file
-    // here as part of a transactoin that may abort if we do not fsync the log.
-    // So, we fsync the log here.
-    if (txn->logger) {
-        toku_logger_fsync_if_lsn_not_fsynced(txn->logger, txn->do_fsync_lsn);
-    }
-
-    // TODO: Zardosht
-    // Explain why this condition is valid, because I forget.
-    if (!toku_cachefile_is_unlink_on_close(old_cf)) {
-        toku_cachefile_unlink_on_close(old_cf);
-    }
-done:
-    return r;
-}
-
-int
-toku_rollback_load (FILENUM    UU(old_filenum),
-                    BYTESTRING new_iname,
-                    TOKUTXN    txn,
-                    LSN        UU(oplsn)) 
-{
-    int r;
-    CACHEFILE new_cf;
-    CACHETABLE ct = txn->logger->ct;
-
-    // To rollback a dictionary load, we delete the new file.
-    // Try to get the cachefile for the new fname.
-    char *fname_in_env = fixup_fname(&new_iname);
-    r = toku_cachefile_of_iname_in_env(ct, fname_in_env, &new_cf);
-    if (r == ENOENT) {
-        // It's possible the new iname was never created, so just try to 
-        // unlink it if it's there and ignore the error if it's not.
-        char *fname_in_cwd = toku_cachetable_get_fname_in_cwd(ct, fname_in_env);
-        r = unlink(fname_in_cwd);
-        assert(r == 0 || get_error_errno() == ENOENT);
-        toku_free(fname_in_cwd);
-        r = 0;
-    } else {
-        assert_zero(r);
-        toku_cachefile_unlink_on_close(new_cf);
-    }
-    toku_free(fname_in_env);
-    return r;
-}
-
-//2954
-int
-toku_commit_hot_index (FILENUMS UU(hot_index_filenums),
-                       TOKUTXN  UU(txn), 
-                       LSN      UU(oplsn))
-{
+toku_commit_hot_index (FILENUM hot_index_filenum UU(),
+                            bool has_bounds UU(),
+                            BYTESTRING min_key UU(),
+                            BYTESTRING max_key UU(),
+                            TOKUTXN    txn UU(),
+                            LSN        oplsn UU()) {
     // nothing
     return 0;
 }
 
 int
-toku_rollback_hot_index (FILENUMS UU(hot_index_filenums),
-                         TOKUTXN  UU(txn), 
-                         LSN      UU(oplsn))
-{
-    return 0;
-}
-
-int
-toku_commit_dictionary_redirect (FILENUM UU(old_filenum),
-                                 FILENUM UU(new_filenum),
-                                 TOKUTXN UU(txn),
-                                 LSN     UU(oplsn)) //oplsn is the lsn of the commit
-{
-    //Redirect only has meaning during normal operation (NOT during recovery).
-    if (!txn->for_recovery) {
-        //NO-OP
+toku_rollback_hot_index(FILENUM hot_index_filenum,
+                            bool has_bounds,
+                            BYTESTRING min_key,
+                            BYTESTRING max_key,
+                            TOKUTXN    txn,
+                            LSN        oplsn) {
+    // nothing
+    if (has_bounds) {        
+        return do_multicast_insertion(
+            FT_KILL_MULTICAST,
+            hot_index_filenum,
+            min_key,
+            max_key,
+            txn,
+            oplsn,
+            false
+            );
+    }
+    else {
+        BYTESTRING nullkey = { 0, NULL };
+        return do_insertion(FT_KILL_ALL, hot_index_filenum, nullkey, txn, oplsn, false);
     }
     return 0;
 }
-
-int
-toku_rollback_dictionary_redirect (FILENUM old_filenum,
-                                   FILENUM new_filenum,
-                                   TOKUTXN txn,
-                                   LSN     UU(oplsn)) //oplsn is the lsn of the abort
-{
-    int r = 0;
-    //Redirect only has meaning during normal operation (NOT during recovery).
-    if (!txn->for_recovery) {
-        CACHEFILE new_cf = NULL;
-        r = toku_cachefile_of_filenum(txn->logger->ct, new_filenum, &new_cf);
-        assert(r == 0);
-        FT CAST_FROM_VOIDP(new_ft, toku_cachefile_get_userdata(new_cf));
-
-        CACHEFILE old_cf = NULL;
-        r = toku_cachefile_of_filenum(txn->logger->ct, old_filenum, &old_cf);
-        assert(r == 0);
-        FT CAST_FROM_VOIDP(old_ft, toku_cachefile_get_userdata(old_cf));
-
-        //Redirect back from new to old.
-        r = toku_dictionary_redirect_abort(old_ft, new_ft, txn);
-        assert(r==0);
-    }
-    return r;
-}
-
-int
-toku_commit_change_fdescriptor(FILENUM    filenum,
-                               BYTESTRING UU(old_descriptor),
-                               TOKUTXN    txn,
-                               LSN        UU(oplsn))
-{
-    return do_nothing_with_filenum(txn, filenum);
-}
-
-int
-toku_rollback_change_fdescriptor(FILENUM    filenum,
-                               BYTESTRING old_descriptor,
-                               TOKUTXN    txn,
-                               LSN        UU(oplsn))
-{
-    CACHEFILE cf;
-    int r;
-    r = toku_cachefile_of_filenum(txn->logger->ct, filenum, &cf);
-    if (r == ENOENT) { //Missing file on recovered transaction is not an error
-        assert(txn->for_recovery);
-        r = 0;
-        goto done;
-    }
-    // file must be open, because the txn that created it opened it and
-    // noted it, 
-    assert(r == 0);
-
-    FT ft;
-    ft = NULL;
-    r = txn->open_fts.find_zero<FILENUM, find_ft_from_filenum>(filenum, &ft, NULL);
-    assert(r == 0);
-
-    DESCRIPTOR_S d;
-    toku_fill_dbt(&d.dbt,  old_descriptor.data,  old_descriptor.len);
-    toku_ft_update_descriptor(ft, &d);
-done:
-    return r;
-}
-
-
 

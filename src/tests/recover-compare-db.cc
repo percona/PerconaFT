@@ -98,8 +98,7 @@ const int envflags = DB_INIT_MPOOL|DB_CREATE|DB_THREAD |DB_INIT_LOCK|DB_INIT_LOG
 const char *namea="a.db";
 const char *nameb="b.db";
 
-static int my_compare(DB *UU(db), const DBT *a, const DBT *b) {
-    assert(db);
+static int my_compare(const DBT *a, const DBT *b) {
     assert(a->size == b->size);
     return memcmp(a->data, b->data, a->size);
 }   

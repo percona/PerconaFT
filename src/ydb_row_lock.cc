@@ -119,7 +119,7 @@ int find_key_ranges_by_lt(const txn_lt_key_ranges &ranges,
 }
 
 static void db_txn_note_row_lock(DB *db, DB_TXN *txn, const DBT *left_key, const DBT *right_key) {
-    const toku::locktree *lt = db->i->lt;
+    const toku::locktree *lt = db->i->dict->get_lt();
 
     toku_mutex_lock(&db_txn_struct_i(txn)->txn_mutex);
 
@@ -131,13 +131,13 @@ static void db_txn_note_row_lock(DB *db, DB_TXN *txn, const DBT *left_key, const
     // locktree, then add it to this txn's locktree map
     int r = map->find_zero<const toku::locktree *, find_key_ranges_by_lt>(lt, &ranges, &idx);
     if (r == DB_NOTFOUND) {
-        ranges.lt = db->i->lt;
+        ranges.lt = db->i->dict->get_lt();
         XMALLOC(ranges.buffer);
         ranges.buffer->create();
         map->insert_at(ranges, idx);
 
         // let the manager know we're referencing this lt
-        toku::locktree_manager *ltm = &txn->mgrp->i->ltm;
+        toku::locktree_manager *ltm = &txn->mgrp->i->dict_manager.get_ltm();
         ltm->reference_lt(ranges.lt);
     } else {
         invariant_zero(r);
@@ -246,7 +246,7 @@ int toku_db_start_range_lock(DB *db, DB_TXN *txn, const DBT *left_key, const DBT
         toku::lock_request::type lock_type, toku::lock_request *request) {
     DB_TXN *txn_anc = txn_oldest_ancester(txn);
     TXNID txn_anc_id = txn_anc->id64(txn_anc);
-    request->set(db->i->lt, txn_anc_id, left_key, right_key, lock_type, toku_is_big_txn(txn_anc));
+    request->set(db->i->dict->get_lt(), txn_anc_id, left_key, right_key, lock_type, toku_is_big_txn(txn_anc));
 
     const int r = request->start();
     if (r == 0) {
@@ -301,7 +301,7 @@ void toku_db_grab_write_lock (DB *db, DBT *key, TOKUTXN tokutxn) {
     // This lock request must succeed, so we do not want to wait
     toku::lock_request request;
     request.create();
-    request.set(db->i->lt, txn_anc_id, key, key, toku::lock_request::type::WRITE, toku_is_big_txn(txn_anc));
+    request.set(db->i->dict->get_lt(), txn_anc_id, key, key, toku::lock_request::type::WRITE, toku_is_big_txn(txn_anc));
     int r = request.start();
     invariant_zero(r);
     db_txn_note_row_lock(db, txn_anc, key, key);
@@ -324,6 +324,6 @@ void toku_db_release_lt_key_ranges(DB_TXN *txn, txn_lt_key_ranges *ranges) {
     toku::lock_request::retry_all_lock_requests(lt);
 
     // Release our reference on this locktree
-    toku::locktree_manager *ltm = &txn->mgrp->i->ltm;
+    toku::locktree_manager *ltm = &txn->mgrp->i->dict_manager.get_ltm();
     ltm->release_lt(lt);
 }

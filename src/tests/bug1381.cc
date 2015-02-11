@@ -135,7 +135,6 @@ static void do_1381_maybe_lock (int do_loader, uint64_t *raw_count) {
 
 	r = db_env_create(&env, 0);                                           CKERR(r);
 	r = env->set_redzone(env, 0);                                         CKERR(r);
-        r = env->set_generate_row_callback_for_put(env, generate_row_for_put); CKERR(r);
 	r = env->open(env, TOKU_TEST_FILENAME, envflags, S_IRWXU+S_IRWXG+S_IRWXO);        CKERR(r);
 
 	r = db_create(&db, env, 0);                                           CKERR(r);
@@ -152,7 +151,6 @@ static void do_1381_maybe_lock (int do_loader, uint64_t *raw_count) {
 	
 	r = db_env_create(&env, 0);                                           CKERR(r);
 	r = env->set_redzone(env, 0);                                         CKERR(r);
-        r = env->set_generate_row_callback_for_put(env, generate_row_for_put); CKERR(r);
 	r = env->open(env, TOKU_TEST_FILENAME, envflags, S_IRWXU+S_IRWXG+S_IRWXO);        CKERR(r);
 
 	r = db_create(&db, env, 0);                                           CKERR(r);
@@ -173,7 +171,8 @@ static void do_1381_maybe_lock (int do_loader, uint64_t *raw_count) {
                 &db, 
                 &mult_put_flags,
                 &mult_dbt_flags,
-                LOADER_COMPRESS_INTERMEDIATES
+                LOADER_COMPRESS_INTERMEDIATES,
+                generate_row_for_put
                 );
             CKERR(r);
 	}

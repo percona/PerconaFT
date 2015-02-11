@@ -211,7 +211,7 @@ query_context_base_init(QUERY_CONTEXT_BASE context, DBC *c, uint32_t flag, bool 
     if (context->is_write_op) {
         lock_flags &= DB_PRELOCKED_WRITE; // Only care about whether already locked for write
     }
-    context->do_locking = (context->db->i->lt != nullptr && !(lock_flags & (DB_PRELOCKED | DB_PRELOCKED_WRITE)));
+    context->do_locking = (context->db->i->dict->get_lt() != nullptr && !(lock_flags & (DB_PRELOCKED | DB_PRELOCKED_WRITE)));
     context->r_user_callback = 0;
     context->request.create();
 }
@@ -278,7 +278,15 @@ c_getf_first(DBC *c, uint32_t flag, YDB_CALLBACK_FUNCTION f, void *extra) {
     c_query_context_init(&context, c, flag, f, extra);
     while (r == 0) {
         //toku_ft_cursor_first will call c_getf_first_callback(..., context) (if query is successful)
-        r = toku_ft_cursor_first(dbc_ftcursor(c), c_getf_first_callback, &context);
+        if (c->dbp->i->dict->num_prepend_bytes() > 0) {
+            DBT ft_key;
+            void* data = alloca(sizeof(uint64_t));
+            c->dbp->i->dict->fill_ft_key(nullptr, data, &ft_key);
+            r = toku_ft_cursor_set_range(dbc_ftcursor(c), &ft_key, nullptr, c_getf_first_callback, &context);
+        }
+        else {
+            r = toku_ft_cursor_first(dbc_ftcursor(c), c_getf_first_callback, &context);
+        }
         if (r == DB_LOCK_NOTGRANTED) {
             r = toku_db_wait_range_lock(context.base.db, context.base.txn, &context.base.request);
         } else {
@@ -296,7 +304,11 @@ c_getf_first_callback(uint32_t keylen, const void *key, uint32_t vallen, const v
     QUERY_CONTEXT_BASE context       = &super_context->base;
 
     int r;
-    DBT found_key = { .data = (void *) key, .size = keylen };
+    DBT found_key;
+    r = context->db->i->dict->fill_db_key(key, keylen, &found_key);
+    if (r != 0) {
+        goto exit;
+    }
 
     if (context->do_locking) {
         const DBT *left_key = toku_dbt_negative_infinity();
@@ -315,6 +327,7 @@ c_getf_first_callback(uint32_t keylen, const void *key, uint32_t vallen, const v
     }
 
     //Give ft-layer an error (if any) to return from toku_ft_cursor_first
+exit:
     return r;
 }
 
@@ -329,7 +342,15 @@ c_getf_last(DBC *c, uint32_t flag, YDB_CALLBACK_FUNCTION f, void *extra) {
     c_query_context_init(&context, c, flag, f, extra); 
     while (r == 0) {
         //toku_ft_cursor_last will call c_getf_last_callback(..., context) (if query is successful)
-        r = toku_ft_cursor_last(dbc_ftcursor(c), c_getf_last_callback, &context);
+        if (c->dbp->i->dict->num_prepend_bytes() > 0) {
+            DBT ft_key;
+            void* data = alloca(sizeof(uint64_t));
+            c->dbp->i->dict->fill_max_key(data, &ft_key);
+            r = toku_ft_cursor_set_range_reverse(dbc_ftcursor(c), &ft_key, c_getf_last_callback, &context);
+        }
+        else {
+            r = toku_ft_cursor_last(dbc_ftcursor(c), c_getf_last_callback, &context);
+        }
         if (r == DB_LOCK_NOTGRANTED) {
             r = toku_db_wait_range_lock(context.base.db, context.base.txn, &context.base.request);
         } else {
@@ -347,7 +368,11 @@ c_getf_last_callback(uint32_t keylen, const void *key, uint32_t vallen, const vo
     QUERY_CONTEXT_BASE context       = &super_context->base;
 
     int r;
-    DBT found_key = { .data = (void *) key, .size = keylen };
+    DBT found_key;
+    r = context->db->i->dict->fill_db_key(key, keylen, &found_key);
+    if (r != 0) {
+        goto exit;
+    }
 
     if (context->do_locking) {
         const DBT *left_key = key != NULL ? &found_key : toku_dbt_negative_infinity();
@@ -366,6 +391,7 @@ c_getf_last_callback(uint32_t keylen, const void *key, uint32_t vallen, const vo
     }
 
     //Give ft-layer an error (if any) to return from toku_ft_cursor_last
+exit:
     return r;
 }
 
@@ -404,7 +430,11 @@ c_getf_next_callback(uint32_t keylen, const void *key, uint32_t vallen, const vo
 
     int r;
 
-    DBT found_key = { .data = (void *) key, .size = keylen };
+    DBT found_key;
+    r = context->db->i->dict->fill_db_key(key, keylen, &found_key);
+    if (r != 0) {
+        goto exit;
+    }
 
     if (context->do_locking) {
         const DBT *prevkey, *prevval;
@@ -425,6 +455,7 @@ c_getf_next_callback(uint32_t keylen, const void *key, uint32_t vallen, const vo
     }
 
     //Give ft-layer an error (if any) to return from toku_ft_cursor_next
+exit:
     return r;
 }
 
@@ -462,7 +493,11 @@ c_getf_prev_callback(uint32_t keylen, const void *key, uint32_t vallen, const vo
     QUERY_CONTEXT_BASE context       = &super_context->base;
 
     int r;
-    DBT found_key = { .data = (void *) key, .size = keylen };
+    DBT found_key;
+    r = context->db->i->dict->fill_db_key(key, keylen, &found_key);
+    if (r != 0) {
+        goto exit;
+    }
 
     if (context->do_locking) {
         const DBT *prevkey, *prevval;
@@ -483,6 +518,7 @@ c_getf_prev_callback(uint32_t keylen, const void *key, uint32_t vallen, const vo
     }
 
     //Give ft-layer an error (if any) to return from toku_ft_cursor_prev
+exit:
     return r;
 }
 
@@ -511,7 +547,11 @@ c_getf_current_callback(uint32_t keylen, const void *key, uint32_t vallen, const
 
     //Call application-layer callback if found.
     if (key!=NULL && !lock_only) {
-        DBT found_key = { .data = (void *) key, .size = keylen };
+        DBT found_key;
+        r = context->db->i->dict->fill_db_key(key, keylen, &found_key);
+        if (r != 0) {
+            goto exit;
+        }
         DBT found_val = { .data = (void *) val, .size = vallen };
         context->r_user_callback = context->f(&found_key, &found_val, context->f_extra);
         r = context->r_user_callback;
@@ -520,6 +560,7 @@ c_getf_current_callback(uint32_t keylen, const void *key, uint32_t vallen, const
     }
 
     //Give ft-layer an error (if any) to return from toku_ft_cursor_current
+exit:
     return r;
 }
 
@@ -535,7 +576,10 @@ toku_c_getf_set(DBC *c, uint32_t flag, DBT *key, YDB_CALLBACK_FUNCTION f, void *
     query_context_with_input_init(&context, c, flag, key, NULL, f, extra); 
     while (r == 0) {
         //toku_ft_cursor_set will call c_getf_set_callback(..., context) (if query is successful)
-        r = toku_ft_cursor_set(dbc_ftcursor(c), key, c_getf_set_callback, &context);
+        DBT ft_key;
+        void* data = alloca(sizeof(uint64_t) + key->size);
+        c->dbp->i->dict->fill_ft_key(key, data, &ft_key);
+        r = toku_ft_cursor_set(dbc_ftcursor(c), &ft_key, c_getf_set_callback, &context);
         if (r == DB_LOCK_NOTGRANTED) {
             r = toku_db_wait_range_lock(context.base.db, context.base.txn, &context.base.request);
         } else {
@@ -553,7 +597,6 @@ c_getf_set_callback(uint32_t keylen, const void *key, uint32_t vallen, const voi
     QUERY_CONTEXT_BASE       context       = &super_context->base;
 
     int r;
-
     //Lock:
     //  left(key,val)  = (input_key, -infinity)
     //  right(key,val) = (input_key, found ? found_val : infinity)
@@ -566,13 +609,18 @@ c_getf_set_callback(uint32_t keylen, const void *key, uint32_t vallen, const voi
 
     //Call application-layer callback if found and locks were successfully obtained.
     if (r==0 && key!=NULL && !lock_only) {
-        DBT found_key = { .data = (void *) key, .size = keylen };
+        DBT found_key;
+        r = context->db->i->dict->fill_db_key(key, keylen, &found_key);
+        if (r != 0) {
+            goto exit;
+        }
         DBT found_val = { .data = (void *) val, .size = vallen };
         context->r_user_callback = context->f(&found_key, &found_val, context->f_extra);
         r = context->r_user_callback;
     }
 
     //Give ft-layer an error (if any) to return from toku_ft_cursor_set
+exit:
     return r;
 }
 
@@ -588,7 +636,10 @@ c_getf_set_range(DBC *c, uint32_t flag, DBT *key, YDB_CALLBACK_FUNCTION f, void 
     query_context_with_input_init(&context, c, flag, key, NULL, f, extra); 
     while (r == 0) {
         //toku_ft_cursor_set_range will call c_getf_set_range_callback(..., context) (if query is successful)
-        r = toku_ft_cursor_set_range(dbc_ftcursor(c), key, nullptr, c_getf_set_range_callback, &context);
+        DBT ft_key;
+        void* data = alloca(sizeof(uint64_t) + key->size);
+        c->dbp->i->dict->fill_ft_key(key, data, &ft_key);
+        r = toku_ft_cursor_set_range(dbc_ftcursor(c), &ft_key, nullptr, c_getf_set_range_callback, &context);
         if (r == DB_LOCK_NOTGRANTED) {
             r = toku_db_wait_range_lock(context.base.db, context.base.txn, &context.base.request);
         } else {
@@ -606,7 +657,11 @@ c_getf_set_range_callback(uint32_t keylen, const void *key, uint32_t vallen, con
     QUERY_CONTEXT_BASE       context       = &super_context->base;
 
     int r;
-    DBT found_key = { .data = (void *) key, .size = keylen };
+    DBT found_key;
+    r = context->db->i->dict->fill_db_key(key, keylen, &found_key);
+    if (r != 0) {
+        goto exit;
+    }
 
     //Lock:
     //  left(key,val)  = (input_key, -infinity)
@@ -629,6 +684,7 @@ c_getf_set_range_callback(uint32_t keylen, const void *key, uint32_t vallen, con
     }
 
     //Give ft-layer an error (if any) to return from toku_ft_cursor_set_range
+exit:
     return r;
 }
 
@@ -642,7 +698,15 @@ c_getf_set_range_with_bound(DBC *c, uint32_t flag, DBT *key, DBT *key_bound, YDB
     query_context_with_input_init(&context, c, flag, key, NULL, f, extra); 
     while (r == 0) {
         //toku_ft_cursor_set_range will call c_getf_set_range_callback(..., context) (if query is successful)
-        r = toku_ft_cursor_set_range(dbc_ftcursor(c), key, key_bound, c_getf_set_range_callback, &context);
+        DBT ft_key;
+        void* data = alloca(sizeof(uint64_t) + key->size);
+        c->dbp->i->dict->fill_ft_key(key, data, &ft_key);
+
+        DBT ft_key_bound;
+        void* bound_data = alloca(sizeof(uint64_t) + key_bound->size);
+        c->dbp->i->dict->fill_ft_key(key_bound, bound_data, &ft_key_bound);
+
+        r = toku_ft_cursor_set_range(dbc_ftcursor(c), &ft_key, &ft_key_bound, c_getf_set_range_callback, &context);
         if (r == DB_LOCK_NOTGRANTED) {
             r = toku_db_wait_range_lock(context.base.db, context.base.txn, &context.base.request);
         } else {
@@ -665,7 +729,10 @@ c_getf_set_range_reverse(DBC *c, uint32_t flag, DBT *key, YDB_CALLBACK_FUNCTION 
     query_context_with_input_init(&context, c, flag, key, NULL, f, extra); 
     while (r == 0) {
         //toku_ft_cursor_set_range_reverse will call c_getf_set_range_reverse_callback(..., context) (if query is successful)
-        r = toku_ft_cursor_set_range_reverse(dbc_ftcursor(c), key, c_getf_set_range_reverse_callback, &context);
+        DBT ft_key;
+        void* data = alloca(sizeof(uint64_t) + key->size);
+        c->dbp->i->dict->fill_ft_key(key, data, &ft_key);
+        r = toku_ft_cursor_set_range_reverse(dbc_ftcursor(c), &ft_key, c_getf_set_range_reverse_callback, &context);
         if (r == DB_LOCK_NOTGRANTED) {
             r = toku_db_wait_range_lock(context.base.db, context.base.txn, &context.base.request);
         } else {
@@ -683,7 +750,11 @@ c_getf_set_range_reverse_callback(uint32_t keylen, const void *key, uint32_t val
     QUERY_CONTEXT_BASE       context       = &super_context->base;
 
     int r;
-    DBT found_key = { .data = (void *) key, .size = keylen };
+    DBT found_key;
+    r = context->db->i->dict->fill_db_key(key, keylen, &found_key);
+    if (r != 0) {
+        goto exit;
+    }
 
     //Lock:
     //  left(key) = found ? found_key : -infinity
@@ -706,6 +777,7 @@ c_getf_set_range_reverse_callback(uint32_t keylen, const void *key, uint32_t val
     }
 
     //Give ft-layer an error (if any) to return from toku_ft_cursor_set_range_reverse
+exit:
     return r;
 }
 
@@ -743,11 +815,19 @@ c_set_bounds(DBC *dbc, const DBT *left_key, const DBT *right_key, bool pre_acqui
     DB *db = dbc->dbp;
     DB_TXN *txn = dbc_struct_i(dbc)->txn;
     HANDLE_PANICKED_DB(db);
-    toku_ft_cursor_set_range_lock(dbc_ftcursor(dbc), left_key, right_key,
+    DBT ft_left_key;
+    void* left_data = alloca(sizeof(uint64_t) + left_key->size);
+    dbc->dbp->i->dict->fill_ft_key(left_key, left_data, &ft_left_key);
+    
+    DBT ft_right_key;
+    void* right_data = alloca(sizeof(uint64_t) + right_key->size);
+    dbc->dbp->i->dict->fill_ft_key(right_key, right_data, &ft_right_key);
+
+    toku_ft_cursor_set_range_lock(dbc_ftcursor(dbc), &ft_left_key, &ft_right_key,
                                    (left_key == toku_dbt_negative_infinity()),
                                    (right_key == toku_dbt_positive_infinity()),
                                    out_of_range_error);
-    if (!db->i->lt || !txn || !pre_acquire)
+    if (!db->i->dict->get_lt() || !txn || !pre_acquire)
         return 0;
     //READ_UNCOMMITTED and READ_COMMITTED transactions do not need read locks.
     if (!dbc_struct_i(dbc)->rmw && dbc_struct_i(dbc)->iso != TOKU_ISO_SERIALIZABLE)

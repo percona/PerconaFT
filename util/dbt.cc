@@ -200,7 +200,11 @@ DBT *toku_copyref_dbt(DBT *dst, const DBT src) {
 }
 
 DBT *toku_clone_dbt(DBT *dst, const DBT &src) {
-    return toku_memdup_dbt(dst, src.data, src.size);
+    if (src.size > 0) {
+        assert(src.data != nullptr);
+        toku_memdup_dbt(dst, src.data, src.size);
+    }
+    return dst;
 }
 
 void

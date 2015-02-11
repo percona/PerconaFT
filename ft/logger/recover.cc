@@ -152,17 +152,12 @@ struct file_map_tuple {
     FILENUM filenum;
     FT_HANDLE ft_handle;     // NULL ft_handle means it's a rollback file.
     char *iname;
-    struct __toku_db fake_db;
 };
 
 static void file_map_tuple_init(struct file_map_tuple *tuple, FILENUM filenum, FT_HANDLE ft_handle, char *iname) {
     tuple->filenum = filenum;
     tuple->ft_handle = ft_handle;
     tuple->iname = iname;
-    // use a fake DB for comparisons, using the ft's cmp descriptor
-    memset(&tuple->fake_db, 0, sizeof(tuple->fake_db));
-    tuple->fake_db.cmp_descriptor = &tuple->ft_handle->ft->cmp_descriptor;
-    tuple->fake_db.descriptor = &tuple->ft_handle->ft->descriptor;
 }
 
 static void file_map_tuple_destroy(struct file_map_tuple *tuple) {
@@ -187,8 +182,6 @@ struct recover_env {
     CHECKPOINTER cp;
     ft_compare_func bt_compare;
     ft_update_func update_function;
-    generate_row_for_put_func generate_row_for_put;
-    generate_row_for_del_func generate_row_for_del;
     DBT_ARRAY dest_keys;
     DBT_ARRAY dest_vals;
     struct scan_state ss;
@@ -287,8 +280,6 @@ static int recover_env_init (RECOVER_ENV renv,
                              TOKULOGGER logger,
                              ft_compare_func bt_compare,
                              ft_update_func update_function,
-                             generate_row_for_put_func generate_row_for_put,
-                             generate_row_for_del_func generate_row_for_del,
                              size_t cachetable_size) {
     int r = 0;
 
@@ -310,8 +301,6 @@ static int recover_env_init (RECOVER_ENV renv,
     renv->keep_cachetable_callback = keep_cachetable_callback;
     renv->bt_compare               = bt_compare;
     renv->update_function          = update_function;
-    renv->generate_row_for_put     = generate_row_for_put;
-    renv->generate_row_for_del     = generate_row_for_del;
     file_map_init(&renv->fmap);
     renv->goforward = false;
     renv->cp = toku_cachetable_get_checkpointer(renv->ct);
@@ -359,7 +348,9 @@ static int internal_recover_fopen_or_fcreate (RECOVER_ENV renv, bool must_create
     FT_HANDLE ft_handle = NULL;
     char *iname = fixup_fname(bs_iname);
 
-    toku_ft_handle_create(&ft_handle);
+    // proper functions will be populated below, so first two parameters
+    // can be "original" defaults
+    toku_ft_handle_create(toku_builtin_compare_fun, NULL, &ft_handle);
     toku_ft_set_flags(ft_handle, treeflags);
 
     if (nodesize != 0) {
@@ -516,7 +507,7 @@ static int toku_recover_fassociate (struct logtype_fassociate *l, RECOVER_ENV re
             if (rollback_file) {
                 max_acceptable_lsn = renv->ss.checkpoint_begin_lsn;
                 FT_HANDLE t;
-                toku_ft_handle_create(&t);
+                toku_ft_handle_create(toku_builtin_compare_fun, NULL, &t);
                 r = toku_ft_handle_open_recovery(t, toku_product_name_strings.rollback_cachefile, false, false, renv->ct, (TOKUTXN)NULL, l->filenum, max_acceptable_lsn);
                 renv->logger->rollback_cachefile = t->ft->cf;
                 toku_logger_initialize_rollback_cache(renv->logger, t->ft);
@@ -877,42 +868,6 @@ static int toku_recover_backward_fopen (struct logtype_fopen *UU(l), RECOVER_ENV
     return 0;
 }
 
-static int toku_recover_change_fdescriptor (struct logtype_change_fdescriptor *l, RECOVER_ENV renv) {
-    int r;
-    struct file_map_tuple *tuple = NULL;
-    r = file_map_find(&renv->fmap, l->filenum, &tuple);
-    if (r==0) {
-        TOKUTXN txn = NULL;
-        //Maybe do the descriptor (lsn filter)
-        toku_txnid2txn(renv->logger, l->xid, &txn);
-        DBT old_descriptor, new_descriptor;
-        toku_fill_dbt(
-            &old_descriptor, 
-            l->old_descriptor.data, 
-            l->old_descriptor.len
-            );
-        toku_fill_dbt(
-            &new_descriptor, 
-            l->new_descriptor.data, 
-            l->new_descriptor.len
-            );
-        toku_ft_change_descriptor(
-            tuple->ft_handle, 
-            &old_descriptor, 
-            &new_descriptor, 
-            false, 
-            txn,
-            l->update_cmp_descriptor
-            );
-    }    
-    return 0;
-}
-
-static int toku_recover_backward_change_fdescriptor (struct logtype_change_fdescriptor *UU(l), RECOVER_ENV UU(renv)) {
-    return 0;
-}
-
-
 // if file referred to in l is open, close it
 static int toku_recover_fclose (struct logtype_fclose *l, RECOVER_ENV renv) {
     struct file_map_tuple *tuple = NULL;
@@ -1025,128 +980,38 @@ static int toku_recover_backward_enq_delete_any (struct logtype_enq_delete_any *
     return 0;
 }
 
-static int toku_recover_enq_insert_multiple (struct logtype_enq_insert_multiple *l, RECOVER_ENV renv) {
+static int toku_recover_enq_delete_multi (struct logtype_enq_delete_multi *l, RECOVER_ENV UU(renv)) {
     int r;
     TOKUTXN txn = NULL;
     toku_txnid2txn(renv->logger, l->xid, &txn);
     assert(txn!=NULL);
-    DB *src_db = NULL;
-    bool do_inserts = true;
-    {
-        struct file_map_tuple *tuple = NULL;
-        r = file_map_find(&renv->fmap, l->src_filenum, &tuple);
-        if (l->src_filenum.fileid == FILENUM_NONE.fileid)
-            assert(r==DB_NOTFOUND);
-        else {
-            if (r == 0)
-                src_db = &tuple->fake_db;
-            else
-                do_inserts = false; // src file was probably deleted, #3129
-        }
-    }
-    
-    if (do_inserts) {
-        DBT src_key, src_val;
-
-        toku_fill_dbt(&src_key, l->src_key.data, l->src_key.len);
-        toku_fill_dbt(&src_val, l->src_val.data, l->src_val.len);
-
-        for (uint32_t file = 0; file < l->dest_filenums.num; file++) {
-            struct file_map_tuple *tuple = NULL;
-            r = file_map_find(&renv->fmap, l->dest_filenums.filenums[file], &tuple);
-            if (r==0) {
-                // We found the cachefile.  (maybe) Do the insert.
-                DB *db = &tuple->fake_db;
-
-                DBT_ARRAY key_array;
-                DBT_ARRAY val_array;
-                if (db != src_db) {
-                    r = renv->generate_row_for_put(db, src_db, &renv->dest_keys, &renv->dest_vals, &src_key, &src_val);
-                    assert(r==0);
-                    invariant(renv->dest_keys.size <= renv->dest_keys.capacity);
-                    invariant(renv->dest_vals.size <= renv->dest_vals.capacity);
-                    invariant(renv->dest_keys.size == renv->dest_vals.size);
-                    key_array = renv->dest_keys;
-                    val_array = renv->dest_vals;
-                } else {
-                    key_array.size = key_array.capacity = 1;
-                    key_array.dbts = &src_key;
-
-                    val_array.size = val_array.capacity = 1;
-                    val_array.dbts = &src_val;
-                }
-                for (uint32_t i = 0; i < key_array.size; i++) {
-                    toku_ft_maybe_insert(tuple->ft_handle, &key_array.dbts[i], &val_array.dbts[i], txn, true, l->lsn, false, FT_INSERT);
-                }
-            }
-        }
-    }
-
+    struct file_map_tuple *tuple = NULL;
+    r = file_map_find(&renv->fmap, l->filenum, &tuple);
+    if (r==0) {
+        //Maybe do the deletion if we found the cachefile.
+        DBT minkeydbt;
+        toku_fill_dbt(&minkeydbt, l->min_key.data, l->min_key.len);
+        DBT maxkeydbt;
+        toku_fill_dbt(&maxkeydbt, l->max_key.data, l->max_key.len);
+        toku_ft_maybe_delete_multicast(
+            tuple->ft_handle,
+            &minkeydbt,
+            &maxkeydbt,
+            txn,
+            true,
+            l->lsn,
+            false,
+            l->is_resetting_op
+            );
+    }    
     return 0;
 }
 
-static int toku_recover_backward_enq_insert_multiple (struct logtype_enq_insert_multiple *UU(l), RECOVER_ENV UU(renv)) {
+static int toku_recover_backward_enq_delete_multi (struct logtype_enq_delete_multi *UU(l), RECOVER_ENV UU(renv)) {
     // nothing
     return 0;
 }
 
-static int toku_recover_enq_delete_multiple (struct logtype_enq_delete_multiple *l, RECOVER_ENV renv) {
-    int r;
-    TOKUTXN txn = NULL;
-    toku_txnid2txn(renv->logger, l->xid, &txn);
-    assert(txn!=NULL);
-    DB *src_db = NULL;
-    bool do_deletes = true;
-    {
-        struct file_map_tuple *tuple = NULL;
-        r = file_map_find(&renv->fmap, l->src_filenum, &tuple);
-        if (l->src_filenum.fileid == FILENUM_NONE.fileid)
-            assert(r==DB_NOTFOUND);
-        else {
-            if (r == 0) {
-                src_db = &tuple->fake_db;
-            } else {
-                do_deletes = false; // src file was probably deleted, #3129
-            }
-        }
-    }
-
-    if (do_deletes) {
-        DBT src_key, src_val;
-        toku_fill_dbt(&src_key, l->src_key.data, l->src_key.len);
-        toku_fill_dbt(&src_val, l->src_val.data, l->src_val.len);
-
-        for (uint32_t file = 0; file < l->dest_filenums.num; file++) {
-            struct file_map_tuple *tuple = NULL;
-            r = file_map_find(&renv->fmap, l->dest_filenums.filenums[file], &tuple);
-            if (r==0) {
-                // We found the cachefile.  (maybe) Do the delete.
-                DB *db = &tuple->fake_db;
-
-                DBT_ARRAY key_array;
-                if (db != src_db) {
-                    r = renv->generate_row_for_del(db, src_db, &renv->dest_keys, &src_key, &src_val);
-                    assert(r==0);
-                    invariant(renv->dest_keys.size <= renv->dest_keys.capacity);
-                    key_array = renv->dest_keys;
-                } else {
-                    key_array.size = key_array.capacity = 1;
-                    key_array.dbts = &src_key;
-                }
-                for (uint32_t i = 0; i < key_array.size; i++) {
-                    toku_ft_maybe_delete(tuple->ft_handle, &key_array.dbts[i], txn, true, l->lsn, false);
-                }
-            }
-        }
-    }
-
-    return 0;
-}
-
-static int toku_recover_backward_enq_delete_multiple (struct logtype_enq_delete_multiple *UU(l), RECOVER_ENV UU(renv)) {
-    // nothing
-    return 0;
-}
 
 static int toku_recover_enq_update(struct logtype_enq_update *l, RECOVER_ENV renv) {
     int r;
@@ -1222,31 +1087,20 @@ static int toku_recover_backward_shutdown (struct logtype_shutdown *UU(l), RECOV
     return 0;
 }
 
-static int toku_recover_load(struct logtype_load *UU(l), RECOVER_ENV UU(renv)) {
-    TOKUTXN txn = NULL;
-    toku_txnid2txn(renv->logger, l->xid, &txn);
-    assert(txn!=NULL);
-    char *new_iname = fixup_fname(&l->new_iname);
-
-    toku_ft_load_recovery(txn, l->old_filenum, new_iname, 0, 0, (LSN*)NULL);
-
-    toku_free(new_iname);
-    return 0;
-}
-
-static int toku_recover_backward_load(struct logtype_load *UU(l), RECOVER_ENV UU(renv)) {
-    // nothing
-    return 0;
-}
-
 // #2954
-static int toku_recover_hot_index(struct logtype_hot_index *UU(l), RECOVER_ENV UU(renv)) {
+static int toku_recover_hot_index(struct logtype_hot_index *l, RECOVER_ENV renv) {
     TOKUTXN txn = NULL;
     toku_txnid2txn(renv->logger, l->xid, &txn);
     assert(txn!=NULL);
     // just make an entry in the rollback log 
     //   - set do_log = 0 -> don't write to recovery log
-    toku_ft_hot_index_recovery(txn, l->hot_index_filenums, 0, 0, (LSN*)NULL);
+    DBT min, max;
+    toku_init_dbt(&min); toku_init_dbt(&max);
+    if (l->has_bounds) {
+        toku_fill_dbt(&min, l->min_key.data, l->min_key.len);
+        toku_fill_dbt(&max, l->max_key.data, l->max_key.len);
+    }
+    toku_ft_hot_index_recovery(txn, l->hot_index_filenum, false, l->has_bounds, &min, &max);
     return 0;
 }
 
@@ -1609,8 +1463,6 @@ int tokuft_recover(DB_ENV *env,
                    const char *env_dir, const char *log_dir,
                    ft_compare_func bt_compare,
                    ft_update_func update_function,
-                   generate_row_for_put_func generate_row_for_put,
-                   generate_row_for_del_func generate_row_for_del,
                    size_t cachetable_size) {
     int r;
     int lockfd = -1;
@@ -1630,8 +1482,6 @@ int tokuft_recover(DB_ENV *env,
                              logger,
                              bt_compare,
                              update_function,
-                             generate_row_for_put,
-                             generate_row_for_del,
                              cachetable_size);
         assert(r == 0);
 

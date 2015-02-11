@@ -111,7 +111,7 @@ static bool use_loader = false;
 static bool random_keys = false;
 
 static int 
-my_compare(DB *this_db UU(), const DBT *a UU(), const DBT *b UU()) {
+my_compare(const DBT *a UU(), const DBT *b UU()) {
     assert(a->size == b->size);
     return memcmp(a->data, b->data, a->size);
 }
@@ -148,7 +148,6 @@ static void open_env(void) {
     int r = db_env_create(&env, 0); CKERR(r);
     env->set_errfile(env, stderr);
     r = env->set_redzone(env, 0); CKERR(r);
-    r = env->set_generate_row_callback_for_put(env, my_generate_row); CKERR(r);
     r = env->set_default_bt_compare(env, my_compare); CKERR(r);
     r = env->open(env, envdir, DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN|DB_CREATE|DB_PRIVATE, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(r);
 }
@@ -183,7 +182,7 @@ run_test(void) {
     r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
     if (use_loader) {
         DB_LOADER *loader = NULL;
-        r = env->create_loader(env, txn, &loader, db, 1, &db, NULL, NULL, 0); CKERR(r);
+        r = env->create_loader(env, txn, &loader, db, 1, &db, NULL, NULL, 0, my_generate_row); CKERR(r);
         for (uint64_t i=0; i<nrows; i++) {
             char key[100],val[100];
             snprintf(key, sizeof key, "%08llu", (unsigned long long)keys[i]);

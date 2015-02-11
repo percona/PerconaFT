@@ -160,7 +160,7 @@ int main(int argc, const char *argv[]) {
 
     // create a manager
     locktree_manager mgr;
-    mgr.create(nullptr, nullptr, e_callback, nullptr);
+    mgr.create(e_callback, nullptr);
     mgr.set_max_lock_memory(max_lock_memory);
 
     const TXNID txn_a = 10;
@@ -168,7 +168,7 @@ int main(int argc, const char *argv[]) {
 
     // create lock trees
     DICTIONARY_ID dict_id = { .dictid = 1 };
-    locktree *lt = mgr.get_lt(dict_id, dbt_comparator, nullptr);
+    locktree *lt = mgr.get_lt(dict_id, dbt_comparator);
 
     int64_t last_i = -1;
     for (int64_t i = 0; ; i++) {

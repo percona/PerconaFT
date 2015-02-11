@@ -107,8 +107,7 @@ const unsigned int MAGIC_EXTRA = 0x4ac0ffee;
 const char original_data[] = "original: ha.rpbkasrkcabkshtabksraghpkars3cbkarpcpktkpbarkca.hpbtkvaekragptknbnsaotbknotbkaontekhba";
 const char updated_data[]  = "updated: crkphi30bi8a9hpckbrap.k98a.pkrh3miachpk0[alr3s4nmubrp8.9girhp,bgoekhrl,nurbperk8ochk,bktoe";
 
-static int update_fun(DB *UU(db),
-                      const DBT *UU(key),
+static int update_fun(const DBT *UU(key),
                       const DBT *old_val, const DBT *extra,
                       void (*set_val)(const DBT *new_val,
                                       void *set_extra),
@@ -129,7 +128,7 @@ static int update_fun(DB *UU(db),
 }
 
 static int
-int_cmp(DB *UU(db), const DBT *a, const DBT *b) {
+int_cmp(const DBT *a, const DBT *b) {
     unsigned int *ap, *bp;
     assert(a->size == sizeof(*ap));
     CAST_FROM_VOIDP(ap, a->data);

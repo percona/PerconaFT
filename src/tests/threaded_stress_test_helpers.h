@@ -136,7 +136,7 @@ typedef struct arg *ARG;
 typedef int (*operation_t)(DB_TXN *txn, ARG arg, void *operation_extra, void *stats_extra);
 
 // TODO: Properly define these in db.h so we don't have to copy them here
-typedef int (*test_update_callback_f)(DB *, const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra);
+typedef int (*test_update_callback_f)(const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra);
 typedef int (*test_generate_row_for_put_callback)(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_data);
 typedef int (*test_generate_row_for_del_callback)(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, const DBT *src_key, const DBT *src_data);
 
@@ -705,7 +705,7 @@ static int scan_op_and_maybe_check_sum(
     return r;
 }
 
-static int generate_row_for_put(
+static int UU() generate_row_for_put(
     DB *dest_db,
     DB *src_db,
     DBT_ARRAY *dest_keys,
@@ -995,6 +995,7 @@ cleanup:
 struct loader_op_extra {
     struct scan_op_extra soe;
     int num_dbs;
+    generate_row_for_put_func g;
 };
 
 static int UU() loader_op(DB_TXN* txn, ARG arg, void* operation_extra, void *UU(stats_extra)) {
@@ -1019,7 +1020,7 @@ static int UU() loader_op(DB_TXN* txn, ARG arg, void* operation_extra, void *UU(
         }
         DB_LOADER *loader;
         uint32_t loader_flags = (num == 0) ? 0 : LOADER_COMPRESS_INTERMEDIATES;
-        r = env->create_loader(env, txn, &loader, dbs_load[0], extra->num_dbs, dbs_load, db_flags, dbt_flags, loader_flags);
+        r = env->create_loader(env, txn, &loader, dbs_load[0], extra->num_dbs, dbs_load, db_flags, dbt_flags, loader_flags, extra->g);
         CKERR(r);
 
         DBT key, val;
@@ -1338,7 +1339,7 @@ static struct update_op_args UU() get_update_op_args(struct cli_args* cli_args, 
 
 static uint64_t update_count = 0;
 
-static int update_op_callback(DB *UU(db), const DBT *UU(key),
+static int update_op_callback(const DBT *UU(key),
                               const DBT *old_val,
                               const DBT *extra,
                               void (*set_val)(const DBT *new_val,
@@ -1962,7 +1963,7 @@ static void open_db(DB *db, int idx, struct cli_args *cli_args) {
 }
 
 static int create_tables(DB_ENV **env_res, DB **db_res, int num_DBs,
-                        int (*bt_compare)(DB *, const DBT *, const DBT *),
+                        int (*bt_compare)(const DBT *, const DBT *),
                         struct cli_args *cli_args
 ) {
     int r;
@@ -1983,18 +1984,6 @@ static int create_tables(DB_ENV **env_res, DB **db_res, int num_DBs,
     r = env->set_lk_max_memory(env, env_args.lk_max_memory); CKERR(r);
     r = env->set_cachesize(env, env_args.cachetable_size / (1 << 30), env_args.cachetable_size % (1 << 30), 1); CKERR(r);
     r = env->set_lg_bsize(env, env_args.rollback_node_size); CKERR(r);
-    if (env_args.generate_put_callback) {
-        r = env->set_generate_row_callback_for_put(env, env_args.generate_put_callback); 
-        CKERR(r);
-    }
-    else {
-        r = env->set_generate_row_callback_for_put(env, generate_row_for_put); 
-        CKERR(r);
-    }
-    if (env_args.generate_del_callback) {
-        r = env->set_generate_row_callback_for_del(env, env_args.generate_del_callback); 
-        CKERR(r);
-    }
     int env_flags = get_env_open_flags(cli_args);
     r = env->open(env, env_args.envdir, env_flags, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(r);
     r = env->checkpointing_set_period(env, env_args.checkpointing_period); CKERR(r);
@@ -2071,7 +2060,7 @@ static void fill_single_table(DB_ENV *env, DB *db, struct cli_args *args, bool f
     if (args->num_elements >= min_size_for_loader) {
         uint32_t db_flags = DB_PRELOCKED_WRITE;
         uint32_t dbt_flags = 0;
-        r = env->create_loader(env, txn, &loader, db, 1, &db, &db_flags, &dbt_flags, 0); CKERR(r);
+        r = env->create_loader(env, txn, &loader, db, 1, &db, &db_flags, &dbt_flags, 0, args->env_args.generate_put_callback); CKERR(r);
     }
 
     for (int i = 0; i < args->num_elements; i++) {
@@ -2168,7 +2157,7 @@ static void do_xa_recovery(DB_ENV* env) {
 }
 
 static int open_tables(DB_ENV **env_res, DB **db_res, int num_DBs,
-                      int (*bt_compare)(DB *, const DBT *, const DBT *),
+                      int (*bt_compare)(const DBT *, const DBT *),
                       struct cli_args *cli_args) {
     int r;
     struct env_args env_args = cli_args->env_args;
@@ -2184,18 +2173,6 @@ static int open_tables(DB_ENV **env_res, DB **db_res, int num_DBs,
     env->set_update(env, env_args.update_function);
     r = env->set_cachesize(env, env_args.cachetable_size / (1 << 30), env_args.cachetable_size % (1 << 30), 1); CKERR(r);
     r = env->set_lg_bsize(env, env_args.rollback_node_size); CKERR(r);
-    if (env_args.generate_put_callback) {
-        r = env->set_generate_row_callback_for_put(env, env_args.generate_put_callback);
-        CKERR(r);
-    }
-    else {
-        r = env->set_generate_row_callback_for_put(env, generate_row_for_put);
-        CKERR(r);
-    }
-    if (env_args.generate_del_callback) {
-        r = env->set_generate_row_callback_for_del(env, env_args.generate_del_callback);
-        CKERR(r);
-    }
     int env_flags = get_env_open_flags(cli_args);
     r = env->open(env, env_args.envdir, DB_RECOVER | env_flags, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(r);
     do_xa_recovery(env);
@@ -2816,8 +2793,8 @@ stress_dbt_cmp(const DBT *a, const DBT *b) {
 }
 
 static int
-stress_cmp(DB *db, const DBT *a, const DBT *b) {
-    assert(db && a && b);
+stress_cmp(const DBT *a, const DBT *b) {
+    assert(a && b);
     assert(a->size == b->size);
 
     if (a->size == sizeof(int)) {
@@ -2882,7 +2859,7 @@ UU() stress_recover(struct cli_args *args) {
 }
 
 static void
-open_and_stress_tables(struct cli_args *args, bool fill_with_zeroes, int (*cmp)(DB *, const DBT *, const DBT *))
+open_and_stress_tables(struct cli_args *args, bool fill_with_zeroes, int (*cmp)(const DBT *, const DBT *))
 {
     if ((args->key_size < 8 && args->key_size != 4) ||
         (args->val_size < 8 && args->val_size != 4)) {
@@ -2936,7 +2913,7 @@ UU() perf_test_main(struct cli_args *args) {
 }
 
 static void
-UU() perf_test_main_with_cmp(struct cli_args *args, int (*cmp)(DB *, const DBT *, const DBT *)) {
+UU() perf_test_main_with_cmp(struct cli_args *args, int (*cmp)(const DBT *, const DBT *)) {
     // Do not begin the test by creating a table of all zeroes.
     // We want to control the row size and its compressibility.
     open_and_stress_tables(args, false, cmp);

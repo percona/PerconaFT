@@ -129,15 +129,21 @@ enum ft_msg_type {
     FT_ABORT_BROADCAST_TXN  = 10, // Broadcast to all leafentries, (commit specific transaction).
     FT_INSERT_NO_OVERWRITE = 11,
     FT_OPTIMIZE = 12,             // Broadcast
-    FT_OPTIMIZE_FOR_UPGRADE = 13, // same as FT_OPTIMIZE, but record version number in leafnode
+    //FT_OPTIMIZE_FOR_UPGRADE = 13, // same as FT_OPTIMIZE, but record version number in leafnode
     FT_UPDATE = 14,
-    FT_UPDATE_BROADCAST_ALL = 15
+    FT_UPDATE_BROADCAST_ALL = 15,
+    FT_DELETE_MULTICAST = 16, // sending a multicast delete, where we have two inclusive endpoint keys
+    FT_COMMIT_MULTICAST_TXN = 17, // txn commit for multicasts
+    FT_COMMIT_MULTICAST_ALL = 18, // multicast that commits all leafentries (like FT_COMMIT_BROADCAST_ALL)
+    FT_ABORT_MULTICAST_TXN = 19, // multicast that aborts
+    FT_KILL_MULTICAST = 20, // deletes all entries in this range, used for aborting a hot index or possibly a bulk load
+    FT_KILL_ALL = 21
 };
 
 static inline bool
 ft_msg_type_applies_once(enum ft_msg_type type)
 {
-    bool ret_val;
+    bool ret_val = false;
     switch (type) {
     case FT_INSERT_NO_OVERWRITE:
     case FT_INSERT:
@@ -151,21 +157,24 @@ ft_msg_type_applies_once(enum ft_msg_type type)
     case FT_COMMIT_BROADCAST_TXN:
     case FT_ABORT_BROADCAST_TXN:
     case FT_OPTIMIZE:
-    case FT_OPTIMIZE_FOR_UPGRADE:
     case FT_UPDATE_BROADCAST_ALL:
+    case FT_DELETE_MULTICAST:
+    case FT_COMMIT_MULTICAST_TXN:
+    case FT_COMMIT_MULTICAST_ALL:
+    case FT_ABORT_MULTICAST_TXN:
+    case FT_KILL_MULTICAST:
+    case FT_KILL_ALL:
     case FT_NONE:
         ret_val = false;
         break;
-    default:
-        assert(false);
     }
     return ret_val;
 }
 
 static inline bool
-ft_msg_type_applies_all(enum ft_msg_type type)
+ft_msg_type_applies_multiple(enum ft_msg_type type)
 {
-    bool ret_val;
+    bool ret_val = false;
     switch (type) {
     case FT_NONE:
     case FT_INSERT_NO_OVERWRITE:
@@ -180,12 +189,46 @@ ft_msg_type_applies_all(enum ft_msg_type type)
     case FT_COMMIT_BROADCAST_TXN:
     case FT_ABORT_BROADCAST_TXN:
     case FT_OPTIMIZE:
-    case FT_OPTIMIZE_FOR_UPGRADE:
     case FT_UPDATE_BROADCAST_ALL:
+    case FT_DELETE_MULTICAST:
+    case FT_COMMIT_MULTICAST_TXN:
+    case FT_COMMIT_MULTICAST_ALL:
+    case FT_ABORT_MULTICAST_TXN:
+    case FT_KILL_ALL:
+    case FT_KILL_MULTICAST:
         ret_val = true;
         break;
-    default:
-        assert(false);
+    }
+    return ret_val;
+}
+
+static inline bool
+ft_msg_type_is_multicast(enum ft_msg_type type)
+{
+    bool ret_val = false;
+    switch (type) {
+    case FT_NONE:
+    case FT_INSERT_NO_OVERWRITE:
+    case FT_INSERT:
+    case FT_DELETE_ANY:
+    case FT_ABORT_ANY:
+    case FT_COMMIT_ANY:
+    case FT_UPDATE:
+    case FT_COMMIT_BROADCAST_ALL:
+    case FT_COMMIT_BROADCAST_TXN:
+    case FT_ABORT_BROADCAST_TXN:
+    case FT_OPTIMIZE:
+    case FT_UPDATE_BROADCAST_ALL:
+    case FT_KILL_ALL:
+        ret_val = false;
+        break;
+    case FT_DELETE_MULTICAST:
+    case FT_COMMIT_MULTICAST_TXN:
+    case FT_COMMIT_MULTICAST_ALL:
+    case FT_ABORT_MULTICAST_TXN:
+    case FT_KILL_MULTICAST:
+        ret_val = true;
+        break;
     }
     return ret_val;
 }
@@ -200,6 +243,8 @@ class ft_msg {
 public:
     ft_msg(const DBT *key, const DBT *val, enum ft_msg_type t, MSN m, XIDS x);
 
+    ft_msg(const DBT *min_key, const DBT *max_key, const DBT *val, enum ft_msg_type t, MSN m, XIDS x);
+
     enum ft_msg_type type() const;
 
     MSN msn() const;
@@ -207,6 +252,8 @@ public:
     XIDS xids() const;
 
     const DBT *kdbt() const;
+
+    const DBT *max_kdbt() const; // for multicasts
 
     const DBT *vdbt() const;
 
@@ -223,7 +270,8 @@ public:
     static ft_msg deserialize_from_rbuf_v13(struct rbuf *rb, MSN m, XIDS *xids);
 
 private:
-    const DBT _key;
+    const DBT _key; // for normal messages, this is the key, for multicast, this is 
+    const DBT _max_key; // used only for multicast messages
     const DBT _val;
     enum ft_msg_type _type;
     MSN _msn;

@@ -113,7 +113,7 @@ le_cursor_get_next(LE_CURSOR cursor, DBT *val) {
     return r;
 }
 
-static int test_ft_cursor_keycompare(DB *db __attribute__((unused)), const DBT *a, const DBT *b) {
+static int test_ft_cursor_keycompare(const DBT *a, const DBT *b) {
     return toku_keycompare(a->data, a->size, b->data, b->size);
 }
 
@@ -198,8 +198,7 @@ walk_tree(const char *fname, int n) {
     assert(error == 0);
 
     LE_CURSOR cursor = NULL;
-    error = toku_le_cursor_create(&cursor, ft, NULL);
-    assert(error == 0);
+    toku_le_cursor_create(&cursor, ft, NULL, NULL, NULL);
 
     DBT key;
     toku_init_dbt(&key); key.flags = DB_DBT_REALLOC;

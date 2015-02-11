@@ -108,7 +108,7 @@ static int qsort_compare_ints (const void *a, const void *b) {
 
 }
 
-static int compare_ints (DB* UU(desc), const DBT *akey, const DBT *bkey) {
+static int compare_ints (const DBT *akey, const DBT *bkey) {
     assert(akey->size==sizeof(int));
     assert(bkey->size==sizeof(int));
     return qsort_compare_ints(akey->data, bkey->data);
@@ -316,130 +316,6 @@ static void test_read_write_rows (char *tf_template) {
     ft_loader_fi_destroy(&bl.file_infos, false);
 }
 
-static void fill_rowset (struct rowset *rows,
-			 int keys[],
-			 const char *vals[],
-			 int n,
-			 uint64_t *size_est) {
-    init_rowset(rows, toku_ft_loader_get_rowset_budget_for_testing());
-    for (int i=0; i<n; i++) {
-	DBT key;
-        toku_fill_dbt(&key, &keys[i], sizeof keys[i]);
-	DBT val;
-        toku_fill_dbt(&val, vals[i], strlen(vals[i]));
-	add_row(rows, &key, &val);
-	*size_est += ft_loader_leafentry_size(key.size, val.size, TXNID_NONE);
-    }
-}
-
-static void verify_dbfile(int n, int sorted_keys[], const char *sorted_vals[], const char *name) {
-    int r;
-
-    CACHETABLE ct;
-    toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
-
-    TOKUTXN const null_txn = NULL;
-    FT_HANDLE t = NULL;
-    toku_ft_handle_create(&t);
-    toku_ft_set_bt_compare(t, compare_ints);
-    r = toku_ft_handle_open(t, name, 0, 0, ct, null_txn); assert(r==0);
-
-    FT_CURSOR cursor = NULL;
-    r = toku_ft_cursor(t, &cursor, NULL, false, false); assert(r == 0);
-
-    size_t userdata = 0;
-    int i;
-    for (i=0; i<n; i++) {
-	struct check_pair pair = {sizeof sorted_keys[i], &sorted_keys[i], (uint32_t) strlen(sorted_vals[i]), sorted_vals[i], 0};
-        r = toku_ft_cursor_get(cursor, NULL, lookup_checkf, &pair, DB_NEXT);
-        if (r != 0) {
-	    assert(pair.call_count ==0);
-	    break;
-	}
-	assert(pair.call_count==1);
-        userdata += pair.keylen + pair.vallen;
-    }
-    
-    struct check_pair pair; memset(&pair, 0, sizeof pair);
-    r = toku_ft_cursor_get(cursor, NULL, lookup_checkf, &pair, DB_NEXT);
-    assert(r != 0);
-
-    toku_ft_cursor_close(cursor);
-
-    struct ftstat64_s s;
-    toku_ft_handle_stat64(t, NULL, &s);
-    assert(s.nkeys == (uint64_t) n && s.ndata == (uint64_t) n && s.dsize == userdata);
-    
-    r = toku_close_ft_handle_nolsn(t, 0); assert(r==0);
-    toku_cachetable_close(&ct);
-}
-
-static void test_merge_files (const char *tf_template, const char *output_name) {
-    DB *dest_db = NULL;
-    struct ft_loader_s bl;
-    ZERO_STRUCT(bl);
-    bl.temp_file_template = tf_template;
-    bl.reserved_memory = 512*1024*1024;
-    int r = ft_loader_init_file_infos(&bl.file_infos); CKERR(r);
-    ft_loader_lock_init(&bl);
-    ft_loader_init_error_callback(&bl.error_callback);
-    ft_loader_set_fractal_workers_count_from_c(&bl);
-
-    struct merge_fileset fs;
-    init_merge_fileset(&fs);
-
-    int a_keys[] = {   1,    3,    5,    7, 8, 9};
-    int b_keys[] = { 0,   2,    4,    6         };
-    const char *a_vals[] = {"a", "c", "e", "g", "h", "i"};
-    const char *b_vals[] = {"0", "b", "d", "f"};
-    int sorted_keys[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    const char *sorted_vals[] = { "0", "a", "b", "c", "d", "e", "f", "g", "h", "i" };
-    struct rowset aset, bset;
-    uint64_t size_est = 0;
-    fill_rowset(&aset, a_keys, a_vals, 6, &size_est);
-    fill_rowset(&bset, b_keys, b_vals, 4, &size_est);
-
-    toku_ft_loader_set_n_rows(&bl, 6+4);
-
-    ft_loader_set_error_function(&bl.error_callback, err_cb, NULL);
-    r = ft_loader_sort_and_write_rows(&aset, &fs, &bl, 0, dest_db, compare_ints);  CKERR(r);
-    r = ft_loader_sort_and_write_rows(&bset, &fs, &bl, 0, dest_db, compare_ints);  CKERR(r);
-    assert(fs.n_temp_files==2 && fs.n_temp_files_limit >= fs.n_temp_files);
-    // destroy_rowset(&aset);
-    // destroy_rowset(&bset);
-    for (int i=0; i<2; i++) assert(fs.data_fidxs[i].idx != -1);
-
-    ft_loader_fi_close_all(&bl.file_infos);
-
-    QUEUE q;
-    r = toku_queue_create(&q, 0xFFFFFFFF); // infinite queue.
-    assert(r==0);
-
-    r = merge_files(&fs, &bl, 0, dest_db, compare_ints, 0, q); CKERR(r);
-
-    assert(fs.n_temp_files==0);
-
-    DESCRIPTOR_S desc;
-    toku_fill_dbt(&desc.dbt, "abcd", 4);
-
-    int fd = open(output_name, O_RDWR | O_CREAT | O_BINARY, S_IRWXU|S_IRWXG|S_IRWXO);
-    assert(fd>=0);
-    
-    r = toku_loader_write_ft_from_q_in_C(&bl, &desc, fd, 1000, q, size_est, 0, 0, 0, TOKU_DEFAULT_COMPRESSION_METHOD, 16);
-    assert(r==0);
-
-    destroy_merge_fileset(&fs);
-    ft_loader_fi_destroy(&bl.file_infos, false);
-    ft_loader_destroy_error_callback(&bl.error_callback);
-    ft_loader_lock_destroy(&bl);
-
-    // verify the dbfile
-    verify_dbfile(10, sorted_keys, sorted_vals, output_name);
-
-    r = toku_queue_destroy(q);
-    assert(r==0);
-}
-
 /* Test to see if we can open temporary files. */
 int test_main (int argc, const char *argv[]) {
     argc--; argv++;
@@ -472,7 +348,6 @@ int test_main (int argc, const char *argv[]) {
     test_read_write_rows(tf_template);
     test_merge();
     test_mergesort_row_array();
-    test_merge_files(tf_template, output_name);
     
     {
 	char deletecmd[templen];

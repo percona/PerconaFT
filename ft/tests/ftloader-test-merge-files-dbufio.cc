@@ -306,7 +306,7 @@ static int qsort_compare_ints (const void *a, const void *b) {
 
 }
 
-static int compare_ints (DB* UU(desc), const DBT *akey, const DBT *bkey) {
+static int compare_ints (const DBT *akey, const DBT *bkey) {
     assert(akey->size==sizeof(int));
     assert(bkey->size==sizeof(int));
     return qsort_compare_ints(akey->data, bkey->data);
@@ -385,7 +385,6 @@ static void test (const char *directory, bool is_error) {
     }
 
     FTLOADER bl;
-    FT_HANDLE *XCALLOC_N(N_DEST_DBS, fts);
     DB* *XCALLOC_N(N_DEST_DBS, dbs);
     const char **XMALLOC_N(N_DEST_DBS, new_fnames_in_env);
     for (int i=0; i<N_DEST_DBS; i++) {
@@ -403,16 +402,14 @@ static void test (const char *directory, bool is_error) {
     }
     LSN *XMALLOC(lsnp);
     {
-	int r = toku_ft_loader_internal_init (&bl,
+	int r = toku_ft_loader_internal_init (&bl, NULL, NULL,
 					       ct,
 					       (generate_row_for_put_func)NULL,
 					       (DB*)NULL,
-					       N_DEST_DBS, fts, dbs,
-					       new_fnames_in_env,
+					       N_DEST_DBS, dbs,
 					       bt_compare_functions,
 					       "tempxxxxxx",
-					       *lsnp,
-                                               nullptr, true, 0, false, true);
+                            true, 0, false);
 	assert(r==0);
     }
 
@@ -517,7 +514,6 @@ static void test (const char *directory, bool is_error) {
     destroy_dbufio_fileset(bfs);
     toku_free(fnames);
     toku_free(fds);
-    toku_free(fts);
     toku_free(dbs);
     toku_free(new_fnames_in_env);
     toku_free(bt_compare_functions);

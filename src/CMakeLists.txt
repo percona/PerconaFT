@@ -2,6 +2,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_BINARY_DIR}/.."
 
 set(tokudb_srcs
   ydb
+  ydb_env_open_close
   ydb_cursor
   ydb_db
   ydb_env_func
@@ -10,9 +11,9 @@ set(tokudb_srcs
   ydb_write
   errors
   loader
-  indexer
-  indexer-undo-do
   toku_patent
+  dictionary
+  iname_helpers
   )
 
 ## make the shared library

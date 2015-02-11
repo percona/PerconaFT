@@ -92,9 +92,6 @@ PATENT RIGHTS GRANT:
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
-#include "ft/txn/txn.h"
-#include "ft/cachetable/cachetable.h"
-#include "ft/comparator.h"
 #include "ft/ft-ops.h"
 
 // The loader callbacks are C functions and need to be defined as such
@@ -103,23 +100,23 @@ typedef void (*ft_loader_error_func)(DB *, int which_db, int err, DBT *key, DBT 
 
 typedef int (*ft_loader_poll_func)(void *extra, float progress);
 
+typedef int (*ft_loader_write_func)(DB *, DBT *k, DBT* val, void* extra);
+
 typedef struct ft_loader_s *FTLOADER;
 
 int toku_ft_loader_open (FTLOADER *bl,
+                          ft_loader_write_func write_func,
+                          void* write_func_extra,
                           CACHETABLE cachetable,
-			  generate_row_for_put_func g,
-			  DB *src_db,
-			  int N,
-			  FT_HANDLE ft_hs[/*N*/], DB* dbs[/*N*/],
-			  const char * new_fnames_in_env[/*N*/],
-			  ft_compare_func bt_compare_functions[/*N*/],
-			  const char *temp_file_template,
-                          LSN load_lsn,
-                          TOKUTXN txn,
+                          generate_row_for_put_func g,
+                          DB *src_db,
+                          int N,
+                          DB* dbs[/*N*/],
+                          ft_compare_func bt_compare_functions[/*N*/],
+                          const char *temp_file_template,
                           bool reserve_memory,
                           uint64_t reserve_memory_size,
-                          bool compress_intermediates,
-                          bool allow_puts);
+                          bool compress_intermediates);
 
 int toku_ft_loader_put (FTLOADER bl, DBT *key, DBT *val);
 
@@ -134,5 +131,3 @@ int toku_ft_loader_abort(FTLOADER bl,
 void toku_ft_loader_set_size_factor (uint32_t factor);
 
 void ft_loader_set_os_fwrite (size_t (*fwrite_fun)(const void*,size_t,size_t,FILE*));
-
-size_t ft_loader_leafentry_size(size_t key_size, size_t val_size, TXNID xid);

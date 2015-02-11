@@ -290,7 +290,6 @@ static void print_defines (void) {
     //printf("#define DB_PRELOCKED_FILE_READ 0x00200000\n"); // private tokudb. No longer supported in #4472
     printf("#define DB_IS_HOT_INDEX 0x00100000\n"); // private tokudb
     printf("#define DBC_DISABLE_PREFETCHING 0x20000000\n"); // private tokudb
-    printf("#define DB_UPDATE_CMP_DESCRIPTOR 0x40000000\n"); // private tokudb
     printf("#define TOKUFT_DIRTY_SHUTDOWN %x\n", 1<<31);
 
     {
@@ -368,7 +367,6 @@ static void print_defines (void) {
     printf("/* LOADER flags */\n");
     {
         uint32_t loader_flags = 0;
-        dodefine_from_track(loader_flags, LOADER_DISALLOW_PUTS); // Loader is only used for side effects.
         dodefine_from_track(loader_flags, LOADER_COMPRESS_INTERMEDIATES);
     }
 }
@@ -426,33 +424,18 @@ static void print_db_env_struct (void) {
                              "int (*checkpointing_resume)                 (DB_ENV*) /* Alert tokuft that 'postpone' is no longer necessary */",
                              "int (*checkpointing_begin_atomic_operation) (DB_ENV*) /* Begin a set of operations (that must be atomic as far as checkpoints are concerned). i.e. inserting into every index in one table */",
                              "int (*checkpointing_end_atomic_operation)   (DB_ENV*) /* End   a set of operations (that must be atomic as far as checkpoints are concerned). */",
-                             "int (*set_default_bt_compare)               (DB_ENV*,int (*bt_compare) (DB *, const DBT *, const DBT *)) /* Set default (key) comparison function for all DBs in this environment.  Required for RECOVERY since you cannot open the DBs manually. */",
+                             "int (*set_default_bt_compare)               (DB_ENV*,int (*bt_compare) (const DBT *, const DBT *)) /* Set default (key) comparison function for all DBs in this environment.  Required for RECOVERY since you cannot open the DBs manually. */",
                              "int (*get_engine_status_num_rows)           (DB_ENV*, uint64_t*)  /* return number of rows in engine status */",
                              "int (*get_engine_status)                    (DB_ENV*, TOKU_ENGINE_STATUS_ROW, uint64_t, uint64_t*, fs_redzone_state*, uint64_t*, char*, int, toku_engine_status_include_type) /* Fill in status struct and redzone state, possibly env panic string */",
                              "int (*get_engine_status_text)               (DB_ENV*, char*, int)     /* Fill in status text */",
                              "int (*crash)                                (DB_ENV*, const char*/*expr_as_string*/,const char */*fun*/,const char*/*file*/,int/*line*/, int/*errno*/)",
                              "int (*get_iname)                            (DB_ENV* env, DBT* dname_dbt, DBT* iname_dbt) /* FOR TEST ONLY: lookup existing iname */",
-                             "int (*create_loader)                        (DB_ENV *env, DB_TXN *txn, DB_LOADER **blp,    DB *src_db, int N, DB *dbs[/*N*/], uint32_t db_flags[/*N*/], uint32_t dbt_flags[/*N*/], uint32_t loader_flags)",
-                             "int (*create_indexer)                       (DB_ENV *env, DB_TXN *txn, DB_INDEXER **idxrp, DB *src_db, int N, DB *dbs[/*N*/], uint32_t db_flags[/*N*/], uint32_t indexer_flags)",
-                             "int (*put_multiple)                         (DB_ENV *env, DB *src_db, DB_TXN *txn,\n"
-                             "                                               const DBT *src_key, const DBT *src_val,\n"
-                             "                                               uint32_t num_dbs, DB **db_array, DBT_ARRAY *keys, DBT_ARRAY *vals, uint32_t *flags_array) /* insert into multiple DBs */",
-                             "int (*set_generate_row_callback_for_put)    (DB_ENV *env, generate_row_for_put_func generate_row_for_put)",
-                             "int (*del_multiple)                         (DB_ENV *env, DB *src_db, DB_TXN *txn,\n"
-                             "                                               const DBT *src_key, const DBT *src_val,\n"
-                             "                                               uint32_t num_dbs, DB **db_array, DBT_ARRAY *keys, uint32_t *flags_array) /* delete from multiple DBs */",
-                             "int (*set_generate_row_callback_for_del)    (DB_ENV *env, generate_row_for_del_func generate_row_for_del)",
-                             "int (*update_multiple)                      (DB_ENV *env, DB *src_db, DB_TXN *txn,\n"
-                             "                                               DBT *old_src_key, DBT *old_src_data,\n"
-                             "                                               DBT *new_src_key, DBT *new_src_data,\n"
-                             "                                               uint32_t num_dbs, DB **db_array, uint32_t *flags_array,\n"
-                             "                                               uint32_t num_keys, DBT_ARRAY *keys,\n"
-                             "                                               uint32_t num_vals, DBT_ARRAY *vals) /* update multiple DBs */",
+                             "int (*create_loader)                        (DB_ENV *env, DB_TXN *txn, DB_LOADER **blp,    DB *src_db, int N, DB *dbs[/*N*/], uint32_t db_flags[/*N*/], uint32_t dbt_flags[/*N*/], uint32_t loader_flags, generate_row_for_put_func g)",
                              "int (*get_redzone)                          (DB_ENV *env, int *redzone) /* get the redzone limit */",
                              "int (*set_redzone)                          (DB_ENV *env, int redzone) /* set the redzone limit in percent of total space */",
                              "int (*set_lk_max_memory)                    (DB_ENV *env, uint64_t max)",
                              "int (*get_lk_max_memory)                    (DB_ENV *env, uint64_t *max)",
-                             "void (*set_update)                          (DB_ENV *env, int (*update_function)(DB *, const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra))",
+                             "void (*set_update)                          (DB_ENV *env, int (*update_function)(const DBT *key, const DBT *old_val, const DBT *extra, void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra))",
                              "int (*set_lock_timeout)                     (DB_ENV *env, uint64_t default_lock_wait_time_msec, uint64_t (*get_lock_wait_time_cb)(uint64_t default_lock_wait_time))",
                              "int (*get_lock_timeout)                     (DB_ENV *env, uint64_t *lock_wait_time_msec)",
                              "int (*set_lock_timeout_callback)            (DB_ENV *env, lock_timeout_callback callback)",
@@ -531,9 +514,6 @@ static void print_db_struct (void) {
 			 "const DBT* (*dbt_pos_infty)(void) /* Return the special DBT that refers to positive infinity in the lock table.*/",
 			 "const DBT* (*dbt_neg_infty)(void)/* Return the special DBT that refers to negative infinity in the lock table.*/",
 			 "void (*get_max_row_size) (DB*, uint32_t *max_key_size, uint32_t *max_row_size)",
-			 "DESCRIPTOR descriptor /* saved row/dictionary descriptor for aiding in comparisons */",
-			 "DESCRIPTOR cmp_descriptor /* saved row/dictionary descriptor for aiding in comparisons */",
-			 "int (*change_descriptor) (DB*, DB_TXN*, const DBT* descriptor, uint32_t) /* change row/dictionary descriptor for a db.  Available only while db is open */",
 			 "int (*getf_set)(DB*, DB_TXN*, uint32_t, DBT*, YDB_CALLBACK_FUNCTION, void*) /* same as DBC->c_getf_set without a persistent cursor) */",
 			 "int (*optimize)(DB*) /* Run garbage collecion and promote all transactions older than oldest. Amortized (happens during flattening) */",
 			 "int (*hot_optimize)(DB*, DBT*, DBT*, int (*progress_callback)(void *progress_extra, float progress), void *progress_extra, uint64_t* loops_run)",
@@ -549,13 +529,12 @@ static void print_db_struct (void) {
 			 "int (*get_fanout)(DB *db, uint32_t *fanout)",
 			 "int (*set_fanout)(DB *db, uint32_t fanout)",
 			 "int (*set_memcmp_magic)(DB *db, uint8_t magic)",
-			 "int (*set_always_memcmp)(DB *db, bool always_memcmp)",
-			 "int (*set_indexer)(DB*, DB_INDEXER*)",
-			 "void (*get_indexer)(DB*, DB_INDEXER**)",
+             "int (*set_always_memcmp)(DB *db, bool always_memcmp)",
 			 "int (*verify_with_progress)(DB *, int (*progress_callback)(void *progress_extra, float progress), void *progress_extra, int verbose, int keep_going)",
 			 "int (*update)(DB *, DB_TXN*, const DBT *key, const DBT *extra, uint32_t flags)",
 			 "int (*update_broadcast)(DB *, DB_TXN*, const DBT *extra, uint32_t flags)",
 			 "int (*get_fractal_tree_info64)(DB*,uint64_t*,uint64_t*,uint64_t*,uint64_t*)",
+             "int (*create_new_db)(DB *db, DB_TXN *txn, const char* dname, const char *groupname, uint32_t flags)",
 			 "int (*iterate_fractal_tree_block_map)(DB*,int(*)(uint64_t,int64_t,int64_t,int64_t,int64_t,void*),void*)",
                          "const char *(*get_dname)(DB *db)",
                          "int (*get_last_key)(DB *db, YDB_CALLBACK_FUNCTION func, void* extra)",
@@ -719,18 +698,6 @@ int main (int argc, char *const argv[] __attribute__((__unused__))) {
     printf("  int (*abort)(DB_LOADER *loader);                                                                        /* abort loading, free memory */\n");
     printf("};\n");
 
-    //indexer
-    printf("typedef struct __toku_indexer DB_INDEXER;\n");
-    printf("struct __toku_indexer_internal;\n");
-    printf("struct __toku_indexer {\n");
-    printf("  struct __toku_indexer_internal *i;\n");
-    printf("  int (*set_error_callback)(DB_INDEXER *indexer, void (*error_cb)(DB *db, int i, int err, DBT *key, DBT *val, void *error_extra), void *error_extra); /* set the error callback */\n");
-    printf("  int (*set_poll_function)(DB_INDEXER *indexer, int (*poll_func)(void *extra, float progress), void *poll_extra);             /* set the polling function */\n");
-    printf("  int (*build)(DB_INDEXER *indexer);  /* build the indexes */\n");
-    printf("  int (*close)(DB_INDEXER *indexer);  /* finish indexing, free memory */\n");
-    printf("  int (*abort)(DB_INDEXER *indexer);  /* abort  indexing, free memory */\n");
-    printf("};\n");
-
     // Filesystem redzone state
     printf("typedef enum { \n");
     printf("    FS_GREEN = 0,                                   // green zone  (we have lots of space) \n");
@@ -795,10 +762,6 @@ int main (int argc, char *const argv[] __attribute__((__unused__))) {
     print_db_key_range_struct();
     print_db_lsn_struct();
     print_dbt_struct();
-
-    printf("typedef struct __toku_descriptor {\n");
-    printf("    DBT       dbt;\n");
-    printf("} *DESCRIPTOR, DESCRIPTOR_S;\n");
 
     //file fragmentation info
     //a block is just a contiguous region in a file.

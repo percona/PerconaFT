@@ -501,7 +501,7 @@ static void test_loader(DB **dbs)
     CKERR(r);
     hiwater_start = hiwater;
     if (footprint_print)  printf("%s:%d Hiwater=%ld water=%ld\n", __FILE__, __LINE__, hiwater, water);
-    r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags);
+    r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags, put_multiple_generate);
     CKERR(r);
     if (footprint_print)  printf("%s:%d Hiwater=%ld water=%ld\n", __FILE__, __LINE__, hiwater, water);
     r = loader->set_error_callback(loader, NULL, NULL);
@@ -618,15 +618,11 @@ static void run_test(void)
     if (datadir) {
         r = env->set_data_dir(env, datadir);                                                                  CKERR(r);
     }
-    r = env->set_generate_row_callback_for_put(env, put_multiple_generate);
-    CKERR(r);
     int envflags = DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE | DB_PRIVATE;
     r = env->open(env, envdir, envflags, S_IRWXU+S_IRWXG+S_IRWXO);                                            CKERR(r);
     env->set_errfile(env, stderr);
     r = env->checkpointing_set_period(env, 60);                                                                CKERR(r);
 
-    DBT desc;
-    dbt_init(&desc, "foo", sizeof("foo"));
     char name[MAX_NAME*2];
 
     DB **dbs = (DB**)toku_malloc(sizeof(DB*) * NUM_DBS);
@@ -638,9 +634,6 @@ static void run_test(void)
         dbs[i]->app_private = &idx[i];
         snprintf(name, sizeof(name), "db_%04x", i);
         r = dbs[i]->open(dbs[i], NULL, name, NULL, DB_BTREE, DB_CREATE, 0666);                                CKERR(r);
-        IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-                { int chk_r = dbs[i]->change_descriptor(dbs[i], txn_desc, &desc, 0); CKERR(chk_r); }
-        });
     }
 
     generate_permute_tables();
@@ -749,7 +742,6 @@ static void do_args(int argc, char * const argv[]) {
         } else if (strcmp(argv[0], "-c")==0) {
             CHECK_RESULTS = 1;
         } else if (strcmp(argv[0], "-p")==0) {
-            DISALLOW_PUTS = LOADER_DISALLOW_PUTS;
         } else if (strcmp(argv[0], "-z")==0) {
             COMPRESS = LOADER_COMPRESS_INTERMEDIATES;
         } else if (strcmp(argv[0], "-m")==0) {

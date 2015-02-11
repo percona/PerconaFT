@@ -95,7 +95,7 @@ namespace toku {
 
 void concurrent_tree_unit_test::test_lkr_acquire_release(void) {
     comparator cmp;
-    cmp.create(compare_dbts, nullptr);
+    cmp.create(compare_dbts, 0);
 
     // we'll test a tree that has values 0..20
     const uint64_t min = 0;
@@ -161,7 +161,6 @@ void concurrent_tree_unit_test::test_lkr_acquire_release(void) {
         tree.destroy();
     }
 
-    cmp.destroy();
 }
 
 } /* namespace toku */

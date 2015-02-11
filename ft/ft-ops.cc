@@ -248,7 +248,6 @@ status_init(void)
     // Value fields are initialized to zero by compiler.
     STATUS_INIT(FT_UPDATES,                                DICTIONARY_UPDATES, PARCOUNT, "dictionary updates", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(FT_UPDATES_BROADCAST,                      DICTIONARY_BROADCAST_UPDATES, PARCOUNT, "dictionary broadcast updates", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DESCRIPTOR_SET,                         DESCRIPTOR_SET, PARCOUNT, "descriptor set", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(FT_MSN_DISCARDS,                           MESSAGES_IGNORED_BY_LEAF_DUE_TO_MSN, PARCOUNT, "messages ignored by leaf due to msn", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     STATUS_INIT(FT_TOTAL_RETRIES,                          nullptr, PARCOUNT, "total search retries due to TRY_AGAIN", TOKU_ENGINE_STATUS);
     STATUS_INIT(FT_SEARCH_TRIES_GT_HEIGHT,                 nullptr, PARCOUNT, "searches requiring more tries than the height of the tree", TOKU_ENGINE_STATUS);
@@ -600,15 +599,6 @@ PAIR_ATTR make_invalid_pair_attr(void) {
 }
 
 
-// assign unique dictionary id
-static uint64_t dict_id_serial = 1;
-static DICTIONARY_ID
-next_dict_id(void) {
-    uint64_t i = toku_sync_fetch_and_add(&dict_id_serial, 1);
-    assert(i);        // guarantee unique dictionary id by asserting 64-bit counter never wraps
-    DICTIONARY_ID d = {.dictid = i};
-    return d;
-}
 
 // TODO: This isn't so pretty
 void ftnode_fetch_extra::_create_internal(FT ft_) {
@@ -1001,8 +991,7 @@ void toku_ftnode_pe_est_callback(
     paranoid_invariant(ftnode_pv != NULL);
     long bytes_to_free = 0;
     FTNODE node = static_cast<FTNODE>(ftnode_pv);
-    if (node->dirty || node->height == 0 ||
-        node->layout_version_read_from_disk < FT_FIRST_LAYOUT_VERSION_WITH_BASEMENT_NODES) {
+    if (node->dirty || node->height == 0) {
         *bytes_freed_estimate = 0;
         *cost = PE_CHEAP;
         goto exit;
@@ -1078,11 +1067,7 @@ int toku_ftnode_pe_callback(void *ftnode_pv, PAIR_ATTR old_attr, void *write_ext
     if (node->dirty) {
         goto exit;
     }
-    // Don't partially evict nodes whose partitions can't be read back
-    // from disk individually
-    if (node->layout_version_read_from_disk < FT_FIRST_LAYOUT_VERSION_WITH_BASEMENT_NODES) {
-        goto exit;
-    }
+
     //
     // partial eviction for nonleaf nodes
     //
@@ -1582,13 +1567,13 @@ static void inject_message_in_locked_node(
     // node we're injecting into, we know no other thread will get an MSN
     // after us and get that message into our subtree before us.
     MSN msg_msn = { .msn = toku_sync_add_and_fetch(&ft->h->max_msn_in_ft.msn, 1) };
-    ft_msg msg_with_msn(msg.kdbt(), msg.vdbt(), msg.type(), msg_msn, msg.xids());
+    ft_msg msg_with_msn(msg.kdbt(), msg.max_kdbt(), msg.vdbt(), msg.type(), msg_msn, msg.xids());
     paranoid_invariant(msg_with_msn.msn().msn > node->max_msn_applied_to_node_on_disk.msn);
 
     STAT64INFO_S stats_delta = {0,0};
     toku_ftnode_put_msg(
         ft->cmp,
-        ft->update_fun,
+        ft->update_info,
         node,
         childnum,
         msg_with_msn,
@@ -1613,7 +1598,7 @@ static void inject_message_in_locked_node(
         STATUS_INC(FT_MSG_BYTES_IN, msgsize);
         STATUS_INC(FT_MSG_BYTES_CURR, msgsize);
         STATUS_INC(FT_MSG_NUM, 1);
-        if (ft_msg_type_applies_all(msg.type())) {
+        if (ft_msg_type_applies_multiple(msg.type())) {
             STATUS_INC(FT_MSG_NUM_BROADCAST, 1);
         }
     }
@@ -2135,7 +2120,7 @@ void toku_ft_root_put_msg(
 
 // TODO: Remove me, I'm boring.
 static int ft_compare_keys(FT ft, const DBT *a, const DBT *b)
-// Effect: Compare two keys using the given fractal tree's comparator/descriptor
+// Effect: Compare two keys
 {
     return ft->cmp(a, b);
 }
@@ -2392,35 +2377,31 @@ void toku_ft_insert (FT_HANDLE ft_handle, DBT *key, DBT *val, TOKUTXN txn) {
     toku_ft_maybe_insert(ft_handle, key, val, txn, false, ZERO_LSN, true, FT_INSERT);
 }
 
-void toku_ft_load_recovery(TOKUTXN txn, FILENUM old_filenum, char const * new_iname, int do_fsync, int do_log, LSN *load_lsn) {
-    paranoid_invariant(txn);
-    toku_txn_force_fsync_on_commit(txn);  //If the txn commits, the commit MUST be in the log
-                                          //before the (old) file is actually unlinked
-    TOKULOGGER logger = toku_txn_logger(txn);
-
-    BYTESTRING new_iname_bs = {.len=(uint32_t) strlen(new_iname), .data=(char*)new_iname};
-    toku_logger_save_rollback_load(txn, old_filenum, &new_iname_bs);
-    if (do_log && logger) {
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        toku_log_load(logger, load_lsn, do_fsync, txn, xid, old_filenum, new_iname_bs);
-    }
-}
-
 // 2954
 // this function handles the tasks needed to be recoverable
 //  - write to rollback log
 //  - write to recovery log
-void toku_ft_hot_index_recovery(TOKUTXN txn, FILENUMS filenums, int do_fsync, int do_log, LSN *hot_index_lsn)
+void toku_ft_hot_index_recovery(TOKUTXN txn, FILENUM filenum, int do_log, bool has_bounds, DBT* min, DBT* max)
 {
     paranoid_invariant(txn);
     TOKULOGGER logger = toku_txn_logger(txn);
 
     // write to the rollback log
-    toku_logger_save_rollback_hot_index(txn, &filenums);
+    BYTESTRING minBS;
+    memset(&minBS, 0, sizeof(BYTESTRING));
+    BYTESTRING maxBS;
+    memset(&maxBS, 0, sizeof(BYTESTRING));
+    if (has_bounds) {
+        minBS.len = min->size;
+        minBS.data = (char *)min->data;
+        maxBS.len = max->size;
+        maxBS.data = (char *)max->data;
+    }
+    toku_logger_save_rollback_hot_index(txn, filenum, has_bounds, &minBS, &maxBS);
     if (do_log && logger) {
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
         // write to the recovery log
-        toku_log_hot_index(logger, hot_index_lsn, do_fsync, txn, xid, filenums);
+        TXNID_PAIR xid = toku_txn_get_txnid(txn);
+        toku_log_hot_index(logger, NULL, 0, txn, filenum, xid, has_bounds, minBS, maxBS);
     }
 }
 
@@ -2460,47 +2441,16 @@ void toku_ft_optimize (FT_HANDLE ft_h) {
     }
 }
 
-void toku_ft_load(FT_HANDLE ft_handle, TOKUTXN txn, char const * new_iname, int do_fsync, LSN *load_lsn) {
-    FILENUM old_filenum = toku_cachefile_filenum(ft_handle->ft->cf);
-    int do_log = 1;
-    toku_ft_load_recovery(txn, old_filenum, new_iname, do_fsync, do_log, load_lsn);
-}
-
 // ft actions for logging hot index filenums
-void toku_ft_hot_index(FT_HANDLE ft_handle __attribute__ ((unused)), TOKUTXN txn, FILENUMS filenums, int do_fsync, LSN *lsn) {
-    int do_log = 1;
-    toku_ft_hot_index_recovery(txn, filenums, do_fsync, do_log, lsn);
-}
-
-void
-toku_ft_log_put (TOKUTXN txn, FT_HANDLE ft_handle, const DBT *key, const DBT *val) {
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        BYTESTRING valbs = {.len=val->size, .data=(char *) val->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        toku_log_enq_insert(logger, (LSN*)0, 0, txn, toku_cachefile_filenum(ft_handle->ft->cf), xid, keybs, valbs);
-    }
-}
-
-void
-toku_ft_log_put_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val) {
-    assert(txn);
-    assert(num_fts > 0);
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        FILENUM         fnums[num_fts];
-        uint32_t i;
-        for (i = 0; i < num_fts; i++) {
-            fnums[i] = toku_cachefile_filenum(fts[i]->ft->cf);
-        }
-        FILENUMS filenums = {.num = num_fts, .filenums = fnums};
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        BYTESTRING valbs = {.len=val->size, .data=(char *) val->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        FILENUM src_filenum = src_ft ? toku_cachefile_filenum(src_ft->ft->cf) : FILENUM_NONE;
-        toku_log_enq_insert_multiple(logger, (LSN*)0, 0, txn, src_filenum, filenums, xid, keybs, valbs);
-    }
+void toku_ft_hot_index(FT_HANDLE ft_handle, TOKUTXN txn) {
+    toku_ft_hot_index_recovery(
+        txn,
+        toku_cachefile_filenum(ft_handle->ft->cf),
+        true,
+        false,
+        NULL,
+        NULL
+        );
 }
 
 TXN_MANAGER toku_ft_get_txn_manager(FT_HANDLE ft_h) {
@@ -2668,36 +2618,6 @@ void toku_ft_delete(FT_HANDLE ft_handle, DBT *key, TOKUTXN txn) {
     toku_ft_maybe_delete(ft_handle, key, txn, false, ZERO_LSN, true);
 }
 
-void
-toku_ft_log_del(TOKUTXN txn, FT_HANDLE ft_handle, const DBT *key) {
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        toku_log_enq_delete_any(logger, (LSN*)0, 0, txn, toku_cachefile_filenum(ft_handle->ft->cf), xid, keybs);
-    }
-}
-
-void
-toku_ft_log_del_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val) {
-    assert(txn);
-    assert(num_fts > 0);
-    TOKULOGGER logger = toku_txn_logger(txn);
-    if (logger) {
-        FILENUM         fnums[num_fts];
-        uint32_t i;
-        for (i = 0; i < num_fts; i++) {
-            fnums[i] = toku_cachefile_filenum(fts[i]->ft->cf);
-        }
-        FILENUMS filenums = {.num = num_fts, .filenums = fnums};
-        BYTESTRING keybs = {.len=key->size, .data=(char *) key->data};
-        BYTESTRING valbs = {.len=val->size, .data=(char *) val->data};
-        TXNID_PAIR xid = toku_txn_get_txnid(txn);
-        FILENUM src_filenum = src_ft ? toku_cachefile_filenum(src_ft->ft->cf) : FILENUM_NONE;
-        toku_log_enq_delete_multiple(logger, (LSN*)0, 0, txn, src_filenum, filenums, xid, keybs, valbs);
-    }
-}
-
 void toku_ft_maybe_delete(FT_HANDLE ft_h, DBT *key, TOKUTXN txn, bool oplsn_valid, LSN oplsn, bool do_logging) {
     XIDS message_xids = toku_xids_get_root_xids(); //By default use committed messages
     TXNID_PAIR xid = toku_txn_get_txnid(txn);
@@ -2730,6 +2650,55 @@ void toku_ft_maybe_delete(FT_HANDLE ft_h, DBT *key, TOKUTXN txn, bool oplsn_vali
     }
 }
 
+void toku_ft_maybe_delete_multicast(
+    FT_HANDLE ft_h,
+    DBT *min_key,
+    DBT *max_key,
+    TOKUTXN txn,
+    bool oplsn_valid,
+    LSN oplsn,
+    bool do_logging,
+    bool is_resetting_op
+    )
+{
+    XIDS message_xids = toku_xids_get_root_xids(); //By default use committed messages
+    TXNID_PAIR xid = toku_txn_get_txnid(txn);
+    uint8_t resetting = is_resetting_op ? 1 : 0;
+    if (txn) {
+        BYTESTRING minkeybs = {min_key->size, (char *) min_key->data};
+        BYTESTRING maxkeybs = {max_key->size, (char *) max_key->data};
+        toku_logger_save_rollback_cmddeletemulti(txn, toku_cachefile_filenum(ft_h->ft->cf), &minkeybs, &maxkeybs, resetting);
+        toku_txn_maybe_note_ft(txn, ft_h->ft);
+        message_xids = toku_txn_get_xids(txn);
+    }
+    TOKULOGGER logger = toku_txn_logger(txn);
+    if (do_logging && logger) {
+        BYTESTRING min_keybs = {.len=min_key->size, .data=(char *) min_key->data};
+        BYTESTRING max_keybs = {.len=max_key->size, .data=(char *) max_key->data};
+        toku_log_enq_delete_multi(logger, (LSN*)0, 0, txn, toku_cachefile_filenum(ft_h->ft->cf), xid, min_keybs, max_keybs, resetting);
+    }
+
+    LSN treelsn;
+    if (oplsn_valid && oplsn.lsn <= (treelsn = toku_ft_checkpoint_lsn(ft_h->ft)).lsn) {
+        // do nothing
+    } else {
+        TXN_MANAGER txn_manager = toku_ft_get_txn_manager(ft_h);
+        txn_manager_state txn_state_for_gc(txn_manager);
+
+        TXNID oldest_referenced_xid_estimate = toku_ft_get_oldest_referenced_xid_estimate(ft_h);
+        txn_gc_info gc_info(&txn_state_for_gc,
+                            oldest_referenced_xid_estimate,
+                            // no messages above us, we can implicitly promote uxrs based on this xid
+                            oldest_referenced_xid_estimate,
+                            txn != nullptr ? !txn->for_recovery : false);
+
+        DBT val;
+        toku_init_dbt(&val);
+        ft_msg msg(min_key, max_key, &val, FT_DELETE_MULTICAST, ZERO_MSN, message_xids);
+        toku_ft_root_put_msg(ft_h->ft, msg, &gc_info);
+    }
+}
+
 void toku_ft_send_delete(FT_HANDLE ft_handle, DBT *key, XIDS xids, txn_gc_info *gc_info) {
     DBT val; toku_init_dbt(&val);
     ft_msg msg(key, toku_init_dbt(&val), FT_DELETE_ANY, ZERO_MSN, xids);
@@ -2743,11 +2712,11 @@ int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *ft_handle_
                    int basementnodesize,
                    enum toku_compression_method compression_method,
                    CACHETABLE cachetable, TOKUTXN txn,
-                   int (*compare_fun)(DB *, const DBT*,const DBT*)) {
+                   ft_compare_func compare_fun) {
     FT_HANDLE ft_handle;
     const int only_create = 0;
 
-    toku_ft_handle_create(&ft_handle);
+    toku_ft_handle_create(compare_fun, NULL, &ft_handle);
     toku_ft_handle_set_nodesize(ft_handle, nodesize);
     toku_ft_handle_set_basementnodesize(ft_handle, basementnodesize);
     toku_ft_handle_set_compression_method(ft_handle, compression_method);
@@ -2889,62 +2858,10 @@ int toku_ft_handle_set_always_memcmp(FT_HANDLE ft_handle, bool always_memcmp) {
 static int
 verify_builtin_comparisons_consistent(FT_HANDLE t, uint32_t flags) {
     if ((flags & TOKU_DB_KEYCMP_BUILTIN) && (t->options.compare_fun != toku_builtin_compare_fun)) {
+        printf("flags have TOKU_DB_KEYCMP_BUILTIN set, but the FT_HANDLE does not have the right comparison function\n");
         return EINVAL;
     }
     return 0;
-}
-
-//
-// See comments in toku_db_change_descriptor to understand invariants 
-// in the system when this function is called
-//
-void toku_ft_change_descriptor(
-    FT_HANDLE ft_h,
-    const DBT* old_descriptor,
-    const DBT* new_descriptor,
-    bool do_log,
-    TOKUTXN txn,
-    bool update_cmp_descriptor
-    )
-{
-    DESCRIPTOR_S new_d;
-
-    // if running with txns, save to rollback + write to recovery log
-    if (txn) {
-        // put information into rollback file
-        BYTESTRING old_desc_bs = { old_descriptor->size, (char *) old_descriptor->data };
-        BYTESTRING new_desc_bs = { new_descriptor->size, (char *) new_descriptor->data };
-        toku_logger_save_rollback_change_fdescriptor(
-            txn,
-            toku_cachefile_filenum(ft_h->ft->cf),
-            &old_desc_bs
-            );
-        toku_txn_maybe_note_ft(txn, ft_h->ft);
-
-        if (do_log) {
-            TOKULOGGER logger = toku_txn_logger(txn);
-            TXNID_PAIR xid = toku_txn_get_txnid(txn);
-            toku_log_change_fdescriptor(
-                logger, NULL, 0,
-                txn,
-                toku_cachefile_filenum(ft_h->ft->cf),
-                xid,
-                old_desc_bs,
-                new_desc_bs,
-                update_cmp_descriptor
-                );
-        }
-    }
-
-    // write new_descriptor to header
-    new_d.dbt = *new_descriptor;
-    toku_ft_update_descriptor(ft_h->ft, &new_d);
-    // very infrequent operation, worth precise threadsafe count
-    STATUS_INC(FT_DESCRIPTOR_SET, 1);
-
-    if (update_cmp_descriptor) {
-        toku_ft_update_cmp_descriptor(ft_h->ft);
-    }
 }
 
 static void
@@ -2958,7 +2875,7 @@ toku_ft_handle_inherit_options(FT_HANDLE t, FT ft) {
         .memcmp_magic = ft->cmp.get_memcmp_magic(),
         .always_memcmp = ft->cmp.get_always_memcmp(),
         .compare_fun = ft->cmp.get_compare_func(),
-        .update_fun = ft->update_fun
+        .update_fun = ft->update_info.update_func
     };
     t->options = options;
     t->did_set_flags = true;
@@ -2969,7 +2886,7 @@ toku_ft_handle_inherit_options(FT_HANDLE t, FT ft) {
 // The checkpointed version (checkpoint_lsn) of the dictionary must be no later than max_acceptable_lsn .
 // Requires: The multi-operation client lock must be held to prevent a checkpoint from occuring.
 static int
-ft_handle_open(FT_HANDLE ft_h, const char *fname_in_env, int is_create, int only_create, CACHETABLE cachetable, TOKUTXN txn, FILENUM use_filenum, DICTIONARY_ID use_dictionary_id, LSN max_acceptable_lsn) {
+ft_handle_open(FT_HANDLE ft_h, const char *fname_in_env, int is_create, int only_create, CACHETABLE cachetable, TOKUTXN txn, FILENUM use_filenum, LSN max_acceptable_lsn) {
     int r;
     bool txn_created = false;
     char *fname_in_cwd = NULL;
@@ -3052,27 +2969,7 @@ ft_handle_open(FT_HANDLE ft_h, const char *fname_in_env, int is_create, int only
             toku_logger_log_fopen(txn, fname_in_env, toku_cachefile_filenum(cf), ft_h->options.flags);
         }
     }
-    int use_reserved_dict_id;
-    use_reserved_dict_id = use_dictionary_id.dictid != DICTIONARY_ID_NONE.dictid;
-    if (!was_already_open) {
-        DICTIONARY_ID dict_id;
-        if (use_reserved_dict_id) {
-            dict_id = use_dictionary_id;
-        }
-        else {
-            dict_id = next_dict_id();
-        }
-        ft->dict_id = dict_id;
-    }
-    else {
-        // dict_id is already in header
-        if (use_reserved_dict_id) {
-            assert(ft->dict_id.dictid == use_dictionary_id.dictid);
-        }
-    }
     assert(ft);
-    assert(ft->dict_id.dictid != DICTIONARY_ID_NONE.dictid);
-    assert(ft->dict_id.dictid < dict_id_serial);
 
     // important note here,
     // after this point, where we associate the header
@@ -3129,7 +3026,7 @@ toku_ft_handle_open_recovery(FT_HANDLE t, const char *fname_in_env, int is_creat
     int r;
     assert(use_filenum.fileid != FILENUM_NONE.fileid);
     r = ft_handle_open(t, fname_in_env, is_create, only_create, cachetable,
-                 txn, use_filenum, DICTIONARY_ID_NONE, max_acceptable_lsn);
+                 txn, use_filenum, max_acceptable_lsn);
     return r;
 }
 
@@ -3138,67 +3035,13 @@ toku_ft_handle_open_recovery(FT_HANDLE t, const char *fname_in_env, int is_creat
 int
 toku_ft_handle_open(FT_HANDLE t, const char *fname_in_env, int is_create, int only_create, CACHETABLE cachetable, TOKUTXN txn) {
     int r;
-    r = ft_handle_open(t, fname_in_env, is_create, only_create, cachetable, txn, FILENUM_NONE, DICTIONARY_ID_NONE, MAX_LSN);
+    r = ft_handle_open(t, fname_in_env, is_create, only_create, cachetable, txn, FILENUM_NONE, MAX_LSN);
     return r;
 }
 
-// clone an ft handle. the cloned handle has a new dict_id but refers to the same fractal tree
-int 
-toku_ft_handle_clone(FT_HANDLE *cloned_ft_handle, FT_HANDLE ft_handle, TOKUTXN txn) {
-    FT_HANDLE result_ft_handle; 
-    toku_ft_handle_create(&result_ft_handle);
-
-    // we're cloning, so the handle better have an open ft and open cf
-    invariant(ft_handle->ft);
-    invariant(ft_handle->ft->cf);
-
-    // inherit the options of the ft whose handle is being cloned.
-    toku_ft_handle_inherit_options(result_ft_handle, ft_handle->ft);
-
-    // we can clone the handle by creating a new handle with the same fname
-    CACHEFILE cf = ft_handle->ft->cf;
-    CACHETABLE ct = toku_cachefile_get_cachetable(cf);
-    const char *fname_in_env = toku_cachefile_fname_in_env(cf);
-    int r = toku_ft_handle_open(result_ft_handle, fname_in_env, false, false, ct, txn); 
-    if (r != 0) {
-        toku_ft_handle_close(result_ft_handle);
-        result_ft_handle = NULL;
-    }
-    *cloned_ft_handle = result_ft_handle;
-    return r;
-}
-
-// Open an ft in normal use.  The FILENUM and dict_id are assigned by the ft_handle_open() function.
-int
-toku_ft_handle_open_with_dict_id(
-    FT_HANDLE t,
-    const char *fname_in_env,
-    int is_create,
-    int only_create,
-    CACHETABLE cachetable,
-    TOKUTXN txn,
-    DICTIONARY_ID use_dictionary_id
-    )
-{
-    int r;
-    r = ft_handle_open(
-        t,
-        fname_in_env,
-        is_create,
-        only_create,
-        cachetable,
-        txn,
-        FILENUM_NONE,
-        use_dictionary_id,
-        MAX_LSN
-        );
-    return r;
-}
-
-DICTIONARY_ID
-toku_ft_get_dictionary_id(FT_HANDLE ft_handle) {
-    FT ft = ft_handle->ft;
-    return ft->dict_id;
+void toku_ft_add_flags(FT_HANDLE ft_handle, unsigned int flags) {
+    ft_handle->did_set_flags = true;
+    ft_handle->options.flags |= flags;
 }
 
 void toku_ft_set_flags(FT_HANDLE ft_handle, unsigned int flags) {
@@ -3254,13 +3097,8 @@ void toku_ft_handle_get_basementnodesize(FT_HANDLE ft_handle, unsigned int *base
     }
 }
 
-void toku_ft_set_bt_compare(FT_HANDLE ft_handle, int (*bt_compare)(DB*, const DBT*, const DBT*)) {
+void toku_ft_set_bt_compare(FT_HANDLE ft_handle, ft_compare_func bt_compare) {
     ft_handle->options.compare_fun = bt_compare;
-}
-
-void toku_ft_set_redirect_callback(FT_HANDLE ft_handle, on_redirect_callback redir_cb, void* extra) {
-    ft_handle->redirect_callback = redir_cb;
-    ft_handle->redirect_callback_extra = extra;
 }
 
 void toku_ft_set_update(FT_HANDLE ft_handle, ft_update_func update_fun) {
@@ -3307,7 +3145,7 @@ int toku_close_ft_handle_nolsn(FT_HANDLE ft_handle, char **UU(error_string)) {
     return 0;
 }
 
-void toku_ft_handle_create(FT_HANDLE *ft_handle_ptr) {
+void toku_ft_handle_create(ft_compare_func cmp_func, ft_update_func update_func, FT_HANDLE *ft_handle_ptr) {
     FT_HANDLE XMALLOC(ft_handle);
     memset(ft_handle, 0, sizeof *ft_handle);
     toku_list_init(&ft_handle->live_ft_handle_link);
@@ -3317,8 +3155,8 @@ void toku_ft_handle_create(FT_HANDLE *ft_handle_ptr) {
     ft_handle->options.basementnodesize = FT_DEFAULT_BASEMENT_NODE_SIZE;
     ft_handle->options.compression_method = TOKU_DEFAULT_COMPRESSION_METHOD;
     ft_handle->options.fanout = FT_DEFAULT_FANOUT;
-    ft_handle->options.compare_fun = toku_builtin_compare_fun;
-    ft_handle->options.update_fun = NULL;
+    ft_handle->options.compare_fun = cmp_func;
+    ft_handle->options.update_fun = update_func;
     *ft_handle_ptr = ft_handle;
 }
 
@@ -4739,7 +4577,7 @@ int toku_keycompare(const void *key1, uint32_t key1len, const void *key2, uint32
     }
 }
 
-int toku_builtin_compare_fun(DB *db __attribute__((__unused__)), const DBT *a, const DBT*b) {
+int toku_builtin_compare_fun(const DBT *a, const DBT*b) {
     return toku_keycompare(a->data, a->size, b->data, b->size);
 }
 

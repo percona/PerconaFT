@@ -101,6 +101,9 @@ typedef enum {
     YDB_LAYER_DIRECTORY_WRITE_LOCKS_FAIL,   /* total directory write locks unable to be taken */
     YDB_LAYER_LOGSUPPRESS,                  /* number of times logs are suppressed for empty table (2440) */
     YDB_LAYER_LOGSUPPRESS_FAIL,             /* number of times unable to suppress logs for empty table (2440) */
+    YDB_LAYER_NUM_DB_OPEN,
+    YDB_LAYER_NUM_OPEN_DBS,
+    YDB_LAYER_MAX_OPEN_DBS,
     YDB_DB_LAYER_STATUS_NUM_ROWS              /* number of rows in this status array */
 } ydb_db_lock_layer_status_entry;
 
@@ -111,17 +114,6 @@ typedef struct {
 
 void ydb_db_layer_get_status(YDB_DB_LAYER_STATUS statp);
 
-//
-// export the following locktree create/destroy callbacks so
-// the environment can pass them to the locktree manager.
-//
-struct lt_on_create_callback_extra {
-    DB_TXN *txn;
-    FT_HANDLE ft_handle;
-};
-int toku_db_lt_on_create_callback(toku::locktree *lt, void *extra);
-void toku_db_lt_on_destroy_callback(toku::locktree *lt);
-
 /* db methods */
 static inline int db_opened(DB *db) {
     return db->i->opened != 0;
@@ -131,13 +123,12 @@ static inline const toku::comparator &toku_db_get_comparator(DB *db) {
     return toku_ft_get_comparator(db->i->ft_handle);
 }
 
-int toku_db_use_builtin_key_cmp(DB *db);
+void toku_db_use_builtin_key_cmp(DB *db);
 int toku_db_pre_acquire_fileops_lock(DB *db, DB_TXN *txn);
-int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname, uint32_t flags, int mode);
 int toku_db_pre_acquire_table_lock(DB *db, DB_TXN *txn);
 int toku_db_get (DB * db, DB_TXN * txn, DBT * key, DBT * data, uint32_t flags);
 int toku_db_create(DB ** db, DB_ENV * env, uint32_t flags);
-int toku_db_close(DB * db);
+void toku_db_close(DB * db);
 int toku_setup_db_internal (DB **dbp, DB_ENV *env, uint32_t flags, FT_HANDLE ft_handle, bool is_open);
 int db_getf_set(DB *db, DB_TXN *txn, uint32_t flags, DBT *key, YDB_CALLBACK_FUNCTION f, void *extra);
 int autotxn_db_get(DB* db, DB_TXN* txn, DBT* key, DBT* data, uint32_t flags);

@@ -134,7 +134,7 @@ run_test(void) {
 		       NULL_prepared_txn_callback,
 		       NULL_keep_cachetable_callback,
 		       NULL_logger,
-		       testfile, testdir, 0, 0, 0, NULL, 0); 
+		       testfile, testdir, 0, 0, 0); 
     assert(r != 0);
 
     toku_os_recursive_delete(TOKU_TEST_FILENAME);

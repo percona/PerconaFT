@@ -1695,7 +1695,7 @@ void toku_bnc_flush_to_child(FT ft, NONLEAF_CHILDINFO bnc, FTNODE child, TXNID p
             }
             toku_ftnode_put_msg(
                 ft->cmp,
-                ft->update_fun,
+                ft->update_info,
                 child,
                 -1,
                 msg,

@@ -97,110 +97,6 @@ PATENT RIGHTS GRANT:
 #include "ft/serialize/compress.h"
 #include "ft/serialize/ft-serialize.h"
 
-// not version-sensitive because we only serialize a descriptor using the current layout_version
-uint32_t
-toku_serialize_descriptor_size(DESCRIPTOR desc) {
-    //Checksum NOT included in this.  Checksum only exists in header's version.
-    uint32_t size = 4; // four bytes for size of descriptor
-    size += desc->dbt.size;
-    return size;
-}
-
-static uint32_t
-deserialize_descriptor_size(DESCRIPTOR desc, int layout_version) {
-    //Checksum NOT included in this.  Checksum only exists in header's version.
-    uint32_t size = 4; // four bytes for size of descriptor
-    if (layout_version == FT_LAYOUT_VERSION_13)
-        size += 4;   // for version 13, include four bytes of "version"
-    size += desc->dbt.size;
-    return size;
-}
-
-void toku_serialize_descriptor_contents_to_wbuf(struct wbuf *wb, DESCRIPTOR desc) {
-    wbuf_bytes(wb, desc->dbt.data, desc->dbt.size);
-}
-
-//Descriptor is written to disk during toku_ft_handle_open iff we have a new (or changed)
-//descriptor.
-//Descriptors are NOT written during the header checkpoint process.
-void
-toku_serialize_descriptor_contents_to_fd(int fd, DESCRIPTOR desc, DISKOFF offset) {
-    // make the checksum
-    int64_t size = toku_serialize_descriptor_size(desc)+4; //4 for checksum
-    int64_t size_aligned = roundup_to_multiple(512, size);
-    struct wbuf w;
-    char *XMALLOC_N_ALIGNED(512, size_aligned, aligned_buf);
-    for (int64_t i=size; i<size_aligned; i++) aligned_buf[i] = 0;
-    wbuf_init(&w, aligned_buf, size);
-    toku_serialize_descriptor_contents_to_wbuf(&w, desc);
-    {
-        //Add checksum
-        uint32_t checksum = toku_x1764_finish(&w.checksum);
-        wbuf_int(&w, checksum);
-    }
-    lazy_assert(w.ndone==w.size);
-    {
-        //Actual Write translation table
-        toku_os_full_pwrite(fd, w.buf, size_aligned, offset);
-    }
-    toku_free(w.buf);
-}
-
-static void
-deserialize_descriptor_from_rbuf(struct rbuf *rb, DESCRIPTOR desc, int layout_version) {
-    if (layout_version <= FT_LAYOUT_VERSION_13) {
-        // in older versions of tokuft, the descriptor had a 4 byte
-        // version, which we skip over
-        (void) rbuf_int(rb);
-    }
-
-    uint32_t size;
-    const void *data;
-    rbuf_bytes(rb, &data, &size);
-    toku_memdup_dbt(&desc->dbt, data, size);
-}
-
-static int
-deserialize_descriptor_from(int fd, block_table *bt, DESCRIPTOR desc, int layout_version) {
-    int r = 0;
-    DISKOFF offset;
-    DISKOFF size;
-    unsigned char *dbuf = nullptr;
-    bt->get_descriptor_offset_size(&offset, &size);
-    memset(desc, 0, sizeof(*desc));
-    if (size > 0) {
-        lazy_assert(size>=4); //4 for checksum
-        {
-            ssize_t size_to_malloc = roundup_to_multiple(512, size);
-            XMALLOC_N_ALIGNED(512, size_to_malloc, dbuf);
-            {
-
-                ssize_t sz_read = toku_os_pread(fd, dbuf, size_to_malloc, offset);
-                lazy_assert(sz_read==size_to_malloc);
-            }
-            {
-                // check the checksum
-                uint32_t x1764 = toku_x1764_memory(dbuf, size-4);
-                //printf("%s:%d read from %ld (x1764 offset=%ld) size=%ld\n", __FILE__, __LINE__, block_translation_address_on_disk, offset, block_translation_size_on_disk);
-                uint32_t stored_x1764 = toku_dtoh32(*(int*)(dbuf + size-4));
-                if (x1764 != stored_x1764) {
-                    fprintf(stderr, "Descriptor checksum failure: calc=0x%08x read=0x%08x\n", x1764, stored_x1764);
-                    r = TOKUDB_BAD_CHECKSUM;
-                    toku_free(dbuf);
-                    goto exit;
-                }
-            }
-
-            struct rbuf rb = { .buf = dbuf, .size = (unsigned int) size, .ndone = 0 };
-            deserialize_descriptor_from_rbuf(&rb, desc, layout_version);
-            lazy_assert(deserialize_descriptor_size(desc, layout_version) + 4 == size);
-            toku_free(dbuf);
-        }
-    }
-exit:
-    return r;
-}
-
 int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ftp, uint32_t version)
 // Effect: Deserialize the ft header.
 //   We deserialize ft_header only once and then share everything with all the FTs.
@@ -288,10 +184,6 @@ int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ftp, uint32_t version)
     root_blocknum = rbuf_blocknum(rb);
     unsigned flags;
     flags = rbuf_int(rb);
-    if (ft->layout_version_read_from_disk <= FT_LAYOUT_VERSION_13) {
-        // deprecate 'TOKU_DB_VALCMP_BUILTIN'. just remove the flag
-        flags &= ~TOKU_DB_VALCMP_BUILTIN_13;
-    }
     int layout_version_original;
     layout_version_original = rbuf_int(rb);
     uint32_t build_id_original;
@@ -301,21 +193,10 @@ int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ftp, uint32_t version)
     uint64_t time_of_last_modification;
     time_of_last_modification = rbuf_ulonglong(rb);
 
-    if (ft->layout_version_read_from_disk <= FT_LAYOUT_VERSION_18) {
-        // 17 was the last version with these fields, we no longer store
-        // them, so read and discard them
-        (void) rbuf_ulonglong(rb);  // num_blocks_to_upgrade_13
-        if (ft->layout_version_read_from_disk >= FT_LAYOUT_VERSION_15) {
-            (void) rbuf_ulonglong(rb);  // num_blocks_to_upgrade_14
-        }
-    }
-
     // fake creation during the last checkpoint
     TXNID root_xid_that_created;
     root_xid_that_created = checkpoint_lsn.lsn;
-    if (ft->layout_version_read_from_disk >= FT_LAYOUT_VERSION_14) {
-        rbuf_TXNID(rb, &root_xid_that_created);
-    }
+    rbuf_TXNID(rb, &root_xid_that_created);
 
     // TODO(leif): get this to default to what's specified, not the
     // hard-coded default
@@ -323,10 +204,8 @@ int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ftp, uint32_t version)
     basementnodesize = FT_DEFAULT_BASEMENT_NODE_SIZE;
     uint64_t time_of_last_verification;
     time_of_last_verification = 0;
-    if (ft->layout_version_read_from_disk >= FT_LAYOUT_VERSION_15) {
-        basementnodesize = rbuf_int(rb);
-        time_of_last_verification = rbuf_ulonglong(rb);
-    }
+    basementnodesize = rbuf_int(rb);
+    time_of_last_verification = rbuf_ulonglong(rb);
 
     STAT64INFO_S on_disk_stats;
     on_disk_stats = ZEROSTATS;
@@ -338,37 +217,26 @@ int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ftp, uint32_t version)
     count_of_optimize_in_progress = 0;
     MSN msn_at_start_of_last_completed_optimize;
     msn_at_start_of_last_completed_optimize = ZERO_MSN;
-    if (ft->layout_version_read_from_disk >= FT_LAYOUT_VERSION_18) {
-        on_disk_stats.numrows = rbuf_ulonglong(rb);
-        on_disk_stats.numbytes = rbuf_ulonglong(rb);
-        ft->in_memory_stats = on_disk_stats;
-        time_of_last_optimize_begin = rbuf_ulonglong(rb);
-        time_of_last_optimize_end = rbuf_ulonglong(rb);
-        count_of_optimize_in_progress = rbuf_int(rb);
-        msn_at_start_of_last_completed_optimize = rbuf_MSN(rb);
-    }
+    on_disk_stats.numrows = rbuf_ulonglong(rb);
+    on_disk_stats.numbytes = rbuf_ulonglong(rb);
+    ft->in_memory_stats = on_disk_stats;
+    time_of_last_optimize_begin = rbuf_ulonglong(rb);
+    time_of_last_optimize_end = rbuf_ulonglong(rb);
+    count_of_optimize_in_progress = rbuf_int(rb);
+    msn_at_start_of_last_completed_optimize = rbuf_MSN(rb);
 
     enum toku_compression_method compression_method;
     MSN highest_unused_msn_for_upgrade;
     highest_unused_msn_for_upgrade.msn = (MIN_MSN.msn - 1);
-    if (ft->layout_version_read_from_disk >= FT_LAYOUT_VERSION_19) {
+    {
         unsigned char method = rbuf_char(rb);
         compression_method = (enum toku_compression_method) method;
-        highest_unused_msn_for_upgrade = rbuf_MSN(rb);
-    } else {
-        // we hard coded zlib until 5.2, then quicklz in 5.2
-        if (ft->layout_version_read_from_disk < FT_LAYOUT_VERSION_18) {
-            compression_method = TOKU_ZLIB_METHOD;
-        } else {
-            compression_method = TOKU_QUICKLZ_METHOD;
-        }
     }
+    highest_unused_msn_for_upgrade = rbuf_MSN(rb);
 
     MSN max_msn_in_ft;
     max_msn_in_ft = ZERO_MSN;  // We'll upgrade it from the root node later if necessary
-    if (ft->layout_version_read_from_disk >= FT_LAYOUT_VERSION_21) {
-        max_msn_in_ft = rbuf_MSN(rb);
-    }
+    max_msn_in_ft = rbuf_MSN(rb);
 
     (void) rbuf_int(rb); //Read in checksum and ignore (already verified).
     if (rb->ndone != rb->size) {
@@ -409,37 +277,7 @@ int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ftp, uint32_t version)
         XMEMDUP(ft->h, &h);
     }
 
-    if (ft->layout_version_read_from_disk < FT_LAYOUT_VERSION_18) {
-        // This needs ft->h to be non-null, so we have to do it after we
-        // read everything else.
-        r = toku_upgrade_subtree_estimates_to_stat64info(fd, ft);
-        if (r != 0) {
-            goto exit;
-        }
-    }
-    if (ft->layout_version_read_from_disk < FT_LAYOUT_VERSION_21) {
-        r = toku_upgrade_msn_from_root_to_header(fd, ft);
-        if (r != 0) {
-            goto exit;
-        }
-    }
-
     invariant((uint32_t) ft->layout_version_read_from_disk == version);
-    r = deserialize_descriptor_from(fd, &ft->blocktable, &ft->descriptor, version);
-    if (r != 0) {
-        goto exit;
-    }
-
-    // initialize for svn #4541
-    toku_clone_dbt(&ft->cmp_descriptor.dbt, ft->descriptor.dbt);
-
-    // Version 13 descriptors had an extra 4 bytes that we don't read
-    // anymore.  Since the header is going to think it's the current
-    // version if it gets written out, we need to write the descriptor in
-    // the new format (without those bytes) before that happens.
-    if (version <= FT_LAYOUT_VERSION_13) {
-        toku_ft_update_descriptor_with_fd(ft, &ft->cmp_descriptor, fd);
-    }
     r = 0;
 exit:
     if (r != 0 && ft != NULL) {
@@ -456,42 +294,26 @@ serialize_ft_min_size (uint32_t version) {
 
     switch(version) {
     case FT_LAYOUT_VERSION_27:
-    case FT_LAYOUT_VERSION_26:
-    case FT_LAYOUT_VERSION_25:
-    case FT_LAYOUT_VERSION_24:
-    case FT_LAYOUT_VERSION_23:
-    case FT_LAYOUT_VERSION_22:
-    case FT_LAYOUT_VERSION_21:
         size += sizeof(MSN);       // max_msn_in_ft
-    case FT_LAYOUT_VERSION_20:
-    case FT_LAYOUT_VERSION_19:
         size += 1; // compression method
         size += sizeof(MSN);       // highest_unused_msn_for_upgrade
-    case FT_LAYOUT_VERSION_18:
         size += sizeof(uint64_t);  // time_of_last_optimize_begin
         size += sizeof(uint64_t);  // time_of_last_optimize_end
         size += sizeof(uint32_t);  // count_of_optimize_in_progress
         size += sizeof(MSN);       // msn_at_start_of_last_completed_optimize
         size -= 8;                 // removed num_blocks_to_upgrade_14
         size -= 8;                 // removed num_blocks_to_upgrade_13
-    case FT_LAYOUT_VERSION_17:
         size += 16;
         invariant(sizeof(STAT64INFO_S) == 16);
-    case FT_LAYOUT_VERSION_16:
-    case FT_LAYOUT_VERSION_15:
         size += 4;  // basement node size
         size += 8;  // num_blocks_to_upgrade_14 (previously num_blocks_to_upgrade, now one int each for upgrade from 13, 14
         size += 8;  // time of last verification
-    case FT_LAYOUT_VERSION_14:
         size += 8;  //TXNID that created
-    case FT_LAYOUT_VERSION_13:
         size += ( 4 // build_id
                   +4 // build_id_original
                   +8 // time_of_creation
                   +8 // time_of_last_modification
             );
-        // fall through
-    case FT_LAYOUT_VERSION_12:
         size += (+8 // "tokudata"
                  +4 // version
                  +4 // original_version
@@ -616,7 +438,6 @@ int deserialize_ft_from_fd_into_rbuf(int fd,
     //We have an rbuf that represents the header.
     //Size is within acceptable bounds.
 
-    //Verify checksum (FT_LAYOUT_VERSION_13 or later, when checksum function changed)
     uint32_t calculated_x1764;
     calculated_x1764 = toku_x1764_memory(rb->buf, rb->size-4);
     uint32_t stored_x1764;

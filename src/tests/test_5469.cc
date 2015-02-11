@@ -131,8 +131,6 @@ test_loader_abort (bool do_compress, bool abort_loader, bool abort_txn) {
     /* create the dup database file */
     r = db_env_create(&env, 0);        assert(r == 0);
     env->set_errfile(env, stderr);
-    r = env->set_generate_row_callback_for_put(env, put_multiple_generate);
-    CKERR(r);
     r = env->open(env, TOKU_TEST_FILENAME, DB_INIT_MPOOL|DB_CREATE|DB_THREAD |DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_TXN|DB_PRIVATE, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(r);
     r = db_create(&db, env, 0); assert(r == 0);
     db->set_errfile(db,stderr); // Turn off those annoying errors
@@ -141,7 +139,7 @@ test_loader_abort (bool do_compress, bool abort_loader, bool abort_txn) {
     r = env->txn_begin(env, NULL, &txn, 0);                                                               
     CKERR(r);
 
-    r = env->create_loader(env, txn, &loader, db, 1, &db, &db_flags, &dbt_flags, loader_flags);
+    r = env->create_loader(env, txn, &loader, db, 1, &db, &db_flags, &dbt_flags, loader_flags, put_multiple_generate);
     CKERR(r);
 
     DBT key, val;

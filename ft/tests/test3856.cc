@@ -104,7 +104,7 @@ static const enum toku_compression_method compression_method = TOKU_DEFAULT_COMP
 static int const count = 1000;
 
 static int
-string_cmp(DB* UU(db), const DBT *a, const DBT *b)
+string_cmp(const DBT *a, const DBT *b)
 {
     return strcmp((char*)a->data, (char*)b->data);
 }

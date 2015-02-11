@@ -190,7 +190,7 @@ insert_random_message_to_bn(
     ft_msg msg(keydbt, valdbt, FT_INSERT, msn, xids);
     int64_t numbytes;
     toku_le_apply_msg(msg, NULL, NULL, 0, keydbt->size, &non_mvcc_gc_info, save, &numbytes);
-    toku_ft_bn_apply_msg(t->ft->cmp, t->ft->update_fun, blb, msg, &non_mvcc_gc_info, NULL, NULL);
+    toku_ft_bn_apply_msg(t->ft->cmp, t->ft->update_info, blb, msg, &non_mvcc_gc_info, NULL, NULL);
     if (msn.msn > blb->max_msn_applied.msn) {
         blb->max_msn_applied = msn;
     }
@@ -235,11 +235,11 @@ insert_same_message_to_bns(
     ft_msg msg(keydbt, valdbt, FT_INSERT, msn, xids);
     int64_t numbytes;
     toku_le_apply_msg(msg, NULL, NULL, 0, keydbt->size, &non_mvcc_gc_info, save, &numbytes);
-    toku_ft_bn_apply_msg(t->ft->cmp, t->ft->update_fun, blb1, msg, &non_mvcc_gc_info, NULL, NULL);
+    toku_ft_bn_apply_msg(t->ft->cmp, t->ft->update_info, blb1, msg, &non_mvcc_gc_info, NULL, NULL);
     if (msn.msn > blb1->max_msn_applied.msn) {
         blb1->max_msn_applied = msn;
     }
-    toku_ft_bn_apply_msg(t->ft->cmp, t->ft->update_fun, blb2, msg, &non_mvcc_gc_info, NULL, NULL);
+    toku_ft_bn_apply_msg(t->ft->cmp, t->ft->update_info, blb2, msg, &non_mvcc_gc_info, NULL, NULL);
     if (msn.msn > blb2->max_msn_applied.msn) {
         blb2->max_msn_applied = msn;
     }
@@ -251,7 +251,7 @@ struct orthopush_flush_update_fun_extra {
 };
 
 static int
-orthopush_flush_update_fun(DB * UU(db), const DBT *UU(key), const DBT *UU(old_val), const DBT *extra,
+orthopush_flush_update_fun(const DBT *UU(key), const DBT *UU(old_val), const DBT *extra,
                            void (*set_val)(const DBT *new_val, void *set_extra), void *set_extra) {
     struct orthopush_flush_update_fun_extra *CAST_FROM_VOIDP(e, extra->data);
     (*e->num_applications)++;
@@ -671,7 +671,7 @@ flush_to_leaf(FT_HANDLE t, bool make_leaf_up_to_date, bool use_flush) {
     if (make_leaf_up_to_date) {
         for (i = 0; i < num_parent_messages; ++i) {
             if (!parent_messages_is_fresh[i]) {
-                toku_ft_leaf_apply_msg(t->ft->cmp, t->ft->update_fun, child, -1, *parent_messages[i], &non_mvcc_gc_info, NULL, NULL);
+                toku_ft_leaf_apply_msg(t->ft->cmp, t->ft->update_info, child, -1, *parent_messages[i], &non_mvcc_gc_info, NULL, NULL);
             }
         }
         for (i = 0; i < 8; ++i) {
@@ -894,7 +894,7 @@ flush_to_leaf_with_keyrange(FT_HANDLE t, bool make_leaf_up_to_date) {
         for (i = 0; i < num_parent_messages; ++i) {
             if (dummy_cmp(parent_messages[i]->kdbt(), &childkeys[7]) <= 0 &&
                 !parent_messages_is_fresh[i]) {
-                toku_ft_leaf_apply_msg(t->ft->cmp, t->ft->update_fun, child, -1, *parent_messages[i], &non_mvcc_gc_info, NULL, NULL);
+                toku_ft_leaf_apply_msg(t->ft->cmp, t->ft->update_info, child, -1, *parent_messages[i], &non_mvcc_gc_info, NULL, NULL);
             }
         }
         for (i = 0; i < 8; ++i) {
@@ -1097,8 +1097,8 @@ compare_apply_and_flush(FT_HANDLE t, bool make_leaf_up_to_date) {
     if (make_leaf_up_to_date) {
         for (i = 0; i < num_parent_messages; ++i) {
             if (!parent_messages_is_fresh[i]) {
-                toku_ft_leaf_apply_msg(t->ft->cmp, t->ft->update_fun, child1, -1, *parent_messages[i], &non_mvcc_gc_info, NULL, NULL);
-                toku_ft_leaf_apply_msg(t->ft->cmp, t->ft->update_fun, child2, -1, *parent_messages[i], &non_mvcc_gc_info, NULL, NULL);
+                toku_ft_leaf_apply_msg(t->ft->cmp, t->ft->update_info, child1, -1, *parent_messages[i], &non_mvcc_gc_info, NULL, NULL);
+                toku_ft_leaf_apply_msg(t->ft->cmp, t->ft->update_info, child2, -1, *parent_messages[i], &non_mvcc_gc_info, NULL, NULL);
             }
         }
         for (i = 0; i < 8; ++i) {
@@ -1210,8 +1210,7 @@ parse_args(int argc, const char *argv[]) {
     }
 }
 
-static int cmp_fn(DB *db __attribute__((unused)),
-                     const DBT *a, const DBT *b) {
+static int cmp_fn(const DBT *a, const DBT *b) {
     int c;
     if (a->size > b->size) {
         c = memcmp(a->data, b->data, b->size);
@@ -1230,7 +1229,7 @@ int
 test_main (int argc, const char *argv[]) {
     parse_args(argc, argv);
 
-    dummy_cmp.create(cmp_fn, nullptr);
+    dummy_cmp.create(cmp_fn, 0);
 
     initialize_dummymsn();
     int r;
@@ -1241,7 +1240,7 @@ test_main (int argc, const char *argv[]) {
     r = toku_open_ft_handle(fname, 1, &t, 128*1024, 4096, TOKU_DEFAULT_COMPRESSION_METHOD, ct, null_txn, toku_builtin_compare_fun); assert(r==0);
     toku_ft_set_update(t, orthopush_flush_update_fun);
     // HACK
-    t->ft->update_fun = orthopush_flush_update_fun;
+    t->ft->update_info.init(orthopush_flush_update_fun, 0);
 
     for (int i = 0; i < 10; ++i) {
         flush_to_internal(t);
@@ -1264,8 +1263,5 @@ test_main (int argc, const char *argv[]) {
 
     r = toku_close_ft_handle_nolsn(t, 0);          assert(r==0);
     toku_cachetable_close(&ct);
-
-    dummy_cmp.destroy();
-
     return 0;
 }

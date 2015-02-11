@@ -101,13 +101,7 @@ put_multiple_callback(DB *dest_db UU(), DB *src_db UU(), DBT_ARRAY *dest_keys UU
     return 0;
 }
 
-static int
-del_multiple_callback(DB *dest_db UU(), DB *src_db UU(), DBT_ARRAY *dest_keys UU(), const DBT *src_key UU(), const DBT *src_val UU()) {
-    return 0;
-}
-
-static int update_fun(DB *UU(db),
-                      const DBT *UU(key),
+static int update_fun(const DBT *UU(key),
                       const DBT *UU(old_val), const DBT *UU(extra),
                       void UU((*set_val)(const DBT *new_val,
                                       void *set_extra)),
@@ -118,7 +112,6 @@ static int update_fun(DB *UU(db),
 static void verify_shared_ops_fail(DB_ENV* env, DB* db) {
     int r;
     DB_TXN* txn = NULL;
-    uint32_t flags = 0;
     DBT key,val;
     DBT in_key,in_val;
     uint32_t in_key_data, in_val_data = 0;
@@ -158,65 +151,6 @@ static void verify_shared_ops_fail(DB_ENV* env, DB* db) {
     CKERR2(r, DB_LOCK_NOTGRANTED);    
     r = txn->commit(txn,0); CKERR(r);
 
-    r = env->txn_begin(env, NULL, &txn, 0); CKERR(r);
-    r = env_put_multiple_test_no_array(
-        env, db, txn,
-        &key, &val,
-        1, &db, &in_key, &in_val, &flags);
-    CKERR2(r, DB_LOCK_NOTGRANTED);
-    r = txn->commit(txn,0); CKERR(r);
-
-    r = env->txn_begin(env, NULL, &txn, 0); CKERR(r);
-    r = env_put_multiple_test_no_array(
-        env, NULL, txn,
-        &key, &val,
-        1, &db, &in_key, &in_val, &flags);
-    CKERR2(r, DB_LOCK_NOTGRANTED);
-    r = txn->commit(txn,0); CKERR(r);
-
-    flags = DB_DELETE_ANY;
-
-    r = env->txn_begin(env, NULL, &txn, 0); CKERR(r);
-    r = env_del_multiple_test_no_array(
-        env, db, txn,
-        &key, &val,
-        1, &db, &in_key, &flags);
-    CKERR2(r, DB_LOCK_NOTGRANTED);
-    r = txn->commit(txn,0); CKERR(r);
-
-    r = env->txn_begin(env, NULL, &txn, 0); CKERR(r);
-    r = env_del_multiple_test_no_array(
-        env, NULL, txn,
-        &key, &val,
-        1, &db, &in_key, &flags);
-    CKERR2(r, DB_LOCK_NOTGRANTED);
-    r = txn->commit(txn,0); CKERR(r);
-
-    flags = 0;
-
-    r = env->txn_begin(env, NULL, &txn, 0); CKERR(r);
-    r = env_update_multiple_test_no_array(
-        env, NULL, txn,
-        &key, &val,
-        &key, &val,
-        1, &db, &flags,
-        2, in_keys,
-        1, &in_val);
-    CKERR2(r, DB_LOCK_NOTGRANTED);
-    r = txn->commit(txn,0); CKERR(r);
-
-    r = env->txn_begin(env, NULL, &txn, 0); CKERR(r);
-    r = env_update_multiple_test_no_array(
-        env, db, txn,
-        &key, &val,
-        &key, &val,
-        1, &db, &flags,
-        2, in_keys,
-        1, &in_val);
-    CKERR2(r, DB_LOCK_NOTGRANTED);
-    r = txn->commit(txn,0); CKERR(r);
-
-    
     DBT extra_up;
     dbt_init(&extra_up, NULL, 0);
 
@@ -281,10 +215,6 @@ int test_main (int argc, char * const argv[]) {
     uint32_t dbt_flags = 0;
     r = db_env_create(&env, 0);                                                         CKERR(r);
     env->set_errfile(env, stderr);
-    r = env->set_generate_row_callback_for_put(env, put_multiple_callback);
-    CKERR(r);
-    r = env->set_generate_row_callback_for_del(env, del_multiple_callback);
-    CKERR(r);
     env->set_update(env, update_fun);
     r = env->open(env, TOKU_TEST_FILENAME, envflags, S_IRWXU+S_IRWXG+S_IRWXO);                      CKERR(r);
     
@@ -317,7 +247,7 @@ int test_main (int argc, char * const argv[]) {
     // create loader
     //
     r = env->txn_begin(env, NULL, &txna, 0); CKERR(r);
-    r = env->create_loader(env, txna, &loader, NULL, 1, &db, &put_flags, &dbt_flags, 0); CKERR(r);
+    r = env->create_loader(env, txna, &loader, NULL, 1, &db, &put_flags, &dbt_flags, 0, put_multiple_callback); CKERR(r);
     verify_shared_ops_fail(env,db);
     r = loader->abort(loader); CKERR(r);
     loader=NULL;
@@ -361,78 +291,6 @@ int test_main (int argc, char * const argv[]) {
     r = db->update_broadcast(db, txna, &val, 0); CKERR(r);
     verify_excl_ops_fail(env,"foo.db");
     r = txna->abort(txna); CKERR(r);
-
-    uint32_t flags = 0;
-
-    r = env->txn_begin(env, NULL, &txna, 0); CKERR(r);
-    r = env->txn_begin(env, NULL, &txnb, 0); CKERR(r);
-    dbt_init(&key, "a", 2);
-    dbt_init(&val, "a", 2);
-    env_put_multiple_test_no_array(
-        env, NULL, txna,
-        &key, &val,
-        1, &db, &in_key, &in_val, &flags);
-    CKERR(r);
-    dbt_init(&key, "b", 2);
-    dbt_init(&val, "b", 2);
-    env_put_multiple_test_no_array(
-        env, NULL, txnb,
-        &key, &val,
-        1, &db, &in_key, &in_val, &flags);
-    CKERR(r);
-    verify_excl_ops_fail(env,"foo.db");
-    r = txna->abort(txna); CKERR(r);
-    r = txnb->abort(txnb); CKERR(r);
-
-    flags = DB_DELETE_ANY;
-    r = env->txn_begin(env, NULL, &txna, 0); CKERR(r);
-    r = env->txn_begin(env, NULL, &txnb, 0); CKERR(r);
-    dbt_init(&key, "a", 2);
-    dbt_init(&val, "a", 2);
-    env_del_multiple_test_no_array(
-        env, NULL, txna,
-        &key, &val,
-        1, &db, &in_key, &flags);
-    CKERR(r);
-    dbt_init(&key, "b", 2);
-    dbt_init(&val, "b", 2);
-    env_del_multiple_test_no_array(
-        env, db, txnb,
-        &key, &val,
-        1, &db, &in_key, &flags);
-    CKERR(r);
-    verify_excl_ops_fail(env,"foo.db");
-    r = txna->abort(txna); CKERR(r);
-    r = txnb->abort(txnb); CKERR(r);
-
-    flags = 0;
-    DBT in_keys[2];
-    memset(&in_keys, 0, sizeof(in_keys));
-    r = env->txn_begin(env, NULL, &txna, 0); CKERR(r);
-    r = env->txn_begin(env, NULL, &txnb, 0); CKERR(r);
-    dbt_init(&key, "a", 2);
-    dbt_init(&val, "a", 2);
-    env_update_multiple_test_no_array(
-        env, NULL, txna,
-        &key, &val,
-        &key, &val,
-        1, &db, &flags,
-        2, in_keys,
-        1, &in_val);
-    CKERR(r);
-    dbt_init(&key, "b", 2);
-    dbt_init(&val, "b", 2);
-    env_update_multiple_test_no_array(
-        env, db, txnb,
-        &key, &val,
-        &key, &val,
-        1, &db, &flags,
-        2, in_keys,
-        1, &in_val);
-    CKERR(r);
-    verify_excl_ops_fail(env,"foo.db");
-    r = txna->abort(txna); CKERR(r);
-    r = txnb->abort(txnb); CKERR(r);
 
     r = db->close(db, 0); CKERR(r);
     r = db2->close(db2, 0); CKERR(r);

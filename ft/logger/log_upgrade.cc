@@ -181,21 +181,7 @@ verify_clean_shutdown_of_log_version_old(const char *log_dir, LSN * last_lsn, TX
         goto cleanup;
     }
     FOOTPRINT(2);
-    //TODO: Remove this special case once FT_LAYOUT_VERSION_19 (and older) are not supported.
-    if (version <= FT_LAYOUT_VERSION_19) {
-        if (entry->cmd==LT_shutdown_up_to_19) {
-            LSN lsn = entry->u.shutdown_up_to_19.lsn;
-            if (last_lsn) {
-                *last_lsn = lsn;
-            }
-            if (last_xid) {
-                // Use lsn as last_xid.
-                *last_xid = lsn.lsn;
-            }
-            rval = 0;
-        }
-    }
-    else if (entry->cmd==LT_shutdown) {
+    if (entry->cmd==LT_shutdown) {
         LSN lsn = entry->u.shutdown.lsn;
         if (last_lsn) {
             *last_lsn = lsn;

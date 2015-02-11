@@ -100,8 +100,7 @@ DB_ENV *env;
 const unsigned int NUM_KEYS = 1024;
 
 
-static int update_fun(DB *UU(db),
-                      const DBT *UU(key),
+static int update_fun(const DBT *UU(key),
                       const DBT *old_val, const DBT *extra,
                       void (*set_val)(const DBT *new_val,
                                       void *set_extra),
@@ -121,7 +120,7 @@ static int update_fun(DB *UU(db),
 }
 
 static int
-int_cmp(DB *UU(db), const DBT *a, const DBT *b) {
+int_cmp(const DBT *a, const DBT *b) {
     unsigned int *ap, *bp;
     assert(a->size == sizeof(*ap));
     CAST_FROM_VOIDP(ap, a->data);

@@ -418,7 +418,7 @@ static void test_cursor_next (void) {
 
 }
 
-static int wrong_compare_fun(DB* UU(desc), const DBT *a, const DBT *b) {
+static int wrong_compare_fun(const DBT *a, const DBT *b) {
     unsigned int i;
     unsigned char *CAST_FROM_VOIDP(ad, a->data);
     unsigned char *CAST_FROM_VOIDP(bd, b->data);
@@ -446,8 +446,8 @@ static void test_wrongendian_compare (int wrong_p, unsigned int N) {
 	char a[4]={0,1,0,0};
 	char b[4]={1,0,0,0};
 	DBT at, bt;
-	assert(wrong_compare_fun(NULL, toku_fill_dbt(&at, a, 4), toku_fill_dbt(&bt, b, 4))>0);
-	assert(wrong_compare_fun(NULL, toku_fill_dbt(&at, b, 4), toku_fill_dbt(&bt, a, 4))<0);
+	assert(wrong_compare_fun(toku_fill_dbt(&at, a, 4), toku_fill_dbt(&bt, b, 4))>0);
+	assert(wrong_compare_fun(toku_fill_dbt(&at, b, 4), toku_fill_dbt(&bt, a, 4))<0);
     }
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
@@ -536,7 +536,7 @@ static void test_wrongendian_compare (int wrong_p, unsigned int N) {
     
 }
 
-static int test_ft_cursor_keycompare(DB *desc __attribute__((unused)), const DBT *a, const DBT *b) {
+static int test_ft_cursor_keycompare(const DBT *a, const DBT *b) {
     return toku_keycompare(a->data, a->size, b->data, b->size);
 }
 
@@ -884,7 +884,7 @@ static void test_new_ft_cursor_create_close (void) {
     int n = 8;
     FT_CURSOR cursors[n];
 
-    toku_ft_handle_create(&ft);
+    toku_ft_handle_create(toku_builtin_compare_fun, NULL, &ft);
 
     int i;
     for (i=0; i<n; i++) {
@@ -908,7 +908,7 @@ static void test_new_ft_cursor_first(int n) {
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
     unlink(fname);
-    toku_ft_handle_create(&t);
+    toku_ft_handle_create(toku_builtin_compare_fun, NULL, &t);
     toku_ft_handle_set_nodesize(t, 4096);
     r = toku_ft_handle_open(t, fname, 1, 1, ct, null_txn); assert(r==0);
 
@@ -960,7 +960,7 @@ static void test_new_ft_cursor_last(int n) {
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
     unlink(fname);
-    toku_ft_handle_create(&t);
+    toku_ft_handle_create(toku_builtin_compare_fun, NULL, &t);
     toku_ft_handle_set_nodesize(t, 4096);
     r = toku_ft_handle_open(t, fname, 1, 1, ct, null_txn); assert(r==0);
 
@@ -1013,7 +1013,7 @@ static void test_new_ft_cursor_next(int n) {
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
     unlink(fname);
-    toku_ft_handle_create(&t);
+    toku_ft_handle_create(toku_builtin_compare_fun, NULL, &t);
     toku_ft_handle_set_nodesize(t, 4096);
     r = toku_ft_handle_open(t, fname, 1, 1, ct, null_txn); assert(r==0);
 
@@ -1056,7 +1056,7 @@ static void test_new_ft_cursor_prev(int n) {
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
     unlink(fname);
-    toku_ft_handle_create(&t);
+    toku_ft_handle_create(toku_builtin_compare_fun, NULL, &t);
     toku_ft_handle_set_nodesize(t, 4096);
     r = toku_ft_handle_open(t, fname, 1, 1, ct, null_txn); assert(r==0);
 
@@ -1099,7 +1099,7 @@ static void test_new_ft_cursor_current(int n) {
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
     unlink(fname);
-    toku_ft_handle_create(&t);
+    toku_ft_handle_create(toku_builtin_compare_fun, NULL, &t);
     toku_ft_handle_set_nodesize(t, 4096);
     r = toku_ft_handle_open(t, fname, 1, 1, ct, null_txn); assert(r==0);
 
@@ -1181,7 +1181,7 @@ static void test_new_ft_cursor_set_range(int n) {
 
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
     unlink(fname);
-    toku_ft_handle_create(&ft);
+    toku_ft_handle_create(toku_builtin_compare_fun, NULL, &ft);
     toku_ft_handle_set_nodesize(ft, 4096);
     r = toku_ft_handle_open(ft, fname, 1, 1, ct, null_txn); assert(r==0);
 

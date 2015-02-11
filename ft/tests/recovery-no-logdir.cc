@@ -105,7 +105,7 @@ run_test(void) {
     r = tokuft_recover(NULL,
 		       NULL_prepared_txn_callback,
 		       NULL_keep_cachetable_callback,
-		       NULL_logger, NULL, NULL, 0, 0, 0, NULL, 0); 
+		       NULL_logger, NULL, NULL, 0, 0, 0); 
     assert(r != 0);
 
     toku_os_recursive_delete(TOKU_TEST_FILENAME);

@@ -206,14 +206,14 @@ int main(int argc, const char *argv[]) {
 
     // create a manager
     locktree_manager mgr;
-    mgr.create(nullptr, nullptr, e_callback, nullptr);
+    mgr.create(e_callback, nullptr);
     mgr.set_max_lock_memory(max_lock_memory);
 
     // create lock trees
     locktree *lt[n_big];
     for (int i = 0; i < n_lt; i++) {
         DICTIONARY_ID dict_id = { .dictid = (uint64_t) i };
-        lt[i] = mgr.get_lt(dict_id, dbt_comparator, nullptr);
+        lt[i] = mgr.get_lt(dict_id, dbt_comparator);
         assert(lt[i]);
     }
 

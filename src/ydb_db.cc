@@ -103,10 +103,10 @@ PATENT RIGHTS GRANT:
 #include "ydb_write.h"
 #include "ydb-internal.h"
 #include "ydb_load.h"
-#include "indexer.h"
 #include <portability/toku_atomic.h>
 #include <util/status.h>
 #include <ft/le-cursor.h>
+#include "iname_helpers.h"
 
 static YDB_DB_LAYER_STATUS_S ydb_db_layer_status;
 #ifdef STATUS_VALUE
@@ -125,6 +125,9 @@ ydb_db_layer_status_init (void) {
     STATUS_INIT(YDB_LAYER_DIRECTORY_WRITE_LOCKS_FAIL, nullptr, UINT64,   "directory write locks fail", TOKU_ENGINE_STATUS);
     STATUS_INIT(YDB_LAYER_LOGSUPPRESS,                nullptr, UINT64,   "log suppress", TOKU_ENGINE_STATUS);
     STATUS_INIT(YDB_LAYER_LOGSUPPRESS_FAIL,           nullptr, UINT64,   "log suppress fail", TOKU_ENGINE_STATUS);
+    STATUS_INIT(YDB_LAYER_NUM_DB_OPEN,                DB_OPENS, UINT64,   "db opens", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
+    STATUS_INIT(YDB_LAYER_NUM_OPEN_DBS,               DB_OPEN_CURRENT, UINT64,   "num open dbs now", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
+    STATUS_INIT(YDB_LAYER_MAX_OPEN_DBS,               DB_OPEN_MAX, UINT64,   "max open dbs", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
     ydb_db_layer_status.initialized = true;
 }
 #undef STATUS_INIT
@@ -136,85 +139,21 @@ ydb_db_layer_get_status(YDB_DB_LAYER_STATUS statp) {
     *statp = ydb_db_layer_status;
 }
 
-static void
-create_iname_hint(const char *dname, char *hint) {
-    //Requires: size of hint array must be > strlen(dname)
-    //Copy alphanumeric characters only.
-    //Replace strings of non-alphanumeric characters with a single underscore.
-    bool underscored = false;
-    while (*dname) {
-        if (isalnum(*dname)) {
-            char c = *dname++;
-            *hint++ = c;
-            underscored = false;
-        }
-        else {
-            if (!underscored)
-                *hint++ = '_';
-            dname++;
-            underscored = true;
-        }
-    }
-    *hint = '\0';
-}
-
-// n < 0  means to ignore mark and ignore n
-// n >= 0 means to include mark ("_B_" or "_P_") with hex value of n in iname
-// (intended for use by loader, which will create many inames using one txnid).
-static char *
-create_iname(DB_ENV *env, uint64_t id1, uint64_t id2, char *hint, const char *mark, int n) {
-    int bytes;
-    char inamebase[strlen(hint) +
-                   8 +  // hex file format version
-                   24 + // hex id (normally the txnid's parent and child)
-                   8  + // hex value of n if non-neg
-                   sizeof("_B___.") + // extra pieces
-                   strlen(toku_product_name)];
-    if (n < 0)
-        bytes = snprintf(inamebase, sizeof(inamebase),
-                         "%s_%" PRIx64 "_%" PRIx64 "_%" PRIx32            ".%s",
-                         hint, id1, id2, FT_LAYOUT_VERSION, toku_product_name);
-    else {
-        invariant(strlen(mark) == 1);
-        bytes = snprintf(inamebase, sizeof(inamebase),
-                         "%s_%" PRIx64 "_%" PRIx64 "_%" PRIx32 "_%s_%" PRIx32 ".%s",
-                         hint, id1, id2, FT_LAYOUT_VERSION, mark, n, toku_product_name);
-    }
-    assert(bytes>0);
-    assert(bytes<=(int)sizeof(inamebase)-1);
-    char *rval;
-    if (env->i->data_dir)
-        rval = toku_construct_full_name(2, env->i->data_dir, inamebase);
-    else
-        rval = toku_construct_full_name(1, inamebase);
-    assert(rval);
-    return rval;
-}
-
 static int toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYPE dbtype, uint32_t flags, int mode);
 
 // Effect: Do the work required of DB->close().
 // requires: the multi_operation client lock is held.
-int 
+void
 toku_db_close(DB * db) {
-    int r = 0;
-    if (db_opened(db) && db->i->dname) {
-        // internal (non-user) dictionary has no dname
-        env_note_db_closed(db->dbenv, db);  // tell env that this db is no longer in use by the user of this api (user-closed, may still be in use by fractal tree internals)
+    if (db_opened(db) && db->i->dict) {
+        dictionary::release(db->i->dict);
     }
     // close the ft handle, and possibly close the locktree
     toku_ft_handle_close(db->i->ft_handle);
-    if (db->i->lt) {
-        db->dbenv->i->ltm.release_lt(db->i->lt);
-    }
     toku_sdbt_cleanup(&db->i->skey);
     toku_sdbt_cleanup(&db->i->sval);
-    if (db->i->dname) {
-        toku_free(db->i->dname);
-    }
     toku_free(db->i);
     toku_free(db);
-    return r;
 }
 
 ///////////
@@ -266,6 +205,15 @@ toku_db_get (DB * db, DB_TXN * txn, DBT * key, DBT * data, uint32_t flags) {
     return r ? r : r2;
 }
 
+static void note_db_opened(DB* db, uint32_t flags) {
+    db->i->open_flags = flags;
+    STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) = db->dbenv->i->dict_manager.num_open_dictionaries();
+    STATUS_VALUE(YDB_LAYER_NUM_DB_OPEN)++;
+    if (STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS) > STATUS_VALUE(YDB_LAYER_MAX_OPEN_DBS)) {
+        STATUS_VALUE(YDB_LAYER_MAX_OPEN_DBS) = STATUS_VALUE(YDB_LAYER_NUM_OPEN_DBS);
+    }
+}
+
 static int
 db_open_subdb(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYPE dbtype, uint32_t flags, int mode) {
     int r;
@@ -279,8 +227,6 @@ db_open_subdb(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTY
     }
     return r;
 }
-
-static uint64_t nontransactional_open_id = 0;
 
 // inames are created here.
 // algorithm:
@@ -305,11 +251,10 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
 
     ////////////////////////////// do some level of parameter checking.
     uint32_t unused_flags = flags;
-    int r;
     if (dbtype!=DB_BTREE && dbtype!=DB_UNKNOWN) return EINVAL;
     int is_db_excl    = flags & DB_EXCL;    unused_flags&=~DB_EXCL;
     int is_db_create  = flags & DB_CREATE;  unused_flags&=~DB_CREATE;
-    int is_db_hot_index  = flags & DB_IS_HOT_INDEX;  unused_flags&=~DB_IS_HOT_INDEX;
+    unused_flags&=~DB_IS_HOT_INDEX;
 
     //We support READ_UNCOMMITTED and READ_COMMITTED whether or not the flag is provided.
     unused_flags&=~DB_READ_UNCOMMITTED;
@@ -329,217 +274,20 @@ toku_db_open(DB * db, DB_TXN * txn, const char *fname, const char *dbname, DBTYP
         // it was already open
         return EINVAL;
     }
-    //////////////////////////////
-
-    // convert dname to iname
-    //  - look up dname, get iname
-    //  - if dname does not exist, create iname and make entry in directory
-    DBT dname_dbt;  // holds dname
-    DBT iname_dbt;  // holds iname_in_env
-    toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
-    toku_init_dbt_flags(&iname_dbt, DB_DBT_REALLOC);
-    r = toku_db_get(db->dbenv->i->directory, txn, &dname_dbt, &iname_dbt, DB_SERIALIZABLE);  // allocates memory for iname
-    char *iname = (char *) iname_dbt.data;
-    if (r == DB_NOTFOUND && !is_db_create) {
-        r = ENOENT;
-    } else if (r==0 && is_db_excl) {
-        r = EEXIST;
-    } else if (r == DB_NOTFOUND) {
-        char hint[strlen(dname) + 1];
-
-        // create iname and make entry in directory
-        uint64_t id1 = 0;
-        uint64_t id2 = 0;
-
-        if (txn) {
-            id1 = toku_txn_get_txnid(db_txn_struct_i(txn)->tokutxn).parent_id64;
-            id2 = toku_txn_get_txnid(db_txn_struct_i(txn)->tokutxn).child_id64;
-        } else {
-            id1 = toku_sync_fetch_and_add(&nontransactional_open_id, 1);
-        }
-        create_iname_hint(dname, hint);
-        iname = create_iname(db->dbenv, id1, id2, hint, NULL, -1);  // allocated memory for iname
-        toku_fill_dbt(&iname_dbt, iname, strlen(iname) + 1);
-        //
-        // put_flags will be 0 for performance only, avoid unnecessary query
-        // if we are creating a hot index, per #3166, we do not want the write lock  in directory grabbed.
-        // directory read lock is grabbed in toku_db_get above
-        //
-        uint32_t put_flags = 0 | ((is_db_hot_index) ? DB_PRELOCKED_WRITE : 0); 
-        r = toku_db_put(db->dbenv->i->directory, txn, &dname_dbt, &iname_dbt, put_flags, true);  
-    }
-
-    // we now have an iname
+    int r =  db->dbenv->i->dict_manager.open_db(db, dname, txn, flags);
     if (r == 0) {
-        r = toku_db_open_iname(db, txn, iname, flags, mode);
-        if (r == 0) {
-            db->i->dname = toku_xstrdup(dname);
-            env_note_db_opened(db->dbenv, db);  // tell env that a new db handle is open (using dname)
-        }
-    }
-
-    if (iname) {
-        toku_free(iname);
+        note_db_opened(db, flags);
     }
     return r;
-}
-
-// set the descriptor and cmp_descriptor to the
-// descriptors from the given ft, updating the
-// locktree's descriptor pointer if necessary
-static void
-db_set_descriptors(DB *db, FT_HANDLE ft_handle) {
-    const toku::comparator &cmp = toku_ft_get_comparator(ft_handle);
-    db->descriptor = toku_ft_get_descriptor(ft_handle);
-    db->cmp_descriptor = toku_ft_get_cmp_descriptor(ft_handle);
-    invariant(db->cmp_descriptor == cmp.get_descriptor());
-    if (db->i->lt) {
-        db->i->lt->set_comparator(cmp);
-    }
-}
-
-// callback that sets the descriptors when 
-// a dictionary is redirected at the ft layer
-static void
-db_on_redirect_callback(FT_HANDLE ft_handle, void* extra) {
-    DB *db = (DB *) extra;
-    db_set_descriptors(db, ft_handle);
-}
-
-// when a locktree is created, clone a ft handle and store it
-// as userdata so we can close it later.
-int toku_db_lt_on_create_callback(toku::locktree *lt, void *extra) {
-    int r;
-    struct lt_on_create_callback_extra *info = (struct lt_on_create_callback_extra *) extra;
-    TOKUTXN ttxn = info->txn ? db_txn_struct_i(info->txn)->tokutxn : NULL;
-    FT_HANDLE ft_handle = info->ft_handle;
-
-    FT_HANDLE cloned_ft_handle;
-    r = toku_ft_handle_clone(&cloned_ft_handle, ft_handle, ttxn);
-    if (r == 0) {
-        assert(lt->get_userdata() == NULL);
-        lt->set_userdata(cloned_ft_handle);
-    }
-    return r;
-}
-
-// when a locktree is about to be destroyed, 
-// close the ft handle stored as userdata.
-void toku_db_lt_on_destroy_callback(toku::locktree *lt) {
-    FT_HANDLE ft_handle = (FT_HANDLE) lt->get_userdata();
-    assert(ft_handle);
-    toku_ft_handle_close(ft_handle);
 }
 
 // Instruct db to use the default (built-in) key comparison function
 // by setting the flag bits in the db and ft structs
-int toku_db_use_builtin_key_cmp(DB *db) {
-    HANDLE_PANICKED_DB(db);
-    int r = 0;
-    if (db_opened(db)) {
-        r = toku_ydb_do_error(db->dbenv, EINVAL, "Comparison functions cannot be set after DB open.\n");
-    } else if (db->i->key_compare_was_set) {
-        r = toku_ydb_do_error(db->dbenv, EINVAL, "Key comparison function already set.\n");
-    } else {
-        uint32_t tflags;
-        toku_ft_get_flags(db->i->ft_handle, &tflags);
-
-        tflags |= TOKU_DB_KEYCMP_BUILTIN;
-        toku_ft_set_flags(db->i->ft_handle, tflags);
-        db->i->key_compare_was_set = true;
-    }
-    return r;
-}
-
-int toku_db_open_iname(DB * db, DB_TXN * txn, const char *iname_in_env, uint32_t flags, int mode) {
-    //Set comparison functions if not yet set.
-    HANDLE_READ_ONLY_TXN(txn);
-    if (!db->i->key_compare_was_set && db->dbenv->i->bt_compare) {
-        toku_ft_set_bt_compare(db->i->ft_handle, db->dbenv->i->bt_compare);
-        db->i->key_compare_was_set = true;
-    }
-    if (db->dbenv->i->update_function) {
-        toku_ft_set_update(db->i->ft_handle,db->dbenv->i->update_function);
-    }
-    toku_ft_set_redirect_callback(
-        db->i->ft_handle,
-        db_on_redirect_callback,
-        db
-        );
-    bool need_locktree = (bool)((db->dbenv->i->open_flags & DB_INIT_LOCK) &&
-                                (db->dbenv->i->open_flags & DB_INIT_TXN));
-
-    int is_db_excl    = flags & DB_EXCL;    flags&=~DB_EXCL;
-    int is_db_create  = flags & DB_CREATE;  flags&=~DB_CREATE;
-    //We support READ_UNCOMMITTED and READ_COMMITTED whether or not the flag is provided.
-                                            flags&=~DB_READ_UNCOMMITTED;
-                                            flags&=~DB_READ_COMMITTED;
-                                            flags&=~DB_SERIALIZABLE;
-                                            flags&=~DB_IS_HOT_INDEX;
-    // unknown or conflicting flags are bad
-    int unknown_flags = flags & ~DB_THREAD;
-    unknown_flags &= ~DB_BLACKHOLE;
-    if (unknown_flags || (is_db_excl && !is_db_create)) {
-        return EINVAL;
-    }
-
-    if (db_opened(db)) {
-        return EINVAL;              /* It was already open. */
-    }
-    
-    db->i->open_flags = flags;
-    db->i->open_mode = mode;
-
-    FT_HANDLE ft_handle = db->i->ft_handle;
-    int r = toku_ft_handle_open(ft_handle, iname_in_env,
-                      is_db_create, is_db_excl,
-                      db->dbenv->i->cachetable,
-                      txn ? db_txn_struct_i(txn)->tokutxn : nullptr);
-    if (r != 0) {
-        goto out;
-    }
-
-    // if the dictionary was opened as a blackhole, mark the
-    // fractal tree as blackhole too.
-    if (flags & DB_BLACKHOLE) {
-        toku_ft_set_blackhole(ft_handle);
-    }
-
-    db->i->opened = 1;
-
-    // now that the handle has successfully opened, a valid descriptor
-    // is in the ft. we need to set the db's descriptor pointers
-    db_set_descriptors(db, ft_handle);
-
-    if (need_locktree) {
-        db->i->dict_id = toku_ft_get_dictionary_id(db->i->ft_handle);
-        struct lt_on_create_callback_extra on_create_extra = {
-            .txn = txn,
-            .ft_handle = db->i->ft_handle,
-        };
-        db->i->lt = db->dbenv->i->ltm.get_lt(db->i->dict_id,
-                                             toku_ft_get_comparator(db->i->ft_handle),
-                                             &on_create_extra);
-        if (db->i->lt == nullptr) {
-            r = errno;
-            if (r == 0) {
-                r = EINVAL;
-            }
-            goto out;
-        }
-    }
-    r = 0;
- 
-out:
-    if (r != 0) {
-        db->i->dict_id = DICTIONARY_ID_NONE;
-        db->i->opened = 0;
-        if (db->i->lt) {
-            db->dbenv->i->ltm.release_lt(db->i->lt);
-            db->i->lt = nullptr;
-        }
-    }
-    return r;
+void toku_db_use_builtin_key_cmp(DB *db) {
+    assert(!db_opened(db));
+    assert(!db->i->ft_handle->did_set_flags);
+    toku_ft_add_flags(db->i->ft_handle, TOKU_DB_KEYCMP_BUILTIN);
+    toku_ft_set_bt_compare(db->i->ft_handle, toku_builtin_compare_fun);
 }
 
 // Return the maximum key and val size in 
@@ -553,63 +301,15 @@ toku_db_get_max_row_size(DB * UU(db), uint32_t * max_key_size, uint32_t * max_va
 
 int toku_db_pre_acquire_fileops_lock(DB *db, DB_TXN *txn) {
     // bad hack because some environment dictionaries do not have a dname
-    char *dname = db->i->dname;
+    char *dname = db->i->dict->get_dname();
     if (!dname)
         return 0;
 
-    DBT key_in_directory = { .data = dname, .size = (uint32_t) strlen(dname)+1 };
-    //Left end of range == right end of range (point lock)
-    int r = toku_db_get_range_lock(db->dbenv->i->directory, txn,
-            &key_in_directory, &key_in_directory,
-            toku::lock_request::type::WRITE);
+    int r = db->dbenv->i->dict_manager.pre_acquire_fileops_lock(txn, dname);
     if (r == 0)
         STATUS_VALUE(YDB_LAYER_DIRECTORY_WRITE_LOCKS)++;  // accountability 
     else
         STATUS_VALUE(YDB_LAYER_DIRECTORY_WRITE_LOCKS_FAIL)++;  // accountability 
-    return r;
-}
-
-//
-// This function is used both to set an initial descriptor of a DB and to
-// change a descriptor. (only way to set a descriptor of a DB)
-//
-// Requires:
-//  - The caller must not call put_multiple, del_multiple, or update_multiple concurrently
-//  - The caller must not have a hot index running concurrently on db
-//  - If the caller has passed DB_UPDATE_CMP_DESCRIPTOR as a flag, then he is calling this function
-//     ONLY immediately after creating the dictionary and before doing any actual work on the dictionary.
-//
-static int 
-toku_db_change_descriptor(DB *db, DB_TXN* txn, const DBT* descriptor, uint32_t flags) {
-    HANDLE_PANICKED_DB(db);
-    HANDLE_READ_ONLY_TXN(txn);
-    HANDLE_DB_ILLEGAL_WORKING_PARENT_TXN(db, txn);
-    int r = 0;
-    TOKUTXN ttxn = txn ? db_txn_struct_i(txn)->tokutxn : NULL;
-    bool is_db_hot_index  = ((flags & DB_IS_HOT_INDEX) != 0);
-    bool update_cmp_descriptor = ((flags & DB_UPDATE_CMP_DESCRIPTOR) != 0);
-
-    DBT old_descriptor_dbt;
-    toku_init_dbt(&old_descriptor_dbt);
-
-    if (!db_opened(db) || !descriptor || (descriptor->size>0 && !descriptor->data)){
-        r = EINVAL;
-        goto cleanup;
-    }
-    // For a hot index, this is an initial descriptor.
-    // We do not support (yet) hcad with hot index concurrently on a single table, which
-    // would require changing a descriptor for a hot index.
-    if (!is_db_hot_index) {
-        r = toku_db_pre_acquire_table_lock(db, txn);
-        if (r != 0) { goto cleanup; }    
-    }
-
-    toku_clone_dbt(&old_descriptor_dbt, db->descriptor->dbt);
-    toku_ft_change_descriptor(db->i->ft_handle, &old_descriptor_dbt, descriptor, 
-                              true, ttxn, update_cmp_descriptor);
-
-cleanup:
-    toku_destroy_dbt(&old_descriptor_dbt);
     return r;
 }
 
@@ -784,20 +484,36 @@ toku_db_get_dname(DB *db) {
     if (!db_opened(db)) {
         return nullptr;
     }
-    if (db->i->dname == nullptr) {
+    if (db->i->dict->get_dname() == nullptr) {
         return ""; 
     }
-    return db->i->dname;
+    return db->i->dict->get_dname();
 }
 
+// need to make this function nicer
 static int 
 toku_db_keys_range64(DB* db, DB_TXN* txn __attribute__((__unused__)), DBT* keyleft, DBT* keyright, uint64_t* less, uint64_t* left, uint64_t* between, uint64_t *right, uint64_t *greater, bool* middle_3_exact) {
     HANDLE_PANICKED_DB(db);
     HANDLE_DB_ILLEGAL_WORKING_PARENT_TXN(db, txn);
 
     // note that we ignore the txn param.  It would be more complicated to support it.
-    // TODO(yoni): Maybe add support for txns later?  How would we do this?  ydb lock comment about db_keyrange64 is obsolete.
-    toku_ft_keysrange(db->i->ft_handle, keyleft, keyright, less, left, between, right, greater, middle_3_exact);
+    DBT ft_left_key;
+    void* left_data = alloca(sizeof(uint64_t) + (keyleft ? keyleft->size : 0));
+    db->i->dict->fill_ft_key(keyleft, left_data, &ft_left_key);
+    
+    DBT ft_right_key;
+    void* right_data = alloca(sizeof(uint64_t) + (keyright ? keyright->size : 0));
+    bool has_prepend = db->i->dict->num_prepend_bytes() > 0;
+    if (has_prepend) {
+        if (keyright) {
+            db->i->dict->fill_ft_key(keyright, right_data, &ft_right_key);
+        }
+        else {
+            db->i->dict->fill_max_key(right_data, &ft_right_key);
+        }
+    }
+
+    toku_ft_keysrange(db->i->ft_handle, has_prepend ? &ft_left_key : keyleft, has_prepend ? &ft_right_key : keyright, less, left, between, right, greater, middle_3_exact);
     return 0;
 }
 
@@ -821,14 +537,17 @@ toku_db_key_range64(DB* db, DB_TXN* txn, DBT* key, uint64_t* less_p, uint64_t* e
 static int toku_db_get_key_after_bytes(DB *db, DB_TXN *txn, const DBT *start_key, uint64_t skip_len, void (*callback)(const DBT *end_key, uint64_t actually_skipped, void *extra), void *cb_extra, uint32_t UU(flags)) {
     HANDLE_PANICKED_DB(db);
     HANDLE_DB_ILLEGAL_WORKING_PARENT_TXN(db, txn);
-    return toku_ft_get_key_after_bytes(db->i->ft_handle, start_key, skip_len, callback, cb_extra);
+    DBT ft_key;
+    void* data = alloca(sizeof(uint64_t) + start_key->size);
+    db->i->dict->fill_ft_key(start_key, data, &ft_key);
+    return toku_ft_get_key_after_bytes(db->i->ft_handle, &ft_key, skip_len, callback, cb_extra);
 }
 
 // needed by loader.c
 int 
 toku_db_pre_acquire_table_lock(DB *db, DB_TXN *txn) {
     HANDLE_PANICKED_DB(db);
-    if (!db->i->lt || !txn) return 0;
+    if (!db->i->dict->get_lt() || !txn) return 0;
     int r;
     r = toku_db_get_range_lock(db, txn, 
             toku_dbt_negative_infinity(), toku_dbt_positive_infinity(),
@@ -840,9 +559,9 @@ static int
 locked_db_close(DB * db, uint32_t UU(flags)) {
     // cannot begin a checkpoint
     toku_multi_operation_client_lock();
-    int r = toku_db_close(db);
+    toku_db_close(db);
     toku_multi_operation_client_unlock();
-    return r;
+    return 0;
 }
 
 int 
@@ -900,22 +619,54 @@ locked_db_open(DB *db, DB_TXN *txn, const char *fname, const char *dbname, DBTYP
     return r;
 }
 
-static int 
-locked_db_change_descriptor(DB *db, DB_TXN *txn, const DBT *descriptor, uint32_t flags) {
+static int
+locked_db_create_new_db(DB *db, DB_TXN *txn, const char* dname, const char *groupname, uint32_t flags) {
+    int ret, r;
+    HANDLE_PANICKED_DB(db);
+    HANDLE_READ_ONLY_TXN(txn);
+    HANDLE_DB_ILLEGAL_WORKING_PARENT_TXN(db, txn);
+
+    //
+    // Note that this function opens a db with a transaction. Should
+    // the transaction abort, the user is responsible for closing the DB
+    // before aborting the transaction. Not doing so results in undefined
+    // behavior.
+    //
+    DB_ENV *env = db->dbenv;
+    DB_TXN *child_txn = NULL;
+    int using_txns = env->i->open_flags & DB_INIT_TXN;
+    if (!using_txns) {
+        r = toku_ydb_do_error(db->dbenv, EINVAL, "Must run with transactions to use create_new_db.\n");
+        return r;
+    }
+    uint32_t supported_flags = DB_THREAD | DB_IS_HOT_INDEX;
+    if ((flags |= supported_flags) != supported_flags) {
+        r = toku_ydb_do_error(db->dbenv, EINVAL, "Invalid flags %d.\n", flags);
+        return r;
+    }
+    if (db_opened(db)) {
+        // it was already open
+        return EINVAL;
+    }
+    ret = toku_txn_begin(env, txn, &child_txn, DB_TXN_NOSYNC);
+    invariant_zero(ret);
+
     // cannot begin a checkpoint
     toku_multi_operation_client_lock();
-    int r = toku_db_change_descriptor(db, txn, descriptor, flags);
+    r = db->dbenv->i->dict_manager.create_db_with_groupname(db, dname, groupname, child_txn, flags);
+    if (r == 0) {
+        note_db_opened(db, flags);
+    }
     toku_multi_operation_client_unlock();
-    return r;
-}
 
-static int
-autotxn_db_change_descriptor(DB *db, DB_TXN *txn, const DBT *descriptor, uint32_t flags) {
-    bool changed; int r;
-    r = toku_db_construct_autotxn(db, &txn, &changed, false);
-    if (r != 0) { return r; }
-    r = locked_db_change_descriptor(db, txn, descriptor, flags);
-    return toku_db_destruct_autotxn(txn, r, changed);
+    if (r == 0) {
+        ret = locked_txn_commit(child_txn, DB_TXN_NOSYNC);
+        invariant_zero(ret);
+    } else {
+        ret = locked_txn_abort(child_txn);
+        invariant_zero(ret);
+    }
+    return r;
 }
 
 static void 
@@ -955,7 +706,14 @@ toku_db_hot_optimize(DB *db, DBT* left, DBT* right,
 {
     HANDLE_PANICKED_DB(db);
     int r = 0;
-    r = toku_ft_hot_optimize(db->i->ft_handle, left, right,
+    DBT ft_left_key;
+    void* left_data = alloca(sizeof(uint64_t) + left->size);
+    db->i->dict->fill_ft_key(left, left_data, &ft_left_key);
+    
+    DBT ft_right_key;
+    void* right_data = alloca(sizeof(uint64_t) + right->size);
+    db->i->dict->fill_ft_key(right, right_data, &ft_right_key);
+    r = toku_ft_hot_optimize(db->i->ft_handle, &ft_left_key, &ft_right_key,
                               progress_callback,
                               progress_extra, loops_run);
 
@@ -989,14 +747,39 @@ db_get_last_key_callback(uint32_t keylen, const void *key, uint32_t vallen UU(),
     return 0;
 }
 
+static void
+create_le_cursor_for_db(DB* src_db, DB_TXN* txn, LE_CURSOR *le_cursor_result) {
+    DBT min_key;
+    DBT max_key;
+    bool has_bounds = false;
+    if (src_db->i->dict->num_prepend_bytes() > 0) {
+        has_bounds = true;
+        void* data = alloca(sizeof(uint64_t));
+        src_db->i->dict->fill_max_key(data, &max_key);
+
+        DBT dummy;
+        toku_init_dbt(&dummy);
+        void* min_data = alloca(sizeof(uint64_t));
+        src_db->i->dict->fill_ft_key(&dummy, min_data, &min_key);
+    }
+
+    toku_le_cursor_create(
+        le_cursor_result,
+        db_struct_i(src_db)->ft_handle,
+        db_txn_struct_i(txn)->tokutxn,
+        has_bounds ? &min_key : NULL,
+        has_bounds ? &max_key : NULL
+        );
+}
+
+
+
 static int
 toku_db_get_last_key(DB * db, DB_TXN *txn, YDB_CALLBACK_FUNCTION func, void* extra) {
     int r;
     LE_CURSOR cursor = nullptr;
     struct last_key_extra last_extra = { .func = func, .extra = extra };
-
-    r = toku_le_cursor_create(&cursor, db->i->ft_handle, db_txn_struct_i(txn)->tokutxn);
-    if (r != 0) { goto cleanup; }
+    create_le_cursor_for_db(db, txn, &cursor);
 
     // Goes in reverse order.  First key returned is last in dictionary.
     r = toku_le_cursor_next(cursor, db_get_last_key_callback, &last_extra);
@@ -1030,29 +813,6 @@ toku_db_get_fragmentation(DB * db, TOKU_DB_FRAGMENTATION report) {
     else
         r = toku_ft_get_fragmentation(db->i->ft_handle, report);
     return r;
-}
-
-int 
-toku_db_set_indexer(DB *db, DB_INDEXER * indexer) {
-    int r = 0;
-    if ( db->i->indexer != NULL && indexer != NULL ) {
-        // you are trying to overwrite a valid indexer
-        r = EINVAL;
-    }
-    else {
-        db->i->indexer = indexer;
-    }
-    return r;
-}
-
-DB_INDEXER *
-toku_db_get_indexer(DB *db) {
-    return db->i->indexer;
-}
-
-static void 
-db_get_indexer(DB *db, DB_INDEXER **indexer_ptr) {
-    *indexer_ptr = toku_db_get_indexer(db);
 }
 
 struct ydb_verify_context {
@@ -1112,7 +872,7 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     
 
     FT_HANDLE ft_handle;
-    toku_ft_handle_create(&ft_handle);
+    toku_ft_handle_create(env->i->bt_compare, env->i->update_function, &ft_handle);
 
     int r = toku_setup_db_internal(db, env, flags, ft_handle, false);
     if (r != 0) return r;
@@ -1122,6 +882,7 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
 #define SDB(name) result->name = locked_db_ ## name
     SDB(close);
     SDB(open);
+    SDB(create_new_db);
     SDB(optimize);
 #undef SDB
     // methods that do not take the ydb lock
@@ -1145,7 +906,6 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     USDB(get_flags);
     USDB(fd);
     USDB(get_max_row_size);
-    USDB(set_indexer);
     USDB(pre_acquire_table_lock);
     USDB(pre_acquire_fileops_lock);
     USDB(key_range64);
@@ -1162,106 +922,19 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     USDB(dbt_neg_infty);
     USDB(get_fragmentation);
 #undef USDB
-    result->get_indexer = db_get_indexer;
     result->del = autotxn_db_del;
     result->put = autotxn_db_put;
     result->update = autotxn_db_update;
     result->update_broadcast = autotxn_db_update_broadcast;
-    result->change_descriptor = autotxn_db_change_descriptor;
     result->get_last_key = autotxn_db_get_last_key;
     
     // unlocked methods
     result->get = autotxn_db_get;
     result->getf_set = autotxn_db_getf_set;
     
-    result->i->dict_id = DICTIONARY_ID_NONE;
     result->i->opened = 0;
-    result->i->open_flags = 0;
-    result->i->open_mode = 0;
-    result->i->indexer = NULL;
     *db = result;
     return 0;
-}
-
-// When the loader is created, it makes this call (toku_env_load_inames).
-// For each dictionary to be loaded, replace old iname in directory
-// with a newly generated iname.  This will also take a write lock
-// on the directory entries.  The write lock will be released when
-// the transaction of the loader is completed.
-// If the transaction commits, the new inames are in place.
-// If the transaction aborts, the old inames will be restored.
-// The new inames are returned to the caller.  
-// It is the caller's responsibility to free them.
-// If "mark_as_loader" is true, then include a mark in the iname
-// to indicate that the file is created by the ft loader.
-// Return 0 on success (could fail if write lock not available).
-static int
-load_inames(DB_ENV * env, DB_TXN * txn, int N, DB * dbs[/*N*/], const char * new_inames_in_env[/*N*/], LSN *load_lsn, bool mark_as_loader) {
-    int rval = 0;
-    int i;
-    
-    TXNID_PAIR xid = TXNID_PAIR_NONE;
-    DBT dname_dbt;  // holds dname
-    DBT iname_dbt;  // holds new iname
-    
-    const char *mark;
-
-    if (mark_as_loader) {
-        mark = "B";
-    } else {
-        mark = "P";
-    }
-
-    for (i=0; i<N; i++) {
-        new_inames_in_env[i] = NULL;
-    }
-
-    if (txn) {
-        xid = toku_txn_get_txnid(db_txn_struct_i(txn)->tokutxn);
-    }
-    for (i = 0; i < N; i++) {
-        char * dname = dbs[i]->i->dname;
-        toku_fill_dbt(&dname_dbt, dname, strlen(dname)+1);
-        // now create new iname
-        char hint[strlen(dname) + 1];
-        create_iname_hint(dname, hint);
-        const char *new_iname = create_iname(env, xid.parent_id64, xid.child_id64, hint, mark, i);               // allocates memory for iname_in_env
-        new_inames_in_env[i] = new_iname;
-        toku_fill_dbt(&iname_dbt, new_iname, strlen(new_iname) + 1);      // iname_in_env goes in directory
-        rval = toku_db_put(env->i->directory, txn, &dname_dbt, &iname_dbt, 0, true);
-        if (rval) break;
-    }
-
-    // Generate load log entries.
-    if (!rval && txn) {
-        TOKUTXN ttxn = db_txn_struct_i(txn)->tokutxn;
-        int do_fsync = 0;
-        LSN *get_lsn = NULL;
-        for (i = 0; i < N; i++) {
-            FT_HANDLE ft_handle  = dbs[i]->i->ft_handle;
-            //Fsync is necessary for the last one only.
-            if (i==N-1) {
-                do_fsync = 1; //We only need a single fsync of logs.
-                get_lsn  = load_lsn; //Set pointer to capture the last lsn.
-            }
-            toku_ft_load(ft_handle, ttxn, new_inames_in_env[i], do_fsync, get_lsn);
-        }
-    }
-    return rval;
-}
-
-int
-locked_load_inames(DB_ENV * env, DB_TXN * txn, int N, DB * dbs[/*N*/], char * new_inames_in_env[/*N*/], LSN *load_lsn, bool mark_as_loader) {
-    int r;
-    HANDLE_READ_ONLY_TXN(txn);
-
-    // cannot begin a checkpoint
-    toku_multi_operation_client_lock();
-    r = load_inames(env, txn, N, dbs, (const char **) new_inames_in_env, load_lsn, mark_as_loader);
-    toku_multi_operation_client_unlock();
-
-    return r;
-
 }
 
 #undef STATUS_VALUE

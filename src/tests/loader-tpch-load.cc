@@ -115,8 +115,8 @@ struct tpch_key {
 };
 
 static __attribute__((__unused__)) int
-tpch_dbt_cmp (DB *db, const DBT *a, const DBT *b) {
-    assert(db && a && b);
+tpch_dbt_cmp (const DBT *a, const DBT *b) {
+    assert(a && b);
     assert(a->size == sizeof(struct tpch_key));
     assert(b->size == sizeof(struct tpch_key));
 
@@ -409,8 +409,14 @@ static int test_loader(DB **dbs)
 
     r = env->txn_begin(env, NULL, &txn, 0);                                                               
     CKERR(r);
-    r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags);
-    CKERR(r);
+    if (USE_REGION) {
+        r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags, generate_rows_for_region);
+        CKERR(r);
+    }
+    else {
+        r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags, generate_rows_for_lineitem);
+        CKERR(r);
+    }
     r = loader->set_error_callback(loader, NULL, NULL);
     CKERR(r);
     r = loader->set_poll_function(loader, poll_function, expect_poll_void);
@@ -467,24 +473,12 @@ static int run_test(void)
     r = db_env_create(&env, 0);                                                                               CKERR(r);
     db_env_enable_engine_status(0);  // disable engine status on crash because test is expected to fail
     r = env->set_default_bt_compare(env, tpch_dbt_cmp);                                                       CKERR(r);
-    // select which TPC-H table to load
-    if ( USE_REGION ) {
-        r = env->set_generate_row_callback_for_put(env, generate_rows_for_region);                            CKERR(r);
-        NUM_DBS=1;
-    }
-    else {
-        r = env->set_generate_row_callback_for_put(env, generate_rows_for_lineitem);                          CKERR(r);
-        NUM_DBS=8;
-    }
-
     int envflags = DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE | DB_PRIVATE;
     r = env->open(env, envdir, envflags, S_IRWXU+S_IRWXG+S_IRWXO);                                            CKERR(r);
     env->set_errfile(env, stderr);
     //Disable auto-checkpointing
     r = env->checkpointing_set_period(env, 0);                                                                CKERR(r);
 
-    DBT desc;
-    dbt_init(&desc, "foo", sizeof("foo"));
     char name[MAX_NAME*2];
 
     DB **dbs = (DB**)toku_malloc(sizeof(DB*) * NUM_DBS);
@@ -496,9 +490,6 @@ static int run_test(void)
         dbs[i]->app_private = &idx[i];
         snprintf(name, sizeof(name), "db_%04x", i);
         r = dbs[i]->open(dbs[i], NULL, name, NULL, DB_BTREE, DB_CREATE, 0666);                                CKERR(r);
-        IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-                { int chk_r = dbs[i]->change_descriptor(dbs[i], txn_desc, &desc, 0); CKERR(chk_r); }
-        });
     }
 
     // -------------------------- //
@@ -540,7 +531,6 @@ static void do_args(int argc, char * const argv[]) {
 	    fprintf(stderr, "Usage: -h -p -g\n%s\n", cmd);
 	    exit(resultcode);
         } else if (strcmp(argv[0], "-p")==0) {
-            DISALLOW_PUTS = LOADER_DISALLOW_PUTS;
         } else if (strcmp(argv[0], "-z")==0) {
             COMPRESS = LOADER_COMPRESS_INTERMEDIATES;
         } else if (strcmp(argv[0], "-g")==0) {

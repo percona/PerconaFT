@@ -124,7 +124,7 @@ int recovery_main (int argc, const char *const argv[]) {
 			   nullptr,
 			   nullptr,
 			   nullptr,
-			   data_dir, log_dir, nullptr, nullptr, nullptr, nullptr, 0);
+			   data_dir, log_dir, nullptr, nullptr, 0);
     if (r!=0) {
 	fprintf(stderr, "Recovery failed\n");
 	return(1);

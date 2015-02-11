@@ -103,8 +103,6 @@ PATENT RIGHTS GRANT:
 
 typedef struct ft_handle *FT_HANDLE;
 
-int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int nodesize, int basementnodesize, enum toku_compression_method compression_method, CACHETABLE, TOKUTXN, int(*)(DB *,const DBT*,const DBT*)) __attribute__ ((warn_unused_result));
-
 // effect: changes the descriptor for the ft of the given handle.
 // requires: 
 // - cannot change descriptor for same ft in two threads in parallel. 
@@ -134,6 +132,7 @@ const toku::comparator &toku_ft_get_comparator(FT_HANDLE ft_handle);
 
 typedef void (*on_redirect_callback)(FT_HANDLE ft_handle, void *extra);
 void toku_ft_set_redirect_callback(FT_HANDLE ft_handle, on_redirect_callback cb, void *extra);
+int toku_open_ft_handle (const char *fname, int is_create, FT_HANDLE *, int nodesize, int basementnodesize, enum toku_compression_method compression_method, CACHETABLE, TOKUTXN, ft_compare_func);
 
 // How updates (update/insert/deletes) work:
 // There are two flavers of upsertdels:  Singleton and broadcast.
@@ -171,18 +170,45 @@ void toku_ft_set_redirect_callback(FT_HANDLE ft_handle, on_redirect_callback cb,
 // Implementation note: Acquires a write lock on the entire database.
 //  This function works by sending an BROADCAST-UPDATE message containing
 //   the key and the extra.
-typedef int (*ft_update_func)(DB *db, const DBT *key, const DBT *old_val, const DBT *extra,
+typedef int (*ft_update_func)(const DBT *key, const DBT *old_val, const DBT *extra,
                               void (*set_val)(const DBT *new_val, void *set_extra),
                               void *set_extra);
+
+class ft_update_info {
+public:
+    uint8_t num_prepend_bytes;
+    ft_update_func update_func;
+    ft_update_info() : num_prepend_bytes(0), update_func(nullptr) {}
+    void init(ft_update_func up, uint32_t ft_flags) {
+        this->num_prepend_bytes = (ft_flags & TOKU_DB_HAS_PREPEND_BYTES) ? 8 : 0;
+        this->update_func = up;
+    }
+};
+
+void toku_ft_handle_create(ft_compare_func cmp_func, ft_update_func update_func, FT_HANDLE *ft);
+void toku_ft_add_flags(FT_HANDLE ft_handle, unsigned int flags);
+void toku_ft_set_flags(FT_HANDLE, unsigned int flags);
+void toku_ft_get_flags(FT_HANDLE, unsigned int *flags);
+void toku_ft_handle_set_nodesize(FT_HANDLE, unsigned int nodesize);
+void toku_ft_handle_get_nodesize(FT_HANDLE, unsigned int *nodesize);
+void toku_ft_get_maximum_advised_key_value_lengths(unsigned int *klimit, unsigned int *vlimit);
+void toku_ft_handle_set_basementnodesize(FT_HANDLE, unsigned int basementnodesize);
+void toku_ft_handle_get_basementnodesize(FT_HANDLE, unsigned int *basementnodesize);
+void toku_ft_handle_set_compression_method(FT_HANDLE, enum toku_compression_method);
+void toku_ft_handle_get_compression_method(FT_HANDLE, enum toku_compression_method *);
+void toku_ft_handle_set_fanout(FT_HANDLE, unsigned int fanout);
+void toku_ft_handle_get_fanout(FT_HANDLE, unsigned int *fanout);
+int toku_ft_handle_set_memcmp_magic(FT_HANDLE, uint8_t magic);
+
+void toku_ft_set_bt_compare(FT_HANDLE ft_handle, ft_compare_func cmp_func);
+const toku::comparator &toku_ft_get_comparator(FT_HANDLE ft_handle);
+
 void toku_ft_set_update(FT_HANDLE ft_h, ft_update_func update_fun);
 
 int toku_ft_handle_open(FT_HANDLE, const char *fname_in_env,
 		  int is_create, int only_create, CACHETABLE ct, TOKUTXN txn)  __attribute__ ((warn_unused_result));
 int toku_ft_handle_open_recovery(FT_HANDLE, const char *fname_in_env, int is_create, int only_create, CACHETABLE ct, TOKUTXN txn, 
 			   FILENUM use_filenum, LSN max_acceptable_lsn)  __attribute__ ((warn_unused_result));
-
-// clone an ft handle. the cloned handle has a new dict_id but refers to the same fractal tree
-int toku_ft_handle_clone(FT_HANDLE *cloned_ft_handle, FT_HANDLE ft_handle, TOKUTXN txn);
 
 // close an ft handle during normal operation. the underlying ft may or may not close,
 // depending if there are still references. an lsn for this close will come from the logger.
@@ -197,17 +223,6 @@ struct DICTIONARY_ID {
     uint64_t dictid;
 };
 static const DICTIONARY_ID DICTIONARY_ID_NONE = { .dictid = 0 };
-
-int
-toku_ft_handle_open_with_dict_id(
-    FT_HANDLE ft_h, 
-    const char *fname_in_env, 
-    int is_create, 
-    int only_create, 
-    CACHETABLE cachetable, 
-    TOKUTXN txn, 
-    DICTIONARY_ID use_dictionary_id
-    )  __attribute__ ((warn_unused_result));
 
 // Effect: Insert a key and data pair into an ft
 void toku_ft_insert (FT_HANDLE ft_h, DBT *k, DBT *v, TOKUTXN txn);
@@ -229,21 +244,25 @@ void toku_ft_maybe_update(FT_HANDLE ft_h, const DBT *key, const DBT *update_func
 // is called during recovery.
 void toku_ft_maybe_update_broadcast(FT_HANDLE ft_h, const DBT *update_function_extra, TOKUTXN txn, bool oplsn_valid, LSN oplsn, bool do_logging, bool is_resetting_op);
 
-void toku_ft_load_recovery(TOKUTXN txn, FILENUM old_filenum, char const * new_iname, int do_fsync, int do_log, LSN *load_lsn);
-void toku_ft_load(FT_HANDLE ft_h, TOKUTXN txn, char const * new_iname, int do_fsync, LSN *get_lsn);
-void toku_ft_hot_index_recovery(TOKUTXN txn, FILENUMS filenums, int do_fsync, int do_log, LSN *hot_index_lsn);
-void toku_ft_hot_index(FT_HANDLE ft_h, TOKUTXN txn, FILENUMS filenums, int do_fsync, LSN *lsn);
-
-void toku_ft_log_put_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val);
-void toku_ft_log_put (TOKUTXN txn, FT_HANDLE ft_h, const DBT *key, const DBT *val);
-void toku_ft_log_del_multiple (TOKUTXN txn, FT_HANDLE src_ft, FT_HANDLE *fts, uint32_t num_fts, const DBT *key, const DBT *val);
-void toku_ft_log_del (TOKUTXN txn, FT_HANDLE ft_h, const DBT *key);
+void toku_ft_hot_index_recovery(TOKUTXN txn, FILENUM filenum, int do_log, bool has_bounds, DBT* min, DBT* max);
+void toku_ft_hot_index(FT_HANDLE ft_handle, TOKUTXN txn);
 
 // Effect: Delete a key from an ft
 void toku_ft_delete (FT_HANDLE ft_h, DBT *k, TOKUTXN txn);
 
 // Effect: Delete a key from an ft if the oplsn is newer than the ft lsn.  This function is called during recovery.
 void toku_ft_maybe_delete (FT_HANDLE ft_h, DBT *k, TOKUTXN txn, bool oplsn_valid, LSN oplsn, bool do_logging);
+
+void toku_ft_maybe_delete_multicast(
+    FT_HANDLE ft_h,
+    DBT *min_key,
+    DBT *max_key,
+    TOKUTXN txn,
+    bool oplsn_valid,
+    LSN oplsn,
+    bool do_logging,
+    bool is_resetting_op
+    );
 
 TXNID toku_ft_get_oldest_referenced_xid_estimate(FT_HANDLE ft_h);
 struct txn_manager *toku_ft_get_txn_manager(FT_HANDLE ft_h);
@@ -260,15 +279,6 @@ int toku_dump_ft (FILE *,FT_HANDLE ft_h)  __attribute__ ((warn_unused_result));
 extern int toku_ft_debug_mode;
 int toku_verify_ft (FT_HANDLE ft_h)  __attribute__ ((warn_unused_result));
 int toku_verify_ft_with_progress (FT_HANDLE ft_h, int (*progress_callback)(void *extra, float progress), void *extra, int verbose, int keep_going)  __attribute__ ((warn_unused_result));
-
-DICTIONARY_ID toku_ft_get_dictionary_id(FT_HANDLE);
-
-enum ft_flags {
-    //TOKU_DB_DUP             = (1<<0),  //Obsolete #2862
-    //TOKU_DB_DUPSORT         = (1<<1),  //Obsolete #2862
-    TOKU_DB_KEYCMP_BUILTIN  = (1<<2),
-    TOKU_DB_VALCMP_BUILTIN_13  = (1<<3),
-};
 
 void toku_ft_keyrange(FT_HANDLE ft_h, DBT *key, uint64_t *less,  uint64_t *equal,  uint64_t *greater);
 void toku_ft_keysrange(FT_HANDLE ft_h, DBT* key_left, DBT* key_right, uint64_t *less_p, uint64_t* equal_left_p, uint64_t* middle_p, uint64_t* equal_right_p, uint64_t* greater_p, bool* middle_3_exact_p);

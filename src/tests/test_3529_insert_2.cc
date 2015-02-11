@@ -112,7 +112,7 @@ static uint32_t db_page_size = 4096;
 static const char *envdir = TOKU_TEST_FILENAME;
 
 static int 
-my_compare(DB *this_db UU(), const DBT *a UU(), const DBT *b UU()) {
+my_compare(const DBT *a UU(), const DBT *b UU()) {
     assert(a->size == b->size);
     return memcmp(a->data, b->data, a->size);
 }
@@ -168,7 +168,6 @@ run_test(void) {
     r = db_env_create(&env, 0); CKERR(r);
     env->set_errfile(env, stderr);
     r = env->set_redzone(env, 0); CKERR(r);
-    r = env->set_generate_row_callback_for_put(env, my_generate_row); CKERR(r);
     r = env->set_default_bt_compare(env, my_compare); CKERR(r);
     r = env->open(env, envdir, DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN|DB_CREATE|DB_PRIVATE, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(r);
 
@@ -182,7 +181,7 @@ run_test(void) {
     // build a tree with 2 leaf nodes
     r = env->txn_begin(env, 0, &txn, 0); CKERR(r);
     DB_LOADER *loader = NULL;
-    r = env->create_loader(env, txn, &loader, db, 1, &db, NULL, NULL, 0); CKERR(r);
+    r = env->create_loader(env, txn, &loader, db, 1, &db, NULL, NULL, 0, my_generate_row); CKERR(r);
     for (uint64_t i = 0; i < 5; i++) {
         uint64_t key = i;
         char val[800]; memset(val, 0, sizeof val);

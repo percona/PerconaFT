@@ -122,9 +122,6 @@ ft_destroy(FT ft) {
     //cannot destroy since it is still in use by CURRENT
     assert(ft->h->type == FT_CURRENT);
     ft->blocktable.destroy();
-    ft->cmp.destroy();
-    toku_destroy_dbt(&ft->descriptor.dbt);
-    toku_destroy_dbt(&ft->cmp_descriptor.dbt);
     toku_ft_destroy_reflock(ft);
     toku_free(ft->h);
 }
@@ -207,22 +204,6 @@ static void ft_begin_checkpoint (LSN checkpoint_lsn, void *header_v) {
     toku_ft_unlock (ft);
 }
 
-// #4922: Hack to remove data corruption race condition.
-// Reading (and upgrading) a node up to version 19 causes this.
-// We COULD skip this if we know that no nodes remained (as of last checkpoint)
-// that are below version 19.
-// If there are no nodes < version 19 this is harmless (field is unused).
-// If there are, this will make certain the value is at least as low as necessary,
-// and not much lower.  (Too low is good, too high can cause data corruption).
-// TODO(yoni): If we ever stop supporting upgrades of nodes < version 19 we can delete this.
-// TODO(yoni): If we know no nodes are left to upgrade, we can skip this. (Probably not worth doing).
-static void
-ft_hack_highest_unused_msn_for_upgrade_for_checkpoint(FT ft) {
-    if (ft->h->layout_version_original < FT_LAYOUT_VERSION_19) {
-        ft->checkpoint_header->highest_unused_msn_for_upgrade = ft->h->highest_unused_msn_for_upgrade;
-    }
-}
-
 // maps to cf->checkpoint_userdata
 // Write checkpoint-in-progress versions of header and translation to disk (really to OS internal buffer).
 // Copy current header's version of checkpoint_staging stat64info to checkpoint header.
@@ -250,7 +231,6 @@ static void ft_checkpoint (CACHEFILE cf, int fd, void *header_v) {
         ft->h->time_of_last_modification = now;
         ch->time_of_last_modification = now;
         ch->checkpoint_count++;
-        ft_hack_highest_unused_msn_for_upgrade_for_checkpoint(ft);
                                                              
         // write translation and header to disk (or at least to OS internal buffer)
         toku_serialize_ft_to(fd, ch, &ft->blocktable, ft->cf);
@@ -380,9 +360,8 @@ static void ft_init(FT ft, FT_OPTIONS options, CACHEFILE cf) {
 
     toku_list_init(&ft->live_ft_handles);
 
-    // intuitively, the comparator points to the FT's cmp descriptor
-    ft->cmp.create(options->compare_fun, &ft->cmp_descriptor, options->memcmp_magic, options->always_memcmp);
-    ft->update_fun = options->update_fun;
+    ft->cmp.create(options->compare_fun, ft->h->flags, options->memcmp_magic, options->always_memcmp);
+    ft->update_info.init(options->update_fun, ft->h->flags);
 
     if (ft->cf != NULL) {
         assert(ft->cf == cf);
@@ -468,7 +447,7 @@ int toku_read_ft_and_store_in_cachefile (FT_HANDLE ft_handle, CACHEFILE cf, LSN 
     FT ft = nullptr;
     if ((ft = (FT) toku_cachefile_get_userdata(cf)) != nullptr) {
         *header = ft;
-        assert(ft_handle->options.update_fun == ft->update_fun);
+        assert(ft_handle->options.update_fun == ft->update_info.update_func);
         return 0;
     }
 
@@ -482,9 +461,8 @@ int toku_read_ft_and_store_in_cachefile (FT_HANDLE ft_handle, CACHEFILE cf, LSN 
     }
 
     invariant_notnull(ft);
-    // intuitively, the comparator points to the FT's cmp descriptor
-    ft->cmp.create(ft_handle->options.compare_fun, &ft->cmp_descriptor, ft_handle->options.memcmp_magic, ft_handle->options.always_memcmp);
-    ft->update_fun = ft_handle->options.update_fun;
+    ft->cmp.create(ft_handle->options.compare_fun, ft->h->flags, ft_handle->options.memcmp_magic, ft_handle->options.always_memcmp);
+    ft->update_info.init(ft_handle->options.update_fun, ft->h->flags);
     ft->cf = cf;
     toku_cachefile_set_userdata(cf,
                                 reinterpret_cast<void *>(ft),
@@ -618,198 +596,6 @@ toku_ft_init(FT ft,
     ft->h->checkpoint_lsn   = checkpoint_lsn;
 }
 
-// Open an ft for use by redirect.  The new ft must have the same dict_id as the old_ft passed in.  (FILENUM is assigned by the ft_handle_open() function.)
-static int
-ft_handle_open_for_redirect(FT_HANDLE *new_ftp, const char *fname_in_env, TOKUTXN txn, FT old_ft) {
-    FT_HANDLE ft_handle;
-    assert(old_ft->dict_id.dictid != DICTIONARY_ID_NONE.dictid);
-    toku_ft_handle_create(&ft_handle);
-    toku_ft_set_bt_compare(ft_handle, old_ft->cmp.get_compare_func());
-    toku_ft_set_update(ft_handle, old_ft->update_fun);
-    toku_ft_handle_set_nodesize(ft_handle, old_ft->h->nodesize);
-    toku_ft_handle_set_basementnodesize(ft_handle, old_ft->h->basementnodesize);
-    toku_ft_handle_set_compression_method(ft_handle, old_ft->h->compression_method);
-    toku_ft_handle_set_fanout(ft_handle, old_ft->h->fanout);
-    CACHETABLE ct = toku_cachefile_get_cachetable(old_ft->cf);
-    int r = toku_ft_handle_open_with_dict_id(ft_handle, fname_in_env, 0, 0, ct, txn, old_ft->dict_id);
-    if (r != 0) {
-        goto cleanup;
-    }
-    assert(ft_handle->ft->dict_id.dictid == old_ft->dict_id.dictid);
-    *new_ftp = ft_handle;
-
- cleanup:
-    if (r != 0) {
-        toku_ft_handle_close(ft_handle);
-    }
-    return r;
-}
-
-// This function performs most of the work to redirect a dictionary to different file.
-// It is called for redirect and to abort a redirect.  (This function is almost its own inverse.)
-static int
-dictionary_redirect_internal(const char *dst_fname_in_env, FT src_ft, TOKUTXN txn, FT *dst_ftp) {
-    int r;
-
-    FILENUM src_filenum = toku_cachefile_filenum(src_ft->cf);
-    FILENUM dst_filenum = FILENUM_NONE;
-
-    FT dst_ft = NULL;
-    struct toku_list *list;
-    // open a dummy ft based off of 
-    // dst_fname_in_env to get the header
-    // then we will change all the ft's to have
-    // their headers point to dst_ft instead of src_ft
-    FT_HANDLE tmp_dst_ft = NULL;
-    r = ft_handle_open_for_redirect(&tmp_dst_ft, dst_fname_in_env, txn, src_ft);
-    if (r != 0) {
-        goto cleanup;
-    }
-    dst_ft = tmp_dst_ft->ft;
-
-    // some sanity checks on dst_filenum
-    dst_filenum = toku_cachefile_filenum(dst_ft->cf);
-    assert(dst_filenum.fileid!=FILENUM_NONE.fileid);
-    assert(dst_filenum.fileid!=src_filenum.fileid); //Cannot be same file.
-
-    // for each live ft_handle, ft_handle->ft is currently src_ft
-    // we want to change it to dummy_dst
-    toku_ft_grab_reflock(src_ft);
-    while (!toku_list_empty(&src_ft->live_ft_handles)) {
-        list = src_ft->live_ft_handles.next;
-        FT_HANDLE src_handle = NULL;
-        src_handle = toku_list_struct(list, struct ft_handle, live_ft_handle_link);
-
-        toku_list_remove(&src_handle->live_ft_handle_link);
-
-        toku_ft_note_ft_handle_open(dst_ft, src_handle);
-        if (src_handle->redirect_callback) {
-            src_handle->redirect_callback(src_handle, src_handle->redirect_callback_extra);
-        }
-    }
-    assert(dst_ft);
-    // making sure that we are not leaking src_ft
-    assert(toku_ft_needed_unlocked(src_ft));
-    toku_ft_release_reflock(src_ft);
-
-    toku_ft_handle_close(tmp_dst_ft);
-
-    *dst_ftp = dst_ft;
-cleanup:
-    return r;
-}
-
-
-
-//This is the 'abort redirect' function.  The redirect of old_ft to new_ft was done
-//and now must be undone, so here we redirect new_ft back to old_ft.
-int
-toku_dictionary_redirect_abort(FT old_ft, FT new_ft, TOKUTXN txn) {
-    char *old_fname_in_env = toku_cachefile_fname_in_env(old_ft->cf);
-    int r;
-    {
-        FILENUM old_filenum = toku_cachefile_filenum(old_ft->cf);
-        FILENUM new_filenum = toku_cachefile_filenum(new_ft->cf);
-        assert(old_filenum.fileid!=new_filenum.fileid); //Cannot be same file.
-
-        //No living fts in old header.
-        toku_ft_grab_reflock(old_ft);
-        assert(toku_list_empty(&old_ft->live_ft_handles));
-        toku_ft_release_reflock(old_ft);
-    }
-
-    FT dst_ft;
-    // redirect back from new_ft to old_ft
-    r = dictionary_redirect_internal(old_fname_in_env, new_ft, txn, &dst_ft);
-    if (r == 0) {
-        assert(dst_ft == old_ft);
-    }
-    return r;
-}
-
-/****
- * on redirect or abort:
- *  if redirect txn_note_doing_work(txn)
- *  if redirect connect src ft to txn (txn modified this ft)
- *  for each src ft
- *    open ft to dst file (create new ft struct)
- *    if redirect connect dst ft to txn 
- *    redirect db to new ft
- *    redirect cursors to new ft
- *  close all src fts
- *  if redirect make rollback log entry
- * 
- * on commit:
- *   nothing to do
- *
- *****/
-
-int 
-toku_dictionary_redirect (const char *dst_fname_in_env, FT_HANDLE old_ft_h, TOKUTXN txn) {
-// Input args:
-//   new file name for dictionary (relative to env)
-//   old_ft_h is a live ft of open handle ({DB, FT_HANDLE} pair) that currently refers to old dictionary file.
-//   (old_ft_h may be one of many handles to the dictionary.)
-//   txn that created the loader
-// Requires: 
-//   multi operation lock is held.
-//   The ft is open.  (which implies there can be no zombies.)
-//   The new file must be a valid dictionary.
-//   The block size and flags in the new file must match the existing FT.
-//   The new file must already have its descriptor in it (and it must match the existing descriptor).
-// Effect:   
-//   Open new FTs (and related header and cachefile) to the new dictionary file with a new FILENUM.
-//   Redirect all DBs that point to fts that point to the old file to point to fts that point to the new file.
-//   Copy the dictionary id (dict_id) from the header of the original file to the header of the new file.
-//   Create a rollback log entry.
-//   The original FT, header, cachefile and file remain unchanged.  They will be cleaned up on commmit.
-//   If the txn aborts, then this operation will be undone
-    int r;
-
-    FT old_ft = old_ft_h->ft;
-
-    // dst file should not be open.  (implies that dst and src are different because src must be open.)
-    {
-        CACHETABLE ct = toku_cachefile_get_cachetable(old_ft->cf);
-        CACHEFILE cf;
-        r = toku_cachefile_of_iname_in_env(ct, dst_fname_in_env, &cf);
-        if (r==0) {
-            r = EINVAL;
-            goto cleanup;
-        }
-        assert(r==ENOENT);
-        r = 0;
-    }
-
-    if (txn) {
-        toku_txn_maybe_note_ft(txn, old_ft);  // mark old ft as touched by this txn
-    }
-
-    FT new_ft;
-    r = dictionary_redirect_internal(dst_fname_in_env, old_ft, txn, &new_ft);
-    if (r != 0) {
-        goto cleanup;
-    }
-
-    // make rollback log entry
-    if (txn) {
-        toku_txn_maybe_note_ft(txn, new_ft); // mark new ft as touched by this txn
-
-        // There is no recovery log entry for redirect,
-        // and rollback log entries are not allowed for read-only transactions.
-        // Normally the recovery log entry would ensure the begin was logged.
-        if (!txn->begin_was_logged) {
-          toku_maybe_log_begin_txn_for_write_operation(txn);
-        }
-        FILENUM old_filenum = toku_cachefile_filenum(old_ft->cf);
-        FILENUM new_filenum = toku_cachefile_filenum(new_ft->cf);
-        toku_logger_save_rollback_dictionary_redirect(txn, old_filenum, new_filenum);
-    }
-
-cleanup:
-    return r;
-}
-
 // Insert reference to transaction into ft
 void
 toku_ft_add_txn_ref(FT ft) {
@@ -878,51 +664,6 @@ void toku_ft_get_fractal_tree_info64(FT ft, struct ftinfo64 *info) {
 int toku_ft_iterate_fractal_tree_block_map(FT ft, int (*iter)(uint64_t,int64_t,int64_t,int64_t,int64_t,void*), void *iter_extra) {
     uint64_t this_checkpoint_count = ft->h->checkpoint_count;
     return ft->blocktable.iterate_translation_tables(this_checkpoint_count, iter, iter_extra);
-}
-
-void 
-toku_ft_update_descriptor(FT ft, DESCRIPTOR desc) 
-// Effect: Changes the descriptor in a tree (log the change, make sure it makes it to disk eventually).
-// requires: the ft is fully user-opened with a valid cachefile.
-//           descriptor updates cannot happen in parallel for an FT 
-//           (ydb layer uses a row lock to enforce this)
-{
-    assert(ft->cf);
-    int fd = toku_cachefile_get_fd(ft->cf);
-    toku_ft_update_descriptor_with_fd(ft, desc, fd);
-}
-
-// upadate the descriptor for an ft and serialize it using
-// the given descriptor instead of reading the descriptor
-// from the ft's cachefile. we do this so serialize code can
-// update a descriptor before the ft is fully opened and has
-// a valid cachefile.
-void
-toku_ft_update_descriptor_with_fd(FT ft, DESCRIPTOR desc, int fd) {
-    // the checksum is four bytes, so that's where the magic number comes from
-    // make space for the new descriptor and write it out to disk
-    DISKOFF offset, size;
-    size = toku_serialize_descriptor_size(desc) + 4;
-    ft->blocktable.realloc_descriptor_on_disk(size, &offset, ft, fd);
-    toku_serialize_descriptor_contents_to_fd(fd, desc, offset);
-
-    // cleanup the old descriptor and set the in-memory descriptor to the new one
-    toku_destroy_dbt(&ft->descriptor.dbt);
-    toku_clone_dbt(&ft->descriptor.dbt, desc->dbt);
-}
-
-void toku_ft_update_cmp_descriptor(FT ft) {
-    // cleanup the old cmp descriptor and clone it as the in-memory descriptor
-    toku_destroy_dbt(&ft->cmp_descriptor.dbt);
-    toku_clone_dbt(&ft->cmp_descriptor.dbt, ft->descriptor.dbt);
-}
-
-DESCRIPTOR toku_ft_get_descriptor(FT_HANDLE ft_handle) {
-    return &ft_handle->ft->descriptor;
-}
-
-DESCRIPTOR toku_ft_get_cmp_descriptor(FT_HANDLE ft_handle) {
-    return &ft_handle->ft->cmp_descriptor;
 }
 
 void
@@ -1115,6 +856,27 @@ void tokuft_update_product_name_strings(void) {
                          "%s.directory", toku_product_name);
         assert(n >= 0);
         assert((unsigned)n < sizeof(toku_product_name_strings.fileopsdirectory));
+    }
+    {
+        int n = snprintf(toku_product_name_strings.fileopsinames,
+                         sizeof(toku_product_name_strings.fileopsinames),
+                         "%s.inames", toku_product_name);
+        assert(n >= 0);
+        assert((unsigned)n < sizeof(toku_product_name_strings.fileopsinames));
+    }
+    {
+        int n = snprintf(toku_product_name_strings.fileops_iname_refs,
+                         sizeof(toku_product_name_strings.fileops_iname_refs),
+                         "%s.inamerefs", toku_product_name);
+        assert(n >= 0);
+        assert((unsigned)n < sizeof(toku_product_name_strings.fileops_iname_refs));
+    }
+    {
+        int n = snprintf(toku_product_name_strings.fileops_groupnames,
+                         sizeof(toku_product_name_strings.fileops_groupnames),
+                         "%s.groupnames", toku_product_name);
+        assert(n >= 0);
+        assert((unsigned)n < sizeof(toku_product_name_strings.fileops_groupnames));
     }
     {
         int n = snprintf(toku_product_name_strings.environmentdictionary,

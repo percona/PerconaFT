@@ -105,7 +105,6 @@ FT_HANDLE ft;
 const char *fname = TOKU_TEST_FILENAME;
 
 static int update_func(
-    DB* UU(db),
     const DBT* key,
     const DBT* old_val, 
     const DBT* UU(extra),
@@ -136,7 +135,7 @@ doit (void) {
     assert(r==0);
 
     ft->options.update_fun = update_func;
-    ft->ft->update_fun = update_func;
+    ft->ft->update_info.init(update_func, 0);
     
     toku_testsetup_initialize();  // must precede any other toku_testsetup calls
 

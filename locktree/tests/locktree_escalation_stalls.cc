@@ -224,15 +224,15 @@ int main(int argc, const char *argv[]) {
 
     // create a manager
     locktree_manager mgr;
-    mgr.create(nullptr, nullptr, e_callback, nullptr);
+    mgr.create(e_callback, nullptr);
     mgr.set_max_lock_memory(max_lock_memory);
 
     // create lock trees
     DICTIONARY_ID dict_id_0 = { .dictid = 1 };
-    locktree *lt_0 = mgr.get_lt(dict_id_0, dbt_comparator, nullptr);
+    locktree *lt_0 = mgr.get_lt(dict_id_0, dbt_comparator);
 
     DICTIONARY_ID dict_id_1 = { .dictid = 2 };
-    locktree *lt_1 = mgr.get_lt(dict_id_1, dbt_comparator, nullptr);
+    locktree *lt_1 = mgr.get_lt(dict_id_1, dbt_comparator);
 
     // create the worker threads
     struct arg big_arg = { &mgr, lt_0, 1000 };

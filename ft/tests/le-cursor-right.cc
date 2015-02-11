@@ -116,7 +116,7 @@ le_cursor_get_next(LE_CURSOR cursor, DBT *val) {
 }
 
 static int 
-test_keycompare(DB* UU(desc), const DBT *a, const DBT *b) {
+test_keycompare(const DBT *a, const DBT *b) {
     return toku_keycompare(a->data, a->size, b->data, b->size);
 }
 
@@ -203,8 +203,7 @@ test_pos_infinity(const char *fname, int n) {
 
     // position the cursor at -infinity
     LE_CURSOR cursor = NULL;
-    error = toku_le_cursor_create(&cursor, ft, NULL);
-    assert(error == 0);
+    toku_le_cursor_create(&cursor, ft, NULL, NULL, NULL);
 
     for (int i = 0; i < 2*n; i++) {
         int k = toku_htonl(i);
@@ -237,8 +236,7 @@ test_neg_infinity(const char *fname, int n) {
 
     // position the LE_CURSOR at +infinity
     LE_CURSOR cursor = NULL;
-    error = toku_le_cursor_create(&cursor, ft, NULL);
-    assert(error == 0);
+    toku_le_cursor_create(&cursor, ft, NULL, NULL, NULL);
 
     DBT key;
     toku_init_dbt(&key); key.flags = DB_DBT_REALLOC;
@@ -291,8 +289,7 @@ test_between(const char *fname, int n) {
 
     // position the LE_CURSOR at +infinity
     LE_CURSOR cursor = NULL;
-    error = toku_le_cursor_create(&cursor, ft, NULL);
-    assert(error == 0);
+    toku_le_cursor_create(&cursor, ft, NULL, NULL, NULL);
 
     DBT key;
     toku_init_dbt(&key); key.flags = DB_DBT_REALLOC;

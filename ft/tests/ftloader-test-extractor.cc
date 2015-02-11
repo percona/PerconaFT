@@ -109,8 +109,7 @@ static int qsort_compare_ints (const void *a, const void *b) {
     return 0;
 }
 
-static int compare_int(DB *desc, const DBT *akey, const DBT *bkey) {
-    assert(desc == NULL);
+static int compare_int(const DBT *akey, const DBT *bkey) {
     assert(akey->size == sizeof (int));
     assert(bkey->size == sizeof (int));
     return qsort_compare_ints(akey->data, bkey->data);
@@ -271,7 +270,7 @@ static char *merge(char **tempfiles, int ntempfiles, const char *testdir) {
                 if (mini == -1) {
                     mini = i;
                 } else {
-                    int r = compare_int(NULL, &f[mini].key, &f[i].key);
+                    int r = compare_int(&f[mini].key, &f[i].key);
                     assert(r != 0);
                     if (r > 0)
                         mini = i;
@@ -387,14 +386,10 @@ static void test_extractor(int nrows, int nrowsets, const char *testdir) {
 
     // open the ft_loader. this runs the extractor.
     const int N = 1;
-    FT_HANDLE fts[N];
     DB* dbs[N];
-    const char *fnames[N];
     ft_compare_func compares[N];
     for (int i = 0; i < N; i++) {
-        fts[i] = NULL;
         dbs[i] = NULL;
-        fnames[i] = "";
         compares[i] = compare_int;
     }
 
@@ -402,7 +397,7 @@ static void test_extractor(int nrows, int nrowsets, const char *testdir) {
     sprintf(temp, "%s/%s", testdir, "tempXXXXXX");
 
     FTLOADER loader;
-    r = toku_ft_loader_open(&loader, NULL, generate, NULL, N, fts, dbs, fnames, compares, temp, ZERO_LSN, nullptr, true, 0, false, true);
+    r = toku_ft_loader_open(&loader, NULL, NULL, NULL, generate, NULL, N, dbs, compares, temp, true, 0, false);
     assert(r == 0);
 
     struct rowset *rowset[nrowsets];

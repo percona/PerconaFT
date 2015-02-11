@@ -207,20 +207,10 @@ struct ft {
     // These are (mostly) read-only.
 
     CACHEFILE cf;
-    // unique id for dictionary
-    DICTIONARY_ID dict_id;
 
-    // protected by locktree
-    DESCRIPTOR_S descriptor;
-
-    // protected by locktree and user.
-    // User makes sure this is only changed when no activity on tree
-    DESCRIPTOR_S cmp_descriptor;
-    // contains a pointer to cmp_descriptor (above) - their lifetimes are bound
     toku::comparator cmp;
 
-    // the update function always utilizes the cmp_descriptor, not the regular one
-    ft_update_func update_fun;
+    ft_update_info update_info;
 
     // These are not read-only:
 
@@ -266,12 +256,6 @@ struct ft {
     uint32_t seqinsert_score;
 };
 
-// Allocate a DB struct off the stack and only set its comparison
-// descriptor. We don't bother setting any other fields because
-// the comparison function doesn't need it, and we would like to
-// reduce the CPU work done per comparison.
-#define FAKE_DB(db, desc) struct __toku_db db; do { db.cmp_descriptor = const_cast<DESCRIPTOR>(desc); } while (0)
-
 struct ft_options {
     unsigned int nodesize;
     unsigned int basementnodesize;
@@ -288,8 +272,6 @@ struct ft_handle {
     // The fractal tree.
     FT ft;
 
-    on_redirect_callback redirect_callback;
-    void *redirect_callback_extra;
     struct toku_list live_ft_handle_link;
     bool did_set_flags;
 
@@ -509,7 +491,6 @@ void toku_le_get_status(LE_STATUS);
 typedef enum {
     FT_UPDATES = 0,
     FT_UPDATES_BROADCAST,
-    FT_DESCRIPTOR_SET,
     FT_MSN_DISCARDS,                           // how many messages were ignored by leaf because of msn
     FT_TOTAL_RETRIES,                          // total number of search retries due to TRY_AGAIN
     FT_SEARCH_TRIES_GT_HEIGHT,                 // number of searches that required more tries than the height of the tree
@@ -638,10 +619,6 @@ void toku_ft_status_note_ftnode(int height, bool created); // created = false me
 void toku_ft_get_status(FT_STATUS);
 
 void toku_flusher_thread_set_callback(void (*callback_f)(int, void*), void* extra);
-
-// For upgrade
-int toku_upgrade_subtree_estimates_to_stat64info(int fd, FT ft) __attribute__((nonnull));
-int toku_upgrade_msn_from_root_to_header(int fd, FT ft) __attribute__((nonnull));
 
 // A callback function is invoked with the key, and the data.
 // The pointers (to the bytevecs) must not be modified.  The data must be copied out before the callback function returns.

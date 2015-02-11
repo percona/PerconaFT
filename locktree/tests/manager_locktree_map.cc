@@ -95,7 +95,7 @@ namespace toku {
 
 void manager_unit_test::test_lt_map(void) {
     locktree_manager mgr;
-    mgr.create(nullptr, nullptr, nullptr, nullptr);
+    mgr.create(nullptr, nullptr);
 
     locktree aa;
     locktree bb;

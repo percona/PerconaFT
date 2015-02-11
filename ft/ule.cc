@@ -239,6 +239,7 @@ static TXNID ule_get_xid(ULE ule, uint32_t index);
 static void ule_remove_innermost_placeholders(ULE ule);
 static void ule_add_placeholders(ULE ule, XIDS xids);
 static void ule_optimize(ULE ule, XIDS xids);
+static void ule_kill(ULE ule);
 static inline bool uxr_type_is_insert(uint8_t type);
 static inline bool uxr_type_is_delete(uint8_t type);
 static inline bool uxr_type_is_placeholder(uint8_t type);
@@ -722,10 +723,12 @@ msg_modify_ule(ULE ule, const ft_msg &msg) {
     XIDS xids = msg.xids();
     invariant(toku_xids_get_num_xids(xids) < MAX_TRANSACTION_RECORDS);
     enum ft_msg_type type = msg.type();
-    if (do_implicit_promotion(type, xids, ule)) {
+    if (msg_supports_implicit_promotion(type)) {
         ule_do_implicit_promotions(ule, xids);
     }
     switch (type) {
+    case FT_NONE:
+        break;
     case FT_INSERT_NO_OVERWRITE: {
         UXR old_innermost_uxr = ule_get_innermost_uxr(ule);
         //If something exists, quit (no overwrite).
@@ -740,30 +743,34 @@ msg_modify_ule(ULE ule, const ft_msg &msg) {
         ule_apply_insert(ule, xids, vallen, valp);
         break;
     }
+    case FT_DELETE_MULTICAST:
     case FT_DELETE_ANY:
         ule_apply_delete(ule, xids);
         break;
+    case FT_ABORT_MULTICAST_TXN:
     case FT_ABORT_ANY:
     case FT_ABORT_BROADCAST_TXN:
         ule_apply_abort(ule, xids);
         break;
+    case FT_COMMIT_MULTICAST_ALL:
     case FT_COMMIT_BROADCAST_ALL:
         ule_apply_broadcast_commit_all(ule);
         break;
     case FT_COMMIT_ANY:
+    case FT_COMMIT_MULTICAST_TXN:
     case FT_COMMIT_BROADCAST_TXN:
         ule_apply_commit(ule, xids);
         break;
     case FT_OPTIMIZE:
-    case FT_OPTIMIZE_FOR_UPGRADE:
         ule_optimize(ule, xids);
         break;
     case FT_UPDATE:
     case FT_UPDATE_BROADCAST_ALL:
         assert(false); // These messages don't get this far.  Instead they get translated (in setval_fun in do_update) into FT_INSERT messages.
         break;
-    default:
-        assert(false); /* illegal ft msg type */
+    case FT_KILL_MULTICAST:
+    case FT_KILL_ALL:
+        ule_kill(ule);
         break;
     }
 }
@@ -785,6 +792,11 @@ static void ule_optimize(ULE ule, XIDS xids) {
             ule_promote_provisional_innermost_to_committed(ule);
         }
     }
+}
+
+static void ule_kill(ULE ule) {
+    ule_cleanup(ule);
+    ule_init_empty_ule(ule);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -1743,8 +1755,8 @@ ule_apply_delete(ULE ule, XIDS xids) {
 static void 
 ule_prepare_for_new_uxr(ULE ule, XIDS xids) {
     TXNID this_xid = toku_xids_get_innermost_xid(xids);
-    //This is for LOADER_USE_PUTS or transactionless environment
-    //where messages use XIDS of 0
+    //This used to be for LOADER_USE_PUTS or transactionless environment
+    //where messages use XIDS of 0, need to check if it is obsolete
     if (this_xid == TXNID_NONE && ule_get_innermost_xid(ule) == TXNID_NONE) {
         ule_remove_innermost_uxr(ule);
     }
@@ -1895,8 +1907,9 @@ ule_remove_innermost_uxr(ULE ule) {
         ule->num_puxrs--;
     }
     else {
-        //This is for LOADER_USE_PUTS or transactionless environment
-        //where messages use XIDS of 0
+        // This used to be for LOADER_USE_PUTS or transactionless environment
+        // where messages use XIDS of 0
+        // need to check if this is obsolete
         invariant(ule->num_cuxrs == 1);
         invariant(ule_get_innermost_xid(ule)==TXNID_NONE);
         ule->num_cuxrs--;
@@ -2352,221 +2365,6 @@ void le_extract_val(LEAFENTRY le,
     else {
         assert(false);
     }
-}
-
-// This is an on-disk format.  static_asserts verify everything is packed and aligned correctly.
-struct __attribute__ ((__packed__)) leafentry_13 {
-    struct leafentry_committed_13 {
-        uint8_t key_val[0];     //Actual key, then actual val
-    };
-    static_assert(0 == sizeof(leafentry_committed_13), "wrong size");
-    static_assert(0 == __builtin_offsetof(leafentry_committed_13, key_val), "wrong offset");
-    struct __attribute__ ((__packed__)) leafentry_provisional_13 {
-        uint8_t innermost_type;
-        TXNID    xid_outermost_uncommitted;
-        uint8_t key_val_xrs[0];  //Actual key,
-        //then actual innermost inserted val,
-        //then transaction records.
-    };
-    static_assert(9 == sizeof(leafentry_provisional_13), "wrong size");
-    static_assert(9 == __builtin_offsetof(leafentry_provisional_13, key_val_xrs), "wrong offset");
-
-    uint8_t  num_xrs;
-    uint32_t keylen;
-    uint32_t innermost_inserted_vallen;
-    union __attribute__ ((__packed__)) {
-        struct leafentry_committed_13 comm;
-        struct leafentry_provisional_13 prov;
-    } u;
-};
-static_assert(18 == sizeof(leafentry_13), "wrong size");
-static_assert(9 == __builtin_offsetof(leafentry_13, u), "wrong offset");
-
-//Requires:
-//  Leafentry that ule represents should not be destroyed (is not just all deletes)
-static size_t
-le_memsize_from_ule_13 (ULE ule, LEAFENTRY_13 le) {
-    uint32_t num_uxrs = ule->num_cuxrs + ule->num_puxrs;
-    assert(num_uxrs);
-    size_t rval;
-    if (num_uxrs == 1) {
-        assert(uxr_is_insert(&ule->uxrs[0]));
-        rval = 1                    //num_uxrs
-              +4                    //keylen
-              +4                    //vallen
-              +le->keylen          //actual key
-              +ule->uxrs[0].vallen; //actual val
-    }
-    else {
-        rval = 1                    //num_uxrs
-              +4                    //keylen
-              +le->keylen          //actual key
-              +1*num_uxrs      //types
-              +8*(num_uxrs-1); //txnids
-        uint8_t i;
-        for (i = 0; i < num_uxrs; i++) {
-            UXR uxr = &ule->uxrs[i];
-            if (uxr_is_insert(uxr)) {
-                rval += 4;           //vallen
-                rval += uxr->vallen; //actual val
-            }
-        }
-    }
-    return rval;
-}
-
-//This function is mostly copied from 4.1.1 (which is version 12, same as 13 except that only 13 is upgradable).
-// Note, number of transaction records in version 13 has been replaced by separate counters in version 14 (MVCC),
-// one counter for committed transaction records and one counter for provisional transaction records.  When 
-// upgrading a version 13 le to version 14, the number of committed transaction records is always set to one (1)
-// and the number of provisional transaction records is set to the original number of transaction records 
-// minus one.  The bottom transaction record is assumed to be a committed value.  (If there is no committed
-// value then the bottom transaction record of version 13 is a committed delete.)
-// This is the only change from the 4.1.1 code.  The rest of the leafentry is read as is.
-static void
-le_unpack_13(ULE ule, LEAFENTRY_13 le) {
-    //Read num_uxrs
-    uint8_t num_xrs = le->num_xrs;
-    assert(num_xrs > 0);
-    ule->uxrs = ule->uxrs_static; //Static version is always enough.
-    ule->num_cuxrs = 1;
-    ule->num_puxrs = num_xrs - 1;
-
-    //Read the keylen
-    uint32_t keylen = toku_dtoh32(le->keylen);
-
-    //Read the vallen of innermost insert
-    uint32_t vallen_of_innermost_insert = toku_dtoh32(le->innermost_inserted_vallen);
-
-    uint8_t *p;
-    if (num_xrs == 1) {
-        //Unpack a 'committed leafentry' (No uncommitted transactions exist)
-        ule->uxrs[0].type   = XR_INSERT; //Must be or the leafentry would not exist
-        ule->uxrs[0].vallen = vallen_of_innermost_insert;
-        ule->uxrs[0].valp   = &le->u.comm.key_val[keylen];
-        ule->uxrs[0].xid    = 0;          //Required.
-
-        //Set p to immediately after leafentry
-        p = &le->u.comm.key_val[keylen + vallen_of_innermost_insert];
-    }
-    else {
-        //Unpack a 'provisional leafentry' (Uncommitted transactions exist)
-
-        //Read in type.
-        uint8_t innermost_type = le->u.prov.innermost_type;
-        assert(!uxr_type_is_placeholder(innermost_type));
-
-        //Read in xid
-        TXNID xid_outermost_uncommitted = toku_dtoh64(le->u.prov.xid_outermost_uncommitted);
-
-        //Read pointer to innermost inserted val (immediately after key)
-        uint8_t *valp_of_innermost_insert = &le->u.prov.key_val_xrs[keylen];
-
-        //Point p to immediately after 'header'
-        p = &le->u.prov.key_val_xrs[keylen + vallen_of_innermost_insert];
-
-        bool found_innermost_insert = false;
-        int i; //Index in ULE.uxrs[]
-        //Loop inner to outer
-        for (i = num_xrs - 1; i >= 0; i--) {
-            UXR uxr = &ule->uxrs[i];
-
-            //Innermost's type is in header.
-            if (i < num_xrs - 1) {
-                //Not innermost, so load the type.
-                uxr->type = *p;
-                p += 1;
-            }
-            else {
-                //Innermost, load the type previously read from header
-                uxr->type = innermost_type;
-            }
-
-            //Committed txn id is implicit (0).  (i==0)
-            //Outermost uncommitted txnid is stored in header. (i==1)
-            if (i > 1) {
-                //Not committed nor outermost uncommitted, so load the xid.
-                uxr->xid = toku_dtoh64(*(TXNID*)p);
-                p += 8;
-            }
-            else if (i == 1) {
-                //Outermost uncommitted, load the xid previously read from header
-                uxr->xid = xid_outermost_uncommitted;
-            }
-            else {
-                // i == 0, committed entry
-                uxr->xid = 0;
-            }
-
-            if (uxr_is_insert(uxr)) {
-                if (found_innermost_insert) {
-                    //Not the innermost insert.  Load vallen/valp
-                    uxr->vallen = toku_dtoh32(*(uint32_t*)p);
-                    p += 4;
-
-                    uxr->valp = p;
-                    p += uxr->vallen;
-                }
-                else {
-                    //Innermost insert, load the vallen/valp previously read from header
-                    uxr->vallen = vallen_of_innermost_insert;
-                    uxr->valp   = valp_of_innermost_insert;
-                    found_innermost_insert = true;
-                }
-            }
-        }
-        assert(found_innermost_insert);
-    }
-#if ULE_DEBUG
-    size_t memsize = le_memsize_from_ule_13(ule);
-    assert(p == ((uint8_t*)le) + memsize);
-#endif
-}
-
-size_t
-leafentry_disksize_13(LEAFENTRY_13 le) {
-    ULE_S ule;
-    le_unpack_13(&ule, le);
-    size_t memsize = le_memsize_from_ule_13(&ule, le);
-    ule_cleanup(&ule);
-    return memsize;
-}
-
-int 
-toku_le_upgrade_13_14(LEAFENTRY_13 old_leafentry,
-                     void** keyp,
-                     uint32_t* keylen,
-                     size_t *new_leafentry_memorysize, 
-                     LEAFENTRY *new_leafentry_p
-                     ) {
-    ULE_S ule;
-    int rval;
-    invariant(old_leafentry);
-    le_unpack_13(&ule, old_leafentry);
-    // get the key
-    *keylen = old_leafentry->keylen;
-    if (old_leafentry->num_xrs == 1) {
-        *keyp = old_leafentry->u.comm.key_val;
-    }
-    else {
-        *keyp = old_leafentry->u.prov.key_val_xrs;
-    }
-    // We used to pass NULL for omt and mempool, so that we would use
-    // malloc instead of a mempool.  However after supporting upgrade,
-    // we need to use mempools and the OMT.
-    rval = le_pack(&ule, // create packed leafentry
-                   nullptr,
-                   0, //only matters if we are passing in a bn_data
-                   nullptr, //only matters if we are passing in a bn_data
-                   0, //only matters if we are passing in a bn_data
-                   0, //only matters if we are passing in a bn_data
-                   0, //only matters if we are passing in a bn_data
-                   new_leafentry_p,
-                   nullptr //only matters if we are passing in a bn_data
-                   );
-    ule_cleanup(&ule);
-    *new_leafentry_memorysize = leafentry_memsize(*new_leafentry_p);
-    return rval;
 }
 
 #include <toku_race_tools.h>

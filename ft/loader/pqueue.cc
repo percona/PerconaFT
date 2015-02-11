@@ -142,7 +142,7 @@ size_t pqueue_size(pqueue_t *q)
 
 static int pqueue_compare(pqueue_t *q, DBT *next_key, DBT *next_val, DBT *curr_key)
 {
-    int r = q->compare(q->db, next_key, curr_key);
+    int r = q->compare(next_key, curr_key);
     if ( r == 0 ) { // duplicate key : next_key == curr_key
         q->dup_error = 1; 
         if (q->error_callback)

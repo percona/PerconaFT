@@ -109,8 +109,7 @@ namespace toku {
 
 // A locktree represents the set of row locks owned by all transactions
 // over an open dictionary. Read and write ranges are represented as
-// a left and right key which are compared with the given descriptor 
-// and comparison fn.
+// a left and right key which are compared with the comparison fn.
 //
 // Each locktree has a reference count which it manages
 // but does nothing based on the value of the reference count - it is
@@ -153,7 +152,6 @@ void locktree::create(locktree_manager *mgr, DICTIONARY_ID dict_id, const compar
 void locktree::destroy(void) {
     invariant(m_reference_count == 0);
     invariant(m_lock_request_info.pending_lock_requests.size() == 0);
-    m_cmp.destroy();
     m_rangetree->destroy();
     toku_free(m_rangetree);
     m_sto_buffer.destroy();
@@ -789,10 +787,6 @@ void locktree::set_userdata(void *userdata) {
 
 struct lt_lock_request_info *locktree::get_lock_request_info(void) {
     return &m_lock_request_info;
-}
-
-void locktree::set_comparator(const comparator &cmp) {
-    m_cmp.inherit(cmp);
 }
 
 locktree_manager *locktree::get_manager(void) const {

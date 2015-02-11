@@ -100,7 +100,7 @@ namespace toku {
 // If the code survives many inserts, it is considered successful.
 void concurrent_tree_unit_test::test_lkr_insert_serial_large(void) {
     comparator cmp;
-    cmp.create(compare_dbts, nullptr);
+    cmp.create(compare_dbts, 0);
 
     concurrent_tree tree;
     tree.create(&cmp);
@@ -136,7 +136,6 @@ void concurrent_tree_unit_test::test_lkr_insert_serial_large(void) {
 
     lkr.release();
     tree.destroy();
-    cmp.destroy();
 }
 
 } /* namespace toku */

@@ -128,8 +128,8 @@ void lock_request_unit_test::test_start_pending(void) {
     // should have made copies of the keys, and they should be equal
     invariant(request.m_left_key_copy.flags == DB_DBT_MALLOC);
     invariant(request.m_right_key_copy.flags == DB_DBT_MALLOC);
-    invariant(compare_dbts(nullptr, &request.m_left_key_copy, one) == 0);
-    invariant(compare_dbts(nullptr, &request.m_right_key_copy, one) == 0);
+    invariant(compare_dbts(&request.m_left_key_copy, one) == 0);
+    invariant(compare_dbts(&request.m_right_key_copy, one) == 0);
 
     // release the range lock for txnid b
     locktree_unit_test::locktree_test_release_lock(&lt, txnid_b, zero, two);

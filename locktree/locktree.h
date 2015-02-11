@@ -139,8 +139,6 @@ namespace toku {
     class lock_request;
     class concurrent_tree;
 
-    typedef int  (*lt_create_cb)(locktree *lt, void *extra);
-    typedef void (*lt_destroy_cb)(locktree *lt);
     typedef void (*lt_escalate_cb)(TXNID txnid, const locktree *lt, const range_buffer &buffer, void *extra);
 
     struct lt_counters {
@@ -173,7 +171,7 @@ namespace toku {
         // param: create_cb, called just after a locktree is first created.
         //        destroy_cb, called just before a locktree is destroyed.
         //        escalate_cb, called after a locktree is escalated (with extra param)
-        void create(lt_create_cb create_cb, lt_destroy_cb destroy_cb, lt_escalate_cb escalate_cb, void *extra);
+        void create(lt_escalate_cb escalate_cb, void *extra);
 
         void destroy(void);
 
@@ -186,7 +184,7 @@ namespace toku {
         //         is created. It will use the comparator for comparing keys. The on_create
         //         callback (passed to locktree_manager::create()) will be called with the
         //         given extra parameter.
-        locktree *get_lt(DICTIONARY_ID dict_id, const comparator &cmp, void *on_create_extra);
+        locktree *get_lt(DICTIONARY_ID dict_id, const comparator &cmp);
 
         void reference_lt(locktree *lt);
 
@@ -248,9 +246,6 @@ namespace toku {
 
         struct lt_counters m_lt_counters;
 
-        // the create and destroy callbacks for the locktrees
-        lt_create_cb m_lt_create_callback;
-        lt_destroy_cb m_lt_destroy_callback;
         lt_escalate_cb m_lt_escalate_callback;
         void *m_lt_escalate_callback_extra;
 
@@ -369,8 +364,6 @@ namespace toku {
 
         locktree_manager *get_manager(void) const;
 
-        void set_comparator(const comparator &cmp);
-
         int compare(const locktree *lt) const;
 
         DICTIONARY_ID get_dict_id() const;
@@ -387,13 +380,6 @@ namespace toku {
         DICTIONARY_ID m_dict_id;
         uint32_t m_reference_count;
 
-        // Since the memory referenced by this comparator is not owned by the
-        // locktree, the user must guarantee it will outlive the locktree.
-        //
-        // The ydb API accomplishes this by opening an ft_handle in the on_create
-        // callback, which will keep the underlying FT (and its descriptor) in memory
-        // for as long as the handle is open. The ft_handle is stored opaquely in the
-        // userdata pointer below. see locktree_manager::get_lt w/ on_create_extra
         comparator m_cmp;
 
         concurrent_tree *m_rangetree;

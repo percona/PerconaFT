@@ -406,27 +406,27 @@ verify_file(char * dirname, char * filename) {
     
     struct dirent *ent;
     while ((ent=readdir(dir))) {
-	if ((ent->d_type==DT_REG || ent->d_type==DT_UNKNOWN) && strcmp(ent->d_name, filename)==0) {
-	    n++;
-	}
+        if ((ent->d_type==DT_REG || ent->d_type==DT_UNKNOWN) && strcmp(ent->d_name, filename)==0) {
+            n++;
+        }
     }
     closedir(dir);
     return n;
 }
 
 static void
-get_inames(DBT* inames, DB** dbs) {
+get_inames(DBT* inames, DB** dbs UU()) {
     int i;
     for (i = 0; i < NUM_DBS; i++) {
-	DBT dname;
-	char * dname_str = dbs[i]->i->dname;
-	dbt_init(&dname, dname_str, strlen(dname_str)+1);
-	dbt_init(&(inames[i]), NULL, 0);
-	inames[i].flags |= DB_DBT_MALLOC;
-	int r = env->get_iname(env, &dname, &inames[i]);
-	CKERR(r);
-	char * iname_str = (char*) (inames[i].data);
-	if (verbose >= 2) printf("dname = %s, iname = %s\n", dname_str, iname_str);
+        DBT dname;
+        const char * dname_str = dbs[i]->get_dname(dbs[i]);
+        dbt_init(&dname, dname_str, strlen(dname_str)+1);
+        dbt_init(&(inames[i]), NULL, 0);
+        inames[i].flags |= DB_DBT_MALLOC;
+        int r = env->get_iname(env, &dname, &inames[i]);
+        CKERR(r);
+        char * iname_str = (char*) (inames[i].data);
+        if (verbose >= 2) printf("dname = %s, iname = %s\n", dname_str, iname_str);
     }
 }
 
@@ -436,13 +436,13 @@ assert_inames_missing(DBT* inames) {
     int i;
     char * dir = env->i->real_data_dir;
     for (i=0; i<NUM_DBS; i++) {
-	char * CAST_FROM_VOIDP(iname, inames[i].data);
-	int r = verify_file(dir, iname);
-	if (r) {
-	    printf("File %s exists, but it should not\n", iname);
-	}
-	assert(r == 0);
-	if (verbose) printf("File has been properly deleted: %s\n", iname);
+        char * CAST_FROM_VOIDP(iname, inames[i].data);
+        int r = verify_file(dir, iname);
+        if (r) {
+            printf("File %s exists, but it should not\n", iname);
+        }
+        assert(r == 0);
+        if (verbose) printf("File has been properly deleted: %s\n", iname);
     }
 }
 
@@ -461,7 +461,7 @@ print_inames(DB** dbs) {
     for (i = 0; i < NUM_DBS; i++) {
 	DBT dname;
 	DBT iname;
-	char * dname_str = dbs[i]->i->dname;
+	char * dname_str = dbs[i]->i->dict->get_dname();
 	dbt_init(&dname, dname_str, sizeof(dname_str));
 	dbt_init(&iname, NULL, 0);
 	iname.flags |= DB_DBT_MALLOC;
@@ -699,7 +699,7 @@ static void test_loader(enum test_type t, DB **dbs, int trigger)
     // create and initialize loader
     r = env->txn_begin(env, NULL, &txn, 0);                                                               
     CKERR(r);
-    r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags);
+    r = env->create_loader(env, txn, &loader, dbs[0], NUM_DBS, dbs, db_flags, dbt_flags, loader_flags, put_multiple_generate);
     CKERR(r);
     r = loader->set_error_callback(loader, NULL, NULL);
     CKERR(r);
@@ -863,7 +863,6 @@ static void run_test(enum test_type t, int trigger)
     r = db_env_create(&env, 0);                                                                               CKERR(r);
     r = env->set_redzone(env, 0);                                                                             CKERR(r);
     r = env->set_default_bt_compare(env, uint_dbt_cmp);                                                       CKERR(r);
-    r = env->set_generate_row_callback_for_put(env, put_multiple_generate);
     CKERR(r);
 
     int envflags = DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE | DB_PRIVATE;
@@ -872,8 +871,6 @@ static void run_test(enum test_type t, int trigger)
     //Disable auto-checkpointing
     r = env->checkpointing_set_period(env, 0);                                                                CKERR(r);
 
-    DBT desc;
-    dbt_init(&desc, "foo", sizeof("foo"));
     char name[MAX_NAME*2];
 
     DB **dbs = (DB**)toku_malloc(sizeof(DB*) * NUM_DBS);
@@ -885,9 +882,6 @@ static void run_test(enum test_type t, int trigger)
         dbs[i]->app_private = &idx[i];
         snprintf(name, sizeof(name), "db_%04x", i);
         r = dbs[i]->open(dbs[i], NULL, name, NULL, DB_BTREE, DB_CREATE, 0666);                                CKERR(r);
-        IN_TXN_COMMIT(env, NULL, txn_desc, 0, {
-                { int chk_r = dbs[i]->change_descriptor(dbs[i], txn_desc, &desc, 0); CKERR(chk_r); }
-        });
     }
 
     generate_permute_tables();
@@ -1097,7 +1091,6 @@ static void do_args(int argc, char * const argv[]) {
         } else if (strcmp(argv[0], "-z")==0) {
             COMPRESS = LOADER_COMPRESS_INTERMEDIATES;
         } else if (strcmp(argv[0], "-p")==0) {
-            DISALLOW_PUTS = LOADER_DISALLOW_PUTS;
 	    printf("DISABLED Using puts as part of #4503\n");
         } else if (strcmp(argv[0], "-k")==0) {
 	    test_only_abort_via_poll = 1;

@@ -95,11 +95,9 @@ namespace toku {
 
 static DBT *expected_a;
 static DBT *expected_b;
-static DESCRIPTOR expected_descriptor;
 static int expected_comparison_magic = 55;
 
-static int my_compare_dbts(DB *db, const DBT *a, const DBT *b) {
-    invariant(db->cmp_descriptor == expected_descriptor);
+static int my_compare_dbts(const DBT *a, const DBT *b) {
     (void) a; 
     (void) b;
     return expected_comparison_magic;
@@ -110,7 +108,7 @@ void locktree_unit_test::test_misc(void) {
     locktree lt;
     DICTIONARY_ID dict_id = { 1 };
     toku::comparator my_dbt_comparator;
-    my_dbt_comparator.create(my_compare_dbts, nullptr);
+    my_dbt_comparator.create(my_compare_dbts, 0);
     lt.create(nullptr, dict_id, my_dbt_comparator);
 
     invariant(lt.get_userdata() == nullptr);
@@ -120,33 +118,17 @@ void locktree_unit_test::test_misc(void) {
     lt.set_userdata(nullptr);
     invariant(lt.get_userdata() == nullptr);
 
-    int r;
     DBT dbt_a, dbt_b;
-    DESCRIPTOR_S d1, d2;
     expected_a = &dbt_a;
     expected_b = &dbt_b;
 
     toku::comparator cmp_d1, cmp_d2;
-    cmp_d1.create(my_compare_dbts, &d1);
-    cmp_d2.create(my_compare_dbts, &d2);
-
-    // make sure the comparator object has the correct
-    // descriptor when we set the locktree's descriptor
-    lt.set_comparator(cmp_d1);
-    expected_descriptor = &d1;
-    r = lt.m_cmp(&dbt_a, &dbt_b);
-    invariant(r == expected_comparison_magic);
-    lt.set_comparator(cmp_d2);
-    expected_descriptor = &d2;
-    r = lt.m_cmp(&dbt_a, &dbt_b);
-    invariant(r == expected_comparison_magic);
+    cmp_d1.create(my_compare_dbts, 0);
+    cmp_d2.create(my_compare_dbts, 0);
 
     lt.release_reference();
     lt.destroy();
 
-    cmp_d1.destroy();
-    cmp_d2.destroy();
-    my_dbt_comparator.destroy();
 }
 
 } /* namespace toku */
