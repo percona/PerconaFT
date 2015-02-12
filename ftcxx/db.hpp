@@ -294,7 +294,7 @@ namespace ftcxx {
             }
 
             if (_app_private != nullptr) {
-                _db->app_private = _app_private;
+                db->app_private = _app_private;
             }
 
             return DB(db, true);
