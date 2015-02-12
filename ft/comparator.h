@@ -145,7 +145,7 @@ namespace toku {
         // think of a more understandable way of doing this
         void create_from(const comparator &cmp) {
             invariant_notnull(cmp._cmp);
-            init(cmp._cmp, 0, cmp._memcmp_magic, cmp._always_memcmp);
+            init(cmp._cmp, 0, cmp._memcmp_magic);
         }
 
         ft_compare_func get_compare_func() const {
