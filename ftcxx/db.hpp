@@ -58,6 +58,11 @@ namespace ftcxx {
 
         ::DB *db() const { return _db; }
 
+        template<typename T>
+        T *app_private() {
+            return static_cast<T *>(_db->app_private);
+        }
+
         template<typename Callback>
         int getf_set(const DBTxn &txn, const Slice &key, int flags, Callback cb) const {
             class WrappedCallback {
@@ -232,6 +237,7 @@ namespace ftcxx {
         uint32_t _fanout;
         uint8_t _memcmp_magic;
         uint32_t _pagesize;
+        void *_app_private;
 
     public:
         DBBuilder()
@@ -239,7 +245,8 @@ namespace ftcxx {
               _compression_method(-1),
               _fanout(0),
               _memcmp_magic(0),
-              _pagesize(0)
+              _pagesize(0),
+              _app_private(nullptr)
         {}
 
         DB open(const DBEnv &env, const DBTxn &txn, const char *fname, const char *dbname, DBTYPE dbtype, uint32_t flags, int mode) const {
@@ -286,6 +293,10 @@ namespace ftcxx {
                 writeTxn.commit();
             }
 
+            if (_app_private != nullptr) {
+                _db->app_private = _app_private;
+            }
+
             return DB(db, true);
         }
 
@@ -314,6 +325,10 @@ namespace ftcxx {
             return *this;
         }
 
+        DBBuilder& set_app_private(void *app_private) {
+            _app_private = app_private;
+            return *this;
+        }
     };
 
 } // namespace ftcxx
