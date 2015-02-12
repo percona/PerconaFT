@@ -279,7 +279,6 @@ struct ft_options {
     unsigned int fanout;
     unsigned int flags;
     uint8_t memcmp_magic;
-    bool always_memcmp;
     ft_compare_func compare_fun;
     ft_update_func update_fun;
 };

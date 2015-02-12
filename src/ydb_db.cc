@@ -733,15 +733,6 @@ toku_db_set_memcmp_magic(DB *db, uint8_t magic) {
 }
 
 static int
-toku_db_set_always_memcmp(DB *db, bool always_memcmp) {
-    HANDLE_PANICKED_DB(db);
-    if (db_opened(db)) {
-        return EINVAL;
-    }
-    return toku_ft_handle_set_always_memcmp(db->i->ft_handle, always_memcmp);
-}
-
-static int
 toku_db_get_fractal_tree_info64(DB *db, uint64_t *num_blocks_allocated, uint64_t *num_blocks_in_use, uint64_t *size_allocated, uint64_t *size_in_use) {
     HANDLE_PANICKED_DB(db);
     struct ftinfo64 ftinfo;
@@ -1139,7 +1130,6 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     USDB(set_fanout);
     USDB(get_fanout);
     USDB(set_memcmp_magic);
-    USDB(set_always_memcmp);
     USDB(change_fanout);
     USDB(set_flags);
     USDB(get_flags);

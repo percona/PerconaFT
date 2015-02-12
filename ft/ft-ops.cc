@@ -2878,14 +2878,6 @@ int toku_ft_handle_set_memcmp_magic(FT_HANDLE ft_handle, uint8_t magic) {
     return 0;
 }
 
-int toku_ft_handle_set_always_memcmp(FT_HANDLE ft_handle, bool always_memcmp) {
-    if (ft_handle->ft != nullptr) {
-        return EINVAL;
-    }
-    ft_handle->options.always_memcmp = always_memcmp;
-    return 0;
-}
-
 static int
 verify_builtin_comparisons_consistent(FT_HANDLE t, uint32_t flags) {
     if ((flags & TOKU_DB_KEYCMP_BUILTIN) && (t->options.compare_fun != toku_builtin_compare_fun)) {
@@ -2956,7 +2948,6 @@ toku_ft_handle_inherit_options(FT_HANDLE t, FT ft) {
         .fanout = ft->h->fanout,
         .flags = ft->h->flags,
         .memcmp_magic = ft->cmp.get_memcmp_magic(),
-        .always_memcmp = ft->cmp.get_always_memcmp(),
         .compare_fun = ft->cmp.get_compare_func(),
         .update_fun = ft->update_fun
     };
@@ -3042,10 +3033,6 @@ ft_handle_open(FT_HANDLE ft_h, const char *fname_in_env, int is_create, int only
     if (ft->cmp.get_memcmp_magic() != toku::comparator::MEMCMP_MAGIC_NONE &&
         ft_h->options.memcmp_magic != toku::comparator::MEMCMP_MAGIC_NONE &&
         ft_h->options.memcmp_magic != ft->cmp.get_memcmp_magic()) {
-        r = EINVAL;
-        goto exit;
-    }
-    if (ft_h->options.always_memcmp != ft->cmp.get_always_memcmp()) {
         r = EINVAL;
         goto exit;
     }
