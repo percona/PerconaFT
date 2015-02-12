@@ -463,8 +463,15 @@ static int
 toku_db_stat64(DB * db, DB_TXN *txn, DB_BTREE_STAT64 *s) {
     HANDLE_PANICKED_DB(db);
     HANDLE_DB_ILLEGAL_WORKING_PARENT_TXN(db, txn);
+    
+    int r = 0;
     struct ftstat64_s ftstat;
     TOKUTXN tokutxn = NULL;
+    if (db->i->dict->num_prepend_bytes() > 0) {
+        r = toku_ydb_do_error(db->dbenv, EINVAL, 
+                "stat64 on dictionaries with prepend bytes have yet to be implemented");
+        goto cleanup;
+    }
     if (txn != NULL) {
         tokutxn = db_txn_struct_i(txn)->tokutxn;
     }
@@ -476,7 +483,8 @@ toku_db_stat64(DB * db, DB_TXN *txn, DB_BTREE_STAT64 *s) {
     s->bt_create_time_sec = ftstat.create_time_sec;
     s->bt_modify_time_sec = ftstat.modify_time_sec;
     s->bt_verify_time_sec = ftstat.verify_time_sec;
-    return 0;
+cleanup:
+    return r;
 }
 
 static const char *

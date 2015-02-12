@@ -346,6 +346,12 @@ toku_db_update_broadcast(DB *db, DB_TXN *txn,
     HANDLE_DB_ILLEGAL_WORKING_PARENT_TXN(db, txn);
     HANDLE_READ_ONLY_TXN(txn);
     int r = 0;
+    // this is a currently unimplemented feature, left as a TODO
+    if (db->i->dict->num_prepend_bytes() > 0) {
+        r = toku_ydb_do_error(db->dbenv, EINVAL, 
+                "update broadcast on dictionaries with prepend bytes have yet to be implemented");
+        goto cleanup;
+    }
 
     uint32_t lock_flags = get_prelocked_flags(flags);
     flags &= ~lock_flags;
@@ -379,7 +385,6 @@ toku_db_update_broadcast(DB *db, DB_TXN *txn,
     TOKUTXN ttxn;
     ttxn = txn ? db_txn_struct_i(txn)->tokutxn : NULL;
     toku_multi_operation_client_lock();
-    assert(false); // need to fix this
     toku_ft_maybe_update_broadcast(db->i->ft_handle, update_function_extra, ttxn,
                                         false, ZERO_LSN, true, is_resetting_op);
     toku_multi_operation_client_unlock();
