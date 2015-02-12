@@ -360,7 +360,7 @@ static void ft_init(FT ft, FT_OPTIONS options, CACHEFILE cf) {
 
     toku_list_init(&ft->live_ft_handles);
 
-    ft->cmp.create(options->compare_fun, ft->h->flags, options->memcmp_magic, options->always_memcmp);
+    ft->cmp.create(options->compare_fun, ft->h->flags, options->memcmp_magic);
     ft->update_info.init(options->update_fun, ft->h->flags);
 
     if (ft->cf != NULL) {
@@ -461,7 +461,7 @@ int toku_read_ft_and_store_in_cachefile (FT_HANDLE ft_handle, CACHEFILE cf, LSN 
     }
 
     invariant_notnull(ft);
-    ft->cmp.create(ft_handle->options.compare_fun, ft->h->flags, ft_handle->options.memcmp_magic, ft_handle->options.always_memcmp);
+    ft->cmp.create(ft_handle->options.compare_fun, ft->h->flags, ft_handle->options.memcmp_magic);
     ft->update_info.init(ft_handle->options.update_fun, ft->h->flags);
     ft->cf = cf;
     toku_cachefile_set_userdata(cf,
@@ -587,7 +587,6 @@ toku_ft_init(FT ft,
         .fanout = fanout,
         .flags = 0,
         .memcmp_magic = 0,
-        .always_memcmp = false,
         .compare_fun = NULL,
         .update_fun = NULL
     };

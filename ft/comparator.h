@@ -115,11 +115,10 @@ namespace toku {
     // that points may be positive or negative infinity.
 
     class comparator {
-        void init(ft_compare_func cmp, uint32_t ft_flags, uint8_t memcmp_magic, bool always_memcmp) {
+        void init(ft_compare_func cmp, uint32_t ft_flags, uint8_t memcmp_magic) {
             _cmp = cmp;
             _num_prepend_bytes = (ft_flags & TOKU_DB_HAS_PREPEND_BYTES) ? 8 : 0;
             _memcmp_magic = memcmp_magic;
-            _always_memcmp = always_memcmp;
         }
 
         inline bool dbt_has_memcmp_magic(const DBT *dbt) const {
@@ -133,8 +132,8 @@ namespace toku {
         // This magic value is reserved to mean that the magic has not been set.
         static const uint8_t MEMCMP_MAGIC_NONE = 0;
 
-        void create(ft_compare_func cmp, uint32_t ft_flags, uint8_t memcmp_magic = MEMCMP_MAGIC_NONE, bool always_memcmp = false) {
-            init(cmp, ft_flags, memcmp_magic, always_memcmp);
+        void create(ft_compare_func cmp, uint32_t ft_flags, uint8_t memcmp_magic = MEMCMP_MAGIC_NONE) {
+            init(cmp, ft_flags, memcmp_magic);
         }
 
         // like inherit, but doesn't require that the this comparator
@@ -157,10 +156,6 @@ namespace toku {
             return _memcmp_magic;
         }
 
-        bool get_always_memcmp() const {
-            return _always_memcmp;
-        }
-
         bool valid() const {
             return _cmp != nullptr;
         }
@@ -179,11 +174,11 @@ namespace toku {
                     if (aa.size > bb.size) return 1;
                     else if (aa.size < bb.size) return -1;
                     else return 0;
-                } else if (_always_memcmp || (_memcmp_magic != MEMCMP_MAGIC_NONE
+                } else if (_memcmp_magic != MEMCMP_MAGIC_NONE
                            // If `a' has the memcmp magic..
                            && dbt_has_memcmp_magic(&aa)
                            // ..then we expect `b' to also have the memcmp magic
-                           && __builtin_expect(dbt_has_memcmp_magic(&bb), 1))) {
+                           && __builtin_expect(dbt_has_memcmp_magic(&bb), 1)) {
                     return toku_builtin_compare_fun(&aa, &bb);
                 } else {
                     return _cmp(&aa, &bb);
@@ -197,7 +192,6 @@ namespace toku {
     private:
         ft_compare_func _cmp;
         uint8_t _memcmp_magic;
-        bool _always_memcmp;
         uint8_t _num_prepend_bytes;
     };
 

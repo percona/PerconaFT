@@ -529,7 +529,6 @@ static void print_db_struct (void) {
 			 "int (*get_fanout)(DB *db, uint32_t *fanout)",
 			 "int (*set_fanout)(DB *db, uint32_t fanout)",
 			 "int (*set_memcmp_magic)(DB *db, uint8_t magic)",
-             "int (*set_always_memcmp)(DB *db, bool always_memcmp)",
 			 "int (*verify_with_progress)(DB *, int (*progress_callback)(void *progress_extra, float progress), void *progress_extra, int verbose, int keep_going)",
 			 "int (*update)(DB *, DB_TXN*, const DBT *key, const DBT *extra, uint32_t flags)",
 			 "int (*update_broadcast)(DB *, DB_TXN*, const DBT *extra, uint32_t flags)",

@@ -231,7 +231,6 @@ namespace ftcxx {
         int _compression_method;
         uint32_t _fanout;
         uint8_t _memcmp_magic;
-        bool _always_memcmp;
         uint32_t _pagesize;
 
     public:
@@ -240,7 +239,6 @@ namespace ftcxx {
               _compression_method(-1),
               _fanout(0),
               _memcmp_magic(0),
-              _always_memcmp(false),
               _pagesize(0)
         {}
 
@@ -266,11 +264,6 @@ namespace ftcxx {
 
             if (_memcmp_magic) {
                 r = db->set_memcmp_magic(db, _memcmp_magic);
-                handle_ft_retval(r);
-            }
-
-            if (_always_memcmp) {
-                r = db->set_always_memcmp(db, _always_memcmp);
                 handle_ft_retval(r);
             }
 
@@ -313,11 +306,6 @@ namespace ftcxx {
 
         DBBuilder& set_memcmp_magic(uint8_t _memcmpmagic) {
             _memcmp_magic = _memcmpmagic;
-            return *this;
-        }
-
-        DBBuilder& set_always_memcmp(bool always_memcmp) {
-            _always_memcmp = always_memcmp;
             return *this;
         }
 
