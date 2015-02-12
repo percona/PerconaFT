@@ -1554,7 +1554,7 @@ static int extend_fileset (FTLOADER bl, struct merge_fileset *fs, FIDX*ffile)
  *   fidx   the index file (which will be open)
  */
 {
-    FIDX sfile;
+    FIDX sfile = {0}; // initialization to silence -Wmaybe-uninitialized in error path
     int r;
     r = ft_loader_open_temp_file(bl, &sfile); if (r!=0) return r;
 

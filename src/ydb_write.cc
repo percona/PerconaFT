@@ -353,41 +353,44 @@ toku_db_update_broadcast(DB *db, DB_TXN *txn,
         goto cleanup;
     }
 
-    uint32_t lock_flags = get_prelocked_flags(flags);
-    flags &= ~lock_flags;
-    uint32_t is_resetting_op_flag = flags & DB_IS_RESETTING_OP;
-    flags &= is_resetting_op_flag;
-    bool is_resetting_op = (is_resetting_op_flag != 0);
-    
-
-    if (is_resetting_op) {
-        if (txn->parent != NULL) {
-            r = EINVAL; // cannot have a parent if you are a resetting op
-            goto cleanup;
-        }
-        r = toku_db_pre_acquire_fileops_lock(db, txn);
-        if (r != 0) { goto cleanup; }
-    }
     {
-        DBT null_key;
-        toku_init_dbt(&null_key);
-        r = db_put_check_size_constraints(db, &null_key, update_function_extra);
-        if (r != 0) { goto cleanup; }
-    }
+        uint32_t lock_flags = get_prelocked_flags(flags);
+        flags &= ~lock_flags;
+        uint32_t is_resetting_op_flag = flags & DB_IS_RESETTING_OP;
+        flags &= is_resetting_op_flag;
+        {
+            bool is_resetting_op = (is_resetting_op_flag != 0);
 
-    bool do_locking;
-    do_locking = (db->i->dict->get_lt() && !(lock_flags & DB_PRELOCKED_WRITE));
-    if (do_locking) {
-        r = toku_db_pre_acquire_table_lock(db, txn);
-        if (r != 0) { goto cleanup; }
-    }
+            if (is_resetting_op) {
+                if (txn->parent != NULL) {
+                    r = EINVAL; // cannot have a parent if you are a resetting op
+                    goto cleanup;
+                }
+                r = toku_db_pre_acquire_fileops_lock(db, txn);
+                if (r != 0) { goto cleanup; }
+            }
+            {
+                DBT null_key;
+                toku_init_dbt(&null_key);
+                r = db_put_check_size_constraints(db, &null_key, update_function_extra);
+                if (r != 0) { goto cleanup; }
+            }
 
-    TOKUTXN ttxn;
-    ttxn = txn ? db_txn_struct_i(txn)->tokutxn : NULL;
-    toku_multi_operation_client_lock();
-    toku_ft_maybe_update_broadcast(db->i->ft_handle, update_function_extra, ttxn,
-                                        false, ZERO_LSN, true, is_resetting_op);
-    toku_multi_operation_client_unlock();
+            bool do_locking;
+            do_locking = (db->i->dict->get_lt() && !(lock_flags & DB_PRELOCKED_WRITE));
+            if (do_locking) {
+                r = toku_db_pre_acquire_table_lock(db, txn);
+                if (r != 0) { goto cleanup; }
+            }
+
+            TOKUTXN ttxn;
+            ttxn = txn ? db_txn_struct_i(txn)->tokutxn : NULL;
+            toku_multi_operation_client_lock();
+            toku_ft_maybe_update_broadcast(db->i->ft_handle, update_function_extra, ttxn,
+                                           false, ZERO_LSN, true, is_resetting_op);
+            toku_multi_operation_client_unlock();
+        }
+    }
 
 cleanup:
     if (r == 0) 
