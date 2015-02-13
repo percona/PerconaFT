@@ -59,7 +59,7 @@ namespace ftcxx {
         ::DB *db() const { return _db; }
 
         template<typename T>
-        T *app_private() {
+        T *app_private() const {
             return static_cast<T *>(_db->app_private);
         }
 
@@ -248,6 +248,57 @@ namespace ftcxx {
               _pagesize(0),
               _app_private(nullptr)
         {}
+
+        DB create_new_db(const DBEnv &env, const DBTxn &txn, const char *fname, const char *groupname, uint32_t flags) const {
+            ::DB *db;
+            int r = db_create(&db, env.env(), 0);
+            handle_ft_retval(r);
+
+            if (_readpagesize) {
+                r = db->set_readpagesize(db, _readpagesize);
+                handle_ft_retval(r);
+            }
+
+            if (_compression_method >= 0) {
+                r = db->set_compression_method(db, TOKU_COMPRESSION_METHOD(_compression_method));
+                handle_ft_retval(r);
+            }
+
+            if (_fanout) {
+                r = db->set_fanout(db, _fanout);
+                handle_ft_retval(r);
+            }
+
+            if (_memcmp_magic) {
+                r = db->set_memcmp_magic(db, _memcmp_magic);
+                handle_ft_retval(r);
+            }
+
+            if (_pagesize) {
+                r = db->set_pagesize(db, _pagesize);
+                handle_ft_retval(r);
+            }
+
+            const DBTxn *txnp = &txn;
+            DBTxn writeTxn;
+            if (txn.is_read_only()) {
+                writeTxn = DBTxn(env, DB_SERIALIZABLE);
+                txnp = &writeTxn;
+            }
+
+            r = db->create_new_db(db, txnp->txn(), fname, groupname, flags);
+            handle_ft_retval(r);
+
+            if (txn.is_read_only()) {
+                writeTxn.commit();
+            }
+
+            if (_app_private != nullptr) {
+                db->app_private = _app_private;
+            }
+
+            return DB(db, true);
+        }
 
         DB open(const DBEnv &env, const DBTxn &txn, const char *fname, const char *dbname, DBTYPE dbtype, uint32_t flags, int mode) const {
             ::DB *db;
