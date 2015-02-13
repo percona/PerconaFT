@@ -281,7 +281,7 @@ ft_msg message_buffer::get_message(int32_t offset, DBT *keydbt, DBT *valdbt) con
         DBT max_keydbt;
         return ft_msg(
             toku_fill_dbt(keydbt, key, keylen),
-            toku_fill_dbt(&max_keydbt, max_key, keylen),
+            toku_fill_dbt(&max_keydbt, max_key, max_keylen),
             toku_fill_dbt(valdbt, val, vallen),
             type,
             msn,

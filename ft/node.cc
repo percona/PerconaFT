@@ -1467,6 +1467,7 @@ toku_ft_bn_apply_msg (
                 }
             }
             if (deleted) {
+                if(end_idx == 0) break;
                 end_idx--;
             }
             else {
@@ -1975,7 +1976,7 @@ void toku_ft_leaf_apply_msg(
         int start;
         int end;
         get_child_bounds_for_msg_put(cmp, node, msg, &start, &end);
-        for (int childnum = start ; childnum < end; childnum++) {
+        for (int childnum = start ; childnum <= end; childnum++) {
             if (msg.msn().msn > BLB(node, childnum)->max_msn_applied.msn) {
                 BLB(node, childnum)->max_msn_applied = msg.msn();
                 toku_ft_bn_apply_msg(cmp,
