@@ -770,7 +770,7 @@ static void c_set_txn(DBC *dbc, DB_TXN *txn) {
 }
 
 static void
-c_set_check_interrupt_callback(DBC* dbc, bool (*interrupt_callback)(void*), void *extra) {
+c_set_check_interrupt_callback(DBC* dbc, bool (*interrupt_callback)(void*, uint64_t), void *extra) {
     toku_ft_cursor_set_check_interrupt_cb(dbc_ftcursor(dbc), interrupt_callback, extra);
 }
 
