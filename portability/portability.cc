@@ -355,8 +355,10 @@ toku_get_processor_frequency_cpuinfo(uint64_t *hzret) {
         r = get_error_errno();
     } else {
         uint64_t maxhz = 0;
-        char *buf = NULL;
-        size_t n = 0;
+        const size_t my_buf_size = 4096;
+        char *my_buf = (char *) malloc(my_buf_size);
+        char *buf = my_buf;
+        size_t n = my_buf_size;
         while (getline(&buf, &n, fp) >= 0) {
             unsigned int cpu;
             sscanf(buf, "processor : %u", &cpu);
@@ -367,8 +369,9 @@ toku_get_processor_frequency_cpuinfo(uint64_t *hzret) {
                     maxhz = hz;
             }
         }
-        if (buf)
+        if (buf != my_buf)
             free(buf);
+        free(my_buf);
         fclose(fp);
         *hzret = maxhz;
         r = maxhz == 0 ? ENOENT : 0;;
