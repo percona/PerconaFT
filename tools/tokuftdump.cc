@@ -103,6 +103,7 @@ PATENT RIGHTS GRANT:
 #include "ft/serialize/block_table.h"
 #include "ft/cachetable/cachetable.h"
 #include "ft/ft.h"
+#include "ft/ft.cc"
 #include "ft/ft-internal.h"
 #include "ft/serialize/ft-serialize.h"
 #include "ft/serialize/ft_node-serialize.h"
@@ -131,10 +132,12 @@ static BLOCKNUM do_node_num;
 static int do_tsv = 0;
 static const char *arg0;
 static const char *fname;
+
+//it holdes the messges count for each FT's node
 typedef struct nodeMessage{
     int id;
-    int *count;
-    int clean;
+    int clean;//0=clean >=1 dirty
+    int *count;//holds the messages
     nodeMessage *nextNode;
 }NMC;
 enum { maxline = 128};
@@ -309,6 +312,7 @@ static int * dumpChildrens(int fd, BLOCKNUM blocknum, FT ft) {
             unsigned int n_bytes = toku_bnc_nbytesinbuf(bnc); 
             int n_entries = toku_bnc_n_entries(bnc);
             if (n_bytes > 0 || n_entries > 0) {
+               // printf("   buffer contains %u bytes (%d items)\n", n_bytes, n_entries);
             }
         }
          else {
@@ -518,7 +522,7 @@ static void  countMessgaesInFT(int fd, BLOCKNUM blocknum, FT ft,NMC *msgs[]){
         auto dump_fn=[&](const ft_msg &msg, bool UU(is_fresh)) {
             enum ft_msg_type type = (enum ft_msg_type) msg.type();
             last->count[type]++;
-            last->clean++;
+            last->clean=1;
             return 0;
         };
         
@@ -576,8 +580,7 @@ static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
     for (int i=0; i<n->n_children; i++) {
             printf("  child %d: ", i);
         if (n->height > 0) {
-            printf("%" PRId64 "\n", BP_BLOCKNUM(n, i).b);
-            
+            printf("%" PRId64 "\n", BP_BLOCKNUM(n, i).b);            
             NONLEAF_CHILDINFO bnc = BNC(n, i);
             unsigned int n_bytes = toku_bnc_nbytesinbuf(bnc); 
             int n_entries = toku_bnc_n_entries(bnc);
@@ -638,7 +641,6 @@ ok:
     toku_ftnode_free(&n);
     toku_free(ndd);
 }
-
 
 static void dump_block_translation(FT ft, uint64_t offset) {
     ft->blocktable.blocknum_dump_translation(make_blocknum(offset));
@@ -705,8 +707,12 @@ static void dump_garbage_stats(int fd, FT ft) {
     uint64_t total_space = 0;
     uint64_t used_space = 0;
     toku_ft_get_garbage(ft, &total_space, &used_space);
-    printf("Total tree    size: %" PRIu64 "\n", total_space);
-    printf("Total garbage size: %" PRIu64 "\n", used_space);
+    printf("garbage total size :%20" PRIu64 "\n", total_space);
+    printf("garbage used size  :%20" PRIu64 "\n", used_space);
+    float a=used_space,b=total_space;
+        
+    float percentage=((1-a/b)*100);
+    printf("Total garbage : %2.3f%%\n", percentage);
 }
 
 typedef struct __dump_node_extra {
@@ -847,10 +853,9 @@ static uint64_t getuint64(const char *f) {
 static void interactive_help(void) {
     fprintf(stderr, "help\n");
     fprintf(stderr, "header\n");
-    fprintf(stderr, "nc [verbose]\n");
-    fprintf(stderr, "lc height\n");
-    fprintf(stderr, "rf/readFile ft-file\n");
-    fprintf(stderr, "node NUMBER\n");
+    cout <<"mr/MessagesReport [NUMBER] \n      Reports messages for the level of the tree you want get more details about\n";
+    cout <<"rf/readFile ft-file-name \n      Switch to a different FT\n";
+    fprintf(stderr, "node NUMBER \n");
     fprintf(stderr, "bx OFFSET | block_translation OFFSET\n");
     fprintf(stderr, "dumpdata 0|1\n");
     fprintf(stderr, "fragmentation\n");
@@ -906,32 +911,29 @@ static void writeTree(NMC *msgs[],int height,char *name){
 
 }
 
-
 static void writeJson(NMC *msgs[],int height,const char *name){
     ofstream mytree (name,fstream::out);
     if (mytree.is_open()){
-        mytree <<"{\n \"fractal tree\":[";
+        mytree <<"{\n \"FT\":[";
         for(int i=height;i>=0;i--){
             NMC * ptr=msgs[i];
-            mytree <<"{\n\"Level\": {\"height\":\""<<i<<"\",\n \"Nodes\":[";
+            mytree <<"{\n\"Level\": {\"Height\":\""<<i<<"\",\n \"Nodes\":[";
             while(ptr!=NULL){
                 mytree <<"{\"ID\":\""<< ptr->id<<"\",";
                 if(ptr->clean!=0){
                     mytree <<"\"Messages\":[";
-//                    printNodeMessagesInJSON(ptr, mytree);  
-                    
                     for(int j=0;j<16;j++)                        
                         {
                         mytree <<"{";    
                         switch (j)   {
-                            case FT_INSERT: mytree <<"\"Insert\":\""<<ptr->count[j]<<"\""; break;
+                            case FT_INSERT: mytree <<"\"INSERT\":\""<<ptr->count[j]<<"\""; break;
                             case FT_INSERT_NO_OVERWRITE: mytree <<"\"INSERT_NOVERWTE\":\""<<ptr->count[j]<<"\""; break;
-                            case FT_DELETE_ANY: mytree <<"\"DELETE_ANY\":\""<<ptr->count[j]<<"\""; break;
-                            case FT_ABORT_ANY: mytree <<"\"ABORT_ANY\":\""<<ptr->count[j]<<"\""; break;
-                            case FT_COMMIT_ANY: mytree <<"\"COMMIT_ANY\":\""<<ptr->count[j]<<"\""; break;
+                            case FT_DELETE_ANY: mytree <<"\"DELETE\":\""<<ptr->count[j]<<"\""; break;
+                            case FT_ABORT_ANY: mytree <<"\"ABORT\":\""<<ptr->count[j]<<"\""; break;
+                            case FT_COMMIT_ANY: mytree <<"\"COMMITY\":\""<<ptr->count[j]<<"\""; break;
                             case FT_COMMIT_BROADCAST_ALL: mytree <<"\"COMMIT_BROADCAST_ALL\":\""<<ptr->count[j]<<"\"" ;    break;
                             case FT_COMMIT_BROADCAST_TXN: mytree <<"\"COMMIT_BROADCAST_TXN\":\""<<ptr->count[j]<<"\""; break;
-                            case FT_ABORT_BROADCAST_TXN: mytree <<"\"BORT_BROADCAST_TXN\":\""<<ptr->count[j]<<"\"";break;
+                            case FT_ABORT_BROADCAST_TXN: mytree <<"\"ABORT_BROADCAST_TXN\":\""<<ptr->count[j]<<"\"";break;
                             case FT_OPTIMIZE: mytree <<"\"OPTIMIZE\":\""<<ptr->count[j]<<"\""; break;
                             case FT_OPTIMIZE_FOR_UPGRADE: mytree <<"\"OPTIMIZE_FOR_UPGRADE\":\""<<ptr->count[j]<<"\"";break;
                             case FT_UPDATE:   mytree <<"\"UPDATE\":\""<<ptr->count[j]<<"\""; break;
@@ -1062,18 +1064,6 @@ static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
         } else if (strcmp(fields[0], "node") == 0 && nfields == 2) {
             off = make_blocknum(getuint64(fields[1]));
             dump_node(fd, off, ft);
-            if(msgs[0]==NULL){
-                toku_ft_free(ft);
-                open_header(fd, &ft, cf);
-                root=getRootNode(ft);
-                off = make_blocknum(root);
-                countMessgaesInFT(fd,off, ft,msgs);
-            }
-           
-            int level=1;
-            if(nfields >= 2) level=getuint64(fields[1]);
-            countMessages(msgs[level]);
-
         }else if ((strcmp(fields[0], "mr") == 0||(strcmp(fields[0], "nc")) == 0 ||strcmp(fields[0], "messagesReport") == 0 )) {
             freeNMC(msgs,height);
             toku_ft_free(ft);
@@ -1106,7 +1096,7 @@ static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
             dump_fragmentation(fd, ft, do_tsv);
         } else if (strcmp(fields[0], "nodesizes") == 0) {
             dump_nodesizes(fd, ft);
-        } else if (strcmp(fields[0], "garbage") == 0) {
+        } else if (strcmp(fields[0], "garbage") == 0||strcmp(fields[0], "g") == 0) {
             dump_garbage_stats(fd, ft);
         } else if (strcmp(fields[0], "file") == 0 && nfields >= 3) {
             uint64_t offset = getuint64(fields[1]);
@@ -1131,7 +1121,8 @@ static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
 static int usage(void) {
     fprintf(stderr, "Usage: %s ", arg0);
     fprintf(stderr, "--interactive ");
-    fprintf(stderr, "--support ");
+    fprintf(stderr, "--support /path/to/fractal-tree/file \n\t an interactive way to see what messages and/or switch between FTs");
+    fprintf(stderr, "--json /path/to/fractal-tree/file [output json file]\n\t if left empty an FT.json will be created automatically");
     fprintf(stderr, "--nodata ");
     fprintf(stderr, "--dumpdata 0|1 ");
     fprintf(stderr, "--header ");
@@ -1252,5 +1243,4 @@ int main (int argc, const char *const argv[]) {
     toku_ft_layer_destroy();
     return 0;
 }
-
 

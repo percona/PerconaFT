@@ -1040,7 +1040,6 @@ garbage_leafentry_helper(const void* key UU(), const uint32_t keylen, const LEAF
     }
     return 0;
 }
-
 static int
 garbage_helper(BLOCKNUM blocknum, int64_t UU(size), int64_t UU(address), void *extra) {
     struct garbage_helper_extra *CAST_FROM_VOIDP(info, extra);
@@ -1058,10 +1057,20 @@ garbage_helper(BLOCKNUM blocknum, int64_t UU(size), int64_t UU(address), void *e
     }
     for (int i = 0; i < node->n_children; ++i) {
         bn_data* bd = BLB_DATA(node, i);
+        
+        
         r = bd->iterate<struct garbage_helper_extra, garbage_leafentry_helper>(info);
+                
         if (r != 0) {
             goto exit;
         }
+    }
+//    if(verbose==true)
+    {
+        float a=info->used_space,b=info->total_space;
+        
+        float percentage=((1-a/b)*100);
+        printf("LeafNode# %5d has %2d BasementNodes and %2.1f%% of the allocated space is garbage \n",(int)blocknum.b,node->n_children, percentage);
     }
 exit:
     toku_ftnode_free(&node);
