@@ -99,29 +99,21 @@ PATENT RIGHTS GRANT:
 #include <limits.h>
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <string.h>
 #include "ft/serialize/block_table.h"
 #include "ft/cachetable/cachetable.h"
 #include "ft/ft.h"
-#include "ft/ft.cc"
 #include "ft/ft-internal.h"
 #include "ft/serialize/ft-serialize.h"
 #include "ft/serialize/ft_node-serialize.h"
 #include "ft/node.h"
-#include <cassert>
-#include <iostream>
-#include <fstream>
-#include <iterator>
-#include <sstream>
-#include <algorithm>
 
 using namespace std;
 
-
-static int do_dump_data = 0;
+static int do_dump_data = 1;
 static int do_interactive = 0;
 static int do_json = 0;
-static int do_support = 1;
 static int do_header = 0;
 static int do_fragmentation = 0;
 static int do_garbage = 0;
@@ -142,23 +134,11 @@ typedef struct nodeMessage{
 }NMC;
 enum { maxline = 128};
 
-
-
 static int printNodeMessagesToSTDout(NMC* ptr);
-
-
-
 
 static int printLevelSTDout(int  *);
 
-
-
-
-
-
-
 static void treeToSTDout(NMC *msgs[], int height);
-
 
 static void format_time(const uint64_t time_int, char *buf) {
     time_t timer = (time_t) time_int;
@@ -273,7 +253,6 @@ static int print_le(const void* key, const uint32_t keylen, const LEAFENTRY &le,
     return 0;
 }
 
-
 static int getHeight(int fd, BLOCKNUM blocknum, FT ft){
     FTNODE n;
     FTNODE_DISK_DATA ndd = nullptr;
@@ -285,79 +264,15 @@ static int getHeight(int fd, BLOCKNUM blocknum, FT ft){
     return n->height;
 }
 
-static int * dumpChildrens(int fd, BLOCKNUM blocknum, FT ft) {   
+static FTNODE  getNode(int fd, BLOCKNUM blocknum, FT ft) {
     FTNODE n;
     FTNODE_DISK_DATA ndd = nullptr;
-    
-    ftnode_fetch_extra bfe;
-    bfe.create_for_full_read(ft);
-    int r = toku_deserialize_ftnode_from (fd, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
-    int *childrens= new int[n->n_children+1];
-    if (n->height ==0){
-        childrens[0]=0;
-        toku_ftnode_free(&n);
-        toku_free(ndd);
-        return childrens;
-    }
-    childrens[0]=n->n_children;
-    assert_zero(r);;
-    
-    assert(n!=0);
-    
-    for (int i=0; i<n->n_children; i++) {
-        if (n->height > 0) {
-            printf(" %" PRId64 ,BP_BLOCKNUM(n, i).b);
-            childrens[i+1]= BP_BLOCKNUM(n, i).b;
-            NONLEAF_CHILDINFO bnc = BNC(n, i);
-            unsigned int n_bytes = toku_bnc_nbytesinbuf(bnc); 
-            int n_entries = toku_bnc_n_entries(bnc);
-            if (n_bytes > 0 || n_entries > 0) {
-               // printf("   buffer contains %u bytes (%d items)\n", n_bytes, n_entries);
-            }
-        }
-         else {
-            printf(" n_bytes_in_buffer= %" PRIu64 "", BLB_DATA(n, i)->get_disk_size());
-            printf(" items_in_buffer=%u\n", BLB_DATA(n, i)->num_klpairs());
-            if (do_dump_data) {
-                BLB_DATA(n, i)->iterate<void, print_le>(NULL);
-            }
-        }
-    }
-    toku_ftnode_free(&n);
-    toku_free(ndd);
-    return childrens;
-}
-static void showMeTree(int fd, BLOCKNUM blocknum, FT ft){
-
-    
-    int *children=dumpChildrens(fd,blocknum,ft);
-    if (children[0]==0){
-        toku_free(children);
-        return;
-    }
-    for(int i=1;i<=children[0];i++){
-        if (children[0]==0){
-            toku_free(children);
-            return;
-        }
-        printf("\n  Parent %10d  height: :   ", children[i]) ;
-        blocknum=make_blocknum(children[i]);
-        if(children[0]>0)showMeTree(fd,blocknum,ft);
-    }
-    toku_free(children);
-}
-static FTNODE  getNode(int fd, BLOCKNUM blocknum, FT ft) {   
-    FTNODE n;
-    FTNODE_DISK_DATA ndd = nullptr;
-    
     ftnode_fetch_extra bfe;
     bfe.create_for_full_read(ft);
     int r = toku_deserialize_ftnode_from (fd, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
     assert_zero(r);;
-
     return n;
 }
-
 
 static int countNodes(NMC *level){
     int count=0;
@@ -368,6 +283,7 @@ static int countNodes(NMC *level){
     }
     return count;
 }
+
 static int * countMessages(NMC *level){
     int *counts=new int[16];
     for(int i=0;i<16;i++){
@@ -383,20 +299,17 @@ static int * countMessages(NMC *level){
     return counts;
 }
 
-
 static NMC * getLast(NMC *level){
     if (level==NULL) return NULL;
     NMC *ptr=level;
     while(ptr->nextNode!=NULL){
         ptr=ptr->nextNode;
-    } 
+    }
     return ptr;
 }
 
-
 /*
- * Prints the total messages at each to STDout 
- * 
+ * Prints the total messages at each to STDout
  */
 static int  printLevelSTDout(int *count){
     int isEmpty=0;
@@ -418,18 +331,14 @@ static int  printLevelSTDout(int *count){
                 case FT_UPDATE:   printf("UPDATE(s) "); break;
                 case FT_UPDATE_BROADCAST_ALL: printf("UPDATE_BROADCAST_ALL(s) "); break;
             }
-            
+
         }
     }
     return isEmpty;
 }
 
-
-
-
 /*
- * Prints the total # of messages in a node  to STD output 
- * 
+ * Prints the total # of messages in a node  to STD output
  */
 static int  printNodeMessagesToSTDout(NMC *ptr){
     cout <<"\nNode :"<<ptr->id<<" has :";
@@ -450,7 +359,6 @@ static int  printNodeMessagesToSTDout(NMC *ptr){
                 case FT_UPDATE:   printf("UPDATE(s) "); break;
                 case FT_UPDATE_BROADCAST_ALL: printf("UPDATE_BROADCAST_ALL(s) "); break;
             }
-            
         }
     }
     return 1;
@@ -465,35 +373,31 @@ static void levelToSTDout(NMC *list, int level){
         }
         else{
             cout << "\nNode : "<<ptr->id<<" has no messages";
-        } 
+        }
         ptr=ptr->nextNode;
     }
     cout <<endl;
-    
 }
 
 /*
  * prints the tree total # of nodes and total # of  messages at each height in :
- * STDout in human readable format 
- * 
+ * STDout in human readable format
  */
 static void treeToSTDout(NMC *msgs[], int height){
     for(int i=height; i>=0 ; i--){
         cout <<"At height "<<i;
-        int *counts=countMessages(msgs[i]); 
+        int *counts=countMessages(msgs[i]);
         cout <<"\n     Node Count: "<< countNodes(msgs[i])<<endl;
         cout <<"           Messages: ";
-        if(printLevelSTDout(counts)==0) cout <<"0\n"; 
+        if(printLevelSTDout(counts)==0) cout <<"0\n";
         else cout <<endl;
-
     }
 }
 
-
 //traverse through the FT and report back the count of messages in every node
-static void  countMessgaesInFT(int fd, BLOCKNUM blocknum, FT ft,NMC *msgs[]){
+static void  countMessagesInFT(int fd, BLOCKNUM blocknum, FT ft,NMC *msgs[]){
     FTNODE n=getNode(fd,blocknum,ft);
-    
+
     NMC *last=NULL;
     if(msgs[n->height]==NULL){
         last = msgs[n->height]=new NMC;
@@ -509,7 +413,7 @@ static void  countMessgaesInFT(int fd, BLOCKNUM blocknum, FT ft,NMC *msgs[]){
     }
     last->clean=0;
     last->nextNode=NULL;
-    
+
     if (n->height==0){
         toku_ftnode_free(&n);
         return;
@@ -525,18 +429,17 @@ static void  countMessgaesInFT(int fd, BLOCKNUM blocknum, FT ft,NMC *msgs[]){
             last->clean=1;
             return 0;
         };
-        
+
         bnc->msg_buffer.iterate(dump_fn);
-        
-//        print(last);
+
         blocknum=make_blocknum(BP_BLOCKNUM(n, i).b);
-        countMessgaesInFT(fd,blocknum,ft, msgs);
+        countMessagesInFT(fd,blocknum,ft, msgs);
     }
-    
+
     toku_ftnode_free(&n);
 }
 
-static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {   
+static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
     FTNODE n;
     FTNODE_DISK_DATA ndd = nullptr;
     ftnode_fetch_extra bfe;
@@ -559,9 +462,9 @@ static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
     printf(" layout_version_read_from_disk=%d\n", n->layout_version_read_from_disk);
     printf(" build_id=%d\n", n->build_id);
     printf(" max_msn_applied_to_node_on_disk=%" PRId64 " (0x%" PRIx64 ")\n", n->max_msn_applied_to_node_on_disk.msn, n->max_msn_applied_to_node_on_disk.msn);
-    printf(" io time %lf decompress time %lf deserialize time %lf\n", 
-           tokutime_to_seconds(bfe.io_time), 
-           tokutime_to_seconds(bfe.decompress_time), 
+    printf(" io time %lf decompress time %lf deserialize time %lf\n",
+           tokutime_to_seconds(bfe.io_time),
+           tokutime_to_seconds(bfe.decompress_time),
            tokutime_to_seconds(bfe.deserialize_time));
 
     printf(" n_children=%d\n", n->n_children);
@@ -580,9 +483,9 @@ static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
     for (int i=0; i<n->n_children; i++) {
             printf("  child %d: ", i);
         if (n->height > 0) {
-            printf("%" PRId64 "\n", BP_BLOCKNUM(n, i).b);            
+            printf("%" PRId64 "\n", BP_BLOCKNUM(n, i).b);
             NONLEAF_CHILDINFO bnc = BNC(n, i);
-            unsigned int n_bytes = toku_bnc_nbytesinbuf(bnc); 
+            unsigned int n_bytes = toku_bnc_nbytesinbuf(bnc);
             int n_entries = toku_bnc_n_entries(bnc);
             if (n_bytes > 0 || n_entries > 0) {
                 printf("   buffer contains %u bytes (%d items)\n", n_bytes, n_entries);
@@ -710,7 +613,7 @@ static void dump_garbage_stats(int fd, FT ft) {
     printf("garbage total size :%20" PRIu64 "\n", total_space);
     printf("garbage used size  :%20" PRIu64 "\n", used_space);
     float a=used_space,b=total_space;
-        
+
     float percentage=((1-a/b)*100);
     printf("Total garbage : %2.3f%%\n", percentage);
 }
@@ -747,7 +650,7 @@ static void sub_block_deserialize(struct dump_sub_block *sb, unsigned char *sub_
 static void verify_block(unsigned char *cp, uint64_t file_offset, uint64_t size) {
     // verify the header checksum
     const size_t node_header = 8 + sizeof (uint32_t) + sizeof (uint32_t) + sizeof (uint32_t);
-    
+
     printf("%.8s layout_version=%u %u build=%d\n", cp, get_unaligned_uint32(cp+8), get_unaligned_uint32(cp+12), get_unaligned_uint32(cp+16));
 
     unsigned char *sub_block_header = &cp[node_header];
@@ -874,17 +777,14 @@ static void freeNMC(NMC *msgs[], int height){
                 NMC* ptr=msgs[i]->nextNode;
                 msgs[i]=msgs[i]->nextNode;
                 delete ptr;
-                
-            }   
+
+            }
             msgs[i]=NULL;
         }
     }
-     
 }
 
-
-
-static void writeTree(NMC *msgs[],int height,char *name){
+static void writeTree(NMC *msgs[],int height,char *name UU()){
     ofstream mytree ("/tmp/tree.txt",fstream::out);
     if (mytree.is_open()){
         for(int i=height;i>=0;i--){
@@ -895,20 +795,14 @@ static void writeTree(NMC *msgs[],int height,char *name){
                 if(ptr->clean!=0)mytree << "1"<<"\t";
                 else mytree << "0"<<"\t";
                 for(int j=0;j<15;j++)mytree << ptr->count[j]<<" ";
-                mytree << ptr->count[i]<<endl;             
+                mytree << ptr->count[i]<<endl;
                 ptr=ptr->nextNode;
             }
              mytree <<endl;
         }
     }
     else cout << "Unable to open file";
-    
-
-    
-    
-
     mytree.close();
-
 }
 
 static void writeJson(NMC *msgs[],int height,const char *name){
@@ -922,9 +816,9 @@ static void writeJson(NMC *msgs[],int height,const char *name){
                 mytree <<"{\"ID\":\""<< ptr->id<<"\",";
                 if(ptr->clean!=0){
                     mytree <<"\"Messages\":[";
-                    for(int j=0;j<16;j++)                        
+                    for(int j=0;j<16;j++)
                         {
-                        mytree <<"{";    
+                        mytree <<"{";
                         switch (j)   {
                             case FT_INSERT: mytree <<"\"INSERT\":\""<<ptr->count[j]<<"\""; break;
                             case FT_INSERT_NO_OVERWRITE: mytree <<"\"INSERT_NOVERWTE\":\""<<ptr->count[j]<<"\""; break;
@@ -942,9 +836,9 @@ static void writeJson(NMC *msgs[],int height,const char *name){
                         mytree <<"}";
                         if(j<15)mytree<<",";
                     }
-                    
+
                     mytree <<"]}";
-                    
+
                 }
                 else {
                     mytree <<"\"Messages\":\""<< "0"<<"\"}";
@@ -957,7 +851,7 @@ static void writeJson(NMC *msgs[],int height,const char *name){
             if(i!=0)mytree <<",\n";
         }
         mytree <<"\n]}\n";
-        
+
     }
     else cout << "Unable to open file";
     mytree.close();
@@ -974,7 +868,7 @@ static void writeTree(NMC *msgs[],int height){
                 if(ptr->clean!=0)mytree << "1"<<",";
                 else mytree << "0"<<",";
                 for(int j=0;j<15;j++)mytree << ptr->count[j]<<",";
-                mytree << ptr->count[i]<<endl;             
+                mytree << ptr->count[i]<<endl;
                 ptr=ptr->nextNode;
             }
              mytree <<".\"";
@@ -982,10 +876,9 @@ static void writeTree(NMC *msgs[],int height){
     }
     else cout << "Unable to open file";
     mytree.close();
-
 }
+
 static void FT_to_JSON(int fd, FT ft, CACHEFILE cf, const char * JsonFile){
-       
     toku_ft_free(ft);
     open_header(fd, &ft, cf);
     int root=getRootNode(ft);
@@ -994,11 +887,11 @@ static void FT_to_JSON(int fd, FT ft, CACHEFILE cf, const char * JsonFile){
     NMC *msgs[height];
     for(int i=0;i<=height;i++){
         msgs[i]=NULL;
-    }    
+    }
     open_header(fd, &ft, cf);
     root=getRootNode(ft);
     off = make_blocknum(root);
-    countMessgaesInFT(fd,off, ft,msgs);
+    countMessagesInFT(fd,off, ft,msgs);
     cout <<"to STD output: \n";
     treeToSTDout(msgs,height);
     writeTree(msgs,height);
@@ -1025,10 +918,9 @@ static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
     NMC *msgs[height];
     for(int i=0;i<=height;i++){
         msgs[i]=NULL;
-    }    
+    }
     while (1) {
-        if(do_support)printf("ftdump-support>"); 
-        else printf("ftdump>"); 
+        printf("ftdump>");
         fflush(stdout);
         char line[maxline+1];
         int r = readline(line, maxline);
@@ -1037,7 +929,7 @@ static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
         const int maxfields = 4;
         char *fields[maxfields];
         int nfields = split_fields(line, fields, maxfields);
-        if (nfields == 0) 
+        if (nfields == 0)
             continue;
         if (strcmp(fields[0], "help") == 0) {
             interactive_help();
@@ -1070,7 +962,7 @@ static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
             open_header(fd, &ft, cf);
             root=getRootNode(ft);
             off = make_blocknum(root);
-            countMessgaesInFT(fd,off, ft,msgs);
+            countMessagesInFT(fd,off, ft,msgs);
             int level=-1;
             if(nfields == 2)level=getuint64(fields[1]);
             if(level>=0){
@@ -1082,11 +974,11 @@ static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
             }
             writeTree(msgs,height);
             writeTree(msgs,height, NULL);
-            
+
         }else if (strcmp(fields[0], "dumpdata") == 0 && nfields == 2) {
 
             do_dump_data = strtol(fields[1], NULL, 10);
-        }        
+        }
         else if (strcmp(fields[0], "block_translation") == 0 || strcmp(fields[0], "bx") == 0) {
             uint64_t offset = 0;
             if (nfields == 2)
@@ -1113,7 +1005,6 @@ static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
             toku_ft_free(ft);
             exit(0);
         }
-        
     }
     freeNMC(msgs,height);
 }
@@ -1140,15 +1031,10 @@ static int usage(void) {
 int main (int argc, const char *const argv[]) {
     arg0 = argv[0];
     argc--; argv++;
-    cout <<argv[0]<<" "<<argv[1]<<endl;
     while (argc>0) {
         if (strcmp(argv[0], "--interactive") == 0 || strcmp(argv[0], "--i") == 0) {
             do_interactive = 1;
         }
-        else if ((strcmp(argv[0], "--support") == 0 || strcmp(argv[0], "--s")== 0)&& argc >= 2) {
-            do_support = 1;
-            fname=argv[1];
-        }        
         else if ((strcmp(argv[0], "--json") == 0 || strcmp(argv[0], "--s")== 0)&& argc >= 2) {
             do_json = 1;
             fname=argv[1];
@@ -1183,14 +1069,14 @@ int main (int argc, const char *const argv[]) {
     }
     if (argc != 1 && do_json==0)
     return usage();
-    
+
     int r = toku_ft_layer_init();
     assert_zero(r);
     if(fname==NULL)fname = argv[0];
     int fd = open(fname, O_RDWR + O_BINARY);
     if (fd < 0) {
-    fprintf(stderr, "%s: can not open %s errno %d\n", arg0, fname, errno);
-    return 1;
+        fprintf(stderr, "%s: can not open %s errno %d\n", arg0, fname, errno);
+        return 1;
     }
     // create a cachefile for the header
     CACHETABLE ct = NULL;
@@ -1204,9 +1090,9 @@ int main (int argc, const char *const argv[]) {
         const char *arg=argv[1];
         FT_to_JSON(fd, ft, cf,arg);
     }
-    if (do_interactive||do_support) {
+    if (do_interactive) {
         run_iteractive_loop(fd, ft, cf);
-    } 
+    }
     else {
         if (do_header) {
             dump_header(ft);
@@ -1243,4 +1129,3 @@ int main (int argc, const char *const argv[]) {
     toku_ft_layer_destroy();
     return 0;
 }
-
