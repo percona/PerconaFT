@@ -1010,21 +1010,20 @@ static void run_iteractive_loop(int fd, FT ft, CACHEFILE cf) {
 }
 
 static int usage(void) {
-    fprintf(stderr, "Usage: %s ", arg0);
-    fprintf(stderr, "--interactive ");
-    fprintf(stderr, "--support /path/to/fractal-tree/file \n\t an interactive way to see what messages and/or switch between FTs");
-    fprintf(stderr, "--json /path/to/fractal-tree/file [output json file]\n\t if left empty an FT.json will be created automatically");
-    fprintf(stderr, "--nodata ");
-    fprintf(stderr, "--dumpdata 0|1 ");
-    fprintf(stderr, "--header ");
-    fprintf(stderr, "--rootnode ");
-    fprintf(stderr, "--node N ");
-    fprintf(stderr, "--fragmentation ");
-    fprintf(stderr, "--garbage ");
-    fprintf(stderr, "--tsv ");
-    fprintf(stderr, "--translation-table ");
-    fprintf(stderr, "--tsv ");
-    fprintf(stderr, "filename \n");
+    fprintf(stderr, "\nUsage: %s ", arg0);
+    fprintf(stderr, "\n--interactive ");
+    fprintf(stderr, "\n--json /path/to/fractal-tree/file [output json file]\n\t if left empty an FT.json will be created automatically\n");
+    fprintf(stderr, "\n--nodata ");
+    fprintf(stderr, "\n--dumpdata 0|1 ");
+    fprintf(stderr, "\n--header ");
+    fprintf(stderr, "\n--rootnode ");
+    fprintf(stderr, "\n--node N ");
+    fprintf(stderr, "\n--fragmentation ");
+    fprintf(stderr, "\n--garbage ");
+    fprintf(stderr, "\n--tsv ");
+    fprintf(stderr, "\n--translation-table ");
+    fprintf(stderr, "\n--tsv ");
+    fprintf(stderr, "\n FT's filename \n");
     return 1;
 }
 
