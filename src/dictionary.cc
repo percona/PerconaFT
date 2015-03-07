@@ -271,7 +271,7 @@ void dictionary::fill_ft_key(const DBT* in, void* buf, DBT* out) {
         uint32_t total_size = m_num_prepend_bytes;
         if (in) {
             memcpy(pos, in->data, in->size);
-            total_size += m_num_prepend_bytes;
+            total_size += in->size;
         }
         toku_fill_dbt(out, buf, total_size);
     }
