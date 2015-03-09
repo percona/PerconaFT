@@ -259,7 +259,7 @@ int main(int argc, char *argv[]) {
 #else
     bool do_update_callback = false;
 #endif
-    bool do_txn = false;
+    bool do_txn = true;
     bool do_txn_sync = true;
     u_int64_t cachesize = 1000000000;
     u_int32_t pagesize = 0;
