@@ -196,7 +196,8 @@ static inline float tdiff (struct timeval *a, struct timeval *b) {
     return (a->tv_sec - b->tv_sec) +1e-6*(a->tv_usec - b->tv_usec);
 }
 
-static void insert_and_update_all(DB_ENV *db_env, DB *db, long nrows, long max_rows_per_txn, int key_range, long rows_per_report, bool do_update_callback, bool do_txn) {
+static void insert_and_update_all(DB_ENV *db_env, DB *db, long nrows, long max_rows_per_txn, int key_range, long rows_per_report, bool do_update_callback,
+                                  bool do_txn, bool do_txn_sync) {
     int r;
     struct timeval tstart;
     r = gettimeofday(&tstart, NULL); assert(r == 0);
@@ -217,7 +218,7 @@ static void insert_and_update_all(DB_ENV *db_env, DB *db, long nrows, long max_r
         
         // maybe commit
         if (do_txn && n_rows_per_txn == max_rows_per_txn) {
-            r = txn->commit(txn, 0); assert(r == 0);
+            r = txn->commit(txn, do_txn_sync ? DB_TXN_SYNC : DB_TXN_NOSYNC); assert(r == 0);
             r = db_env->txn_begin(db_env, NULL, &txn, 0); assert(r == 0);
             n_rows_per_txn = 0;
         }
@@ -234,7 +235,7 @@ static void insert_and_update_all(DB_ENV *db_env, DB *db, long nrows, long max_r
     }
 
     if (do_txn) {
-        r = txn->commit(txn, 0); assert(r == 0);
+        r = txn->commit(txn, do_txn_sync ? DB_TXN_SYNC : DB_TXN_NOSYNC); assert(r == 0);
     }
     struct timeval tnow;
     r = gettimeofday(&tnow, NULL); assert(r == 0);
@@ -259,6 +260,7 @@ int main(int argc, char *argv[]) {
     bool do_update_callback = false;
 #endif
     bool do_txn = false;
+    bool do_txn_sync = true;
     u_int64_t cachesize = 1000000000;
     u_int32_t pagesize = 0;
 #if defined(TOKUDB)
@@ -290,6 +292,10 @@ int main(int argc, char *argv[]) {
         }
         if (strcmp(arg, "--txn") == 0 && i+1 < argc) {
             do_txn = atoi(argv[++i]) != 0;
+            continue;
+        }
+        if (strcmp(arg, "--txn_sync") == 0 && i+1 < argc) {
+            do_txn_sync = atoi(argv[++i]) != 0;
             continue;
         }
         if (strcmp(arg, "--pagesize") == 0 && i+1 < argc) {
@@ -369,7 +375,7 @@ int main(int argc, char *argv[]) {
     }
 
     // insert on duplicate key update
-    insert_and_update_all(db_env, db, rows, rows_per_txn, key_range, rows_per_report, do_update_callback, do_txn);
+    insert_and_update_all(db_env, db, rows, rows_per_txn, key_range, rows_per_report, do_update_callback, do_txn, do_txn_sync);
 
     // shutdown
     r = db->close(db, 0); assert(r == 0); db = NULL;
