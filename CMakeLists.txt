@@ -77,6 +77,7 @@ add_subdirectory(locktree)
 add_subdirectory(src)
 add_subdirectory(ftcxx)
 add_subdirectory(tools)
+add_subdirectory(examples)
 
 install(
   FILES README.md README-TOKUDB
