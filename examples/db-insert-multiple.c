@@ -187,7 +187,9 @@ static long htonl64(long x) {
 }
 
 #if defined(TOKUDB)
-static int my_generate_row_for_put(DB *dest_db, DB *src_db, DBT *dest_key, DBT *dest_val, const DBT *src_key, const DBT *src_val) {
+static int my_generate_row_for_put(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_val) {
+    DBT *dest_key = &dest_keys->dbts[0];
+    DBT *dest_val = &dest_vals->dbts[0];
     assert(src_db);
     assert(dest_key->flags == DB_DBT_USERMEM && dest_key->ulen >= 4 * 8);
     assert(dest_val->flags == DB_DBT_USERMEM && dest_val->ulen >= 4 * 8);
@@ -299,7 +301,15 @@ static void insert_row(DB_ENV *db_env, struct table *t, DB_TXN *txn, long a, lon
     if (!force_multiple && t->ndbs == 1) {
         r = t->dbs[0]->put(t->dbs[0], txn, &key, &value, t->mult_flags[0]); assert(r == 0);
     } else {
-        r = db_env->put_multiple(db_env, t->dbs[0], txn, &key, &value, t->ndbs, &t->dbs[0], t->mult_keys, t->mult_vals, t->mult_flags); assert(r == 0);
+        DBT_ARRAY mult_keys[t->ndbs];
+        for (int i = 0; i < t->ndbs; i++) {
+            mult_keys[i] = (DBT_ARRAY) { .capacity = 1, .size = 1, .dbts = &t->mult_keys[i] };
+        }
+        DBT_ARRAY mult_vals[t->ndbs];
+        for (int i = 0; i < t->ndbs; i++) {
+            mult_vals[i] = (DBT_ARRAY) { .capacity = 1, .size = 1, .dbts = &t->mult_vals[i] };
+        }
+        r = db_env->put_multiple(db_env, t->dbs[0], txn, &key, &value, t->ndbs, &t->dbs[0], mult_keys, mult_vals, t->mult_flags); assert(r == 0);
     }
 #else
     assert(db_env);
@@ -311,7 +321,8 @@ static inline float tdiff (struct timeval *a, struct timeval *b) {
     return (a->tv_sec - b->tv_sec) +1e-6*(a->tv_usec - b->tv_usec);
 }
 
-static void insert_all(DB_ENV *db_env, struct table *t, long nrows, long max_rows_per_txn, long key_range, long rows_per_report, bool do_txn) {
+static void insert_all(DB_ENV *db_env, struct table *t, long nrows, long max_rows_per_txn, long key_range, long rows_per_report,
+                       bool do_txn, bool do_txn_sync) {
     int r;
 
     struct timeval tstart;
@@ -333,7 +344,7 @@ static void insert_all(DB_ENV *db_env, struct table *t, long nrows, long max_row
         
         // maybe commit
         if (do_txn && n_rows_per_txn == max_rows_per_txn) {
-            r = txn->commit(txn, 0); assert(r == 0);
+            r = txn->commit(txn, do_txn_sync ? DB_TXN_SYNC : DB_TXN_NOSYNC); assert(r == 0);
             r = db_env->txn_begin(db_env, NULL, &txn, 0); assert(r == 0);
             n_rows_per_txn = 0;
         }
@@ -350,7 +361,7 @@ static void insert_all(DB_ENV *db_env, struct table *t, long nrows, long max_row
     }
 
     if (do_txn) {
-        r = txn->commit(txn, 0); assert(r == 0);
+        r = txn->commit(txn, do_txn_sync ? DB_TXN_SYNC : DB_TXN_NOSYNC); assert(r == 0);
     }
     struct timeval tnow;
     r = gettimeofday(&tnow, NULL); assert(r == 0);
@@ -369,6 +380,7 @@ int main(int argc, char *argv[]) {
     long rows_per_report = 100000;
     long key_range = 100000;
     bool do_txn = true;
+    bool do_txn_sync = true;
     u_int32_t pagesize = 0;
     u_int64_t cachesize = 1000000000;
     int ndbs = 4;
@@ -405,6 +417,10 @@ int main(int argc, char *argv[]) {
         }
         if (strcmp(arg, "--txn") == 0 && i+1 < argc) {
             do_txn = atoi(argv[++i]);
+            continue;
+        }
+        if (strcmp(arg, "--txn_sync") == 0 && i+1 < argc) {
+            do_txn_sync = atoi(argv[++i]) != 0;
             continue;
         }
         if (strcmp(arg, "--pagesize") == 0 && i+1 < argc) {
@@ -495,7 +511,7 @@ int main(int argc, char *argv[]) {
     struct table table;
     table_init(&table, ndbs, dbs, 4 * 8, 4 * 8);
 
-    insert_all(db_env, &table, rows, rows_per_txn, key_range, rows_per_report, do_txn);
+    insert_all(db_env, &table, rows, rows_per_txn, key_range, rows_per_report, do_txn, do_txn_sync);
 
     table_destroy(&table);
 
