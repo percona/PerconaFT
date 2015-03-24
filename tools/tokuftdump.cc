@@ -318,18 +318,18 @@ static int  printLevelSTDout(int *count){
             cout <<count[j]<<" ";
             isEmpty++;
             switch (j)   {
-                case FT_INSERT: printf("INSERT(s) "); break;
-                case FT_INSERT_NO_OVERWRITE: printf("INSERT_NO_OVERWRITE(s) "); break;
-                case FT_DELETE_ANY: printf("DELETE_ANY(s) "); break;
-                case FT_ABORT_ANY: printf("ABORT_ANY(s) "); break;
-                case FT_COMMIT_ANY: printf("COMMIT_ANY(s) "); break;
-                case FT_COMMIT_BROADCAST_ALL: printf("COMMIT_BROADCAST_ALL(s) "); break;
-                case FT_COMMIT_BROADCAST_TXN: printf("COMMIT_BROADCAST_TXN(s) "); break;
-                case FT_ABORT_BROADCAST_TXN: printf("ABORT_BROADCAST_TXN(s) "); break;
-                case FT_OPTIMIZE: printf("OPTIMIZE(s) "); break;
-                case FT_OPTIMIZE_FOR_UPGRADE: printf("OPTIMIZE_FOR_UPGRADE(s) "); break;
-                case FT_UPDATE:   printf("UPDATE(s) "); break;
-                case FT_UPDATE_BROADCAST_ALL: printf("UPDATE_BROADCAST_ALL(s) "); break;
+                case FT_INSERT: cout <<"INSERT(s) ";  break;
+                case FT_INSERT_NO_OVERWRITE: cout <<"INSERT_NO_OVERWRITE(s) ";  break;
+                case FT_DELETE_ANY: cout <<"DELETE_ANY(s) ";  break;
+                case FT_ABORT_ANY: cout <<"ABORT_ANY(s) ";  break;
+                case FT_COMMIT_ANY: cout <<"COMMIT_ANY(s) ";  break;
+                case FT_COMMIT_BROADCAST_ALL: cout <<"COMMIT_BROADCAST_ALL(s) ";  break;
+                case FT_COMMIT_BROADCAST_TXN: cout <<"COMMIT_BROADCAST_TXN(s) ";  break;
+                case FT_ABORT_BROADCAST_TXN: cout <<"ABORT_BROADCAST_TXN(s) ";  break;
+                case FT_OPTIMIZE: cout <<"OPTIMIZE(s) ";  break;
+                case FT_OPTIMIZE_FOR_UPGRADE: cout <<"OPTIMIZE_FOR_UPGRADE(s) ";  break;
+                case FT_UPDATE:   cout <<"UPDATE(s) ";  break;
+                case FT_UPDATE_BROADCAST_ALL: cout <<"UPDATE_BROADCAST_ALL(s) ";  break;
             }
 
         }
@@ -346,18 +346,18 @@ static int  printNodeMessagesToSTDout(NMC *ptr){
         if(ptr->count[j]>0){
             cout <<ptr->count[j]<<" ";
             switch (j)   {
-                case FT_INSERT: printf("INSERT(s) "); break;
-                case FT_INSERT_NO_OVERWRITE: printf("INSERT_NO_OVERWRITE(s) "); break;
-                case FT_DELETE_ANY: printf("DELETE_ANY(s) "); break;
-                case FT_ABORT_ANY: printf("ABORT_ANY(s) "); break;
-                case FT_COMMIT_ANY: printf("COMMIT_ANY(s) "); break;
-                case FT_COMMIT_BROADCAST_ALL: printf("COMMIT_BROADCAST_ALL(s) "); break;
-                case FT_COMMIT_BROADCAST_TXN: printf("COMMIT_BROADCAST_TXN(s) "); break;
-                case FT_ABORT_BROADCAST_TXN: printf("ABORT_BROADCAST_TXN(s) "); break;
-                case FT_OPTIMIZE: printf("OPTIMIZE(s) "); break;
-                case FT_OPTIMIZE_FOR_UPGRADE: printf("OPTIMIZE_FOR_UPGRADE(s) "); break;
-                case FT_UPDATE:   printf("UPDATE(s) "); break;
-                case FT_UPDATE_BROADCAST_ALL: printf("UPDATE_BROADCAST_ALL(s) "); break;
+                case FT_INSERT: cout <<"INSERT(s) ";  break;
+                case FT_INSERT_NO_OVERWRITE: cout <<"INSERT_NO_OVERWRITE(s) ";  break;
+                case FT_DELETE_ANY: cout <<"DELETE_ANY(s) ";  break;
+                case FT_ABORT_ANY: cout <<"ABORT_ANY(s) ";  break;
+                case FT_COMMIT_ANY: cout <<"COMMIT_ANY(s) ";  break;
+                case FT_COMMIT_BROADCAST_ALL: cout <<"COMMIT_BROADCAST_ALL(s) ";  break;
+                case FT_COMMIT_BROADCAST_TXN: cout <<"COMMIT_BROADCAST_TXN(s) ";  break;
+                case FT_ABORT_BROADCAST_TXN: cout <<"ABORT_BROADCAST_TXN(s) ";  break;
+                case FT_OPTIMIZE: cout <<"OPTIMIZE(s) ";  break;
+                case FT_OPTIMIZE_FOR_UPGRADE: cout <<"OPTIMIZE_FOR_UPGRADE(s) ";  break;
+                case FT_UPDATE:   cout <<"UPDATE(s) ";  break;
+                case FT_UPDATE_BROADCAST_ALL: cout <<"UPDATE_BROADCAST_ALL(s) ";  break;
             }
         }
     }
