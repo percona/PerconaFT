@@ -785,7 +785,8 @@ static void freeNMC(NMC *msgs[], int height){
 }
 
 static void writeTree(NMC *msgs[],int height,char *name UU()){
-    ofstream mytree ("/tmp/tree.txt",fstream::out);
+    if(name==NULL)name = tmpnam (NULL);
+    ofstream mytree (name,fstream::out);
     if (mytree.is_open()){
         for(int i=height;i>=0;i--){
             NMC * ptr=msgs[i];
@@ -806,6 +807,7 @@ static void writeTree(NMC *msgs[],int height,char *name UU()){
 }
 
 static void writeJson(NMC *msgs[],int height,const char *name){
+    if(name==NULL)name = tmpnam (NULL);
     ofstream mytree (name,fstream::out);
     if (mytree.is_open()){
         mytree <<"{\n \"FT\":[";
@@ -858,7 +860,8 @@ static void writeJson(NMC *msgs[],int height,const char *name){
 }
 
 static void writeTree(NMC *msgs[],int height){
-    ofstream mytree ("/tmp/tree1.txt",fstream::out);
+    char * name = tmpnam (NULL);
+    ofstream mytree (name,fstream::out);
     if (mytree.is_open()){
         for(int i=height;i>=0;i--){
             NMC * ptr=msgs[i];
@@ -896,13 +899,15 @@ static void FT_to_JSON(int fd, FT ft, CACHEFILE cf, const char * JsonFile){
     treeToSTDout(msgs,height);
     writeTree(msgs,height);
     cout<<"FT's json file was generated here:";
+    
     if(JsonFile!=NULL)  {
         cout <<JsonFile;
         writeJson(msgs,height,JsonFile);
     }
     else {
-        cout <<"./FT.json";
-        writeJson(msgs,height,"./FT.json");
+        if(name==NULL)JsonFile = tmpnam (NULL);
+        cout <<JsonFile;
+        writeJson(msgs,height,JsonFile);
     }
     cout<<endl;
     freeNMC(msgs,height);
