@@ -33,8 +33,7 @@ cd ft-index
 git clone git://github.com/Tokutek/jemalloc.git third_party/jemalloc
 mkdir build
 cd build
-CC=gcc47 CXX=g++47 
-cmake \
+CC=gcc47 CXX=g++47 cmake \
     -D CMAKE_BUILD_TYPE=Debug \
     -D BUILD_TESTING=OFF \
     -D USE_VALGRIND=OFF \
