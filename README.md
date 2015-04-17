@@ -64,15 +64,6 @@ and only with a small cache size.
 [transparent-hugepages]: https://access.redhat.com/site/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Performance_Tuning_Guide/s-memory-transhuge.html
 
 
-Examples
---------
-
-There are some sample programs that can use either TokuFT or Berkeley DB
-in the `examples/` directory.  Follow the above instructions to build and
-install TokuFT, and then look in the installed `examples/` directory for
-instructions on building and running them.
-
-
 Testing
 -------
 
