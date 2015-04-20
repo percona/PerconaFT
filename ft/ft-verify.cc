@@ -574,3 +574,75 @@ int
 toku_verify_ft (FT_HANDLE ft_handle) {
     return toku_verify_ft_with_progress(ft_handle, NULL, NULL, 0, 0);
 }
+
+#undef VERIFY_ASSERTION
+#define VERIFY_ASSERTION(predicate, i, string) ({                                                                              \
+    if(!(predicate)) {                                                                                                         \
+        fprintf(stderr, "%s:%d: Looking at child %d of block %" PRId64 ": %s\n", __FILE__, __LINE__, i, blocknum.b, string);   \
+        assert(0); \
+    }})
+
+#undef VERIFY_ASSERTION_BASEMENT
+#define VERIFY_ASSERTION_BASEMENT(predicate, bn, entry, string) ({           \
+    if(!(predicate)) {                                                                                                         \
+        fprintf(stderr, "%s:%d: Looking at block %" PRId64 " bn %d entry %d: %s\n", __FILE__, __LINE__, blocknum.b, bn, entry, string); \
+        assert(0); \
+    }})
+
+static int compare_pairs (FT ft, const DBT *a, const DBT *b) {
+    return ft->cmp(a, b);
+}
+
+void toku_verify_ftnode_simple(FT ft, FTNODE node);
+void toku_verify_ftnode_simple(FT ft, FTNODE node) {
+    BLOCKNUM blocknum = node->blocknum;
+    const DBT *lesser_pivot = nullptr;
+    const DBT *greatereq_pivot = nullptr;
+
+    toku_ftnode_assert_fully_in_memory(node);
+
+    // Verify that all the pivot keys are in order.
+    for (int i = 0; i < node->n_children-2; i++) {
+        DBT x, y;
+        int compare = compare_pairs(ft, node->pivotkeys.fill_pivot(i, &x), node->pivotkeys.fill_pivot(i + 1, &y));
+        VERIFY_ASSERTION(compare < 0, i, "Value is >= the next value");
+    }
+
+    // Verify that all the pivot keys are lesser_pivot < pivot <= greatereq_pivot
+    for (int i = 0; i < node->n_children-1; i++) {
+        DBT x;
+        if (lesser_pivot) {
+            int compare = compare_pairs(ft, lesser_pivot, node->pivotkeys.fill_pivot(i, &x));
+            VERIFY_ASSERTION(compare < 0, i, "Pivot is >= the lower-bound pivot");
+        }
+        if (greatereq_pivot) {
+            int compare = compare_pairs(ft, greatereq_pivot, node->pivotkeys.fill_pivot(i, &x));
+            VERIFY_ASSERTION(compare >= 0, i, "Pivot is < the upper-bound pivot");
+        }
+    }
+
+    for (int i = 0; i < node->n_children; i++) {
+        DBT x, y;
+        const DBT *curr_less_pivot = (i==0) ? lesser_pivot : node->pivotkeys.fill_pivot(i - 1, &x);
+        const DBT *curr_geq_pivot = (i==node->n_children-1) ? greatereq_pivot : node->pivotkeys.fill_pivot(i, &y);
+        if (node->height == 0) {
+            BASEMENTNODE bn = BLB(node, i);
+            for (uint32_t j = 0; j < bn->data_buffer.num_klpairs(); j++) {
+                DBT kdbt = get_ith_key_dbt(bn, j);
+                if (curr_less_pivot) {
+                    int compare = compare_pairs(ft, curr_less_pivot, &kdbt);
+                    VERIFY_ASSERTION_BASEMENT(compare < 0, i, j, "The leafentry is >= the lower-bound pivot");
+                }
+                if (curr_geq_pivot) {
+                    int compare = compare_pairs(ft, curr_geq_pivot, &kdbt);
+                    VERIFY_ASSERTION_BASEMENT(compare >= 0, i, j, "The leafentry is < the upper-bound pivot");
+                }
+                if (0 < j) {
+                    DBT prev_key_dbt = get_ith_key_dbt(bn, j-1);
+                    int compare = compare_pairs(ft, &prev_key_dbt, &kdbt);
+                    VERIFY_ASSERTION_BASEMENT(compare < 0, i, j, "Adjacent leafentries are out of order");
+                }
+            }
+        }
+    }
+}
