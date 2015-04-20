@@ -871,6 +871,7 @@ void toku_ftnode_clone_callback(
     *cloned_value_data = cloned_node;
 }
 
+
 void toku_ftnode_flush_callback(
     CACHEFILE UU(cachefile),
     int fd,
@@ -902,6 +903,11 @@ void toku_ftnode_flush_callback(
                 toku_ftnode_update_disk_stats(ftnode, ft, for_checkpoint);
             }
         }
+        if (1) {
+            extern void toku_verify_ftnode_simple(FT, FTNODE);
+            toku_verify_ftnode_simple(ft, ftnode);
+        }
+
         int r = toku_serialize_ftnode_to(fd, ftnode->blocknum, ftnode, ndd, !is_clone, ft, for_checkpoint);
         assert_zero(r);
         ftnode->layout_version_read_from_disk = FT_LAYOUT_VERSION;
