@@ -593,13 +593,15 @@ static int compare_pairs (FT ft, const DBT *a, const DBT *b) {
     return ft->cmp(a, b);
 }
 
-void toku_verify_ftnode_simple(FT ft, FTNODE node);
-void toku_verify_ftnode_simple(FT ft, FTNODE node) {
+void toku_verify_ftnode(FT ft, FTNODE node) {
+    toku_ftnode_assert_fully_in_memory(node);
+
+    if (!ft->cmp.valid())
+        return;
+
     BLOCKNUM blocknum = node->blocknum;
     const DBT *lesser_pivot = nullptr;
     const DBT *greatereq_pivot = nullptr;
-
-    toku_ftnode_assert_fully_in_memory(node);
 
     // Verify that all the pivot keys are in order.
     for (int i = 0; i < node->n_children-2; i++) {

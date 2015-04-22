@@ -472,6 +472,8 @@ toku_verify_ftnode (FT_HANDLE ft_h,
                      int recurse, int verbose, int keep_going_on_failure)
     __attribute__ ((warn_unused_result));
 
+void toku_verify_ftnode(FT, FTNODE);
+
 int toku_db_badformat(void) __attribute__((__warn_unused_result__));
 
 typedef enum {
