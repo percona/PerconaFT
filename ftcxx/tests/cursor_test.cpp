@@ -106,7 +106,9 @@ static void run_test(const ftcxx::DBEnv &env, const ftcxx::DB &db) {
 
 int test_main(int argc, char *const argv[]) {
     int r;
-    const char *env_dir = TOKU_TEST_FILENAME;
+    const char *old_env_dir = TOKU_TEST_FILENAME;
+    char env_dir[strlen(old_env_dir)+32]; // use unique env directories for parallel tests
+    snprintf(env_dir, sizeof env_dir, "%s.%d", old_env_dir, getpid());
     const char *db_filename = "ftcxx_cursor_test";
     parse_args(argc, argv);
 
@@ -129,6 +131,13 @@ int test_main(int argc, char *const argv[]) {
     create_txn.commit();
 
     run_test(env, db);
+
+    db.close();
+
+    env.close();
+
+    r = system(rm_cmd);
+    assert_zero(r);
 
     return 0;
 }
