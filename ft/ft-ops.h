@@ -331,5 +331,5 @@ void toku_ft_set_compress_buffers_before_eviction(bool compress_buffers);
 
 void toku_note_deserialized_basement_node(bool fixed_key_size);
 
-void toku_ftnode_set_node_verify(uint64_t verify_flags);
+void toku_set_ftnode_verify_flags(uint64_t verify_flags);
 
