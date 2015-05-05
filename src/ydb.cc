@@ -2550,6 +2550,10 @@ static void env_do_backtrace(DB_ENV *env) {
     }
 }
 
+static void env_set_node_verify(DB_ENV *UU(env), uint64_t verify_flags) {
+    toku_ftnode_set_node_verify(verify_flags);
+}
+
 static int 
 toku_env_create(DB_ENV ** envp, uint32_t flags) {
     int r = ENOSYS;
@@ -2627,6 +2631,7 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     USENV(get_loader_memory_size);
     USENV(set_killed_callback);
     USENV(do_backtrace);
+    USENV(set_node_verify);
 #undef USENV
     
     // unlocked methods

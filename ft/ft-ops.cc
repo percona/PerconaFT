@@ -812,7 +812,11 @@ void toku_ftnode_checkpoint_complete_callback(void *value_data) {
     }
 }
 
-volatile int toku_ftnode_do_verify = 4+2+1;
+volatile uint64_t toku_ftnode_do_verify = 0;
+
+void toku_ftnode_set_node_verify(uint64_t verify_flags) {
+    toku_ftnode_do_verify = verify_flags;
+}
 
 void toku_ftnode_clone_callback(
     void* value_data,
@@ -828,7 +832,8 @@ void toku_ftnode_clone_callback(
     FT ft = static_cast<FT>(write_extraargs);
     FTNODE XCALLOC(cloned_node);
     if (node->height == 0) {
-        if (toku_ftnode_do_verify & 4) toku_verify_ftnode(ft, node);
+        if (toku_ftnode_do_verify & 4)
+            toku_verify_ftnode(ft, node);
         // set header stats, must be done before rebalancing
         toku_ftnode_update_disk_stats(node, ft, for_checkpoint);
         // rebalance the leaf node
@@ -901,13 +906,15 @@ void toku_ftnode_flush_callback(
             // cloned nodes already had their stale messages moved, see toku_ftnode_clone_callback()
             toku_move_ftnode_messages_to_stale(ft, ftnode);
         } else if (height == 0) {
-            if (toku_ftnode_do_verify & 2) toku_verify_ftnode(ft, ftnode);
+            if (toku_ftnode_do_verify & 2)
+                toku_verify_ftnode(ft, ftnode);
             toku_ftnode_leaf_run_gc(ft, ftnode);
             if (!is_clone) {
                 toku_ftnode_update_disk_stats(ftnode, ft, for_checkpoint);
             }
         }
-        if (toku_ftnode_do_verify & 1) toku_verify_ftnode(ft, ftnode);
+        if (toku_ftnode_do_verify & 1)
+            toku_verify_ftnode(ft, ftnode);
         int r = toku_serialize_ftnode_to(fd, ftnode->blocknum, ftnode, ndd, !is_clone, ft, for_checkpoint);
         assert_zero(r);
         ftnode->layout_version_read_from_disk = FT_LAYOUT_VERSION;
