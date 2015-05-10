@@ -111,7 +111,11 @@ struct partitioned_counter {
     } b[4096/64];
 
     void increment() {
+#if HAVE_SCHED_GETCPU
         int n = sched_getcpu();
+#else
+        int n = random();
+#endif
         assert(n >= 0);
         toku_sync_fetch_and_add(&b[ n % (4096/64)].c.counter, 1);
     }

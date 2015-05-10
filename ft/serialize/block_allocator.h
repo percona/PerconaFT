@@ -96,6 +96,7 @@ PATENT RIGHTS GRANT:
 
 #include "portability/toku_pthread.h"
 #include "portability/toku_stdint.h"
+#include "portability/toku_stdlib.h"
 
 // Block allocator.
 //

@@ -111,13 +111,14 @@ check_function_exists(pthread_yield HAVE_PTHREAD_YIELD)
 check_function_exists(pthread_yield_np HAVE_PTHREAD_YIELD_NP)
 ## check if we have pthread_getthreadid_np() (i.e. freebsd)
 check_function_exists(pthread_getthreadid_np HAVE_PTHREAD_GETTHREADID_NP)
+check_function_exists(sched_getcpu HAVE_SCHED_GETCPU)
 
 include(CheckCSourceCompiles)
 
 if (HAVE_PTHREAD_YIELD)
   include(CheckPrototypeDefinition)
 
-  check_prototype_definition(pthread_yield "void pthread_yield(void)" 0 "pthread.h" PTHREAD_YIELD_RETURNS_VOID)
+  check_prototype_definition(pthread_yield "void pthread_yield(void)" "(void)0" "pthread.h" PTHREAD_YIELD_RETURNS_VOID)
   check_c_source_compiles("#include <pthread.h>
 int main(void) {
   int r = pthread_yield();
