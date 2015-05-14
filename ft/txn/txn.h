@@ -284,9 +284,9 @@ void toku_txn_update_xids_in_txn(struct tokutxn *txn, TXNID xid);
 
 int toku_txn_load_txninfo (struct tokutxn *txn, struct txninfo *info);
 
-int toku_txn_commit_txn (struct tokutxn *txn, int nosync, bool deferCommitMessages,
+int toku_txn_commit_txn (struct tokutxn *txn, int nosync,
                          TXN_PROGRESS_POLL_FUNCTION poll, void *poll_extra);
-int toku_txn_commit_with_lsn(struct tokutxn *txn, int nosync, LSN oplsn, bool deferCommitMessages,
+int toku_txn_commit_with_lsn(struct tokutxn *txn, int nosync, LSN oplsn,
                              TXN_PROGRESS_POLL_FUNCTION poll, void *poll_extra);
 
 int toku_txn_abort_txn(struct tokutxn *txn,
@@ -309,14 +309,8 @@ void toku_txn_get_fsync_info(struct tokutxn *ttxn, bool* do_fsync, LSN* do_fsync
 // Complete and destroy a txn
 void toku_txn_close_txn(struct tokutxn *txn);
 
-// remove from txn info from manager
-void toku_txn_remove_from_manager(TOKUTXN txn);
-
 // Remove a txn from any live txn lists
 void toku_txn_complete_txn(struct tokutxn *txn);
-
-// removes references txn is holding
-void note_txn_closing (TOKUTXN txn);
 
 // Free the memory of a txn
 void toku_txn_destroy_txn(struct tokutxn *txn);

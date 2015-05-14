@@ -674,47 +674,6 @@ msg_init_empty_ule(ULE ule) {
     ule_init_empty_ule(ule);
 }
 
-static bool do_implicit_promotion(enum ft_msg_type type, XIDS xids, ULE ule) {
-    if (type == FT_OPTIMIZE || type == FT_OPTIMIZE_FOR_UPGRADE) {
-        return false;
-    }
-    // as part of FT-603, commit messages may now hit a leafentry
-    // after the relevant lock tree locks are released. That is, other messages
-    // may hit the leafentry before this commit message, and as a result,
-    // implicit promotion done by that previous message will have done the
-    // the necessary work.
-    //
-    // So, we don't want to blindly implicitly promote a possibly live transaction
-    // because a commit message is hitting this leafentry late.
-    // Take the following example:
-    //   - Transaction A does a provisional write.
-    //   - Transaction A commits, but the commit message
-    //     is not yet sent.
-    //   - Transaction B does a write, which causes the leafentry to
-    //     commit A via implicit promotion. Now B is on top of the stack
-    //     with a provisional entry
-    //   - Transaction A's commit message hits this leafentry. We don't
-    //     want to use implicit promotion to commit B. That would be a bug.
-    //  Therefore, if we have different transaction stacks in the ule and xids,
-    //  we don't want implicit promotion.
-    //
-    //  On the other hand, if the root TXNID of the ule's provisional stack
-    // matches that of the xids, then we want to run implicit promotion,
-    // because ule_apply_commit depends on it. We don't need to worry about
-    // messages coming out of order, because transactions are associated
-    // with a single thread, and a new child cannot begin work until a previous
-    // child has finished committing.
-    if (type == FT_COMMIT_ANY || type == FT_COMMIT_BROADCAST_TXN) {        
-        TXNID current_msg_xid = toku_xids_get_xid(xids, 0);
-        invariant(current_msg_xid != TXNID_NONE);
-        TXNID current_ule_xid = ule_get_xid(ule, 0);
-        if (current_ule_xid != current_msg_xid) {
-            return false;
-        }
-    }
-    return true;
-}
-
 // Purpose is to modify the unpacked leafentry in our private workspace.
 //
 static void 
@@ -722,7 +681,7 @@ msg_modify_ule(ULE ule, const ft_msg &msg) {
     XIDS xids = msg.xids();
     invariant(toku_xids_get_num_xids(xids) < MAX_TRANSACTION_RECORDS);
     enum ft_msg_type type = msg.type();
-    if (do_implicit_promotion(type, xids, ule)) {
+    if (type != FT_OPTIMIZE && type != FT_OPTIMIZE_FOR_UPGRADE) {
         ule_do_implicit_promotions(ule, xids);
     }
     switch (type) {
