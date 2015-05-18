@@ -2890,7 +2890,7 @@ open_and_stress_tables(struct cli_args *args, bool fill_with_zeroes, int (*cmp)(
         return;
     }
 
-    { char *loc = setlocale(LC_NUMERIC, "en_US.UTF-8"); assert(loc); }
+    setlocale(LC_NUMERIC, "en_US.UTF-8");
     DB_ENV* env = nullptr;
     DB* dbs[args->num_DBs];
     memset(dbs, 0, sizeof(dbs));
