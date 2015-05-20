@@ -829,7 +829,12 @@ void toku_ftnode_clone_callback(
         // set header stats, must be done before rebalancing
         toku_ftnode_update_disk_stats(node, ft, for_checkpoint);
         // rebalance the leaf node
+        uint64_t tstart = toku_current_time_microsec();
         toku_ftnode_leaf_rebalance(node, ft->h->basementnodesize);
+        uint64_t tend = toku_current_time_microsec();
+        if (tend-tstart > 10000) {
+            fprintf(stderr, "%u %s n=%p h=%u c=%u dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, node, node->height, node->n_children, tend-tstart);
+        }
     }
 
     cloned_node->oldest_referenced_xid_known = node->oldest_referenced_xid_known;

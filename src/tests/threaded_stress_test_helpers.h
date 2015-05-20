@@ -919,7 +919,12 @@ static int random_put_in_db(DB *db, DB_TXN *txn, ARG arg, bool ignore_errors, vo
     for (uint32_t i = 0; i < arg->cli->txn_size; ++i) {
         fill_key_buf_random(arg->random_data, keybuf, arg);
         fill_val_buf_random(arg->random_data, valbuf, arg->cli);
+        uint64_t tstart = toku_current_time_microsec();
         r = db->put(db, txn, &key, &val, put_flags);
+        uint64_t tend = toku_current_time_microsec();
+        if (tend - tstart > 10000) {
+            fprintf(stderr, "%u %s dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, tend-tstart);
+        }
         if (!ignore_errors && r != 0) {
             goto cleanup;
         }

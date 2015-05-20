@@ -1473,11 +1473,16 @@ static bool try_pin_pair(
     bool dep_checkpoint_pending[num_dependent_pairs];
     bool try_again = true;
     bool expensive = (lock_type == PL_WRITE_EXPENSIVE);
+    uint64_t tstart = toku_current_time_microsec();
     if (lock_type != PL_READ) {
         p->value_rwlock.write_lock(expensive);
     }
     else {
         p->value_rwlock.read_lock();
+    }
+    uint64_t tend = toku_current_time_microsec();
+    if (tend - tstart > 10000) {
+        fprintf(stderr, "%u %s p=%p v=%p dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, p, p->value_data, tend-tstart);
     }
     pair_touch(p);
     pair_unlock(p);
@@ -2779,7 +2784,11 @@ cleanup:
 //             Mark every dirty node as "pending."  ("Pending" means that the node must be
 //                                                    written to disk before it can be modified.)
 void toku_cachetable_begin_checkpoint (CHECKPOINTER cp, TOKULOGGER UU(logger)) {    
+    fprintf(stderr, "%u %s\n", toku_os_gettid(), __FUNCTION__);
+    uint64_t tstart = toku_current_time_microsec();
     cp->begin_checkpoint();
+    uint64_t tend = toku_current_time_microsec();
+    fprintf(stderr, "%u %s dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, tend-tstart);
 }
 
 
@@ -2799,7 +2808,11 @@ int toku_cachetable_get_checkpointing_user_data_status (void) {
 // Note:       If testcallback is null (for testing purposes only), call it after writing dictionary but before writing log
 void toku_cachetable_end_checkpoint(CHECKPOINTER cp, TOKULOGGER UU(logger),
                                void (*testcallback_f)(void*),  void* testextra) {
+    fprintf(stderr, "%u %s\n", toku_os_gettid(), __FUNCTION__);
+    uint64_t tstart = toku_current_time_microsec();
     cp->end_checkpoint(testcallback_f, testextra);
+    uint64_t tend = toku_current_time_microsec();
+    fprintf(stderr, "%u %s dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, tend-tstart);
 }
 
 TOKULOGGER toku_cachefile_logger (CACHEFILE cf) {
@@ -3166,6 +3179,7 @@ int cleaner::run_cleaner(void) {
                 continue;
             }
             best_pair->value_rwlock.write_lock(true);
+            uint64_t tstart = toku_current_time_microsec();
             pair_unlock(best_pair);
             // verify a key assumption.
             assert(cleaner_thread_rate_pair(best_pair) > 0);
@@ -3198,6 +3212,10 @@ int cleaner::run_cleaner(void) {
                 pair_lock(best_pair);
                 best_pair->value_rwlock.write_unlock();
                 pair_unlock(best_pair);
+            }
+            uint64_t tend = toku_current_time_microsec();
+            if (tend-tstart > 10000) {
+                fprintf(stderr, "%u %s n=%p dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, best_pair->value_data, tend-tstart);
             }
             // We need to make sure the cachefile sticks around so a close
             // can't come destroy it.  That's the purpose of this

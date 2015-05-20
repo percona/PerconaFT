@@ -1872,10 +1872,11 @@ struct flusher_extra {
 // background thread. Its purpose is to complete
 // a flush, and possibly do a split/merge.
 //
-static void flush_node_fun(void *fe_v)
-{
+static void flush_node_fun(void *fe_v) {
+    uint64_t tstart = toku_current_time_microsec();
     toku::context flush_ctx(CTX_FLUSH);
     struct flusher_extra* fe = (struct flusher_extra *) fe_v;
+
     // The node that has been placed on the background
     // thread may not be fully in memory. Some message
     // buffers may be compressed. Before performing
@@ -1924,6 +1925,10 @@ static void flush_node_fun(void *fe_v)
         // buffer in the node.
         // It is the responsibility of flush some child to unlock the node
         toku_ft_flush_some_child(fe->ft, fe->node, &fa);
+    }
+    uint64_t tend = toku_current_time_microsec();
+    if (tend-tstart > 10000) {
+        fprintf(stderr, "%u %s n=%p dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, fe->node, tend-tstart);
     }
     remove_background_job_from_cf(fe->ft->cf);
     toku_free(fe);
