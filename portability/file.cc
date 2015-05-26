@@ -424,10 +424,15 @@ toku_os_pread (int fd, void *buf, size_t count, off_t offset) {
     assert(0==count%512);
     assert(0==offset%512);
     ssize_t r;
+    uint64_t tstart = toku_current_time_microsec();
     if (t_pread) {
 	r = t_pread(fd, buf, count, offset);
     } else {
 	r = pread(fd, buf, count, offset);
+    }
+    uint64_t tend = toku_current_time_microsec();
+    if (tend - tstart > 1000) {
+        fprintf(stderr, "%u %s fd=%d count=%lu offset=%" PRIu64 " r=%" PRId64 " dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, fd, count, offset, r, tend-tstart);
     }
     return r;
 }

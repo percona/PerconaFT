@@ -112,7 +112,6 @@ public:
     void write_unlock(void);
     // returns true if acquiring a write lock will be expensive
     bool write_lock_is_expensive(void);
-
     void read_lock(void);
     bool try_read_lock(void);
     void read_unlock(void);
@@ -125,6 +124,7 @@ public:
     uint32_t blocked_writers(void) const;
     uint32_t readers(void) const;
     uint32_t blocked_readers(void) const;
+    int writer_tid(void) const;
 
 private:
     struct queue_item {

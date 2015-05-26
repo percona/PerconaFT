@@ -804,6 +804,7 @@ struct rebalance_array_info {
 // to max msn of existing basements is correct.  (There cannot be any messages in
 // buffers above that still need to be applied.)
 void toku_ftnode_leaf_rebalance(FTNODE node, unsigned int basementnodesize) {
+    fprintf(stderr, "%u %s n=%p c=%d s=%u\n", toku_os_gettid(), __FUNCTION__, node, node->n_children, basementnodesize);
 
     assert(node->height == 0);
     assert(node->dirty);

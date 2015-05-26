@@ -821,6 +821,7 @@ void toku_ftnode_clone_callback(
     void* write_extraargs
     )
 {
+    uint64_t tstart = toku_current_time_microsec();
     FTNODE node = static_cast<FTNODE>(value_data);
     toku_ftnode_assert_fully_in_memory(node);
     FT ft = static_cast<FT>(write_extraargs);
@@ -829,11 +830,10 @@ void toku_ftnode_clone_callback(
         // set header stats, must be done before rebalancing
         toku_ftnode_update_disk_stats(node, ft, for_checkpoint);
         // rebalance the leaf node
-        uint64_t tstart = toku_current_time_microsec();
         toku_ftnode_leaf_rebalance(node, ft->h->basementnodesize);
         uint64_t tend = toku_current_time_microsec();
         if (tend-tstart > 10000) {
-            fprintf(stderr, "%u %s n=%p h=%u c=%u dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, node, node->height, node->n_children, tend-tstart);
+            fprintf(stderr, "%u %s n=%p h=%u c=%u dt=%" PRIu64 "\n", toku_os_gettid(), "rebalance", node, node->height, node->n_children, tend-tstart);
         }
     }
 
@@ -874,6 +874,10 @@ void toku_ftnode_clone_callback(
     }
     *clone_size = ftnode_memory_size(cloned_node);
     *cloned_value_data = cloned_node;
+    uint64_t tend = toku_current_time_microsec();
+    if (tend-tstart > 10000) {
+        fprintf(stderr, "%u %s n=%p h=%u c=%u dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, node, node->height, node->n_children, tend-tstart);
+    }
 }
 
 void toku_ftnode_flush_callback(
