@@ -301,6 +301,8 @@ int toku_rollback_abort(TOKUTXN txn, LSN lsn) {
 
 int toku_rollback_discard(TOKUTXN txn) {
     txn->roll_info.current_rollback = ROLLBACK_NONE;
+    txn->roll_info.spilled_rollback_head = ROLLBACK_NONE;
+    txn->roll_info.spilled_rollback_tail = ROLLBACK_NONE;
     return 0;
 }
 
