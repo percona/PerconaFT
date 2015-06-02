@@ -147,6 +147,7 @@ enum stress_lock_type {
 };
 
 struct env_args {
+    int fanout;
     int node_size;
     int basement_node_size;
     int rollback_node_size;
@@ -1945,6 +1946,7 @@ static void open_db_for_create(DB *db, int idx, struct cli_args *cli_args) {
     memset(name, 0, sizeof(name));
     get_ith_table_name(name, sizeof(name), idx);
     r = db->set_flags(db, 0); CKERR(r);
+    r = db->set_fanout(db, cli_args->env_args.fanout); CKERR(r);
     r = db->set_pagesize(db, cli_args->env_args.node_size); CKERR(r);
     r = db->set_readpagesize(db, cli_args->env_args.basement_node_size); CKERR(r);
     r = db->set_compression_method(db, cli_args->compression_method); CKERR(r);
@@ -1959,6 +1961,7 @@ static void open_db(DB *db, int idx, struct cli_args *cli_args) {
     get_ith_table_name(name, sizeof(name), idx);
     const int flags = DB_CREATE | (cli_args->blackhole ? DB_BLACKHOLE : 0);
     r = db->open(db, null_txn, name, nullptr, DB_BTREE, flags, 0666); CKERR(r);
+    r = db->change_fanout(db, cli_args->env_args.fanout); CKERR(r); // change fanout until fanout is persistent
 }
 
 static int create_tables(DB_ENV **env_res, DB **db_res, int num_DBs,
@@ -2225,6 +2228,7 @@ static int close_tables(DB_ENV *env, DB**  dbs, int num_DBs) {
 }
 
 static const struct env_args DEFAULT_ENV_ARGS = {
+    .fanout = 16,
     .node_size = 4096,
     .basement_node_size = 1024,
     .rollback_node_size = 4096,
@@ -2242,6 +2246,7 @@ static const struct env_args DEFAULT_ENV_ARGS = {
 };
 
 static const struct env_args DEFAULT_PERF_ENV_ARGS = {
+    .fanout = 16,
     .node_size = 4*1024*1024,
     .basement_node_size = 128*1024,
     .rollback_node_size = 4*1024*1024,
@@ -2638,6 +2643,7 @@ static inline void parse_stress_test_args (int argc, char *const argv[], struct 
         INT32_ARG_NONNEG("--num_elements",            num_elements,                  ""),
         INT32_ARG_NONNEG("--num_DBs",                 num_DBs,                       ""),
         INT32_ARG_NONNEG("--num_seconds",             num_seconds,                   "s"),
+        INT32_ARG_NONNEG("--fanout",                  env_args.fanout,               ""),
         INT32_ARG_NONNEG("--node_size",               env_args.node_size,            " bytes"),
         INT32_ARG_NONNEG("--basement_node_size",      env_args.basement_node_size,   " bytes"),
         INT32_ARG_NONNEG("--rollback_node_size",      env_args.rollback_node_size,   " bytes"),
