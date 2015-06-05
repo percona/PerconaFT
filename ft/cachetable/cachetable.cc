@@ -1482,7 +1482,8 @@ static bool try_pin_pair(
     }
     uint64_t tend = toku_current_time_microsec();
     if (tend - tstart > 10000) {
-        fprintf(stderr, "%u %s p=%p v=%p dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, p, p->value_data, tend-tstart);
+        fprintf(stderr, "%lu %u %s p=%p v=%p dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__,
+                p, p->value_data, tend-tstart);
     }
     pair_touch(p);
     pair_unlock(p);
@@ -2784,11 +2785,11 @@ cleanup:
 //             Mark every dirty node as "pending."  ("Pending" means that the node must be
 //                                                    written to disk before it can be modified.)
 void toku_cachetable_begin_checkpoint (CHECKPOINTER cp, TOKULOGGER UU(logger)) {    
-    fprintf(stderr, "%u %s\n", toku_os_gettid(), __FUNCTION__);
+    fprintf(stderr, "%lu %u %s\n", time(NULL), toku_os_gettid(), __FUNCTION__);
     uint64_t tstart = toku_current_time_microsec();
     cp->begin_checkpoint();
     uint64_t tend = toku_current_time_microsec();
-    fprintf(stderr, "%u %s dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, tend-tstart);
+    fprintf(stderr, "%lu %u %s dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, tend-tstart);
 }
 
 
@@ -2808,11 +2809,11 @@ int toku_cachetable_get_checkpointing_user_data_status (void) {
 // Note:       If testcallback is null (for testing purposes only), call it after writing dictionary but before writing log
 void toku_cachetable_end_checkpoint(CHECKPOINTER cp, TOKULOGGER UU(logger),
                                void (*testcallback_f)(void*),  void* testextra) {
-    fprintf(stderr, "%u %s\n", toku_os_gettid(), __FUNCTION__);
+    fprintf(stderr, "%lu %u %s\n", time(NULL), toku_os_gettid(), __FUNCTION__);
     uint64_t tstart = toku_current_time_microsec();
     cp->end_checkpoint(testcallback_f, testextra);
     uint64_t tend = toku_current_time_microsec();
-    fprintf(stderr, "%u %s dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, tend-tstart);
+    fprintf(stderr, "%lu %u %s dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, tend-tstart);
 }
 
 TOKULOGGER toku_cachefile_logger (CACHEFILE cf) {
@@ -3215,7 +3216,8 @@ int cleaner::run_cleaner(void) {
             }
             uint64_t tend = toku_current_time_microsec();
             if (tend-tstart > 10000) {
-                fprintf(stderr, "%u %s n=%p dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, best_pair->value_data, tend-tstart);
+                fprintf(stderr, "%lu %u %s n=%p dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__,
+                        best_pair->value_data, tend-tstart);
             }
             // We need to make sure the cachefile sticks around so a close
             // can't come destroy it.  That's the purpose of this
@@ -4493,31 +4495,58 @@ struct iterate_note_pin {
 // Sets up and kicks off a checkpoint.
 //
 void checkpointer::begin_checkpoint() {
+    uint64_t tstart = toku_current_time_microsec();
+    uint64_t tend;
     // 1. Initialize the accountability counters.
     m_checkpoint_num_txns = 0;
     
     // 2. Make list of cachefiles to be included in the checkpoint.
     m_cf_list->read_lock();
+    
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
     m_cf_list->m_active_fileid.iterate<void *, iterate_note_pin::fn>(nullptr);
     m_checkpoint_num_files = m_cf_list->m_active_fileid.size();
     m_cf_list->read_unlock();
     
     // 3. Create log entries for this checkpoint.
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
     if (m_logger) {
         this->log_begin_checkpoint();
     }
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
 
     bjm_reset(m_checkpoint_clones_bjm);
 
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
     m_list->write_pending_exp_lock();
+
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
     m_list->read_list_lock();
+
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
     m_cf_list->read_lock(); // needed for update_cachefiles
+
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
     m_list->write_pending_cheap_lock();
+
     // 4. Turn on all the relevant checkpoint pending bits.
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
     this->turn_on_pending_bits();
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
     
     // 5.
     this->update_cachefiles();
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
     m_list->write_pending_cheap_unlock();
     m_cf_list->read_unlock();
     m_list->read_list_unlock();
@@ -4551,18 +4580,28 @@ void checkpointer::log_begin_checkpoint() {
     LSN begin_lsn={ .lsn = (uint64_t) -1 }; // we'll need to store the lsn of the checkpoint begin in all the trees that are checkpointed.
     TXN_MANAGER mgr = toku_logger_get_txn_manager(m_logger);
     TXNID last_xid = toku_txn_manager_get_last_xid(mgr);
+    uint64_t tstart, tend;
+    tstart = toku_current_time_microsec();
     toku_log_begin_checkpoint(m_logger, &begin_lsn, 0, 0, last_xid);
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
     m_lsn_of_checkpoint_in_progress = begin_lsn;
 
     // Log the list of open dictionaries.
+    tstart = toku_current_time_microsec();
     m_cf_list->m_active_fileid.iterate<void *, iterate_log_fassociate::fn>(nullptr);
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
 
     // Write open transactions to the log.
+    tstart = toku_current_time_microsec();
     r = toku_txn_manager_iter_over_live_txns(
         m_logger->txn_manager,
         log_open_txn,
         this
         );
+    tend = toku_current_time_microsec();
+    fprintf(stderr, "%lu %u %s:%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, __LINE__, tend-tstart);
     assert(r == 0);
 }
 

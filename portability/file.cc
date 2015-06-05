@@ -432,7 +432,7 @@ toku_os_pread (int fd, void *buf, size_t count, off_t offset) {
     }
     uint64_t tend = toku_current_time_microsec();
     if (tend - tstart > 1000) {
-        fprintf(stderr, "%u %s fd=%d count=%lu offset=%" PRIu64 " r=%" PRId64 " dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, fd, count, offset, r, tend-tstart);
+        fprintf(stderr, "%lu %u %s fd=%d count=%lu offset=%" PRIu64 " r=%" PRId64 " dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, fd, count, offset, r, tend-tstart);
     }
     return r;
 }
@@ -451,11 +451,11 @@ void toku_os_recursive_delete(const char *path) {
 static int (*t_fsync)(int) = 0;
 static uint64_t toku_fsync_count;
 static uint64_t toku_fsync_time;
-static uint64_t toku_long_fsync_threshold = 1000000;
+static uint64_t toku_long_fsync_threshold = 10000;
 static uint64_t toku_long_fsync_count;
 static uint64_t toku_long_fsync_time;
 static uint64_t toku_long_fsync_eintr_count;
-static int toku_fsync_debug = 0;
+static int toku_fsync_debug = 1;
 
 void toku_set_func_fsync(int (*fsync_function)(int)) {
     t_fsync = fsync_function;

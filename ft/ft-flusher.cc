@@ -1805,8 +1805,9 @@ void toku_ft_split_child(
         &fa
         );
     uint64_t tend = toku_current_time_microsec();
-    if (tend-tstart > 1000) {
-        fprintf(stderr, "%u %s n=%p h=%d c=%d dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, node, node->height, node->n_children, tend-tstart);
+    if (1 || tend-tstart > 1000) {
+        fprintf(stderr, "%lu %u %s n=%p h=%d c=%d cn=%d dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__,
+                node, node->height, node->n_children, childnum, tend-tstart);
     }
 }
 
@@ -1933,7 +1934,8 @@ static void flush_node_fun(void *fe_v) {
     }
     uint64_t tend = toku_current_time_microsec();
     if (tend-tstart > 10000) {
-        fprintf(stderr, "%u %s n=%p h=%d c=%d dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, fe->node, fe->node->height, fe->node->n_children, tend-tstart);
+        fprintf(stderr, "%lu %u %s n=%p h=%d c=%d dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__,
+                fe->node, fe->node->height, fe->node->n_children, tend-tstart);
     }
     remove_background_job_from_cf(fe->ft->cf);
     toku_free(fe);

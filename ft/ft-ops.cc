@@ -833,7 +833,8 @@ void toku_ftnode_clone_callback(
         toku_ftnode_leaf_rebalance(node, ft->h->basementnodesize);
         uint64_t tend = toku_current_time_microsec();
         if (tend-tstart > 10000) {
-            fprintf(stderr, "%u %s n=%p h=%u c=%u dt=%" PRIu64 "\n", toku_os_gettid(), "rebalance", node, node->height, node->n_children, tend-tstart);
+            fprintf(stderr, "%lu %u %s n=%p h=%u c=%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), "rebalance",
+                    node, node->height, node->n_children, tend-tstart);
         }
     }
 
@@ -876,7 +877,8 @@ void toku_ftnode_clone_callback(
     *cloned_value_data = cloned_node;
     uint64_t tend = toku_current_time_microsec();
     if (tend-tstart > 10000) {
-        fprintf(stderr, "%u %s n=%p h=%u c=%u dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, node, node->height, node->n_children, tend-tstart);
+        fprintf(stderr, "%lu %u %s n=%p h=%u c=%u dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__,
+                node, node->height, node->n_children, tend-tstart);
     }
 }
 

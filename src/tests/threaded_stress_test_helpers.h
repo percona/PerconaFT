@@ -923,7 +923,7 @@ static int random_put_in_db(DB *db, DB_TXN *txn, ARG arg, bool ignore_errors, vo
         r = db->put(db, txn, &key, &val, put_flags);
         uint64_t tend = toku_current_time_microsec();
         if (tend - tstart > 10000) {
-            fprintf(stderr, "%u %s dt=%" PRIu64 "\n", toku_os_gettid(), __FUNCTION__, tend-tstart);
+            fprintf(stderr, "%lu %u %s dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, tend-tstart);
         }
         if (!ignore_errors && r != 0) {
             goto cleanup;
@@ -1200,6 +1200,7 @@ static int UU() ptquery_and_maybe_check_op(DB* db, DB_TXN *txn, ARG arg, bool ch
     dbt_init(&val, nullptr, 0);
     fill_key_buf_random(arg->random_data, keybuf, arg);
 
+    uint64_t tstart = toku_current_time_microsec();
     r = db->getf_set(
         db, 
         txn, 
@@ -1208,6 +1209,10 @@ static int UU() ptquery_and_maybe_check_op(DB* db, DB_TXN *txn, ARG arg, bool ch
         dbt_do_nothing, 
         nullptr
         );
+    uint64_t tend = toku_current_time_microsec();
+    if (tend - tstart > 10000) {
+        fprintf(stderr, "%lu %u %s dt=%" PRIu64 "\n", time(NULL), toku_os_gettid(), __FUNCTION__, tend-tstart);
+    }
     if (check) {
         assert(r != DB_NOTFOUND);
     }
