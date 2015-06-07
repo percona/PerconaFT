@@ -751,7 +751,7 @@ static void dump_summary(int fd, FT ft) {
 	    children_per_node = (double)info.height_cnt[elem.first-1]/elem.second;
 	}
 
-	printf("height: %d, nodes count: %d; avg children/node: %f\n\t %s: %d; msg size: %s; disksize: %s; uncompress size: %s; ratio: %f\n", 
+	printf("height: %d, nodes count: %d; avg children/node: %f\n\t %s: %d; msg size: %s; disksize: %s; uncompressed size: %s; ratio: %f\n", 
 		elem.first, elem.second, children_per_node,
 		    hdr.c_str(), 
 		    info.hmsg_cnt[elem.first], 
