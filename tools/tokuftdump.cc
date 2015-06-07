@@ -731,25 +731,29 @@ static void dump_summary(int fd, FT ft) {
 
     ft->blocktable.iterate(block_table::TRANSLATION_CHECKPOINTED,
                            summary_helper, &info, true, true);
-    printf("leaf blocks\t%" PRIu64 "\n", info.leafblocks);
-    printf("non-leaf blocks\t%" PRIu64 "\n", info.nonleafnode_cnt);
-    printf("blocksizes\t%s\n", humanNumber(info.blocksizes).c_str());
-    printf("leafsizes\t%s\n", humanNumber(info.leafsizes).c_str());
-    printf("uncompress sizes\t%s\n", humanNumber(info.serialsize).c_str());
-    printf("messages count:\t%" PRIu64 "\n", info.msg_cnt);
-    printf("messages size:\t%" PRIu64 "\n", info.msg_size);
-    printf("records count:\t%" PRIu64 "\n", info.pairs_cnt);
-    printf("tree height:\t%" PRIu64 "\n", info.maxheight);
+    printf("leaf nodes:\t%" PRIu64 "\n", info.leafblocks);
+    printf("non-leaf nodes:\t%" PRIu64 "\n", info.nonleafnode_cnt);
+    printf("Leaf size:\t%s\n", humanNumber(info.leafsizes).c_str());
+    printf("Total size:\t%s\n", humanNumber(info.blocksizes).c_str());
+    printf("Total uncompressed size:\t%s\n", humanNumber(info.serialsize).c_str());
+    printf("Messages count:\t%" PRIu64 "\n", info.msg_cnt);
+    printf("Messages size:\t%s\n", humanNumber(info.msg_size).c_str());
+    printf("Records count:\t%" PRIu64 "\n", info.pairs_cnt);
+    printf("Tree height:\t%" PRIu64 "\n", info.maxheight);
     for(auto elem : info.height_cnt) {
 	std::string hdr;
+	double children_per_node;
 	if (elem.first == 0) {
-	    hdr = "base nodes";
+	    hdr = "basement nodes";
+	    children_per_node = (double)info.hmsg_cnt[0]/elem.second;
 	} else {
 	    hdr = "msg cnt";
+	    children_per_node = (double)info.height_cnt[elem.first-1]/elem.second;
 	}
 
-	printf("height: %d, nodes count: %d\n\t %s: %d; msg size: %s; disksize: %s; uncompress size: %s; ratio: %f\n", 
-		elem.first, elem.second, hdr.c_str(), 
+	printf("height: %d, nodes count: %d; avg children/node: %f\n\t %s: %d; msg size: %s; disksize: %s; uncompress size: %s; ratio: %f\n", 
+		elem.first, elem.second, children_per_node,
+		    hdr.c_str(), 
 		    info.hmsg_cnt[elem.first], 
 		    humanNumber(info.hmsg_size[elem.first]).c_str(), 
 		    humanNumber(info.hdisk_size[elem.first]).c_str(), 
