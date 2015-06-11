@@ -85,6 +85,11 @@ namespace ftcxx {
             return _db->getf_set(_db, txn.txn(), flags, &kdbt, &WrappedCallback::call, &wc);
         }
 
+        int get_key_lock(const DBTxn &txn, const Slice &key) {
+            DBT kdbt = key.dbt();
+            return _db->get_row_lock(_db, txn.txn(), &kdbt);
+        }
+
         int put(const DBTxn &txn, DBT *key, DBT *val, int flags=0) const {
             return _db->put(_db, txn.txn(), key, val, flags);
         }
