@@ -854,6 +854,16 @@ autotxn_db_getf_set (DB *db, DB_TXN *txn, uint32_t flags, DBT *key, YDB_CALLBACK
     return toku_db_destruct_autotxn(txn, r, changed);
 }
 
+static inline int
+db_get_row_lock_for_writing(DB *db, DB_TXN *txn, DBT *key) {
+    if (!db->i->lt || !txn) {
+        return 0;
+    }
+
+    int r = toku_db_get_range_lock(db, txn, key, key, toku::lock_request::type::WRITE);
+    return r;
+}
+
 static int 
 locked_db_open(DB *db, DB_TXN *txn, const char *fname, const char *dbname, DBTYPE dbtype, uint32_t flags, int mode) {
     int ret, r;
@@ -1163,6 +1173,7 @@ toku_db_create(DB ** db, DB_ENV * env, uint32_t flags) {
     // unlocked methods
     result->get = autotxn_db_get;
     result->getf_set = autotxn_db_getf_set;
+    result->get_row_lock = db_get_row_lock_for_writing;
     
     result->i->dict_id = DICTIONARY_ID_NONE;
     result->i->opened = 0;
