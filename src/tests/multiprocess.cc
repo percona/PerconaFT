@@ -93,10 +93,6 @@ PATENT RIGHTS GRANT:
 
 #include "test.h"
 
-static inline size_t max(size_t a, size_t b) {
-    return a > b ? a : b;
-}
-
 static void
 test_env (const char *envdir0, const char *envdir1, int expect_open_return) {
     int r;

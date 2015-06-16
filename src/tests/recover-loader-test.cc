@@ -263,10 +263,12 @@ int inv[NUM_DBS][32];
 
 
 // rotate right and left functions
+#if 0
 static inline unsigned int rotr32(const unsigned int x, const unsigned int num) {
     const unsigned int n = num % 32;
     return (x >> n) | ( x << (32 - n));
 }
+#endif
 static inline unsigned int rotl32(const unsigned int x, const unsigned int num) {
     const unsigned int n = num % 32;
     return (x << n) | ( x >> (32 - n));

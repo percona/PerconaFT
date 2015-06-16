@@ -62,6 +62,8 @@
 #cmakedefine PTHREAD_YIELD_RETURNS_INT 1
 #cmakedefine PTHREAD_YIELD_RETURNS_VOID 1
 
+#cmakedefine HAVE_SCHED_GETCPU 1
+
 #cmakedefine HAVE_GNU_TLS 1
 
 #endif /* __CONFIG_H__ */

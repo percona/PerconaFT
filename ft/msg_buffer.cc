@@ -309,7 +309,18 @@ void message_buffer::serialize_to_wbuf(struct wbuf *wb) const {
     } serialize_fn(wb);
     iterate(serialize_fn);
 }
-
+//void static stats(struct wbuf *wb) const {
+//    wbuf_nocrc_int(wb, _num_entries);
+//    struct msg_serialize_fn {
+//        struct wbuf *wb;
+//        msg_serialize_fn(struct wbuf *w) : wb(w) { }
+//        int operator()(const ft_msg &msg, bool is_fresh) {
+//            msg.serialize_to_wbuf(wb, is_fresh);
+//            return 0;
+//        }
+//    } serialize_fn(wb);
+//    iterate(serialize_fn);
+//}
 size_t message_buffer::msg_memsize_in_buffer(const ft_msg &msg) {
     const uint32_t keylen = msg.kdbt()->size;
     const uint32_t datalen = msg.vdbt()->size;

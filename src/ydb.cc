@@ -2365,6 +2365,14 @@ env_get_cursor_for_directory(DB_ENV* env, DB_TXN* txn, DBC** c) {
     return toku_db_cursor(env->i->directory, txn, c, 0);
 }
 
+static DB *
+env_get_db_for_directory(DB_ENV* env) {
+    if (!env_opened(env)) {
+        return NULL;
+    }
+    return env->i->directory;
+}
+
 struct ltm_iterate_requests_callback_extra {
     ltm_iterate_requests_callback_extra(DB_ENV *e,
                                         iterate_requests_callback cb,
@@ -2490,24 +2498,21 @@ struct iter_txns_callback_extra {
 };
 
 static int iter_txns_callback(TOKUTXN txn, void *extra) {
+    int r = 0;
     iter_txns_callback_extra *info =
         reinterpret_cast<iter_txns_callback_extra *>(extra);
-
     DB_TXN *dbtxn = toku_txn_get_container_db_txn(txn);
     invariant_notnull(dbtxn);
+    if (db_txn_struct_i(dbtxn)->tokutxn == txn) { // make sure that the dbtxn is fully initialized
+        toku_mutex_lock(&db_txn_struct_i(dbtxn)->txn_mutex);
+        toku_pthread_rwlock_rdlock(&info->env->i->open_dbs_rwlock);
 
-    toku_mutex_lock(&db_txn_struct_i(dbtxn)->txn_mutex);
-    toku_pthread_rwlock_rdlock(&info->env->i->open_dbs_rwlock);
+        iter_txn_row_locks_callback_extra e(info->env, &db_txn_struct_i(dbtxn)->lt_map);
+        r = info->callback(dbtxn, iter_txn_row_locks_callback, &e, info->extra);
 
-    iter_txn_row_locks_callback_extra e(info->env, &db_txn_struct_i(dbtxn)->lt_map);
-    const int r = info->callback(toku_txn_get_txnid(txn).parent_id64,
-                                 toku_txn_get_client_id(txn),
-                                 iter_txn_row_locks_callback,
-                                 &e,
-                                 info->extra);
-
-    toku_pthread_rwlock_rdunlock(&info->env->i->open_dbs_rwlock);
-    toku_mutex_unlock(&db_txn_struct_i(dbtxn)->txn_mutex);
+        toku_pthread_rwlock_rdunlock(&info->env->i->open_dbs_rwlock);
+        toku_mutex_unlock(&db_txn_struct_i(dbtxn)->txn_mutex);
+    }
 
     return r;
 }
@@ -2623,6 +2628,7 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     USENV(create_loader);
     USENV(get_cursor_for_persistent_environment);
     USENV(get_cursor_for_directory);
+    USENV(get_db_for_directory);
     USENV(iterate_pending_lock_requests);
     USENV(iterate_live_transactions);
     USENV(change_fsync_log_period);

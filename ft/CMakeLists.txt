@@ -9,8 +9,9 @@ set_source_files_properties(
 
 add_executable(logformat logger/logformat.cc)
 target_link_libraries(logformat ${LIBTOKUPORTABILITY}_static)
-add_space_separated_property(TARGET logformat LINK_FLAGS --coverage)
-
+if (USE_GCOV)
+   add_space_separated_property(TARGET logformat LINK_FLAGS --coverage)
+endif (USE_GCOV)
 
 add_custom_command(
   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/log_code.cc"

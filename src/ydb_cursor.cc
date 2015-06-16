@@ -711,8 +711,6 @@ c_getf_set_range_reverse_callback(uint32_t keylen, const void *key, uint32_t val
 
 
 int toku_c_close_internal(DBC *c) {
-    HANDLE_PANICKED_DB(c->dbp);
-    HANDLE_CURSOR_ILLEGAL_WORKING_PARENT_TXN(c);
     toku_ft_cursor_destroy(dbc_ftcursor(c));
     toku_sdbt_cleanup(&dbc_struct_i(c)->skey_s);
     toku_sdbt_cleanup(&dbc_struct_i(c)->sval_s);
@@ -766,8 +764,13 @@ c_remove_restriction(DBC *dbc) {
     toku_ft_cursor_remove_restriction(dbc_ftcursor(dbc));
 }
 
+static void c_set_txn(DBC *dbc, DB_TXN *txn) {
+    dbc_struct_i(dbc)->txn = txn;
+    dbc_ftcursor(dbc)->ttxn = db_txn_struct_i(txn)->tokutxn;
+}
+
 static void
-c_set_check_interrupt_callback(DBC* dbc, bool (*interrupt_callback)(void*), void *extra) {
+c_set_check_interrupt_callback(DBC* dbc, bool (*interrupt_callback)(void*, uint64_t), void *extra) {
     toku_ft_cursor_set_check_interrupt_cb(dbc_ftcursor(dbc), interrupt_callback, extra);
 }
 
@@ -858,6 +861,7 @@ toku_db_cursor_internal(DB * db, DB_TXN * txn, DBC *c, uint32_t flags, int is_te
     SCRS(c_getf_set_range_with_bound);
     SCRS(c_set_bounds);
     SCRS(c_remove_restriction);
+    SCRS(c_set_txn);
     SCRS(c_set_check_interrupt_callback);
 #undef SCRS
 

@@ -246,6 +246,7 @@ struct tokutxn {
     uint32_t num_pin; // number of threads (all hot indexes) that want this
                       // txn to not transition to commit or abort
     uint64_t client_id;
+    time_t start_time;
 };
 typedef struct tokutxn *TOKUTXN;
 
@@ -283,9 +284,9 @@ void toku_txn_update_xids_in_txn(struct tokutxn *txn, TXNID xid);
 
 int toku_txn_load_txninfo (struct tokutxn *txn, struct txninfo *info);
 
-int toku_txn_commit_txn (struct tokutxn *txn, int nosync, bool deferCommitMessages,
+int toku_txn_commit_txn (struct tokutxn *txn, int nosync,
                          TXN_PROGRESS_POLL_FUNCTION poll, void *poll_extra);
-int toku_txn_commit_with_lsn(struct tokutxn *txn, int nosync, LSN oplsn, bool deferCommitMessages,
+int toku_txn_commit_with_lsn(struct tokutxn *txn, int nosync, LSN oplsn,
                              TXN_PROGRESS_POLL_FUNCTION poll, void *poll_extra);
 
 int toku_txn_abort_txn(struct tokutxn *txn,
@@ -295,7 +296,7 @@ int toku_txn_abort_with_lsn(struct tokutxn *txn, LSN oplsn,
 
 int toku_txn_discard_txn(struct tokutxn *txn);
 
-void toku_txn_prepare_txn (struct tokutxn *txn, TOKU_XA_XID *xid);
+void toku_txn_prepare_txn (struct tokutxn *txn, TOKU_XA_XID *xid, int nosync);
 // Effect: Do the internal work of preparing a transaction (does not log the prepare record).
 
 void toku_txn_get_prepared_xa_xid(struct tokutxn *txn, TOKU_XA_XID *xa_xid);
@@ -308,14 +309,8 @@ void toku_txn_get_fsync_info(struct tokutxn *ttxn, bool* do_fsync, LSN* do_fsync
 // Complete and destroy a txn
 void toku_txn_close_txn(struct tokutxn *txn);
 
-// remove from txn info from manager
-void toku_txn_remove_from_manager(TOKUTXN txn);
-
 // Remove a txn from any live txn lists
 void toku_txn_complete_txn(struct tokutxn *txn);
-
-// removes references txn is holding
-void note_txn_closing (TOKUTXN txn);
 
 // Free the memory of a txn
 void toku_txn_destroy_txn(struct tokutxn *txn);
@@ -366,6 +361,8 @@ bool toku_txn_has_spilled_rollback(struct tokutxn *txn);
 
 uint64_t toku_txn_get_client_id(struct tokutxn *txn);
 void toku_txn_set_client_id(struct tokutxn *txn, uint64_t client_id);
+
+time_t toku_txn_get_start_time(struct tokutxn *txn);
 
 //
 // This function is used by the leafentry iterators.
