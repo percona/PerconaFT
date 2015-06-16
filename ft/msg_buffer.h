@@ -176,6 +176,7 @@ private:
 
     int   _num_entries;
     char *_memory;       // An array of bytes into which buffer entries are embedded.
+    size_t _memory_usable; // a cached result of my_malloc_usable_size(_memory).
     int   _memory_size;  // How big is _memory
     int   _memory_used;  // How many bytes are in use?
 };

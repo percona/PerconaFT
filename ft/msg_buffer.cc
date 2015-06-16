@@ -92,6 +92,7 @@ PATENT RIGHTS GRANT:
 void message_buffer::create() {
     _num_entries = 0;
     _memory = nullptr;
+    _memory_usable = 0;
     _memory_size = 0;
     _memory_used = 0;
 }
@@ -102,11 +103,13 @@ void message_buffer::clone(message_buffer *src) {
     _memory_size = src->_memory_size;
     XMALLOC_N(_memory_size, _memory);
     memcpy(_memory, src->_memory, _memory_size);
+    _memory_usable = my_malloc_usable_size(_memory);
 }
 
 void message_buffer::destroy() {
     if (_memory != nullptr) {
         toku_free(_memory);
+        _memory_usable = 0;
     }
 }
 
@@ -202,6 +205,7 @@ MSN message_buffer::deserialize_from_rbuf_v13(struct rbuf *rb,
 void message_buffer::_resize(size_t new_size) {
     XREALLOC_N(new_size, _memory);
     _memory_size = new_size;
+    _memory_usable = my_malloc_usable_size(_memory);
 }
 
 static int next_power_of_two (int n) {
@@ -289,7 +293,7 @@ size_t message_buffer::memory_size_in_use() const {
 }
 
 size_t message_buffer::memory_footprint() const {
-    return sizeof(*this) + toku_memory_footprint(_memory, _memory_used);
+    return sizeof(*this) + toku_memory_footprint_given_usable_size(_memory, _memory_used, _memory_usable);
 }
 
 bool message_buffer::equals(message_buffer *other) const {
