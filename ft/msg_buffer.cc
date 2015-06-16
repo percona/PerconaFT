@@ -103,7 +103,7 @@ void message_buffer::clone(message_buffer *src) {
     _memory_size = src->_memory_size;
     XMALLOC_N(_memory_size, _memory);
     memcpy(_memory, src->_memory, _memory_size);
-    _memory_usable = my_malloc_usable_size(_memory);
+    _memory_usable = toku_malloc_usable_size(_memory);
 }
 
 void message_buffer::destroy() {
@@ -205,7 +205,7 @@ MSN message_buffer::deserialize_from_rbuf_v13(struct rbuf *rb,
 void message_buffer::_resize(size_t new_size) {
     XREALLOC_N(new_size, _memory);
     _memory_size = new_size;
-    _memory_usable = my_malloc_usable_size(_memory);
+    _memory_usable = toku_malloc_usable_size(_memory);
 }
 
 static int next_power_of_two (int n) {
