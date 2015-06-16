@@ -293,7 +293,8 @@ size_t message_buffer::memory_size_in_use() const {
 }
 
 size_t message_buffer::memory_footprint() const {
-    return sizeof(*this) + toku_memory_footprint_given_usable_size(_memory, _memory_used, _memory_usable);
+    assert(toku_memory_footprint(_memory, _memory_usable)  == toku_memory_footprint_given_usable_size(_memory_used, _memory_usable));
+    return sizeof(*this) + toku_memory_footprint_given_usable_size(_memory_used, _memory_usable);
 }
 
 bool message_buffer::equals(message_buffer *other) const {

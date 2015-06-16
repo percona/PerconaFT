@@ -223,9 +223,8 @@ typedef struct memory_status {
 
 void toku_memory_get_status(LOCAL_MEMORY_STATUS s);
 
-size_t toku_memory_footprint_given_usable_size(void * p, size_t touched, size_t usable);
-// Effect: Like toku_memory_footprint, except we know my_malloc_usable_size(p).
-// Requires: p is not NULL, and usable == my_malloc_usable_size(p).
+size_t toku_memory_footprint_given_usable_size(size_t touched, size_t usable);
+// Effect: Like toku_memory_footprint, except instead of passing p, we pass my_malloc_usable_size(p).
 
 size_t toku_memory_footprint(void * p, size_t touched);
 // Effect: Return an estimate how how much space an object is using, possibly by
