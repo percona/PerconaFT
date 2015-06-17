@@ -293,7 +293,16 @@ size_t message_buffer::memory_size_in_use() const {
 }
 
 size_t message_buffer::memory_footprint() const {
-    assert(toku_memory_footprint(_memory, _memory_usable)  == toku_memory_footprint_given_usable_size(_memory_used, _memory_usable));
+    if (0) {
+        // Enable this code if you want to verify that the new way of computing the memory footprint is the
+        // same as the old.  It slows the code down by perhaps 10%.
+        assert(_memory_usable == toku_malloc_usable_size(_memory));
+        size_t fp = toku_memory_footprint(_memory, _memory_used);
+        size_t fpg = toku_memory_footprint_given_usable_size(_memory_used, _memory_usable);
+        if (fp != fpg) printf("ptr=%p mu=%ld fp=%ld fpg=%ld\n", _memory, _memory_usable, fp, fpg);
+        assert(fp  == fpg);
+    }
+    
     return sizeof(*this) + toku_memory_footprint_given_usable_size(_memory_used, _memory_usable);
 }
 
