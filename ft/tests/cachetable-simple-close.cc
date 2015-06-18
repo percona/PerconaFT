@@ -193,13 +193,13 @@ simple_test(bool unlink_on_close) {
         assert(free_called);
         assert(!keep_me);
         // pair should NOT still be accounted for
-        assert(stats.status[CT_SIZE_CURRENT].value.num == 0);
+        assert(stats.status[CACHETABLE_STATUS_S::CT_SIZE_CURRENT].value.num == 0);
     }
     else {
         assert(keep_me);
         assert(!free_called);
         // pair should still be accounted for
-        assert(stats.status[CT_SIZE_CURRENT].value.num == 8);
+        assert(stats.status[CACHETABLE_STATUS_S::CT_SIZE_CURRENT].value.num == 8);
     }
     toku_cachetable_close(&ct);
     if (!unlink_on_close) {

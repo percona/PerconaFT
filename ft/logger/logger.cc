@@ -1393,46 +1393,19 @@ void toku_logger_note_checkpoint(TOKULOGGER logger, LSN lsn) {
     logger->last_completed_checkpoint_lsn = lsn;
 }
 
-///////////////////////////////////////////////////////////////////////////////////
-// Engine status
-//
-// Status is intended for display to humans to help understand system behavior.
-// It does not need to be perfectly thread-safe.
-
-static LOGGER_STATUS_S logger_status;
-
-#define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(logger_status, k, c, t, "logger: " l, inc)
-
-static void
-status_init(void) {
-    // Note, this function initializes the keyname, type, and legend fields.
-    // Value fields are initialized to zero by compiler.
-    STATUS_INIT(LOGGER_NEXT_LSN,     nullptr, UINT64,  "next LSN", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LOGGER_NUM_WRITES,                  LOGGER_WRITES, UINT64, "writes", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LOGGER_BYTES_WRITTEN,               LOGGER_WRITES_BYTES, UINT64, "writes (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LOGGER_UNCOMPRESSED_BYTES_WRITTEN,  LOGGER_WRITES_UNCOMPRESSED_BYTES, UINT64, "writes (uncompressed bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LOGGER_TOKUTIME_WRITES,             LOGGER_WRITES_SECONDS, TOKUTIME, "writes (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LOGGER_WAIT_BUF_LONG,               LOGGER_WAIT_LONG, UINT64, "number of long logger write operations", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    logger_status.initialized = true;
-}
-#undef STATUS_INIT
-
-#define STATUS_VALUE(x) logger_status.status[x].value.num
-
 void
 toku_logger_get_status(TOKULOGGER logger, LOGGER_STATUS statp) {
-    if (!logger_status.initialized)
-        status_init();
+    log_status.init();
     if (logger) {
-        STATUS_VALUE(LOGGER_NEXT_LSN)    = logger->lsn.lsn;
-        STATUS_VALUE(LOGGER_NUM_WRITES)  = logger->num_writes_to_disk;
-        STATUS_VALUE(LOGGER_BYTES_WRITTEN)  = logger->bytes_written_to_disk;
+        LOG_STATUS_VAL(LOGGER_NEXT_LSN)    = logger->lsn.lsn;
+        LOG_STATUS_VAL(LOGGER_NUM_WRITES)  = logger->num_writes_to_disk;
+        LOG_STATUS_VAL(LOGGER_BYTES_WRITTEN)  = logger->bytes_written_to_disk;
         // No compression on logfiles so the uncompressed size is just number of bytes written
-        STATUS_VALUE(LOGGER_UNCOMPRESSED_BYTES_WRITTEN)  = logger->bytes_written_to_disk;
-        STATUS_VALUE(LOGGER_TOKUTIME_WRITES) = logger->time_spent_writing_to_disk;
-        STATUS_VALUE(LOGGER_WAIT_BUF_LONG) = logger->num_wait_buf_long;
+        LOG_STATUS_VAL(LOGGER_UNCOMPRESSED_BYTES_WRITTEN)  = logger->bytes_written_to_disk;
+        LOG_STATUS_VAL(LOGGER_TOKUTIME_WRITES) = logger->time_spent_writing_to_disk;
+        LOG_STATUS_VAL(LOGGER_WAIT_BUF_LONG) = logger->num_wait_buf_long;
     }
-    *statp = logger_status;
+    *statp = log_status;
 }
 
 
@@ -1481,5 +1454,3 @@ toku_get_version_of_logs_on_disk(const char *log_dir, bool *found_any_logs, uint
 TXN_MANAGER toku_logger_get_txn_manager(TOKULOGGER logger) {
     return logger->txn_manager;
 }
-
-#undef STATUS_VALUE
