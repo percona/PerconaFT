@@ -36,6 +36,7 @@ set(FT_SOURCES
   ft-flusher
   ft-hot-flusher
   ft-ops
+  ft-status
   ft-test-helpers
   ft-verify
   loader/callbacks

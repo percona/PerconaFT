@@ -1899,15 +1899,15 @@ env_get_engine_status_num_rows (DB_ENV * UU(env), uint64_t * num_rowsp) {
     num_rows += YDB_LAYER_STATUS_NUM_ROWS;
     num_rows += YDB_C_LAYER_STATUS_NUM_ROWS;
     num_rows += YDB_WRITE_LAYER_STATUS_NUM_ROWS;
-    num_rows += LE_STATUS_NUM_ROWS;
-    num_rows += CP_STATUS_NUM_ROWS;
-    num_rows += CT_STATUS_NUM_ROWS;
-    num_rows += LTM_STATUS_NUM_ROWS;
-    num_rows += FT_STATUS_NUM_ROWS;
-    num_rows += FT_FLUSHER_STATUS_NUM_ROWS;
-    num_rows += FT_HOT_STATUS_NUM_ROWS;
-    num_rows += TXN_STATUS_NUM_ROWS;
-    num_rows += LOGGER_STATUS_NUM_ROWS;
+    num_rows += LE_STATUS_S::LE_STATUS_NUM_ROWS;
+    num_rows += CHECKPOINT_STATUS_S::CP_STATUS_NUM_ROWS;
+    num_rows += CACHETABLE_STATUS_S::CT_STATUS_NUM_ROWS;
+    num_rows += LTM_STATUS_S::LTM_STATUS_NUM_ROWS;
+    num_rows += FT_STATUS_S::FT_STATUS_NUM_ROWS;
+    num_rows += FT_FLUSHER_STATUS_S::FT_FLUSHER_STATUS_NUM_ROWS;
+    num_rows += FT_HOT_STATUS_S::FT_HOT_STATUS_NUM_ROWS;
+    num_rows += TXN_STATUS_S::TXN_STATUS_NUM_ROWS;
+    num_rows += LOGGER_STATUS_S::LOGGER_STATUS_NUM_ROWS;
     num_rows += MEMORY_STATUS_NUM_ROWS;
     num_rows += FS_STATUS_NUM_ROWS;
     num_rows += INDEXER_STATUS_NUM_ROWS;
@@ -1982,7 +1982,7 @@ env_get_engine_status (DB_ENV * env, TOKU_ENGINE_STATUS_ROW engstat, uint64_t ma
         {
             LE_STATUS_S lestat;                    // Rice's vampire
             toku_le_get_status(&lestat);
-            for (int i = 0; i < LE_STATUS_NUM_ROWS && row < maxrows; i++) {
+            for (int i = 0; i < LE_STATUS_S::LE_STATUS_NUM_ROWS && row < maxrows; i++) {
                 if (lestat.status[i].include & include_flags) {
                     engstat[row++] = lestat.status[i];
                 }
@@ -1991,7 +1991,7 @@ env_get_engine_status (DB_ENV * env, TOKU_ENGINE_STATUS_ROW engstat, uint64_t ma
         {
             CHECKPOINT_STATUS_S cpstat;
             toku_checkpoint_get_status(env->i->cachetable, &cpstat);
-            for (int i = 0; i < CP_STATUS_NUM_ROWS && row < maxrows; i++) {
+            for (int i = 0; i < CHECKPOINT_STATUS_S::CP_STATUS_NUM_ROWS && row < maxrows; i++) {
                 if (cpstat.status[i].include & include_flags) {
                     engstat[row++] = cpstat.status[i];
                 }
@@ -2000,7 +2000,7 @@ env_get_engine_status (DB_ENV * env, TOKU_ENGINE_STATUS_ROW engstat, uint64_t ma
         {
             CACHETABLE_STATUS_S ctstat;
             toku_cachetable_get_status(env->i->cachetable, &ctstat);
-            for (int i = 0; i < CT_STATUS_NUM_ROWS && row < maxrows; i++) {
+            for (int i = 0; i < CACHETABLE_STATUS_S::CT_STATUS_NUM_ROWS && row < maxrows; i++) {
                 if (ctstat.status[i].include & include_flags) {
                     engstat[row++] = ctstat.status[i];
                 }
@@ -2009,7 +2009,7 @@ env_get_engine_status (DB_ENV * env, TOKU_ENGINE_STATUS_ROW engstat, uint64_t ma
         {
             LTM_STATUS_S ltmstat;
             env->i->ltm.get_status(&ltmstat);
-            for (int i = 0; i < LTM_STATUS_NUM_ROWS && row < maxrows; i++) {
+            for (int i = 0; i < LTM_STATUS_S::LTM_STATUS_NUM_ROWS && row < maxrows; i++) {
                 if (ltmstat.status[i].include & include_flags) {
                     engstat[row++] = ltmstat.status[i];
                 }
@@ -2018,7 +2018,7 @@ env_get_engine_status (DB_ENV * env, TOKU_ENGINE_STATUS_ROW engstat, uint64_t ma
         {
             FT_STATUS_S ftstat;
             toku_ft_get_status(&ftstat);
-            for (int i = 0; i < FT_STATUS_NUM_ROWS && row < maxrows; i++) {
+            for (int i = 0; i < FT_STATUS_S::FT_STATUS_NUM_ROWS && row < maxrows; i++) {
                 if (ftstat.status[i].include & include_flags) {
                     engstat[row++] = ftstat.status[i];
                 }
@@ -2027,7 +2027,7 @@ env_get_engine_status (DB_ENV * env, TOKU_ENGINE_STATUS_ROW engstat, uint64_t ma
         {
             FT_FLUSHER_STATUS_S flusherstat;
             toku_ft_flusher_get_status(&flusherstat);
-            for (int i = 0; i < FT_FLUSHER_STATUS_NUM_ROWS && row < maxrows; i++) {
+            for (int i = 0; i < FT_FLUSHER_STATUS_S::FT_FLUSHER_STATUS_NUM_ROWS && row < maxrows; i++) {
                 if (flusherstat.status[i].include & include_flags) {
                     engstat[row++] = flusherstat.status[i];
                 }
@@ -2036,7 +2036,7 @@ env_get_engine_status (DB_ENV * env, TOKU_ENGINE_STATUS_ROW engstat, uint64_t ma
         {
             FT_HOT_STATUS_S hotstat;
             toku_ft_hot_get_status(&hotstat);
-            for (int i = 0; i < FT_HOT_STATUS_NUM_ROWS && row < maxrows; i++) {
+            for (int i = 0; i < FT_HOT_STATUS_S::FT_HOT_STATUS_NUM_ROWS && row < maxrows; i++) {
                 if (hotstat.status[i].include & include_flags) {
                     engstat[row++] = hotstat.status[i];
                 }
@@ -2045,7 +2045,7 @@ env_get_engine_status (DB_ENV * env, TOKU_ENGINE_STATUS_ROW engstat, uint64_t ma
         {
             TXN_STATUS_S txnstat;
             toku_txn_get_status(&txnstat);
-            for (int i = 0; i < TXN_STATUS_NUM_ROWS && row < maxrows; i++) {
+            for (int i = 0; i < TXN_STATUS_S::TXN_STATUS_NUM_ROWS && row < maxrows; i++) {
                 if (txnstat.status[i].include & include_flags) {
                     engstat[row++] = txnstat.status[i];
                 }
@@ -2054,7 +2054,7 @@ env_get_engine_status (DB_ENV * env, TOKU_ENGINE_STATUS_ROW engstat, uint64_t ma
         {
             LOGGER_STATUS_S loggerstat;
             toku_logger_get_status(env->i->logger, &loggerstat);
-            for (int i = 0; i < LOGGER_STATUS_NUM_ROWS && row < maxrows; i++) {
+            for (int i = 0; i < LOGGER_STATUS_S::LOGGER_STATUS_NUM_ROWS && row < maxrows; i++) {
                 if (loggerstat.status[i].include & include_flags) {
                     engstat[row++] = loggerstat.status[i];
                 }

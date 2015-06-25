@@ -96,6 +96,7 @@ PATENT RIGHTS GRANT:
 
 #include "ft/txn/txn_state.h"
 #include "ft/serialize/block_table.h"
+#include "ft/ft-status.h"
 #include "util/omt.h"
 
 typedef uint64_t TXNID;
@@ -320,19 +321,6 @@ struct XIDS_S *toku_txn_get_xids(struct tokutxn *txn);
 // Force fsync on commit
 void toku_txn_force_fsync_on_commit(struct tokutxn *txn);
 
-typedef enum {
-    TXN_BEGIN,             // total number of transactions begun (does not include recovered txns)
-    TXN_READ_BEGIN,        // total number of read only transactions begun (does not include recovered txns)
-    TXN_COMMIT,            // successful commits
-    TXN_ABORT,
-    TXN_STATUS_NUM_ROWS
-} txn_status_entry;
-
-typedef struct {
-    bool initialized;
-    TOKU_ENGINE_STATUS_ROW_S status[TXN_STATUS_NUM_ROWS];
-} TXN_STATUS_S, *TXN_STATUS;
-
 void toku_txn_get_status(TXN_STATUS s);
 
 bool toku_is_txn_in_live_root_txn_list(const xid_omt_t &live_root_txn_list, TXNID xid);
@@ -376,10 +364,6 @@ time_t toku_txn_get_start_time(struct tokutxn *txn);
 //  - id > context->snapshot_txnid64 OR id is in context's live root transaction list
 //
 int toku_txn_reads_txnid(TXNID txnid, struct tokutxn *txn, bool is_provisional UU());
-
-void txn_status_init(void);
-
-void txn_status_destroy(void);
 
 // For serialize / deserialize
 

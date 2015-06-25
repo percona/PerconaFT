@@ -123,53 +123,10 @@ PATENT RIGHTS GRANT:
 
 static uint32_t ule_get_innermost_numbytes(ULE ule, uint32_t keylen);
 
-///////////////////////////////////////////////////////////////////////////////////
-// Engine status
-//
-// Status is intended for display to humans to help understand system behavior.
-// It does not need to be perfectly thread-safe.
-
-static LE_STATUS_S le_status;
-
-#define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(le_status, k, c, t, "le: " l, inc)
-
-void toku_ule_status_init(void) {
-    // Note, this function initializes the keyname, type, and legend fields.
-    // Value fields are initialized to zero by compiler.
-    STATUS_INIT(LE_MAX_COMMITTED_XR,   nullptr, UINT64, "max committed xr", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_MAX_PROVISIONAL_XR, nullptr, UINT64, "max provisional xr", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_EXPANDED,           nullptr, UINT64, "expanded", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_MAX_MEMSIZE,        nullptr, UINT64, "max memsize", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_APPLY_GC_BYTES_IN,  nullptr, PARCOUNT, "size of leafentries before garbage collection (during message application)", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_APPLY_GC_BYTES_OUT, nullptr, PARCOUNT, "size of leafentries after garbage collection (during message application)", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_NORMAL_GC_BYTES_IN, nullptr, PARCOUNT, "size of leafentries before garbage collection (outside message application)", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_NORMAL_GC_BYTES_OUT,nullptr, PARCOUNT, "size of leafentries after garbage collection (outside message application)", TOKU_ENGINE_STATUS);
-    le_status.initialized = true;
-}
-#undef STATUS_INIT
-
-void toku_ule_status_destroy(void) {
-    for (int i = 0; i < LE_STATUS_NUM_ROWS; ++i) {
-        if (le_status.status[i].type == PARCOUNT) {
-            destroy_partitioned_counter(le_status.status[i].value.parcount);
-        }
-    }
-}
-
 void toku_le_get_status(LE_STATUS statp) {
+    le_status.init();
     *statp = le_status;
 }
-
-#define STATUS_VALUE(x) le_status.status[x].value.num
-#define STATUS_INC(x, d)                                                            \
-    do {                                                                            \
-        if (le_status.status[x].type == PARCOUNT) {                                 \
-            increment_partitioned_counter(le_status.status[x].value.parcount, d);   \
-        } else {                                                                    \
-            toku_sync_fetch_and_add(&le_status.status[x].value.num, d);             \
-        }                                                                           \
-    } while (0)
-
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Accessor functions used by outside world (e.g. indexer)
@@ -530,8 +487,8 @@ toku_le_apply_msg(const ft_msg &msg,
                             );
         size_t size_after_gc = ule_packed_memsize(&ule);
 
-        STATUS_INC(LE_APPLY_GC_BYTES_IN, size_before_gc);
-        STATUS_INC(LE_APPLY_GC_BYTES_OUT, size_after_gc);
+        LE_STATUS_INC(LE_APPLY_GC_BYTES_IN, size_before_gc);
+        LE_STATUS_INC(LE_APPLY_GC_BYTES_OUT, size_after_gc);
     }
 
     void *maybe_free = nullptr;
@@ -634,8 +591,8 @@ toku_le_garbage_collect(LEAFENTRY old_leaf_entry,
                             gc_info->txn_state_for_gc->live_root_txns);
         size_t size_after_gc = ule_packed_memsize(&ule);
 
-        STATUS_INC(LE_APPLY_GC_BYTES_IN, size_before_gc);
-        STATUS_INC(LE_APPLY_GC_BYTES_OUT, size_after_gc);
+        LE_STATUS_INC(LE_APPLY_GC_BYTES_IN, size_before_gc);
+        LE_STATUS_INC(LE_APPLY_GC_BYTES_OUT, size_after_gc);
     }
 
     void *maybe_free = nullptr;
@@ -941,14 +898,14 @@ uxr_unpack_data(UXR uxr, uint8_t *p) {
 // executed too often to be worth making threadsafe
 static inline void
 update_le_status(ULE ule, size_t memsize) {
-    if (ule->num_cuxrs > STATUS_VALUE(LE_MAX_COMMITTED_XR))
-        STATUS_VALUE(LE_MAX_COMMITTED_XR) = ule->num_cuxrs;
-    if (ule->num_puxrs > STATUS_VALUE(LE_MAX_PROVISIONAL_XR))
-        STATUS_VALUE(LE_MAX_PROVISIONAL_XR) = ule->num_puxrs;
+    if (ule->num_cuxrs > LE_STATUS_VAL(LE_MAX_COMMITTED_XR))
+        LE_STATUS_VAL(LE_MAX_COMMITTED_XR) = ule->num_cuxrs;
+    if (ule->num_puxrs > LE_STATUS_VAL(LE_MAX_PROVISIONAL_XR))
+        LE_STATUS_VAL(LE_MAX_PROVISIONAL_XR) = ule->num_puxrs;
     if (ule->num_cuxrs > MAX_TRANSACTION_RECORDS)
-        STATUS_VALUE(LE_EXPANDED)++;
-    if (memsize > STATUS_VALUE(LE_MAX_MEMSIZE))
-        STATUS_VALUE(LE_MAX_MEMSIZE) = memsize;
+        LE_STATUS_VAL(LE_EXPANDED)++;
+    if (memsize > LE_STATUS_VAL(LE_MAX_MEMSIZE))
+        LE_STATUS_VAL(LE_MAX_MEMSIZE) = memsize;
 }
 
 // Purpose is to return a newly allocated leaf entry in packed format, or
@@ -2534,5 +2491,3 @@ void
 toku_ule_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&le_status, sizeof le_status);
 }
-
-#undef STATUS_VALUE

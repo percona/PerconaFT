@@ -103,6 +103,7 @@ PATENT RIGHTS GRANT:
 #include "ft/node.h"
 #include "ft/serialize/block_table.h"
 #include "ft/txn/rollback.h"
+#include "ft/ft-status.h"
 
 // Symbol TOKUDB_REVISION is not defined by fractal-tree makefiles, so
 // BUILD_ID of 1000 indicates development build of main, not a release build.  
@@ -486,144 +487,7 @@ typedef struct {
 
 void toku_ft_upgrade_get_status(FT_UPGRADE_STATUS);
 
-typedef enum {
-    LE_MAX_COMMITTED_XR = 0,
-    LE_MAX_PROVISIONAL_XR,
-    LE_EXPANDED,
-    LE_MAX_MEMSIZE,
-    LE_APPLY_GC_BYTES_IN,
-    LE_APPLY_GC_BYTES_OUT,
-    LE_NORMAL_GC_BYTES_IN,
-    LE_NORMAL_GC_BYTES_OUT,
-    LE_STATUS_NUM_ROWS
-} le_status_entry;
-
-typedef struct {
-    bool initialized;
-    TOKU_ENGINE_STATUS_ROW_S status[LE_STATUS_NUM_ROWS];
-} LE_STATUS_S, *LE_STATUS;
-
 void toku_le_get_status(LE_STATUS);
-
-typedef enum {
-    FT_UPDATES = 0,
-    FT_UPDATES_BROADCAST,
-    FT_DESCRIPTOR_SET,
-    FT_MSN_DISCARDS,                           // how many messages were ignored by leaf because of msn
-    FT_TOTAL_RETRIES,                          // total number of search retries due to TRY_AGAIN
-    FT_SEARCH_TRIES_GT_HEIGHT,                 // number of searches that required more tries than the height of the tree
-    FT_SEARCH_TRIES_GT_HEIGHTPLUS3,            // number of searches that required more tries than the height of the tree plus three
-    FT_DISK_FLUSH_LEAF,                        // number of leaf nodes flushed to disk,    not for checkpoint
-    FT_DISK_FLUSH_LEAF_BYTES,                  // number of leaf nodes flushed to disk,    not for checkpoint
-    FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES,                  // number of leaf nodes flushed to disk,    not for checkpoint
-    FT_DISK_FLUSH_LEAF_TOKUTIME,               // number of leaf nodes flushed to disk,    not for checkpoint
-    FT_DISK_FLUSH_NONLEAF,                     // number of nonleaf nodes flushed to disk, not for checkpoint
-    FT_DISK_FLUSH_NONLEAF_BYTES,               // number of nonleaf nodes flushed to disk, not for checkpoint
-    FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES,               // number of nonleaf nodes flushed to disk, not for checkpoint
-    FT_DISK_FLUSH_NONLEAF_TOKUTIME,            // number of nonleaf nodes flushed to disk, not for checkpoint
-    FT_DISK_FLUSH_LEAF_FOR_CHECKPOINT,         // number of leaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_LEAF_BYTES_FOR_CHECKPOINT,   // number of leaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT,// number of leaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_LEAF_TOKUTIME_FOR_CHECKPOINT,// number of leaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_NONLEAF_FOR_CHECKPOINT,      // number of nonleaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_NONLEAF_BYTES_FOR_CHECKPOINT,// number of nonleaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT,// number of nonleaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_NONLEAF_TOKUTIME_FOR_CHECKPOINT,// number of nonleaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_LEAF_COMPRESSION_RATIO,      // effective compression ratio for leaf bytes flushed to disk
-    FT_DISK_FLUSH_NONLEAF_COMPRESSION_RATIO,   // effective compression ratio for nonleaf bytes flushed to disk
-    FT_DISK_FLUSH_OVERALL_COMPRESSION_RATIO,   // effective compression ratio for all bytes flushed to disk
-    FT_PARTIAL_EVICTIONS_NONLEAF,              // number of nonleaf node partial evictions
-    FT_PARTIAL_EVICTIONS_NONLEAF_BYTES,        // number of nonleaf node partial evictions
-    FT_PARTIAL_EVICTIONS_LEAF,                 // number of leaf node partial evictions
-    FT_PARTIAL_EVICTIONS_LEAF_BYTES,           // number of leaf node partial evictions
-    FT_FULL_EVICTIONS_LEAF,                    // number of full cachetable evictions on leaf nodes
-    FT_FULL_EVICTIONS_LEAF_BYTES,              // number of full cachetable evictions on leaf nodes (bytes)
-    FT_FULL_EVICTIONS_NONLEAF,                 // number of full cachetable evictions on nonleaf nodes
-    FT_FULL_EVICTIONS_NONLEAF_BYTES,           // number of full cachetable evictions on nonleaf nodes (bytes)
-    FT_CREATE_LEAF,                            // number of leaf nodes created
-    FT_CREATE_NONLEAF,                         // number of nonleaf nodes created
-    FT_DESTROY_LEAF,                           // number of leaf nodes destroyed
-    FT_DESTROY_NONLEAF,                        // number of nonleaf nodes destroyed
-    FT_MSG_BYTES_IN,                           // how many bytes of messages injected at root (for all trees)
-    FT_MSG_BYTES_OUT,                          // how many bytes of messages flushed from h1 nodes to leaves
-    FT_MSG_BYTES_CURR,                         // how many bytes of messages currently in trees (estimate)
-    FT_MSG_NUM,                                // how many messages injected at root
-    FT_MSG_NUM_BROADCAST,                      // how many broadcast messages injected at root
-    FT_NUM_BASEMENTS_DECOMPRESSED_NORMAL,      // how many basement nodes were decompressed because they were the target of a query
-    FT_NUM_BASEMENTS_DECOMPRESSED_AGGRESSIVE,  // ... because they were between lc and rc
-    FT_NUM_BASEMENTS_DECOMPRESSED_PREFETCH,
-    FT_NUM_BASEMENTS_DECOMPRESSED_WRITE,
-    FT_NUM_MSG_BUFFER_DECOMPRESSED_NORMAL,     // how many msg buffers were decompressed because they were the target of a query
-    FT_NUM_MSG_BUFFER_DECOMPRESSED_AGGRESSIVE, // ... because they were between lc and rc
-    FT_NUM_MSG_BUFFER_DECOMPRESSED_PREFETCH,
-    FT_NUM_MSG_BUFFER_DECOMPRESSED_WRITE,
-    FT_NUM_PIVOTS_FETCHED_QUERY,               // how many pivots were fetched for a query
-    FT_BYTES_PIVOTS_FETCHED_QUERY,               // how many pivots were fetched for a query
-    FT_TOKUTIME_PIVOTS_FETCHED_QUERY,               // how many pivots were fetched for a query
-    FT_NUM_PIVOTS_FETCHED_PREFETCH,            // ... for a prefetch
-    FT_BYTES_PIVOTS_FETCHED_PREFETCH,            // ... for a prefetch
-    FT_TOKUTIME_PIVOTS_FETCHED_PREFETCH,            // ... for a prefetch
-    FT_NUM_PIVOTS_FETCHED_WRITE,               // ... for a write
-    FT_BYTES_PIVOTS_FETCHED_WRITE,               // ... for a write
-    FT_TOKUTIME_PIVOTS_FETCHED_WRITE,               // ... for a write
-    FT_NUM_BASEMENTS_FETCHED_NORMAL,           // how many basement nodes were fetched because they were the target of a query
-    FT_BYTES_BASEMENTS_FETCHED_NORMAL,           // how many basement nodes were fetched because they were the target of a query
-    FT_TOKUTIME_BASEMENTS_FETCHED_NORMAL,           // how many basement nodes were fetched because they were the target of a query
-    FT_NUM_BASEMENTS_FETCHED_AGGRESSIVE,       // ... because they were between lc and rc
-    FT_BYTES_BASEMENTS_FETCHED_AGGRESSIVE,       // ... because they were between lc and rc
-    FT_TOKUTIME_BASEMENTS_FETCHED_AGGRESSIVE,       // ... because they were between lc and rc
-    FT_NUM_BASEMENTS_FETCHED_PREFETCH,
-    FT_BYTES_BASEMENTS_FETCHED_PREFETCH,
-    FT_TOKUTIME_BASEMENTS_FETCHED_PREFETCH,
-    FT_NUM_BASEMENTS_FETCHED_WRITE,
-    FT_BYTES_BASEMENTS_FETCHED_WRITE,
-    FT_TOKUTIME_BASEMENTS_FETCHED_WRITE,
-    FT_NUM_MSG_BUFFER_FETCHED_NORMAL,          // how many msg buffers were fetched because they were the target of a query
-    FT_BYTES_MSG_BUFFER_FETCHED_NORMAL,          // how many msg buffers were fetched because they were the target of a query
-    FT_TOKUTIME_MSG_BUFFER_FETCHED_NORMAL,          // how many msg buffers were fetched because they were the target of a query
-    FT_NUM_MSG_BUFFER_FETCHED_AGGRESSIVE,      // ... because they were between lc and rc
-    FT_BYTES_MSG_BUFFER_FETCHED_AGGRESSIVE,      // ... because they were between lc and rc
-    FT_TOKUTIME_MSG_BUFFER_FETCHED_AGGRESSIVE,      // ... because they were between lc and rc
-    FT_NUM_MSG_BUFFER_FETCHED_PREFETCH,
-    FT_BYTES_MSG_BUFFER_FETCHED_PREFETCH,
-    FT_TOKUTIME_MSG_BUFFER_FETCHED_PREFETCH,
-    FT_NUM_MSG_BUFFER_FETCHED_WRITE,
-    FT_BYTES_MSG_BUFFER_FETCHED_WRITE,
-    FT_TOKUTIME_MSG_BUFFER_FETCHED_WRITE,
-    FT_LEAF_COMPRESS_TOKUTIME, // seconds spent compressing leaf leaf nodes to memory
-    FT_LEAF_SERIALIZE_TOKUTIME, // seconds spent serializing leaf node to memory
-    FT_LEAF_DECOMPRESS_TOKUTIME, // seconds spent decompressing leaf nodes to memory
-    FT_LEAF_DESERIALIZE_TOKUTIME, // seconds spent deserializing leaf nodes to memory
-    FT_NONLEAF_COMPRESS_TOKUTIME, // seconds spent compressing nonleaf nodes to memory
-    FT_NONLEAF_SERIALIZE_TOKUTIME, // seconds spent serializing nonleaf nodes to memory
-    FT_NONLEAF_DECOMPRESS_TOKUTIME, // seconds spent decompressing nonleaf nodes to memory
-    FT_NONLEAF_DESERIALIZE_TOKUTIME, // seconds spent deserializing nonleaf nodes to memory
-    FT_PRO_NUM_ROOT_SPLIT,
-    FT_PRO_NUM_ROOT_H0_INJECT,
-    FT_PRO_NUM_ROOT_H1_INJECT,
-    FT_PRO_NUM_INJECT_DEPTH_0,
-    FT_PRO_NUM_INJECT_DEPTH_1,
-    FT_PRO_NUM_INJECT_DEPTH_2,
-    FT_PRO_NUM_INJECT_DEPTH_3,
-    FT_PRO_NUM_INJECT_DEPTH_GT3,
-    FT_PRO_NUM_STOP_NONEMPTY_BUF,
-    FT_PRO_NUM_STOP_H1,
-    FT_PRO_NUM_STOP_LOCK_CHILD,
-    FT_PRO_NUM_STOP_CHILD_INMEM,
-    FT_PRO_NUM_DIDNT_WANT_PROMOTE,
-    FT_BASEMENT_DESERIALIZE_FIXED_KEYSIZE, // how many basement nodes were deserialized with a fixed keysize
-    FT_BASEMENT_DESERIALIZE_VARIABLE_KEYSIZE, // how many basement nodes were deserialized with a variable keysize
-    FT_PRO_RIGHTMOST_LEAF_SHORTCUT_SUCCESS,
-    FT_PRO_RIGHTMOST_LEAF_SHORTCUT_FAIL_POS,
-    FT_PRO_RIGHTMOST_LEAF_SHORTCUT_FAIL_REACTIVE,
-    FT_CURSOR_SKIP_DELETED_LEAF_ENTRY, // how many deleted leaf entries were skipped by a cursor
-    FT_STATUS_NUM_ROWS
-} ft_status_entry;
-
-typedef struct {
-    bool initialized;
-    TOKU_ENGINE_STATUS_ROW_S status[FT_STATUS_NUM_ROWS];
-} FT_STATUS_S, *FT_STATUS;
 
 void toku_ft_status_update_pivot_fetch_reason(ftnode_fetch_extra *bfe);
 void toku_ft_status_update_flush_reason(FTNODE node, uint64_t uncompressed_bytes_flushed, uint64_t bytes_written, tokutime_t write_time, bool for_checkpoint);

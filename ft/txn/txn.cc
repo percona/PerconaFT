@@ -99,41 +99,9 @@ PATENT RIGHTS GRANT:
 #include "ft/txn/txn_manager.h"
 #include "util/status.h"
 
-///////////////////////////////////////////////////////////////////////////////////
-// Engine status
-//
-// Status is intended for display to humans to help understand system behavior.
-// It does not need to be perfectly thread-safe.
-
-static TXN_STATUS_S txn_status;
-
-#define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(txn_status, k, c, t, "txn: " l, inc)
-
-void
-txn_status_init(void) {
-    // Note, this function initializes the keyname, type, and legend fields.
-    // Value fields are initialized to zero by compiler.
-    STATUS_INIT(TXN_BEGIN,            TXN_BEGIN, PARCOUNT,   "begin", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(TXN_READ_BEGIN,       TXN_BEGIN_READ_ONLY, PARCOUNT,   "begin read only", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(TXN_COMMIT,           TXN_COMMITS, PARCOUNT,   "successful commits", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(TXN_ABORT,            TXN_ABORTS, PARCOUNT,   "aborts", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    txn_status.initialized = true;
-}
-
-void txn_status_destroy(void) {
-    for (int i = 0; i < TXN_STATUS_NUM_ROWS; ++i) {
-        if (txn_status.status[i].type == PARCOUNT) {
-            destroy_partitioned_counter(txn_status.status[i].value.parcount);
-        }
-    }
-}
-
-#undef STATUS_INIT
-
-#define STATUS_INC(x, d) increment_partitioned_counter(txn_status.status[x].value.parcount, d)
-
 void 
 toku_txn_get_status(TXN_STATUS s) {
+    txn_status.init();
     *s = txn_status;
 }
 
@@ -369,10 +337,10 @@ static txn_child_manager tcm;
     *tokutxn = result;
 
     if (read_only) {
-        STATUS_INC(TXN_READ_BEGIN, 1);
+        TXN_STATUS_INC(TXN_READ_BEGIN, 1);
     }
     else {
-        STATUS_INC(TXN_BEGIN, 1);
+        TXN_STATUS_INC(TXN_BEGIN, 1);
     }
 }
 
@@ -481,7 +449,7 @@ int toku_txn_commit_with_lsn(TOKUTXN txn, int nosync, LSN oplsn,
     // since there were no writes.  Skipping it would mean we would need to be careful
     // in case we added any additional required cleanup into those functions in the future.
     int r = toku_rollback_commit(txn, oplsn);
-    STATUS_INC(TXN_COMMIT, 1);
+    TXN_STATUS_INC(TXN_COMMIT, 1);
     return r;
 }
 
@@ -545,7 +513,7 @@ int toku_txn_abort_with_lsn(TOKUTXN txn, LSN oplsn,
     // since there were no writes.  Skipping it would mean we would need to be careful
     // in case we added any additional required cleanup into those functions in the future.
     int r = toku_rollback_abort(txn, oplsn);
-    STATUS_INC(TXN_ABORT, 1);
+    TXN_STATUS_INC(TXN_ABORT, 1);
     return r;
 }
 
@@ -815,5 +783,3 @@ void __attribute__((__constructor__)) toku_txn_status_helgrind_ignore(void);
 void toku_txn_status_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&txn_status, sizeof txn_status);
 }
-
-#undef STATUS_VALUE

@@ -125,42 +125,8 @@ static uint64_t cachetable_prefetches;    // how many times has a block been pre
 static uint64_t cachetable_evictions;
 static uint64_t cleaner_executions; // number of times the cleaner thread's loop has executed
 
-static CACHETABLE_STATUS_S ct_status;
 
 // Note, toku_cachetable_get_status() is below, after declaration of cachetable.
-
-#define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(ct_status, k, c, t, "cachetable: " l, inc)
-
-static void
-status_init(void) {
-    // Note, this function initializes the keyname, type, and legend fields.
-    // Value fields are initialized to zero by compiler.
-
-    STATUS_INIT(CT_MISS,                   CACHETABLE_MISS, UINT64, "miss", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_MISSTIME,               CACHETABLE_MISS_TIME, UINT64, "miss time", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_PREFETCHES,             CACHETABLE_PREFETCHES, UINT64, "prefetches", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_SIZE_CURRENT,           CACHETABLE_SIZE_CURRENT, UINT64, "size current", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_SIZE_LIMIT,             CACHETABLE_SIZE_LIMIT, UINT64, "size limit", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_SIZE_WRITING,           CACHETABLE_SIZE_WRITING, UINT64, "size writing", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_SIZE_NONLEAF,           CACHETABLE_SIZE_NONLEAF, UINT64, "size nonleaf", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_SIZE_LEAF,              CACHETABLE_SIZE_LEAF, UINT64, "size leaf", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_SIZE_ROLLBACK,          CACHETABLE_SIZE_ROLLBACK, UINT64, "size rollback", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_SIZE_CACHEPRESSURE,     CACHETABLE_SIZE_CACHEPRESSURE, UINT64, "size cachepressure", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_SIZE_CLONED,            CACHETABLE_SIZE_CLONED, UINT64, "size currently cloned data for checkpoint", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_EVICTIONS,              CACHETABLE_EVICTIONS, UINT64, "evictions", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_CLEANER_EXECUTIONS,     CACHETABLE_CLEANER_EXECUTIONS, UINT64, "cleaner executions", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_CLEANER_PERIOD,         CACHETABLE_CLEANER_PERIOD, UINT64, "cleaner period", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_CLEANER_ITERATIONS,     CACHETABLE_CLEANER_ITERATIONS, UINT64, "cleaner iterations", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    
-    STATUS_INIT(CT_WAIT_PRESSURE_COUNT,    CACHETABLE_WAIT_PRESSURE_COUNT, UINT64, "number of waits on cache pressure", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_WAIT_PRESSURE_TIME,    CACHETABLE_WAIT_PRESSURE_TIME, UINT64, "time waiting on cache pressure", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_LONG_WAIT_PRESSURE_COUNT,    CACHETABLE_LONG_WAIT_PRESSURE_COUNT, UINT64, "number of long waits on cache pressure", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(CT_LONG_WAIT_PRESSURE_TIME,    CACHETABLE_LONG_WAIT_PRESSURE_TIME, UINT64, "long time waiting on cache pressure", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    ct_status.initialized = true;
-}
-#undef STATUS_INIT
-
-#define STATUS_VALUE(x) ct_status.status[x].value.num
 
 static void * const zero_value = nullptr;
 static PAIR_ATTR const zero_attr = {
@@ -219,16 +185,14 @@ bool toku_ctpair_is_write_locked(PAIR pair) {
 
 void
 toku_cachetable_get_status(CACHETABLE ct, CACHETABLE_STATUS statp) {
-    if (!ct_status.initialized) {
-        status_init();
-    }
-    STATUS_VALUE(CT_MISS)                   = cachetable_miss;
-    STATUS_VALUE(CT_MISSTIME)               = cachetable_misstime;
-    STATUS_VALUE(CT_PREFETCHES)             = cachetable_prefetches;
-    STATUS_VALUE(CT_EVICTIONS)              = cachetable_evictions;
-    STATUS_VALUE(CT_CLEANER_EXECUTIONS)     = cleaner_executions;
-    STATUS_VALUE(CT_CLEANER_PERIOD)         = toku_get_cleaner_period_unlocked(ct);
-    STATUS_VALUE(CT_CLEANER_ITERATIONS)     = toku_get_cleaner_iterations_unlocked(ct);
+    ct_status.init();
+    CT_STATUS_VAL(CT_MISS)                   = cachetable_miss;
+    CT_STATUS_VAL(CT_MISSTIME)               = cachetable_misstime;
+    CT_STATUS_VAL(CT_PREFETCHES)             = cachetable_prefetches;
+    CT_STATUS_VAL(CT_EVICTIONS)              = cachetable_evictions;
+    CT_STATUS_VAL(CT_CLEANER_EXECUTIONS)     = cleaner_executions;
+    CT_STATUS_VAL(CT_CLEANER_PERIOD)         = toku_get_cleaner_period_unlocked(ct);
+    CT_STATUS_VAL(CT_CLEANER_ITERATIONS)     = toku_get_cleaner_iterations_unlocked(ct);
     ct->ev.fill_engine_status();
     *statp = ct_status;
 }
@@ -4351,18 +4315,18 @@ inline int64_t evictor::unsafe_read_size_current(void) const {
 }
 
 void evictor::fill_engine_status() {
-    STATUS_VALUE(CT_SIZE_CURRENT)           = m_size_current;
-    STATUS_VALUE(CT_SIZE_LIMIT)             = m_low_size_hysteresis;
-    STATUS_VALUE(CT_SIZE_WRITING)           = m_size_evicting;
-    STATUS_VALUE(CT_SIZE_NONLEAF) = read_partitioned_counter(m_size_nonleaf);
-    STATUS_VALUE(CT_SIZE_LEAF) = read_partitioned_counter(m_size_leaf);
-    STATUS_VALUE(CT_SIZE_ROLLBACK) = read_partitioned_counter(m_size_rollback);
-    STATUS_VALUE(CT_SIZE_CACHEPRESSURE) = read_partitioned_counter(m_size_cachepressure);
-    STATUS_VALUE(CT_SIZE_CLONED) = m_size_cloned_data;
-    STATUS_VALUE(CT_WAIT_PRESSURE_COUNT) = read_partitioned_counter(m_wait_pressure_count);
-    STATUS_VALUE(CT_WAIT_PRESSURE_TIME) = read_partitioned_counter(m_wait_pressure_time);
-    STATUS_VALUE(CT_LONG_WAIT_PRESSURE_COUNT) = read_partitioned_counter(m_long_wait_pressure_count);
-    STATUS_VALUE(CT_LONG_WAIT_PRESSURE_TIME) = read_partitioned_counter(m_long_wait_pressure_time);
+    CT_STATUS_VAL(CT_SIZE_CURRENT)           = m_size_current;
+    CT_STATUS_VAL(CT_SIZE_LIMIT)             = m_low_size_hysteresis;
+    CT_STATUS_VAL(CT_SIZE_WRITING)           = m_size_evicting;
+    CT_STATUS_VAL(CT_SIZE_NONLEAF) = read_partitioned_counter(m_size_nonleaf);
+    CT_STATUS_VAL(CT_SIZE_LEAF) = read_partitioned_counter(m_size_leaf);
+    CT_STATUS_VAL(CT_SIZE_ROLLBACK) = read_partitioned_counter(m_size_rollback);
+    CT_STATUS_VAL(CT_SIZE_CACHEPRESSURE) = read_partitioned_counter(m_size_cachepressure);
+    CT_STATUS_VAL(CT_SIZE_CLONED) = m_size_cloned_data;
+    CT_STATUS_VAL(CT_WAIT_PRESSURE_COUNT) = read_partitioned_counter(m_wait_pressure_count);
+    CT_STATUS_VAL(CT_WAIT_PRESSURE_TIME) = read_partitioned_counter(m_wait_pressure_time);
+    CT_STATUS_VAL(CT_LONG_WAIT_PRESSURE_COUNT) = read_partitioned_counter(m_long_wait_pressure_count);
+    CT_STATUS_VAL(CT_LONG_WAIT_PRESSURE_TIME) = read_partitioned_counter(m_long_wait_pressure_time);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4969,5 +4933,3 @@ toku_cachetable_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&cleaner_executions, sizeof cleaner_executions);
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&ct_status, sizeof ct_status);
 }
-
-#undef STATUS_VALUE
