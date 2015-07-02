@@ -156,7 +156,8 @@ static toku_pthread_rwlock_t low_priority_multi_operation_lock;
 static bool initialized = false;     // sanity check
 static volatile bool locked_mo = false;       // true when the multi_operation write lock is held (by checkpoint)
 static volatile bool locked_cs = false;       // true when the checkpoint_safe write lock is held (by checkpoint)
-static volatile uint64_t toku_checkpoint_long_threshold = 1000000;
+static volatile uint64_t toku_checkpoint_begin_long_threshold = 1000000; // 1 second
+static volatile uint64_t toku_checkpoint_end_long_threshold = 1000000 * 60; // 1 minute
 
 // Note following static functions are called from checkpoint internal logic only,
 // and use the "writer" calls for locking and unlocking.
@@ -320,7 +321,10 @@ toku_checkpoint(CHECKPOINTER cp, TOKULOGGER logger,
     if (callback_f) {
         callback_f(extra);      // callback is called with checkpoint_safe_lock still held
     }
+
+    uint64_t t_checkpoint_end_start = toku_current_time_microsec();
     toku_cachetable_end_checkpoint(cp, logger, callback2_f, extra2);
+    uint64_t t_checkpoint_end_end = toku_current_time_microsec();
 
     SET_CHECKPOINT_FOOTPRINT(50);
     if (logger) {
@@ -335,9 +339,15 @@ toku_checkpoint(CHECKPOINTER cp, TOKULOGGER logger,
     CP_STATUS_VAL(CP_CHECKPOINT_COUNT)++;
     uint64_t duration = t_checkpoint_begin_end - t_checkpoint_begin_start;
     CP_STATUS_VAL(CP_BEGIN_TIME) += duration;
-    if (duration >= toku_checkpoint_long_threshold) {
+    if (duration >= toku_checkpoint_begin_long_threshold) {
         CP_STATUS_VAL(CP_LONG_BEGIN_TIME) += duration;
         CP_STATUS_VAL(CP_LONG_BEGIN_COUNT) += 1;
+    }
+    duration = t_checkpoint_end_end - t_checkpoint_end_start;
+    CP_STATUS_VAL(CP_END_TIME) += duration;
+    if (duration >= toku_checkpoint_end_long_threshold) {
+        CP_STATUS_VAL(CP_LONG_END_TIME) += duration;
+        CP_STATUS_VAL(CP_LONG_END_COUNT) += 1;
     }
     CP_STATUS_VAL(CP_TIME_CHECKPOINT_DURATION) += (uint64_t) ((time_t) CP_STATUS_VAL(CP_TIME_LAST_CHECKPOINT_END)) - ((time_t) CP_STATUS_VAL(CP_TIME_LAST_CHECKPOINT_BEGIN));
     CP_STATUS_VAL(CP_TIME_CHECKPOINT_DURATION_LAST) = (uint64_t) ((time_t) CP_STATUS_VAL(CP_TIME_LAST_CHECKPOINT_END)) - ((time_t) CP_STATUS_VAL(CP_TIME_LAST_CHECKPOINT_BEGIN));
