@@ -159,13 +159,13 @@ static void e_callback(TXNID txnid, const locktree *lt, const range_buffer &buff
 }
 
 static uint64_t get_escalation_count(locktree_manager &mgr) {
-    LTM_STATUS_S ltm_status;
-    mgr.get_status(&ltm_status);
+    LTM_STATUS_S ltm_status_test;
+    mgr.get_status(&ltm_status_test);
 
     TOKU_ENGINE_STATUS_ROW key_status = NULL;
     // lookup keyname in status
     for (int i = 0; ; i++) {
-        TOKU_ENGINE_STATUS_ROW status = &ltm_status.status[i];
+        TOKU_ENGINE_STATUS_ROW status = &ltm_status_test.status[i];
         if (status->keyname == NULL)
             break;
         if (strcmp(status->keyname, "LTM_ESCALATION_COUNT") == 0) {

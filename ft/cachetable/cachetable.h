@@ -97,6 +97,7 @@ PATENT RIGHTS GRANT:
 #include "ft/logger/logger.h"
 #include "ft/serialize/block_table.h"
 #include "ft/txn/txn.h"
+#include "ft/ft-status.h"
 #include "util/minicron.h"
 
 // Maintain a cache mapping from cachekeys to values (void*)
@@ -589,34 +590,6 @@ void toku_cachetable_maybe_flush_some(CACHETABLE ct);
 
 // for stat64
 uint64_t toku_cachefile_size(CACHEFILE cf);
-
-typedef enum {
-    CT_MISS = 0,
-    CT_MISSTIME,               // how many usec spent waiting for disk read because of cache miss
-    CT_PREFETCHES,             // how many times has a block been prefetched into the cachetable?
-    CT_SIZE_CURRENT,           // the sum of the sizes of the nodes represented in the cachetable
-    CT_SIZE_LIMIT,             // the limit to the sum of the node sizes
-    CT_SIZE_WRITING,           // the sum of the sizes of the nodes being written
-    CT_SIZE_NONLEAF,           // number of bytes in cachetable belonging to nonleaf nodes
-    CT_SIZE_LEAF,              // number of bytes in cachetable belonging to leaf nodes
-    CT_SIZE_ROLLBACK,          // number of bytes in cachetable belonging to rollback nodes
-    CT_SIZE_CACHEPRESSURE,     // number of bytes causing cache pressure (sum of buffers and workdone counters)
-    CT_SIZE_CLONED,            // number of bytes of cloned data in the system
-    CT_EVICTIONS,
-    CT_CLEANER_EXECUTIONS,     // number of times the cleaner thread's loop has executed
-    CT_CLEANER_PERIOD,
-    CT_CLEANER_ITERATIONS,     // number of times the cleaner thread runs the cleaner per period
-    CT_WAIT_PRESSURE_COUNT,
-    CT_WAIT_PRESSURE_TIME,
-    CT_LONG_WAIT_PRESSURE_COUNT,
-    CT_LONG_WAIT_PRESSURE_TIME,
-    CT_STATUS_NUM_ROWS
-} ct_status_entry;
-
-typedef struct {
-    bool initialized;
-    TOKU_ENGINE_STATUS_ROW_S status[CT_STATUS_NUM_ROWS];
-} CACHETABLE_STATUS_S, *CACHETABLE_STATUS;
 
 void toku_cachetable_get_status(CACHETABLE ct, CACHETABLE_STATUS s);
 
