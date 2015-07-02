@@ -41,6 +41,7 @@
 #cmakedefine HAVE_SYS_SYSLIMITS_H 1
 #cmakedefine HAVE_SYS_TIME_H 1
 #cmakedefine HAVE_UNISTD_H 1
+#cmakedefine HAVE_SCHED_H 1
 
 #cmakedefine HAVE_M_MMAP_THRESHOLD 1
 #cmakedefine HAVE_CLOCK_REALTIME 1
@@ -63,6 +64,7 @@
 #cmakedefine PTHREAD_YIELD_RETURNS_VOID 1
 
 #cmakedefine HAVE_SCHED_GETCPU 1
+#cmakedefine HAVE_SCHED_GETAFFINITY 1
 
 #cmakedefine HAVE_GNU_TLS 1
 

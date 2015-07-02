@@ -149,7 +149,7 @@ void toku_serialize_set_parallel(bool in_parallel) {
 }
 
 void toku_ft_serialize_layer_init(void) {
-    num_cores = toku_os_get_number_active_processors();
+    num_cores = toku_os_get_number_cpus();
     int r = toku_thread_pool_create(&ft_pool, num_cores);
     lazy_assert_zero(r);
     block_allocator::maybe_initialize_trace();

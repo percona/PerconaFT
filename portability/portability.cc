@@ -124,6 +124,9 @@ PATENT RIGHTS GRANT:
 # include <sys/resource.h>
 #endif
 #include <sys/statvfs.h>
+#if defined(HAVE_SCHED_H)
+#include <sched.h>
+#endif
 #include "toku_portability.h"
 #include "toku_os.h"
 #include "toku_time.h"
@@ -165,17 +168,22 @@ toku_os_gettid(void) {
 #endif
 }
 
-int
-toku_os_get_number_processors(void) {
-    return sysconf(_SC_NPROCESSORS_CONF);
-}
-
-int
-toku_os_get_number_active_processors(void) {
+// return min(sysconf processors online, cpu affinity count, "TOKU_NCPUS")
+int toku_os_get_number_cpus(void) {
     int n = sysconf(_SC_NPROCESSORS_ONLN);
+#if HAVE_SCHED_GETAFFINITY
+    // Compute the number of cpus in the affinity mask
+    cpu_set_t cpus;
+    int r = sched_getaffinity(0, sizeof cpus, &cpus);
+    assert_zero(r);
+    int naffinity = CPU_COUNT(&cpus);
+    if (naffinity < n)
+        n = naffinity;
+#endif
 #define DO_TOKU_NCPUS 1
 #if DO_TOKU_NCPUS
     {
+        // override the compute number of cpus with an environment variable
         char *toku_ncpus = getenv("TOKU_NCPUS");
         if (toku_ncpus) {
             int ncpus = atoi(toku_ncpus);

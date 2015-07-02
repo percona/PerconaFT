@@ -1168,7 +1168,7 @@ static void scan_op_worker(void *arg) {
 }
 
 static int UU() scan_op_no_check_parallel(DB_TXN *txn, ARG arg, void* operation_extra, void *UU(stats_extra)) {
-    const int num_cores = toku_os_get_number_processors();
+    const int num_cores = toku_os_get_number_cpus();
     const int num_workers = arg->cli->num_DBs < num_cores ? arg->cli->num_DBs : num_cores;
     KIBBUTZ kibbutz = NULL;
     int r = toku_kibbutz_create(num_workers, &kibbutz);
@@ -2124,7 +2124,7 @@ static void fill_table_worker(void *arg) {
 }
 
 static int fill_tables_default(DB_ENV *env, DB **dbs, struct cli_args *args, bool fill_with_zeroes) {
-    const int num_cores = toku_os_get_number_processors();
+    const int num_cores = toku_os_get_number_cpus();
     // Use at most cores / 2 worker threads, since we want some other cores to
     // be used for internal engine work (ie: flushes, loader threads, etc).
     const int max_num_workers = (num_cores + 1) / 2;
