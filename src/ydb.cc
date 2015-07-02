@@ -1847,25 +1847,25 @@ typedef struct {
 
 static MEMORY_STATUS_S memory_status;
 
-#define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(memory_status, k, c, t, "memory: " l, inc)
+#define STATUS_INIT(k,c,t,l) TOKUFT_STATUS_INIT(memory_status, k, c, t, "memory: " l, TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS)
 
 static void
 memory_status_init(void) {
     // Note, this function initializes the keyname, type, and legend fields.
     // Value fields are initialized to zero by compiler.
-    STATUS_INIT(MEMORY_MALLOC_COUNT,       nullptr, UINT64,  "number of malloc operations", TOKU_ENGINE_STATUS);
-    STATUS_INIT(MEMORY_FREE_COUNT,         nullptr, UINT64,  "number of free operations", TOKU_ENGINE_STATUS);
-    STATUS_INIT(MEMORY_REALLOC_COUNT,      nullptr, UINT64,  "number of realloc operations", TOKU_ENGINE_STATUS);
-    STATUS_INIT(MEMORY_MALLOC_FAIL,        nullptr, UINT64,  "number of malloc operations that failed", TOKU_ENGINE_STATUS);
-    STATUS_INIT(MEMORY_REALLOC_FAIL,       nullptr, UINT64,  "number of realloc operations that failed" , TOKU_ENGINE_STATUS);
-    STATUS_INIT(MEMORY_REQUESTED,          nullptr, UINT64,  "number of bytes requested", TOKU_ENGINE_STATUS);
-    STATUS_INIT(MEMORY_USED,               nullptr, UINT64,  "number of bytes used (requested + overhead)", TOKU_ENGINE_STATUS);
-    STATUS_INIT(MEMORY_FREED,              nullptr, UINT64,  "number of bytes freed", TOKU_ENGINE_STATUS);
-    STATUS_INIT(MEMORY_MAX_REQUESTED_SIZE, nullptr, UINT64,  "largest attempted allocation size", TOKU_ENGINE_STATUS);
-    STATUS_INIT(MEMORY_LAST_FAILED_SIZE,   nullptr, UINT64,  "size of the last failed allocation attempt", TOKU_ENGINE_STATUS);
-    STATUS_INIT(MEMORY_MAX_IN_USE,         MEM_ESTIMATED_MAXIMUM_MEMORY_FOOTPRINT, UINT64,  "estimated maximum memory footprint", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(MEMORY_MALLOCATOR_VERSION, nullptr, CHARSTR, "mallocator version", TOKU_ENGINE_STATUS);
-    STATUS_INIT(MEMORY_MMAP_THRESHOLD,     nullptr, UINT64,  "mmap threshold", TOKU_ENGINE_STATUS);
+    STATUS_INIT(MEMORY_MALLOC_COUNT,        MEMORY_MALLOC_COUNT,        UINT64, "number of malloc operations");
+    STATUS_INIT(MEMORY_FREE_COUNT,          MEMORY_FREE_COUNT,          UINT64, "number of free operations");
+    STATUS_INIT(MEMORY_REALLOC_COUNT,       MEMORY_REALLOC_COUNT,       UINT64, "number of realloc operations");
+    STATUS_INIT(MEMORY_MALLOC_FAIL,         MEMORY_MALLOC_FAIL,         UINT64, "number of malloc operations that failed");
+    STATUS_INIT(MEMORY_REALLOC_FAIL,        MEMORY_REALLOC_FAIL,        UINT64, "number of realloc operations that failed" );
+    STATUS_INIT(MEMORY_REQUESTED,           MEMORY_REQUESTED,           UINT64, "number of bytes requested");
+    STATUS_INIT(MEMORY_USED,                MEMORY_USED,                UINT64, "number of bytes used (requested + overhead)");
+    STATUS_INIT(MEMORY_FREED,               MEMORY_FREED,               UINT64, "number of bytes freed");
+    STATUS_INIT(MEMORY_MAX_REQUESTED_SIZE,  MEMORY_MAX_REQUESTED_SIZE,  UINT64, "largest attempted allocation size");
+    STATUS_INIT(MEMORY_LAST_FAILED_SIZE,    MEMORY_LAST_FAILED_SIZE,    UINT64, "size of the last failed allocation attempt");
+    STATUS_INIT(MEMORY_MAX_IN_USE,          MEM_ESTIMATED_MAXIMUM_MEMORY_FOOTPRINT, UINT64, "estimated maximum memory footprint");
+    STATUS_INIT(MEMORY_MALLOCATOR_VERSION,  MEMORY_MALLOCATOR_VERSION,  CHARSTR, "mallocator version");
+    STATUS_INIT(MEMORY_MMAP_THRESHOLD,      MEMORY_MMAP_THRESHOLD,      UINT64, "mmap threshold");
     memory_status.initialized = true;  
 }
 #undef STATUS_INIT
