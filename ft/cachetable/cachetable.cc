@@ -3665,7 +3665,7 @@ void evictor::destroy() {
     if (m_ev_thread_init) {
         toku_mutex_lock(&m_ev_thread_lock);
         m_run_thread = false;
-        this->signal_eviction_thread();
+        this->signal_eviction_thread_locked();
         toku_mutex_unlock(&m_ev_thread_lock);
         void *ret;
         int r = toku_pthread_join(m_ev_thread, &ret); 
@@ -3772,7 +3772,7 @@ uint64_t evictor::reserve_memory(double fraction, uint64_t upper_bound) {
     }
     m_size_reserved += reserved_memory;
     (void) toku_sync_fetch_and_add(&m_size_current, reserved_memory);
-    this->signal_eviction_thread();  
+    this->signal_eviction_thread_locked();  
     toku_mutex_unlock(&m_ev_thread_lock);
 
     if (this->should_client_thread_sleep()) {
@@ -3790,7 +3790,7 @@ void evictor::release_reserved_memory(uint64_t reserved_memory){
     m_size_reserved -= reserved_memory;
     // signal the eviction thread in order to possibly wake up sleeping clients
     if (m_num_sleepers  > 0) {
-        this->signal_eviction_thread();
+        this->signal_eviction_thread_locked();
     }
     toku_mutex_unlock(&m_ev_thread_lock);
 }
@@ -4208,7 +4208,7 @@ void evictor::decrease_size_evicting(long size_evicting_estimate) {
         m_size_evicting -= size_evicting_estimate;
         assert(m_size_evicting >= 0);
         if (need_to_signal_ev_thread) {
-            this->signal_eviction_thread();
+            this->signal_eviction_thread_locked();
         }
         toku_mutex_unlock(&m_ev_thread_lock);
     }
@@ -4223,7 +4223,7 @@ void evictor::wait_for_cache_pressure_to_subside() {
     uint64_t t0 = toku_current_time_microsec();
     toku_mutex_lock(&m_ev_thread_lock);
     m_num_sleepers++;
-    this->signal_eviction_thread();
+    this->signal_eviction_thread_locked();
     toku_cond_wait(&m_flow_control_cond, &m_ev_thread_lock);    
     m_num_sleepers--;
     toku_mutex_unlock(&m_ev_thread_lock);
@@ -4257,6 +4257,12 @@ void evictor::get_state(long *size_current_ptr, long *size_limit_ptr) {
 // As a result, scheduling is not guaranteed, but that is tolerable.
 //
 void evictor::signal_eviction_thread() {
+    toku_mutex_lock(&m_ev_thread_lock);
+    toku_cond_signal(&m_ev_thread_cond);
+    toku_mutex_unlock(&m_ev_thread_lock);
+}
+
+void evictor::signal_eviction_thread_locked() {
     toku_cond_signal(&m_ev_thread_cond);
 }
 

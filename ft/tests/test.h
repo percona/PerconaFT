@@ -352,7 +352,7 @@ public:
         ev->m_period_in_seconds = 0;
         // signal eviction thread so that it wakes up
         // and then sleeps indefinitely
-        ev->signal_eviction_thread();
+        ev->signal_eviction_thread_locked();
         toku_mutex_unlock(&ev->m_ev_thread_lock);
         // sleep for one second to ensure eviction thread picks up new period
         usleep(1*1024*1024);
