@@ -260,21 +260,6 @@ void toku_logger_maybe_fsync (TOKULOGGER logger, LSN lsn, int do_fsync, bool hol
 //        fsync
 //        release the outlock
 
-typedef enum {
-    LOGGER_NEXT_LSN = 0,
-    LOGGER_NUM_WRITES,
-    LOGGER_BYTES_WRITTEN,
-    LOGGER_UNCOMPRESSED_BYTES_WRITTEN,
-    LOGGER_TOKUTIME_WRITES,
-    LOGGER_WAIT_BUF_LONG,
-    LOGGER_STATUS_NUM_ROWS
-} logger_status_entry;
-
-typedef struct {
-    bool initialized;
-    TOKU_ENGINE_STATUS_ROW_S status[LOGGER_STATUS_NUM_ROWS];
-} LOGGER_STATUS_S, *LOGGER_STATUS;
-
 void toku_logger_get_status(TOKULOGGER logger, LOGGER_STATUS s);
 
 int toku_get_version_of_logs_on_disk(const char *log_dir, bool *found_any_logs, uint32_t *version_found);

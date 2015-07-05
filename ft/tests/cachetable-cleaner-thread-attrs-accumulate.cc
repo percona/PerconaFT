@@ -97,7 +97,7 @@ PATENT RIGHTS GRANT:
 toku_mutex_t attr_mutex;
 
 // used to access engine status variables 
-#define STATUS_VALUE(x) ct_status.status[x].value.num
+#define STATUS_VALUE(x) ct_test_status.status[CACHETABLE_STATUS_S::x].value.num
 
 const PAIR_ATTR attrs[] = {
     { .size = 20, .nonleaf_size = 13, .leaf_size = 900, .rollback_size = 123, .cache_pressure_size = 403, .is_valid = true },
@@ -150,8 +150,8 @@ run_test (void) {
     CACHEFILE f1;
     r = toku_cachetable_openf(&f1, ct, fname1, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO); assert(r == 0);
 
-    CACHETABLE_STATUS_S ct_status;
-    toku_cachetable_get_status(ct, &ct_status);
+    CACHETABLE_STATUS_S ct_test_status;
+    toku_cachetable_get_status(ct, &ct_test_status);
     assert(STATUS_VALUE(CT_SIZE_NONLEAF) == 0);
     assert(STATUS_VALUE(CT_SIZE_LEAF) == 0);
     assert(STATUS_VALUE(CT_SIZE_ROLLBACK) == 0);
@@ -183,7 +183,7 @@ run_test (void) {
         expect.cache_pressure_size += attrs[i].cache_pressure_size;
     }
 
-    toku_cachetable_get_status(ct, &ct_status);
+    toku_cachetable_get_status(ct, &ct_test_status);
     assert(STATUS_VALUE(CT_SIZE_NONLEAF      ) == (uint64_t) expect.nonleaf_size);
     assert(STATUS_VALUE(CT_SIZE_LEAF         ) == (uint64_t) expect.leaf_size);
     assert(STATUS_VALUE(CT_SIZE_ROLLBACK     ) == (uint64_t) expect.rollback_size);
@@ -203,7 +203,7 @@ run_test (void) {
 
     usleep(2*1024*1024);
 
-    toku_cachetable_get_status(ct, &ct_status);
+    toku_cachetable_get_status(ct, &ct_test_status);
     assert(STATUS_VALUE(CT_SIZE_NONLEAF      ) == (uint64_t) expect.nonleaf_size);
     assert(STATUS_VALUE(CT_SIZE_LEAF         ) == (uint64_t) expect.leaf_size);
     assert(STATUS_VALUE(CT_SIZE_ROLLBACK     ) == (uint64_t) expect.rollback_size);
