@@ -86,115 +86,176 @@ PATENT RIGHTS GRANT:
   under this License.
 */
 
-#pragma once
-
 #ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
+#include "test.h"
 
-#include "ft/ft-internal.h"
+// Verify that a commit of a prepared txn in recovery retains a db created by it. 
+// A checkpoint is taken between the db creation and the txn prepare.
 
-void toku_ft_flusher_get_status(FT_FLUSHER_STATUS);
+// Verify that an abort of a prepared txn in recovery discards the rows that were inserted.
+// A checkpoint is taken after the rows are inserted and before and the txn prepare.
 
-/**
- * Only for testing, not for production.
- *
- * Set a callback the flusher thread will use to signal various points
- * during its execution.
- */
-void
-toku_flusher_thread_set_callback(
-    void (*callback_f)(int, void*),
-    void* extra
-    );
+const int test_nrows = 1000000;
 
-/**
- * Puts a workitem on the flusher thread queue, scheduling the node to be
- * flushed by toku_ft_flush_some_child.
- */
-void toku_ft_flush_node_on_background_thread(FT ft, FTNODE parent);
+static void create_foo(DB_ENV *env, DB_TXN *txn) {
+    int r;
+    DB *db = nullptr;
+    r = db_create(&db, env, 0);
+    CKERR(r);
+    r = db->open(db, txn, "foo.db", 0, DB_BTREE, DB_CREATE,  S_IRWXU+S_IRWXG+S_IRWXO);
+    CKERR(r);
+    r = db->close(db, 0);
+    CKERR(r);
+}
 
-enum split_mode {
-    SPLIT_EVENLY,
-    SPLIT_LEFT_HEAVY,
-    SPLIT_RIGHT_HEAVY
-};
+static void populate_foo(DB_ENV *env, DB_TXN *txn) {
+    int r;
+    DB *db = nullptr;
+    r = db_create(&db, env, 0);
+    CKERR(r);
+    r = db->open(db, txn, "foo.db", 0, DB_BTREE, 0, 0);
+    CKERR(r);
 
+    for (int i = 0; i < test_nrows; i++) {
+        int k = htonl(i);
+        DBT key = { .data = &k, .size = sizeof k }; DBT val = { .data = &i, .size = sizeof i };
+        r = db->put(db, txn, &key, &val, 0);
+        CKERR(r);
+    }
 
-// Given pinned node and pinned child, split child into two
-// and update node with information about its new child.
-void toku_ft_split_child(
-    FT ft,
-    FTNODE node,
-    int childnum,
-    FTNODE child,
-    enum split_mode split_mode
-    );
+    r = db->close(db, 0);
+    CKERR(r);
+}
 
-// Given pinned node, merge childnum with a neighbor and update node with
-// information about the change
-void toku_ft_merge_child(
-    FT ft,
-    FTNODE node,
-    int childnum
-    );
+static void check_foo(DB_ENV *env, DB_TXN *txn) {
+    int r;
+    DB *db;
+    r = db_create(&db, env, 0);
+    CKERR(r);
+    r = db->open(db, txn, "foo.db", 0, DB_BTREE, 0, 0);
+    CKERR(r);
 
-/**
- * Effect: Split a leaf node.
- * Argument "node" is node to be split.
- * Upon return:
- *   nodea and nodeb point to new nodes that result from split of "node"
- *   nodea is the left node that results from the split
- *   splitk is the right-most key of nodea
- */
-// TODO: Rename toku_ft_leaf_split
-void
-ftleaf_split(
-    FT ft,
-    FTNODE node,
-    FTNODE *nodea,
-    FTNODE *nodeb,
-    DBT *splitk,
-    bool create_new_node,
-    enum split_mode split_mode,
-    uint32_t num_dependent_nodes,
-    FTNODE* dependent_nodes
-    );
+    DBC *c = nullptr;
+    r = db->cursor(db, txn, &c, 0);
+    CKERR(r);
 
-/**
- * Effect: node must be a node-leaf node.  It is split into two nodes, and
- *         the fanout is split between them.
- *    Sets splitk->data pointer to a malloc'd value
- *    Sets nodea, and nodeb to the two new nodes.
- *    The caller must replace the old node with the two new nodes.
- *    This function will definitely reduce the number of children for the node,
- *    but it does not guarantee that the resulting nodes are smaller than nodesize.
- */
-void
-// TODO: Rename toku_ft_nonleaf_split
-ft_nonleaf_split(
-    FT ft,
-    FTNODE node,
-    FTNODE *nodea,
-    FTNODE *nodeb,
-    DBT *splitk,
-    uint32_t num_dependent_nodes,
-    FTNODE* dependent_nodes
-    );
+    DBT key = {}; key.flags = DB_DBT_REALLOC;
+    DBT val = {}; val.flags = DB_DBT_REALLOC;
+    int i;
+    for (i = 0; 1; i++) {
+        r = c->c_get(c, &key, &val, DB_NEXT);
+        if (r != 0)
+            break;
+        int k, v;
+        assert(key.size == sizeof k);
+        memcpy(&k, key.data, key.size);
+        assert(k == (int) htonl(i));
+        assert(val.size == sizeof v);
+        memcpy(&v, val.data, val.size);
+        assert(v == i);
+    }
+    assert(i == 0); // no rows found
+    toku_free(key.data);
+    toku_free(val.data);
+    
+    r = c->c_close(c);
+    CKERR(r);
+    
+    r = db->close(db, 0);
+    CKERR(r);
+}
 
-/************************************************************************
- * HOT optimize, should perhaps be factored out to its own header file  *
- ************************************************************************
- */
-void toku_ft_hot_get_status(FT_HOT_STATUS);
+static void create_prepared_txn(void) {
+    int r;
 
-/**
- * Takes given FT and pushes all pending messages between left and right to the leaf nodes.
- * All messages between left and right (inclusive) will be pushed, as will some others
- * that happen to share buffers with messages near the boundary.
- * If left is NULL, messages from beginning of FT are pushed. If right is NULL, that means
- * we go until the end of the FT.
- */
-int
-toku_ft_hot_optimize(FT_HANDLE ft_h, DBT* left, DBT* right,
-                     int (*progress_callback)(void *extra, float progress),
-                     void *progress_extra, uint64_t* loops_run);
+    DB_ENV *env = nullptr;
+    r = db_env_create(&env, 0);
+    CKERR(r);
+    r = env->open(env, TOKU_TEST_FILENAME, 
+                  DB_INIT_MPOOL|DB_CREATE|DB_THREAD |DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_TXN|DB_PRIVATE, 
+                  S_IRWXU+S_IRWXG+S_IRWXO);
+    CKERR(r);
+
+    DB_TXN *txn = nullptr;
+    r = env->txn_begin(env, nullptr, &txn, 0);
+    CKERR(r);
+
+    create_foo(env, txn);
+    
+    r = txn->commit(txn, 0);
+    CKERR(r);
+
+    r = env->txn_begin(env, nullptr, &txn, 0);
+    CKERR(r);
+
+    populate_foo(env, txn);
+
+    r = env->txn_checkpoint(env, 0, 0, 0);
+    CKERR(r);
+
+    TOKU_XA_XID xid = { 0x1234, 8, 9 };
+    for (int i = 0; i < 8+9; i++) {
+        xid.data[i] = i;
+    }
+    r = txn->xa_prepare(txn, &xid, 0);
+    CKERR(r);
+
+    // discard the txn so that we can close the env and run xa recovery later
+    r = txn->discard(txn, 0);
+    CKERR(r);
+
+    r = env->close(env, TOKUFT_DIRTY_SHUTDOWN);
+    CKERR(r);
+}
+
+static void run_xa_recovery(void) {
+    int r;
+
+    DB_ENV *env;
+    r = db_env_create(&env, 0);
+    CKERR(r);
+    r = env->open(env, TOKU_TEST_FILENAME, 
+                  DB_INIT_MPOOL|DB_CREATE|DB_THREAD |DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_TXN|DB_PRIVATE | DB_RECOVER,
+                  S_IRWXU+S_IRWXG+S_IRWXO);
+    CKERR(r);
+
+    // get prepared xid
+    long count;
+    TOKU_XA_XID xid;
+    r = env->txn_xa_recover(env, &xid, 1, &count, DB_FIRST);
+    CKERR(r);
+
+    // abort it
+    DB_TXN *txn = nullptr;
+    r = env->get_txn_from_xid(env, &xid, &txn);
+    CKERR(r);
+    r = txn->abort(txn);
+    CKERR(r);
+
+    r = env->txn_begin(env, nullptr, &txn, 0);
+    CKERR(r);
+
+    check_foo(env, txn);
+
+    r = txn->commit(txn, 0);
+    CKERR(r);
+
+    r = env->close(env, 0);
+    CKERR(r);
+}
+
+int test_main (int argc, char *const argv[]) {
+    default_parse_args(argc, argv);
+
+    // init the env directory
+    toku_os_recursive_delete(TOKU_TEST_FILENAME);
+    int r = toku_os_mkdir(TOKU_TEST_FILENAME, S_IRWXU+S_IRWXG+S_IRWXO);   
+    CKERR(r);
+
+    // run the test
+    create_prepared_txn();
+    run_xa_recovery();
+
+    return 0;
+}

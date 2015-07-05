@@ -171,30 +171,4 @@ int toku_checkpoint(CHECKPOINTER cp, struct tokulogger *logger,
  * Some status information may be incorrect because no locks are taken to collect status.
  * (If checkpoint is in progress, it may overwrite status info while it is being read.)
  *****/
-typedef enum {
-    CP_PERIOD,
-    CP_FOOTPRINT,
-    CP_TIME_LAST_CHECKPOINT_BEGIN,
-    CP_TIME_LAST_CHECKPOINT_BEGIN_COMPLETE,
-    CP_TIME_LAST_CHECKPOINT_END,
-    CP_TIME_CHECKPOINT_DURATION,
-    CP_TIME_CHECKPOINT_DURATION_LAST,
-    CP_LAST_LSN,
-    CP_CHECKPOINT_COUNT,
-    CP_CHECKPOINT_COUNT_FAIL,
-    CP_WAITERS_NOW,          // how many threads are currently waiting for the checkpoint_safe lock to perform a checkpoint
-    CP_WAITERS_MAX,          // max threads ever simultaneously waiting for the checkpoint_safe lock to perform a checkpoint
-    CP_CLIENT_WAIT_ON_MO,    // how many times a client thread waited to take the multi_operation lock, not for checkpoint
-    CP_CLIENT_WAIT_ON_CS,    // how many times a client thread waited for the checkpoint_safe lock, not for checkpoint
-    CP_BEGIN_TIME,
-    CP_LONG_BEGIN_TIME,
-    CP_LONG_BEGIN_COUNT,
-    CP_STATUS_NUM_ROWS       // number of rows in this status array.  must be last.
-} cp_status_entry;
-
-typedef struct {
-    bool initialized;
-    TOKU_ENGINE_STATUS_ROW_S status[CP_STATUS_NUM_ROWS];
-} CHECKPOINT_STATUS_S, *CHECKPOINT_STATUS;
-
 void toku_checkpoint_get_status(CACHETABLE ct, CHECKPOINT_STATUS stat);

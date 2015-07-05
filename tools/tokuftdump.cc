@@ -100,6 +100,8 @@ PATENT RIGHTS GRANT:
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <map>
+#include <string>
 #include <string.h>
 #include "ft/serialize/block_table.h"
 #include "ft/cachetable/cachetable.h"
@@ -118,6 +120,7 @@ static int do_header = 0;
 static int do_fragmentation = 0;
 static int do_garbage = 0;
 static int do_translation_table = 0;
+static int do_summary = 0;
 static int do_rootnode = 0;
 static int do_node = 0;
 static BLOCKNUM do_node_num;
@@ -234,6 +237,7 @@ static void dump_header(FT ft) {
     printf(" checkpoint_count=%" PRId64 "\n", ft->h->checkpoint_count);
     printf(" checkpoint_lsn=%" PRId64 "\n", ft->h->checkpoint_lsn.lsn);
     printf(" nodesize=%u\n", ft->h->nodesize);
+    printf(" fanout=%u\n", ft->h->fanout);
     printf(" basementnodesize=%u\n", ft->h->basementnodesize);
     printf(" compression_method=%u\n", (unsigned) ft->h->compression_method);
     printf(" unnamed_root=%" PRId64 "\n", ft->h->root_blocknum.b);
@@ -472,7 +476,12 @@ static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
     printf(" n_children=%d\n", n->n_children);
     printf(" pivotkeys.total_size()=%u\n", (unsigned) n->pivotkeys.total_size());
 
-    printf(" pivots:\n");
+    if (n->height > 0) {
+	printf(" pivots:\n");
+    } else {
+	printf("LEAF keys:\n");
+    }
+
     for (int i=0; i<n->n_children-1; i++) {
         const DBT piv = n->pivotkeys.get_pivot(i);
         printf("  pivot %2d:", i);
@@ -481,7 +490,13 @@ static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
         print_item(piv.data, piv.size);
         printf("\n");
     }
-    printf(" children:\n");
+
+    if (n->height > 0) {
+	printf(" children:\n");
+    } else {
+	printf("LEAF data:\n");
+    }
+
     for (int i=0; i<n->n_children; i++) {
             printf("  child %d: ", i);
         if (n->height > 0) {
@@ -607,6 +622,147 @@ static void dump_nodesizes(int fd, FT ft) {
     printf("blocksizes\t%" PRIu64 "\n", info.blocksizes);
     printf("leafsizes\t%" PRIu64 "\n", info.leafsizes);
 }
+
+/* ===== struct and function to get a summary of atree ===== */
+
+typedef struct {
+    int fd;
+    FT ft;
+    uint64_t blocksizes;
+    uint64_t leafsizes;
+    uint64_t serialsize; // sizes of serialized data (assume uncomressed)
+    uint64_t leafblocks; // count of leaf nodes
+    uint64_t nonleafnode_cnt; // count of non-leaf nodes
+    uint64_t maxheight; // height of the tree
+    uint64_t msg_cnt; // message count in non-leafs
+    uint64_t msg_size; // size (in bytes of all messages in non-leafs
+    uint64_t pairs_cnt; // count of pairs in leaf nodes
+    std::map<int, int> height_cnt; // count of nodes per height
+    std::map<int, int> hmsg_cnt; // count of message per height
+    std::map<int, uint64_t> hmsg_size; // size of message per height
+    std::map<int, uint64_t> hdisk_size; // disk size per height
+    std::map<int, uint64_t> hserial_size; // serial size  per height
+} summary_help_extra;
+
+static int summary_helper(BLOCKNUM b, int64_t size, int64_t UU(address), void *extra) {
+    summary_help_extra *CAST_FROM_VOIDP(info, extra);
+    FTNODE n;
+    FTNODE_DISK_DATA ndd = NULL;
+    ftnode_fetch_extra bfe;
+
+    bfe.create_for_full_read(info->ft);
+    int r = toku_deserialize_ftnode_from(info->fd, b, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
+    if (r==0) {
+        info->blocksizes += size;
+
+	(info->height_cnt)[n->height]++;
+
+        if (n->height == 0) {
+            info->leafsizes += size;
+            info->leafblocks++;
+        } else {
+	    info->nonleafnode_cnt++;
+	}
+
+	info->hdisk_size[n->height] += size;
+	auto serialsize = toku_serialize_ftnode_size(n);
+	info->serialsize += serialsize;
+	info->hserial_size[n->height] += serialsize;
+
+
+	if ((uint64_t)n->height > info->maxheight) {
+	    info->maxheight = n->height;
+	}
+    
+
+
+	for (int i=0; i<n->n_children; i++) {
+	    //printf("  child %d: ", i);
+	    if (n->height > 0) {
+		NONLEAF_CHILDINFO bnc = BNC(n, i);
+		unsigned int n_bytes = toku_bnc_nbytesinbuf(bnc);
+		int n_entries = toku_bnc_n_entries(bnc);
+		//if (n_bytes > 0 || n_entries > 0) {
+		//    printf("   buffer contains %u bytes (%d items)\n", n_bytes, n_entries);
+		//}
+		info->msg_cnt += n_entries;
+		info->msg_size += n_bytes;
+		info->hmsg_cnt[n->height] += n_entries;
+		info->hmsg_size[n->height] += n_bytes;
+	    } else {
+		info->pairs_cnt += BLB_DATA(n, i)->num_klpairs();
+	    }
+	}
+	if (n->height ==0) {
+	    info->hmsg_cnt[0] += n->n_children; // this way we count partitions per leaf node
+	}
+
+
+        toku_ftnode_free(&n);
+        toku_free(ndd);
+    }
+    return 0;
+}
+
+static std::string  humanNumber(uint64_t value) {
+    std::string numWithCommas = to_string(value);
+    int insertPosition = numWithCommas.length() - 3;
+    while (insertPosition > 0) {
+	numWithCommas.insert(insertPosition, ",");
+	insertPosition-=3;
+    }
+    return numWithCommas;
+}
+
+static void dump_summary(int fd, FT ft) {
+    summary_help_extra info;
+    //memset(&info, 0, sizeof(info));
+    info.fd = fd;
+    info.ft = ft;
+    info.blocksizes = 0;
+    info.leafsizes = 0;
+    info.serialsize = 0;
+    info.leafblocks = 0;
+    info.nonleafnode_cnt = 0;
+    info.maxheight = 0;
+    info.msg_cnt  = 0;
+    info.msg_size = 0;
+    info.pairs_cnt = 0;
+
+    ft->blocktable.iterate(block_table::TRANSLATION_CHECKPOINTED,
+                           summary_helper, &info, true, true);
+    printf("leaf nodes:\t%" PRIu64 "\n", info.leafblocks);
+    printf("non-leaf nodes:\t%" PRIu64 "\n", info.nonleafnode_cnt);
+    printf("Leaf size:\t%s\n", humanNumber(info.leafsizes).c_str());
+    printf("Total size:\t%s\n", humanNumber(info.blocksizes).c_str());
+    printf("Total uncompressed size:\t%s\n", humanNumber(info.serialsize).c_str());
+    printf("Messages count:\t%" PRIu64 "\n", info.msg_cnt);
+    printf("Messages size:\t%s\n", humanNumber(info.msg_size).c_str());
+    printf("Records count:\t%" PRIu64 "\n", info.pairs_cnt);
+    printf("Tree height:\t%" PRIu64 "\n", info.maxheight);
+    for(auto elem : info.height_cnt) {
+	std::string hdr;
+	double children_per_node;
+	if (elem.first == 0) {
+	    hdr = "basement nodes";
+	    children_per_node = (double)info.hmsg_cnt[0]/elem.second;
+	} else {
+	    hdr = "msg cnt";
+	    children_per_node = (double)info.height_cnt[elem.first-1]/elem.second;
+	}
+
+	printf("height: %d, nodes count: %d; avg children/node: %f\n\t %s: %d; msg size: %s; disksize: %s; uncompressed size: %s; ratio: %f\n", 
+		elem.first, elem.second, children_per_node,
+		    hdr.c_str(), 
+		    info.hmsg_cnt[elem.first], 
+		    humanNumber(info.hmsg_size[elem.first]).c_str(), 
+		    humanNumber(info.hdisk_size[elem.first]).c_str(), 
+		    humanNumber(info.hserial_size[elem.first]).c_str(),
+		    (double)info.hserial_size[elem.first]/info.hdisk_size[elem.first] ); 
+    }
+}
+
+/* ===== end of summary ===== */
 
 static void dump_garbage_stats(int fd, FT ft) {
     assert(fd == toku_cachefile_get_fd(ft->cf));
@@ -1028,6 +1184,7 @@ static int usage(void) {
     fprintf(stderr, "--tsv ");
     fprintf(stderr, "--translation-table ");
     fprintf(stderr, "--tsv ");
+    fprintf(stderr, "--summary ");
     fprintf(stderr, "filename \n");
     return 1;
 }
@@ -1064,6 +1221,8 @@ int main (int argc, const char *const argv[]) {
             do_tsv = 1;
         } else if (strcmp(argv[0], "--translation-table") == 0) {
             do_translation_table = 1;
+        } else if (strcmp(argv[0], "--summary") == 0) {
+            do_summary = 1;
         } else if (strcmp(argv[0], "--help") == 0 || strcmp(argv[0], "-?") == 0 || strcmp(argv[0], "-h") == 0) {
             return usage();
         } else {
@@ -1113,10 +1272,13 @@ int main (int argc, const char *const argv[]) {
         if (do_translation_table) {
             ft->blocktable.dump_translation_table_pretty(stdout);
         }
+        if (do_summary) {
+	    dump_summary(fd, ft);
+        }
         if (do_garbage) {
             dump_garbage_stats(fd, ft);
         }
-        if (!do_header && !do_rootnode && !do_fragmentation && !do_translation_table && !do_garbage) {
+        if (!do_header && !do_rootnode && !do_fragmentation && !do_translation_table && !do_garbage && !do_summary) {
             printf("Block translation:");
             ft->blocktable.dump_translation_table(stdout);
             dump_header(ft);

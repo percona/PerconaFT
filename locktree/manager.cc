@@ -113,7 +113,6 @@ void locktree_manager::create(lt_create_cb create_cb, lt_destroy_cb destroy_cb, 
     ZERO_STRUCT(m_mutex);
     toku_mutex_init(&m_mutex, nullptr);
 
-    ZERO_STRUCT(status);
     ZERO_STRUCT(m_lt_counters);
 
     escalator_init();
@@ -486,52 +485,17 @@ void locktree_manager::locktree_escalator::run(locktree_manager *mgr, void (*esc
     mgr->add_escalator_wait_time(t1 - t0);
 }
 
-#define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(status, k, c, t, "locktree: " l, inc)
-
-void locktree_manager::status_init(void) {
-    STATUS_INIT(LTM_SIZE_CURRENT,             LOCKTREE_MEMORY_SIZE, UINT64,   "memory size", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_SIZE_LIMIT,               LOCKTREE_MEMORY_SIZE_LIMIT, UINT64,   "memory size limit", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_ESCALATION_COUNT,         LOCKTREE_ESCALATION_NUM, UINT64, "number of times lock escalation ran", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_ESCALATION_TIME,          LOCKTREE_ESCALATION_SECONDS, TOKUTIME, "time spent running escalation (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_ESCALATION_LATEST_RESULT, LOCKTREE_LATEST_POST_ESCALATION_MEMORY_SIZE, UINT64,   "latest post-escalation memory size", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_NUM_LOCKTREES,            LOCKTREE_OPEN_CURRENT, UINT64,   "number of locktrees open now", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_LOCK_REQUESTS_PENDING,    LOCKTREE_PENDING_LOCK_REQUESTS, UINT64,   "number of pending lock requests", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_STO_NUM_ELIGIBLE,         LOCKTREE_STO_ELIGIBLE_NUM, UINT64,   "number of locktrees eligible for the STO", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_STO_END_EARLY_COUNT,      LOCKTREE_STO_ENDED_NUM, UINT64,   "number of times a locktree ended the STO early", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_STO_END_EARLY_TIME,       LOCKTREE_STO_ENDED_SECONDS, TOKUTIME, "time spent ending the STO early (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-
-    STATUS_INIT(LTM_WAIT_COUNT,               LOCKTREE_WAIT_COUNT, UINT64, "number of wait locks", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_WAIT_TIME,                LOCKTREE_WAIT_TIME, UINT64, "time waiting for locks", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_LONG_WAIT_COUNT,          LOCKTREE_LONG_WAIT_COUNT, UINT64, "number of long wait locks", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_LONG_WAIT_TIME,           LOCKTREE_LONG_WAIT_TIME, UINT64, "long time waiting for locks", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_TIMEOUT_COUNT,            LOCKTREE_TIMEOUT_COUNT, UINT64, "number of lock timeouts", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-
-    STATUS_INIT(LTM_WAIT_ESCALATION_COUNT,    LOCKTREE_WAIT_ESCALATION_COUNT, UINT64, "number of waits on lock escalation", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_WAIT_ESCALATION_TIME,     LOCKTREE_WAIT_ESCALATION_TIME, UINT64, "time waiting on lock escalation", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_LONG_WAIT_ESCALATION_COUNT,    LOCKTREE_LONG_WAIT_ESCALATION_COUNT, UINT64, "number of long waits on lock escalation", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LTM_LONG_WAIT_ESCALATION_TIME,     LOCKTREE_LONG_WAIT_ESCALATION_TIME, UINT64, "long time waiting on lock escalation", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-
-    status.initialized = true;
-}
-
-#undef STATUS_INIT
-
-#define STATUS_VALUE(x) status.status[x].value.num
-
 void locktree_manager::get_status(LTM_STATUS statp) {
-    if (!status.initialized) {
-        status_init();
-    }
-
-    STATUS_VALUE(LTM_SIZE_CURRENT) = m_current_lock_memory;
-    STATUS_VALUE(LTM_SIZE_LIMIT) = m_max_lock_memory;
-    STATUS_VALUE(LTM_ESCALATION_COUNT) = m_escalation_count;
-    STATUS_VALUE(LTM_ESCALATION_TIME) = m_escalation_time;
-    STATUS_VALUE(LTM_ESCALATION_LATEST_RESULT) = m_escalation_latest_result;
-    STATUS_VALUE(LTM_WAIT_ESCALATION_COUNT) = m_wait_escalation_count;
-    STATUS_VALUE(LTM_WAIT_ESCALATION_TIME) = m_wait_escalation_time;
-    STATUS_VALUE(LTM_LONG_WAIT_ESCALATION_COUNT) = m_long_wait_escalation_count;
-    STATUS_VALUE(LTM_LONG_WAIT_ESCALATION_TIME) = m_long_wait_escalation_time;    
+    ltm_status.init();
+    LTM_STATUS_VAL(LTM_SIZE_CURRENT) = m_current_lock_memory;
+    LTM_STATUS_VAL(LTM_SIZE_LIMIT) = m_max_lock_memory;
+    LTM_STATUS_VAL(LTM_ESCALATION_COUNT) = m_escalation_count;
+    LTM_STATUS_VAL(LTM_ESCALATION_TIME) = m_escalation_time;
+    LTM_STATUS_VAL(LTM_ESCALATION_LATEST_RESULT) = m_escalation_latest_result;
+    LTM_STATUS_VAL(LTM_WAIT_ESCALATION_COUNT) = m_wait_escalation_count;
+    LTM_STATUS_VAL(LTM_WAIT_ESCALATION_TIME) = m_wait_escalation_time;
+    LTM_STATUS_VAL(LTM_LONG_WAIT_ESCALATION_COUNT) = m_long_wait_escalation_count;
+    LTM_STATUS_VAL(LTM_LONG_WAIT_ESCALATION_TIME) = m_long_wait_escalation_time;    
 
     uint64_t lock_requests_pending = 0;
     uint64_t sto_num_eligible = 0;
@@ -559,18 +523,17 @@ void locktree_manager::get_status(LTM_STATUS statp) {
         mutex_unlock();
     }
 
-    STATUS_VALUE(LTM_NUM_LOCKTREES) = num_locktrees;
-    STATUS_VALUE(LTM_LOCK_REQUESTS_PENDING) = lock_requests_pending;
-    STATUS_VALUE(LTM_STO_NUM_ELIGIBLE) = sto_num_eligible;
-    STATUS_VALUE(LTM_STO_END_EARLY_COUNT) = sto_end_early_count;
-    STATUS_VALUE(LTM_STO_END_EARLY_TIME) = sto_end_early_time;
-    STATUS_VALUE(LTM_WAIT_COUNT) = lt_counters.wait_count;
-    STATUS_VALUE(LTM_WAIT_TIME) = lt_counters.wait_time;
-    STATUS_VALUE(LTM_LONG_WAIT_COUNT) = lt_counters.long_wait_count;
-    STATUS_VALUE(LTM_LONG_WAIT_TIME) = lt_counters.long_wait_time;
-    STATUS_VALUE(LTM_TIMEOUT_COUNT) = lt_counters.timeout_count;
-    *statp = status;
+    LTM_STATUS_VAL(LTM_NUM_LOCKTREES) = num_locktrees;
+    LTM_STATUS_VAL(LTM_LOCK_REQUESTS_PENDING) = lock_requests_pending;
+    LTM_STATUS_VAL(LTM_STO_NUM_ELIGIBLE) = sto_num_eligible;
+    LTM_STATUS_VAL(LTM_STO_END_EARLY_COUNT) = sto_end_early_count;
+    LTM_STATUS_VAL(LTM_STO_END_EARLY_TIME) = sto_end_early_time;
+    LTM_STATUS_VAL(LTM_WAIT_COUNT) = lt_counters.wait_count;
+    LTM_STATUS_VAL(LTM_WAIT_TIME) = lt_counters.wait_time;
+    LTM_STATUS_VAL(LTM_LONG_WAIT_COUNT) = lt_counters.long_wait_count;
+    LTM_STATUS_VAL(LTM_LONG_WAIT_TIME) = lt_counters.long_wait_time;
+    LTM_STATUS_VAL(LTM_TIMEOUT_COUNT) = lt_counters.timeout_count;
+    *statp = ltm_status;
 }
-#undef STATUS_VALUE
 
 } /* namespace toku */
