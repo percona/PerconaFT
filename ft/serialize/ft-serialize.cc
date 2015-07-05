@@ -370,6 +370,12 @@ int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ftp, uint32_t version)
         max_msn_in_ft = rbuf_MSN(rb);
     }
 
+    unsigned fanout;
+    fanout = FT_DEFAULT_FANOUT;
+    if (ft->layout_version_read_from_disk >= FT_LAYOUT_VERSION_28) {
+        fanout = rbuf_int(rb);
+    }
+
     (void) rbuf_int(rb); //Read in checksum and ignore (already verified).
     if (rb->ndone != rb->size) {
         fprintf(stderr, "Header size did not match contents.\n");
@@ -396,7 +402,7 @@ int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ftp, uint32_t version)
             .nodesize = nodesize,
             .basementnodesize = basementnodesize,
             .compression_method = compression_method,
-            .fanout = FT_DEFAULT_FANOUT, // fanout is not serialized, must be set at startup
+            .fanout = fanout,
             .highest_unused_msn_for_upgrade = highest_unused_msn_for_upgrade,
             .max_msn_in_ft = max_msn_in_ft,
             .time_of_last_optimize_begin = time_of_last_optimize_begin,
@@ -455,6 +461,8 @@ serialize_ft_min_size (uint32_t version) {
     size_t size = 0;
 
     switch(version) {
+    case FT_LAYOUT_VERSION_28:
+        size += sizeof(uint32_t); // fanout in ft
     case FT_LAYOUT_VERSION_27:
     case FT_LAYOUT_VERSION_26:
     case FT_LAYOUT_VERSION_25:
@@ -798,6 +806,7 @@ void toku_serialize_ft_to_wbuf (
     wbuf_char(wbuf, (unsigned char) h->compression_method);
     wbuf_MSN(wbuf, h->highest_unused_msn_for_upgrade);
     wbuf_MSN(wbuf, h->max_msn_in_ft);
+    wbuf_int(wbuf, h->fanout);
     uint32_t checksum = toku_x1764_finish(&wbuf->checksum);
     wbuf_int(wbuf, checksum);
     lazy_assert(wbuf->ndone == wbuf->size);
