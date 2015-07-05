@@ -1788,10 +1788,17 @@ int toku_cachetable_maybe_get_and_pin (CACHEFILE cachefile, CACHEKEY key, uint32
     return r;
 }
 
-//Used by flusher threads to possibly pin child on client thread if pinning is cheap
-//Same as toku_cachetable_maybe_get_and_pin except that we don't care if the node is clean or dirty (return the node regardless).
-//All other conditions remain the same.
-int toku_cachetable_maybe_get_and_pin_clean (CACHEFILE cachefile, CACHEKEY key, uint32_t fullhash, pair_lock_type lock_type, void**value) {
+int toku_cachetable_maybe_get_and_pin_clean (CACHEFILE cachefile, CACHEKEY key, uint32_t fullhash, pair_lock_type lock_type, void**value) 
+// Effect: Same as toku_cachetable_maybe_get_and_pin except that we
+//   don't care if the node is clean or dirty (return the node even if
+//   it is clean.) The return codes are slightly different to reflect
+//   that a checkpoint is pending.
+//
+//   Specifically if the page has a checkpoint pending, we return -2 (don't pin it)
+//   If the page is otherwise expensive to checkpoint, return -1 (don't pin it).
+//
+// Usage note:  This is used by flusher threads to possibly pin a child on client thread if pinning is cheap.
+{
     CACHETABLE ct = cachefile->cachetable;
     int r = -1;
     ct->list.pair_lock_by_fullhash(fullhash);
@@ -1826,7 +1833,11 @@ int toku_cachetable_maybe_get_and_pin_clean (CACHEFILE cachefile, CACHEKEY key, 
             pair_unlock(p);
             if (got_lock) {
                 bool checkpoint_pending = get_checkpoint_pending(p, &ct->list);
-                write_locked_pair_for_checkpoint(ct, p, checkpoint_pending);
+                if (checkpoint_pending) {
+                    // Previously: write_locked_pair_for_checkpoint(ct, p, checkpoint_pending);
+                    // Now return -2
+                    r = -2;
+                }
             }
             break;
         }

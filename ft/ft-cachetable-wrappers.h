@@ -179,11 +179,10 @@ void toku_pin_ftnode_with_dep_nodes(
     bool move_messages
     );
 
-/**
- * This function may return a pinned ftnode to the caller, if pinning is cheap.
- * If the node is already locked, or is pending a checkpoint, the node is not pinned and -1 is returned.
- */
 int toku_maybe_pin_ftnode_clean(FT ft, BLOCKNUM blocknum, uint32_t fullhash, pair_lock_type lock_type, FTNODE *nodep);
+// Effect: If pinning is cheap pin the ftnode, and return the pinned ftnode in *nodep, returning 0.
+//   Else if the node is pending a checkpoint, return -2.
+//   Else (the node is already locked or I/O would be required to pin the node), the node is not pinned and -1 is returned.
 
 /**
  * Effect: Unpin an ftnode.
