@@ -1906,20 +1906,47 @@ place_node_and_bnc_on_background_thread(
     cachefile_kibbutz_enq(ft->cf, flush_node_fun, fe);
 }
 
+// Here's what we want:  We don't want threads that inject at the root to suffer from checkpoint variance.
+// We have a scheme whereby when a node gets overfull, we push messages down in the background.  This scheme allows us to handle the I/O of reading the child in, in the background.
+// Also, currently, if the child needs to be checkpointed, we stall.
+// We need to change it so that
+//   * If the child has a checkpoint pending, we also do it in the background.
 //
-// This takes as input a gorged, locked,  non-leaf node named parent
-// and sets up a flush to be done in the background.
-// The flush is setup like this:
-//  - We call maybe_get_and_pin_clean on the child we want to flush to in order to try to lock the child
-//  - if we successfully pin the child, and the child does not need to be split or merged
-//     then we detach the buffer, place the child and buffer onto a background thread, and
-//     have the flush complete in the background, and unlock the parent. The child will be
-//     unlocked on the background thread
-//  - if any of the above does not happen (child cannot be locked,
-//     child needs to be split/merged), then we place the parent on the background thread.
-//     The parent will be unlocked on the background thread
-//
+//   * If the child is in memory, we just do the work now instead of putting it in the background, but we do the work fast enough to not cause trouble.  One way to speed it up is to put each messages in its own malloc()'d object, and just move the message down.
+
+
+
 void toku_ft_flush_node_on_background_thread(FT ft, FTNODE parent)
+// Effect: Take as input a gorged, locked, non-leaf node named parent
+//   and arrange to push some messages down (possibly in the future).
+//   Do this without stalling this thread (especially during
+//   checkpoints).
+//
+// Implementation notes:
+//
+//     We call maybe_get_and_pin_clean on the child we want to flush.
+//     (Previously, that would stall if the child had a checkpoint
+//     pending, but now we also punt if the child has a checkpoint
+//     pending.)
+//
+//     If we successfully pin the child and the child doesn't need to
+//     be checkpointed, split or merged then we we detach the buffer,
+//     we and the child and buffer on a background thread (that thread
+//     assumes the child is locked; it incorporates the messages into
+//     the buffer, then unlocks the child).
+//
+//     If the child needs to be checkpointed, we just leave things
+//     alone and deal with it later.  (TODO: Put the parent onto a
+//     queue of nodes that need to have their messages pushed down
+//     after the checkpoint is complete.  Recording that fact is a
+//     little tricky, since we don't want to keep the parent locked,
+//     and it's possible that the parent will cease to exist due to
+//     merging or some other activity.)
+
+//     Otherwise (the child couldn't be locked, or the child needed to
+//     be split or merged), we place the locked parent on the
+//     background thread, the parent later needs to be unlocked after
+//     the background thread does whatever needs to be done.
 {
     toku::context flush_ctx(CTX_FLUSH);
     TXNID parent_oldest_referenced_xid_known = parent->oldest_referenced_xid_known;
@@ -1935,13 +1962,17 @@ void toku_ft_flush_node_on_background_thread(FT ft, FTNODE parent)
     FTNODE child;
     uint32_t childfullhash = compute_child_fullhash(ft->cf, parent, childnum);
     int r = toku_maybe_pin_ftnode_clean(ft, BP_BLOCKNUM(parent, childnum), childfullhash, PL_WRITE_EXPENSIVE, &child);
-    if (r != 0) {
+    if (r == -2) {
+        // The child was blocked on checkpoint.
+        // Don't do anything for now, just unlock the parent.
+        // Eventually we should note that the parent needs some work (after the checkpoint)
+        toku_unpin_ftnode(ft, parent);
+    } else if (r != 0) {
         // In this case, we could not lock the child, so just place the parent on the background thread
         // In the callback, we will use toku_ft_flush_some_child, which checks to
         // see if we should blow away the old basement nodes.
         place_node_and_bnc_on_background_thread(ft, parent, NULL, parent_oldest_referenced_xid_known);
-    }
-    else {
+    } else {
         //
         // successfully locked child
         //
