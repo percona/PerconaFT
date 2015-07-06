@@ -106,16 +106,17 @@ if(BUILD_TESTING OR BUILD_FT_TESTS)
 
   set_property(TEST ft/upgrade_test_simple APPEND PROPERTY ENVIRONMENT "TOKUDB_DATA=${TOKUDB_DATA}")
 
-  # should be a file GLOB and a loop
   declare_custom_tests(test-upgrade-recovery-logs)
-  add_ft_test_aux(test-upgrade-recovery-logs-24-clean test-upgrade-recovery-logs ${TOKUDB_DATA}/upgrade-recovery-logs-24-clean)
-  add_ft_test_aux(test-upgrade-recovery-logs-24-dirty test-upgrade-recovery-logs ${TOKUDB_DATA}/upgrade-recovery-logs-24-dirty)
-  add_ft_test_aux(test-upgrade-recovery-logs-25-clean test-upgrade-recovery-logs ${TOKUDB_DATA}/upgrade-recovery-logs-25-clean)
-  add_ft_test_aux(test-upgrade-recovery-logs-25-dirty test-upgrade-recovery-logs ${TOKUDB_DATA}/upgrade-recovery-logs-25-dirty)
-  add_ft_test_aux(test-upgrade-recovery-logs-26-clean test-upgrade-recovery-logs ${TOKUDB_DATA}/upgrade-recovery-logs-26-clean)
-  add_ft_test_aux(test-upgrade-recovery-logs-26-dirty test-upgrade-recovery-logs ${TOKUDB_DATA}/upgrade-recovery-logs-26-dirty)
-  add_ft_test_aux(test-upgrade-recovery-logs-27-clean test-upgrade-recovery-logs ${TOKUDB_DATA}/upgrade-recovery-logs-27-clean)
-  add_ft_test_aux(test-upgrade-recovery-logs-27-dirty test-upgrade-recovery-logs ${TOKUDB_DATA}/upgrade-recovery-logs-27-dirty)
+  file(GLOB upgrade_tests "${TOKUDB_DATA}/upgrade-recovery-logs-??-clean")
+  foreach(test ${upgrade_tests})
+    get_filename_component(test_basename "${test}" NAME)
+    add_ft_test_aux(test-${test_basename} test-upgrade-recovery-logs ${test})
+  endforeach(test)
+  file(GLOB upgrade_tests "${TOKUDB_DATA}/upgrade-recovery-logs-??-dirty")
+  foreach(test ${upgrade_tests})
+    get_filename_component(test_basename "${test}" NAME)
+    add_ft_test_aux(test-${test_basename} test-upgrade-recovery-logs ${test})
+  endforeach(test)
 
   ## give some tests, that time out normally, 1 hour to complete
   set(long_tests
