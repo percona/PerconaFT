@@ -141,6 +141,9 @@ void CHECKPOINT_STATUS_S::init(void) {
     CP_STATUS_INIT(CP_BEGIN_TIME,                           CHECKPOINT_BEGIN_TIME,          UINT64,     "checkpoint begin time");
     CP_STATUS_INIT(CP_LONG_BEGIN_COUNT,                     CHECKPOINT_LONG_BEGIN_COUNT,    UINT64,     "long checkpoint begin count");
     CP_STATUS_INIT(CP_LONG_BEGIN_TIME,                      CHECKPOINT_LONG_BEGIN_TIME,     UINT64,     "long checkpoint begin time");
+    CP_STATUS_INIT(CP_END_TIME,                             CHECKPOINT_END_TIME,            UINT64,     "checkpoint end time");
+    CP_STATUS_INIT(CP_LONG_END_COUNT,                       CHECKPOINT_LONG_END_COUNT,      UINT64,     "long checkpoint end count");
+    CP_STATUS_INIT(CP_LONG_END_TIME,                        CHECKPOINT_LONG_END_TIME,       UINT64,     "long checkpoint end time");
 
     m_initialized = true;
 #undef CP_STATUS_INIT

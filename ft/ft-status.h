@@ -164,6 +164,9 @@ public:
         CP_BEGIN_TIME,
         CP_LONG_BEGIN_TIME,
         CP_LONG_BEGIN_COUNT,
+        CP_END_TIME,
+        CP_LONG_END_TIME,
+        CP_LONG_END_COUNT,
         CP_STATUS_NUM_ROWS       // number of rows in this status array.  must be last.
     };
 
