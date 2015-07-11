@@ -202,21 +202,28 @@ set_max(uint64_t sum_used, uint64_t sum_freed) {
     }
 }
 
+// Effect: Like toku_memory_footprint, except instead of passing p,
+//   we pass toku_malloc_usable_size(p).
 size_t 
-toku_memory_footprint(void * p, size_t touched) {
-    size_t rval = 0;
+toku_memory_footprint_given_usable_size(size_t touched, size_t usable)
+{
     size_t pagesize = toku_os_get_pagesize();
-    if (p) {
-        size_t usable = my_malloc_usable_size(p);
-        if (usable >= status.mmap_threshold) {
-            int num_pages = (touched + pagesize) / pagesize;
-            rval = num_pages * pagesize;
-        }
-        else {
-            rval = usable;
-        }
+    if (usable >= status.mmap_threshold) {
+        int num_pages = (touched + pagesize) / pagesize;
+        return num_pages * pagesize;
     }
-    return rval;
+    return usable;
+}
+
+// Effect: Return an estimate how how much space an object is using, possibly by
+//   using toku_malloc_usable_size(p).
+//   If p is NULL then returns 0.
+size_t
+toku_memory_footprint(void * p, size_t touched)
+{
+    if (!p) return 0;
+    return toku_memory_footprint_given_usable_size(touched,
+                                                   my_malloc_usable_size(p));
 }
 
 void *
