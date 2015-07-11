@@ -177,10 +177,20 @@ static void test_with_threads(void) {
 
     // kick it in case it's still waiting
     bool pushed = buf.trypush(1);
-    (void) pushed;  // yes, really ignore it
 
     r = toku_pthread_join(consumer_thd, nullptr);
     invariant_zero(r);
+
+    if (pushed) {
+        // pop the last pushed item from the buffer. there is a race on producers_joined so
+        // the item may or may not be in the buffer.
+        uint32_t x;
+        int i = 0;
+        for (;;i++)
+            if (!buf.trypop(&x))
+                break;
+        assert(i == 0 || i == 1);
+    }
 
     buf.deinit();
 
