@@ -525,6 +525,7 @@ public:
     void evict_pair(PAIR p, bool checkpoint_pending);
     void wait_for_cache_pressure_to_subside();
     void signal_eviction_thread();
+    void signal_eviction_thread_locked();
     bool should_client_thread_sleep();
     bool should_client_wake_eviction_thread();
     // function needed for testing
