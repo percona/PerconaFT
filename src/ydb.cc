@@ -2503,6 +2503,8 @@ static int iter_txns_callback(TOKUTXN txn, void *extra) {
         reinterpret_cast<iter_txns_callback_extra *>(extra);
     DB_TXN *dbtxn = toku_txn_get_container_db_txn(txn);
     invariant_notnull(dbtxn);
+    struct __toku_db_txn_internal *db_txn_internal = db_txn_struct_i(dbtxn);
+    TOKU_VALGRIND_HG_DISABLE_CHECKING(db_txn_internal, sizeof *db_txn_internal);
     if (db_txn_struct_i(dbtxn)->tokutxn == txn) { // make sure that the dbtxn is fully initialized
         toku_mutex_lock(&db_txn_struct_i(dbtxn)->txn_mutex);
         toku_pthread_rwlock_rdlock(&info->env->i->open_dbs_rwlock);
@@ -2513,6 +2515,7 @@ static int iter_txns_callback(TOKUTXN txn, void *extra) {
         toku_pthread_rwlock_rdunlock(&info->env->i->open_dbs_rwlock);
         toku_mutex_unlock(&db_txn_struct_i(dbtxn)->txn_mutex);
     }
+    TOKU_VALGRIND_HG_ENABLE_CHECKING(db_txn_internal, sizeof *db_txn_internal);
 
     return r;
 }
