@@ -178,4 +178,5 @@ private:
     char *_memory;       // An array of bytes into which buffer entries are embedded.
     int   _memory_size;  // How big is _memory
     int   _memory_used;  // How many bytes are in use?
+    size_t _memory_usable; // a cached result of toku_malloc_usable_size(_memory).
 };
