@@ -331,3 +331,28 @@ void toku_portability_destroy(void);
 static inline uint64_t roundup_to_multiple(uint64_t alignment, uint64_t v) {
     return (v + alignment - 1) & ~(alignment - 1);
 }
+
+// Branch prediction macros.
+// If supported by the compiler, will hint in inctruction caching for likely
+// branching. Should only be used where there is a very good idea of the correct
+// branch heuristics as determined by profiling. Mostly copied from InnoDB.
+// Use:
+//   "if (FT_LIKELY(x))" where the chances of "x" evaluating true are higher
+//   "if (FT_UNLIKELY(x))" where the chances of "x" evaluating false are higher
+#if defined(__GNUC__) && (__GNUC__ > 2) && ! defined(__INTEL_COMPILER)
+
+// Tell the compiler that 'expr' probably evaluates to 'constant'.
+#define FT_EXPECT(expr,constant) __builtin_expect(expr, constant)
+
+#else
+
+#warning "No FT branch prediction operations in use!"
+#define FT_EXPECT(expr,constant) (expr)
+
+#endif // defined(__GNUC__) && (__GNUC__ > 2) && ! defined(__INTEL_COMPILER)
+
+// Tell the compiler that cond is likely to hold
+#define FT_LIKELY(cond) FT_EXPECT(cond, 1)
+
+// Tell the compiler that cond is unlikely to hold
+#define FT_UNLIKELY(cond) FT_EXPECT(cond, 0)
