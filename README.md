@@ -1,11 +1,11 @@
-TokuFT
+PerconaFT
 ======
 
-TokuFT is a high-performance, transactional key-value store, used in the
-TokuDB storage engine for MySQL and MariaDB and in TokuMX, the
+PerconaFT is a high-performance, transactional key-value store, used in the
+TokuDB storage engine for Percona Server and MySQL, and in TokuMX, the
 high-performance MongoDB distribution.
 
-TokuFT is provided as a shared library with an interface similar to
+PerconaFT is provided as a shared library with an interface similar to
 Berkeley DB.
 
 To build the full MySQL product, see the instructions for
@@ -19,7 +19,7 @@ for [Tokutek/mongo][mongo].  This document covers TokuFT only.
 Building
 --------
 
-TokuFT is built using CMake >= 2.8.9.  Out-of-source builds are
+PerconaFT is built using CMake >= 2.8.9.  Out-of-source builds are
 recommended.  You need a C++11 compiler, though only GCC >= 4.7 and
 Apple's Clang are tested.  You also need zlib development packages
 (`yum install zlib-devel` or `apt-get install zlib1g-dev`).
