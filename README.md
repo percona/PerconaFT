@@ -9,10 +9,10 @@ PerconaFT is provided as a shared library with an interface similar to
 Berkeley DB.
 
 To build the full MySQL product, see the instructions for
-[Tokutek/ft-engine][ft-engine].  To build TokuMX, see the instructions
+[Percona/tokudb-engine][tokudb-engine].  To build TokuMX, see the instructions
 for [Tokutek/mongo][mongo].  This document covers TokuFT only.
 
-[ft-engine]: https://github.com/Tokutek/ft-engine
+[tokudb-engine]: https://github.com/Percona/tokudb-engine
 [mongo]: https://github.com/Tokutek/mongo
 
 
@@ -28,9 +28,9 @@ You will also need the source code for jemalloc, checked out in
 `third_party/`.
 
 ```sh
-git clone git://github.com/Tokutek/ft-index.git ft-index
-cd ft-index
-git clone git://github.com/Tokutek/jemalloc.git third_party/jemalloc
+git clone git://github.com/Percona/PerconaFT.git percona-ft
+cd percona-ft
+git clone git://github.com/Percona/jemalloc.git third_party/jemalloc
 mkdir build
 cd build
 CC=gcc47 CXX=g++47 cmake \
@@ -43,20 +43,20 @@ cmake --build . --target install
 ```
 
 This will build `libtokudb.so` and `libtokuportability.so` and install it,
-some header files, and some examples to `ft-index/prefix/`.  It will also
+some header files, and some examples to `percona-ft/prefix/`.  It will also
 build jemalloc and install it alongside these libraries, you should link
 to that if you are planning to run benchmarks or in production.
 
 ### Platforms
 
-TokuFT is supported on 64-bit Centos, should work on other 64-bit linux
-distributions, and may work on OSX 10.8 and FreeBSD.  TokuFT is not
+PerconaFT is supported on 64-bit Centos, should work on other 64-bit linux
+distributions, and may work on OSX 10.8 and FreeBSD.  PerconaFT is not
 supported on 32-bit systems.
 
 [Transparent hugepages][transparent-hugepages] is a feature in newer linux
 kernel versions that causes problems for the memory usage tracking
-calculations in TokuFT and can lead to memory overcommit.  If you have
-this feature enabled, TokuFT will not start, and you should turn it off.
+calculations in PerconaFT and can lead to memory overcommit.  If you have
+this feature enabled, PerconaFT will not start, and you should turn it off.
 If you want to run with transparent hugepages on, you can set an
 environment variable `TOKU_HUGE_PAGES_OK=1`, but only do this for testing,
 and only with a small cache size.
@@ -67,7 +67,7 @@ and only with a small cache size.
 Testing
 -------
 
-TokuFT uses CTest for testing.  The CDash testing dashboard is not
+PerconaFT uses CTest for testing.  The CDash testing dashboard is not
 currently public, but you can run the tests without submitting them.
 
 There are some large data files not stored in the git repository, that
@@ -88,7 +88,7 @@ ctest -D ExperimentalStart \
 Contributing
 ------------
 
-Please report bugs in TokuFT to the [issue tracker][jira].
+Please report bugs in PerconaFT to the [issue tracker][jira].
 
 We have two publicly accessible mailing lists for TokuDB:
 
@@ -112,7 +112,7 @@ We are also available on IRC on freenode.net, in the #tokutek channel.
 License
 -------
 
-TokuFT is available under the GPL version 2, with slight modifications.
+PerconaFT is available under the GPL version 2, and AGPL version 3, with slight modifications.
 See [README-TOKUDB][license].
 
-[license]: http://github.com/Tokutek/ft-index/blob/master/README-TOKUDB
+[license]: http://github.com/Perona/PerconaFT/blob/master/README-TOKUDB
