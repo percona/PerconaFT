@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+#
+# This file is part of PerconaFT.
+# Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
+#
 
 set -e
 

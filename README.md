@@ -10,10 +10,10 @@ Berkeley DB.
 
 To build the full MySQL product, see the instructions for
 [Percona/tokudb-engine][tokudb-engine].  To build TokuMX, see the instructions
-for [Tokutek/mongo][mongo].  This document covers TokuFT only.
+for [Percona/percona-server-mongo][mongo].  This document covers PerconaFT only.
 
 [tokudb-engine]: https://github.com/Percona/tokudb-engine
-[mongo]: https://github.com/Tokutek/mongo
+[mongo]: https://github.com/Percona/percona-server-mongo
 
 
 Building
@@ -113,6 +113,10 @@ License
 -------
 
 PerconaFT is available under the GPL version 2, and AGPL version 3, with slight modifications.
-See [README-TOKUDB][license].
+See [COPYING.AGPLv3][agpllicense],
+[COPYING.GPLv2][gpllicense], and
+[PATENTS][patents].
 
-[license]: http://github.com/Perona/PerconaFT/blob/master/README-TOKUDB
+[agpllicense]: http://github.com/Perona/PerconaFT/blob/master/COPYING.AGPLv3
+[gpllicense]: http://github.com/Perona/PerconaFT/blob/master/COPYING.GPLv2
+[patents]: http://github.com/Perona/PerconaFT/blob/master/PATENTS

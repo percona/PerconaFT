@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# $Id$
+#
+# This file is part of PerconaFT.
+# Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
+#
 # run a sequence of hotindexer undo tests.
 
 tests=""
