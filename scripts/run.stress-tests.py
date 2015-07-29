@@ -38,14 +38,7 @@ from tempfile import mkdtemp, mkstemp
 from threading import Event, Thread, Timer
 
 __version__   = '$Id$'
-__copyright__ = """Copyright (c) 2007-2012 Tokutek Inc.  All rights reserved.
-
-                The technology is licensed by the Massachusetts Institute
-                of Technology, Rutgers State University of New Jersey, and
-                the Research Foundation of State University of New York at
-                Stony Brook under United States of America Serial
-                No. 11/760379 and to the patents and/or patent
-                applications resulting from it."""
+__copyright__ = """Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."""
 
 # relpath implementation for python <2.6
 # from http://unittest-ext.googlecode.com/hg-history/1df911640f7be239e58fb185b06ac2a8489dcdc4/unittest2/unittest2/compatibility.py

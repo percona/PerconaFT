@@ -1,6 +1,7 @@
 #!/usr/local/bin/python2.6
 #
-# Copyright (C) 2009 Tokutek, Inc.
+# This file is part of PerconaFT.
+# Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #
 
 import sys
