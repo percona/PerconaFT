@@ -41,6 +41,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include <zlib.h>
 #include <lzma.h>
+#include <snappy.h>
 
 #include "compress.h"
 #include "memory.h"
@@ -77,6 +78,8 @@ size_t toku_compress_bound (enum toku_compression_method a, size_t size)
         return compressBound (size);
     case TOKU_ZLIB_WITHOUT_CHECKSUM_METHOD:
         return 2+deflateBound(nullptr, size); // We need one extra for the rfc1950-style header byte, and one extra to store windowBits (a bit over cautious about future upgrades maybe).
+    case TOKU_SNAPPY_METHOD:
+        return (1 + snappy::MaxCompressedLength(size));
     default:
         break;
     }
@@ -125,26 +128,26 @@ void toku_compress (enum toku_compression_method a,
         return;
     }
     case TOKU_LZMA_METHOD: {
-	const int lzma_compression_level = 2;
-	if (sourceLen==0) {
-	    // lzma version 4.999 requires at least one byte, so we'll do it ourselves.
-	    assert(1<=*destLen);
-	    *destLen = 1;
-	} else {
-	    size_t out_pos = 1;
-	    lzma_ret r = lzma_easy_buffer_encode(lzma_compression_level, LZMA_CHECK_NONE, NULL,
-						 source, sourceLen,
-						 dest, &out_pos, *destLen);
-	    assert(out_pos < *destLen);
+        const int lzma_compression_level = 2;
+        if (sourceLen==0) {
+            // lzma version 4.999 requires at least one byte, so we'll do it ourselves.
+            assert(1<=*destLen);
+            *destLen = 1;
+        } else {
+            size_t out_pos = 1;
+            lzma_ret r = lzma_easy_buffer_encode(lzma_compression_level,
+                                                 LZMA_CHECK_NONE, NULL,
+                                                 source, sourceLen,
+                                                 dest, &out_pos, *destLen);
+            assert(out_pos < *destLen);
             if (r != LZMA_OK) {
                 fprintf(stderr, "lzma_easy_buffer_encode() returned %d\n", (int) r);
             }
-	    assert(r==LZMA_OK);
-	    *destLen = out_pos;
-	}
-	dest[0] = TOKU_LZMA_METHOD + (lzma_compression_level << 4);
-
-	return;
+            assert(r==LZMA_OK);
+            *destLen = out_pos;
+        }
+        dest[0] = TOKU_LZMA_METHOD + (lzma_compression_level << 4);
+        return;
     }
     case TOKU_ZLIB_WITHOUT_CHECKSUM_METHOD: {
         z_stream strm;
@@ -165,6 +168,12 @@ void toku_compress (enum toku_compression_method a,
         *destLen = strm.total_out + 2;
         dest[0] = TOKU_ZLIB_WITHOUT_CHECKSUM_METHOD + (zlib_compression_level << 4);
         dest[1] = zlib_without_checksum_windowbits;
+        return;
+    }
+    case TOKU_SNAPPY_METHOD: {
+        snappy::RawCompress((char*)source, sourceLen, (char*)dest + 1, destLen);
+        *destLen += 1;
+        dest[0] = TOKU_SNAPPY_METHOD;
         return;
     }
     default:
@@ -202,22 +211,22 @@ void toku_decompress (Bytef       *dest,   uLongf destLen,
         }
         return;
     case TOKU_LZMA_METHOD: {
-	if (sourceLen>1) {
-	    uint64_t memlimit = UINT64_MAX;
-	    size_t out_pos = 0;
-	    size_t in_pos  = 1;
-	    lzma_ret r = lzma_stream_buffer_decode(&memlimit,  // memlimit, use UINT64_MAX to disable this check
-						   0,          // flags
-						   NULL,       // allocator
-						   source, &in_pos, sourceLen,
-						   dest,   &out_pos, destLen);
-	    assert(r==LZMA_OK);
-	    assert(out_pos == destLen);
-	} else {
-	    // length 1 means there is no data, so do nothing.
-	    assert(destLen==0);
-	}
-	return;
+        if (sourceLen>1) {
+            uint64_t memlimit = UINT64_MAX;
+            size_t out_pos = 0;
+            size_t in_pos  = 1;
+            lzma_ret r = lzma_stream_buffer_decode(&memlimit,  // memlimit, use UINT64_MAX to disable this check
+                                                   0,          // flags
+                                                   NULL,       // allocator
+                                                   source, &in_pos, sourceLen,
+                                                   dest, &out_pos, destLen);
+            assert(r==LZMA_OK);
+            assert(out_pos == destLen);
+        } else {
+            // length 1 means there is no data, so do nothing.
+            assert(destLen==0);
+        }
+        return;
     }
     case TOKU_ZLIB_WITHOUT_CHECKSUM_METHOD: {
         z_stream strm;
@@ -235,6 +244,11 @@ void toku_decompress (Bytef       *dest,   uLongf destLen,
         lazy_assert(r == Z_STREAM_END);
         r = inflateEnd(&strm);
         lazy_assert(r == Z_OK);
+        return;
+    }
+    case TOKU_SNAPPY_METHOD: {
+        bool r = snappy::RawUncompress((char*)source + 1, sourceLen - 1, (char*)dest);
+        assert(r);
         return;
     }
     }

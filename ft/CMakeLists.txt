@@ -84,12 +84,12 @@ set_target_properties(ft_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 maybe_add_gcov_to_libraries(ft ft_static)
 
 ## depend on other generated targets
-add_dependencies(ft install_tdb_h generate_log_code build_lzma)
-add_dependencies(ft_static install_tdb_h generate_log_code build_lzma)
+add_dependencies(ft install_tdb_h generate_log_code build_lzma build_snappy)
+add_dependencies(ft_static install_tdb_h generate_log_code build_lzma build_snappy)
 
 ## link with lzma (which should be static) and link dependers with zlib
-target_link_libraries(ft LINK_PRIVATE util_static lzma ${LIBTOKUPORTABILITY})
+target_link_libraries(ft LINK_PRIVATE util_static lzma snappy ${LIBTOKUPORTABILITY})
 target_link_libraries(ft LINK_PUBLIC z)
-target_link_libraries(ft_static LINK_PRIVATE lzma)
+target_link_libraries(ft_static LINK_PRIVATE lzma snappy)
 
 add_subdirectory(tests)
