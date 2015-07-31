@@ -59,6 +59,16 @@ int toku_kibbutz_create (int n_workers, KIBBUTZ *kb);
 //
 void toku_kibbutz_enq (KIBBUTZ k, void (*f)(void*), void *extra);
 //
+// get kibbuts status
+//
+void toku_kibbutz_get_status(KIBBUTZ k,
+                             uint64_t *num_threads,
+                             uint64_t *num_threads_active,
+                             uint64_t *queue_size,
+                             uint64_t *max_queue_size,
+                             uint64_t *total_items_processed,
+                             uint64_t *total_execution_time);
+//
 // destroys the kibbutz
 //
 void toku_kibbutz_destroy (KIBBUTZ k);
