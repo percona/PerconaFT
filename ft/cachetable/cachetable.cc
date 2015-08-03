@@ -4779,6 +4779,11 @@ FILENUM cachefile_list::reserve_filenum() {
     }
     FILENUM filenum = m_next_filenum_to_use;
     m_next_filenum_to_use.fileid++;
+
+    // skip the reserved value UINT32_MAX and wrap around to zero
+    if (m_next_filenum_to_use.fileid == FILENUM_NONE.fileid) {
+        m_next_filenum_to_use.fileid = 0;
+    }
     write_unlock();
     return filenum;
 }
