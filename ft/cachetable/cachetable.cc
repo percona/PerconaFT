@@ -4767,6 +4767,7 @@ void cachefile_list::remove_stale_cf_unlocked(CACHEFILE cf) {
 
 FILENUM cachefile_list::reserve_filenum() {
     // taking a write lock because we are modifying next_filenum_to_use
+    FILENUM filenum = FILENUM_NONE;
     write_lock();
     while (1) {
         int r = m_active_filenum.find_zero<FILENUM, cachefile_find_by_filenum>(m_next_filenum_to_use, nullptr, nullptr);
@@ -4775,10 +4776,17 @@ FILENUM cachefile_list::reserve_filenum() {
             continue;
         }
         assert(r == DB_NOTFOUND);
+
+        // skip the reserved value UINT32_MAX and wrap around to zero
+        if (m_next_filenum_to_use.fileid == FILENUM_NONE.fileid) {
+            m_next_filenum_to_use.fileid = 0;
+            continue;
+        }
+
+        filenum = m_next_filenum_to_use;
+        m_next_filenum_to_use.fileid++;
         break;
     }
-    FILENUM filenum = m_next_filenum_to_use;
-    m_next_filenum_to_use.fileid++;
     write_unlock();
     return filenum;
 }
