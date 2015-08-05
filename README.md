@@ -104,9 +104,10 @@ and two for TokuMX:
  - tokumx-dev@googlegroups.com is for discussion of the development of
    TokuMX.
 
-We are also available on IRC on freenode.net, in the #tokutek channel.
+All source code and test contributions must be provided under a [BSD 2-Clause][bsd-2] license. For any small change set, the license text may be contained within the commit comment and the pull request. For larger contributions, the license must be presented in a COPYING.<feature_name> file in the root of the PerconaFT project. Please see the [BSD 2-Clause license template][bsd-2] for the content of the license text.
 
 [jira]: https://tokutek.atlassian.net/browse/FT/
+[bsd-2]: http://opensource.org/licenses/BSD-2-Clause/
 
 
 License
