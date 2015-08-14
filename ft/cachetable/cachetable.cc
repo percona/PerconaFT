@@ -1,93 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #include <string.h>
 #include <time.h>
@@ -3685,7 +3632,7 @@ void evictor::destroy() {
     if (m_ev_thread_init) {
         toku_mutex_lock(&m_ev_thread_lock);
         m_run_thread = false;
-        this->signal_eviction_thread();
+        this->signal_eviction_thread_locked();
         toku_mutex_unlock(&m_ev_thread_lock);
         void *ret;
         int r = toku_pthread_join(m_ev_thread, &ret); 
@@ -3792,7 +3739,7 @@ uint64_t evictor::reserve_memory(double fraction, uint64_t upper_bound) {
     }
     m_size_reserved += reserved_memory;
     (void) toku_sync_fetch_and_add(&m_size_current, reserved_memory);
-    this->signal_eviction_thread();  
+    this->signal_eviction_thread_locked();  
     toku_mutex_unlock(&m_ev_thread_lock);
 
     if (this->should_client_thread_sleep()) {
@@ -3810,7 +3757,7 @@ void evictor::release_reserved_memory(uint64_t reserved_memory){
     m_size_reserved -= reserved_memory;
     // signal the eviction thread in order to possibly wake up sleeping clients
     if (m_num_sleepers  > 0) {
-        this->signal_eviction_thread();
+        this->signal_eviction_thread_locked();
     }
     toku_mutex_unlock(&m_ev_thread_lock);
 }
@@ -4228,7 +4175,7 @@ void evictor::decrease_size_evicting(long size_evicting_estimate) {
         m_size_evicting -= size_evicting_estimate;
         assert(m_size_evicting >= 0);
         if (need_to_signal_ev_thread) {
-            this->signal_eviction_thread();
+            this->signal_eviction_thread_locked();
         }
         toku_mutex_unlock(&m_ev_thread_lock);
     }
@@ -4243,7 +4190,7 @@ void evictor::wait_for_cache_pressure_to_subside() {
     uint64_t t0 = toku_current_time_microsec();
     toku_mutex_lock(&m_ev_thread_lock);
     m_num_sleepers++;
-    this->signal_eviction_thread();
+    this->signal_eviction_thread_locked();
     toku_cond_wait(&m_flow_control_cond, &m_ev_thread_lock);    
     m_num_sleepers--;
     toku_mutex_unlock(&m_ev_thread_lock);
@@ -4277,6 +4224,12 @@ void evictor::get_state(long *size_current_ptr, long *size_limit_ptr) {
 // As a result, scheduling is not guaranteed, but that is tolerable.
 //
 void evictor::signal_eviction_thread() {
+    toku_mutex_lock(&m_ev_thread_lock);
+    toku_cond_signal(&m_ev_thread_cond);
+    toku_mutex_unlock(&m_ev_thread_lock);
+}
+
+void evictor::signal_eviction_thread_locked() {
     toku_cond_signal(&m_ev_thread_cond);
 }
 
@@ -4871,6 +4824,7 @@ void cachefile_list::remove_stale_cf_unlocked(CACHEFILE cf) {
 
 FILENUM cachefile_list::reserve_filenum() {
     // taking a write lock because we are modifying next_filenum_to_use
+    FILENUM filenum = FILENUM_NONE;
     write_lock();
     while (1) {
         int r = m_active_filenum.find_zero<FILENUM, cachefile_find_by_filenum>(m_next_filenum_to_use, nullptr, nullptr);
@@ -4879,10 +4833,17 @@ FILENUM cachefile_list::reserve_filenum() {
             continue;
         }
         assert(r == DB_NOTFOUND);
+
+        // skip the reserved value UINT32_MAX and wrap around to zero
+        if (m_next_filenum_to_use.fileid == FILENUM_NONE.fileid) {
+            m_next_filenum_to_use.fileid = 0;
+            continue;
+        }
+
+        filenum = m_next_filenum_to_use;
+        m_next_filenum_to_use.fileid++;
         break;
     }
-    FILENUM filenum = m_next_filenum_to_use;
-    m_next_filenum_to_use.fileid++;
     write_unlock();
     return filenum;
 }

@@ -104,3 +104,36 @@ add_library(lzma STATIC IMPORTED)
 set_target_properties(lzma PROPERTIES IMPORTED_LOCATION
   "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/xz/lib/liblzma.a")
 add_dependencies(lzma build_lzma)
+
+
+## add snappy with an external project
+set(SNAPPY_SOURCE_DIR "${TokuDB_SOURCE_DIR}/third_party/snappy-1.1.2" CACHE FILEPATH "Where to find sources for snappy.")
+if (NOT EXISTS "${SNAPPY_SOURCE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "Can't find the snappy sources.  Please check them out to ${SNAPPY_SOURCE_DIR} or modify SNAPPY_SOURCE_DIR.")
+endif ()
+
+FILE(GLOB SNAPPY_ALL_FILES ${SNAPPY_SOURCE_DIR}/*)
+ExternalProject_Add(build_snappy
+    PREFIX snappy
+    DOWNLOAD_COMMAND
+        cp -a "${SNAPPY_ALL_FILES}" "<SOURCE_DIR>/"
+    CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        ${USE_PROJECT_CMAKE_MODULE_PATH}
+)
+FILE(GLOB_RECURSE SNAPPY_ALL_FILES_RECURSIVE ${SNAPPY_SOURCE_DIR}/*)
+ExternalProject_Add_Step(build_snappy reclone_src # Names of project and custom step
+    COMMENT "(re)cloning snappy source..."     # Text printed when step executes
+    DEPENDERS download configure   # Steps that depend on this step
+    DEPENDS   ${SNAPPY_ALL_FILES_RECURSIVE}   # Files on which this step depends
+)
+
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/snappy/include")
+
+add_library(snappy STATIC IMPORTED)
+set_target_properties(snappy PROPERTIES IMPORTED_LOCATION
+  "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/snappy/lib/libsnappy.a")
+add_dependencies(snappy build_snappy)

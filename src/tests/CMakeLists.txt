@@ -174,8 +174,8 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
 
   declare_custom_tests(test_groupcommit_count.tdb)
   add_ydb_test(test_groupcommit_count.tdb -n 1)
-  add_ydb_helgrind_test(test_groupcommit_count.tdb -n 1)
-  add_ydb_drd_test(test_groupcommit_count.tdb -n 1)
+  add_ydb_helgrind_test(test_groupcommit_count.tdb -n 2)
+  add_ydb_drd_test(test_groupcommit_count.tdb -n 2)
 
   add_ydb_drd_test(test_4015.tdb)
 

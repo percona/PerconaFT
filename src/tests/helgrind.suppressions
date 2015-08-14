@@ -144,3 +144,15 @@
    fun:_ZN4toku8treenode22remove_root_of_subtreeEv
    ...
 }
+{
+    helgrind_bug_https://bugs.kde.org/show_bug.cgi?id=327548
+    Helgrind:Race
+    fun:my_memcmp
+    fun:pthread_mutex_destroy
+}
+{
+    helgrind_bug_2_helgrind_bug_https://bugs.kde.org/show_bug.cgi?id=327548
+    Helgrind:Race
+    ...
+    fun:pthread_mutex_destroy
+}
