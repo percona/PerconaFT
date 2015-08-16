@@ -94,42 +94,52 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #endif
 
-namespace data_race {
+// Valgrind 3.10.1 (and previous versions).
+// Problems with VALGRIND_HG_DISABLE_CHECKING and VALGRIND_HG_ENABLE_CHECKING.
+// Helgrind's implementation of disable and enable checking causes false races to be
+// reported.  In addition, the race report does not include ANY information about
+// the code that uses the helgrind disable and enable functions.  Therefore, it is
+// very difficult to figure out the cause of the race.
+// DRD does implement the disable and enable functions.
 
-    template<typename T>
-    class unsafe_read {
-        const T &_val;
-    public:
-        unsafe_read(const T &val)
-            : _val(val) {
-            TOKU_VALGRIND_HG_DISABLE_CHECKING(&_val, sizeof _val);
-            TOKU_ANNOTATE_IGNORE_READS_BEGIN();
-        }
-        ~unsafe_read() {
-            TOKU_ANNOTATE_IGNORE_READS_END();
-            TOKU_VALGRIND_HG_ENABLE_CHECKING(&_val, sizeof _val);
-        }
-        operator T() const {
-            return _val;
-        }
-    };
+// Problems with ANNOTATE_IGNORE_READS.
+// Helgrind does not implement ignore reads.
+// Annotate ignore reads is the way to inform DRD to ignore racy reads.
 
-} // namespace data_race
+// FT code uses unsafe reads in several places.  These unsafe reads have been noted
+// as valid since they use the toku_unsafe_fetch function. Unfortunately, this
+// causes helgrind to report erroneous data races which makes use of helgrind problematic.
 
 // Unsafely fetch and return a `T' from src, telling drd to ignore 
 // racey access to src for the next sizeof(*src) bytes
 template <typename T>
-T toku_drd_unsafe_fetch(T *src) {
-    return data_race::unsafe_read<T>(*src);
+T toku_unsafe_fetch(T *src) {
+    if (0) TOKU_VALGRIND_HG_DISABLE_CHECKING(src, sizeof *src); // disabled, see comment
+    TOKU_ANNOTATE_IGNORE_READS_BEGIN();
+    T r = *src;
+    TOKU_ANNOTATE_IGNORE_READS_END();
+    if (0) TOKU_VALGRIND_HG_ENABLE_CHECKING(src, sizeof *src); // disabled, see comment
+    return r;
+}
+
+template <typename T>
+T toku_unsafe_fetch(T &src) {
+    return toku_unsafe_fetch(&src);
 }
 
 // Unsafely set a `T' value into *dest from src, telling drd to ignore 
 // racey access to dest for the next sizeof(*dest) bytes
 template <typename T>
-void toku_drd_unsafe_set(T *dest, const T src) {
-    TOKU_VALGRIND_HG_DISABLE_CHECKING(dest, sizeof *dest);
+void toku_unsafe_set(T *dest, const T src) {
+    if (0) TOKU_VALGRIND_HG_DISABLE_CHECKING(dest, sizeof *dest); // disabled, see comment
     TOKU_ANNOTATE_IGNORE_WRITES_BEGIN();
     *dest = src;
     TOKU_ANNOTATE_IGNORE_WRITES_END();
-    TOKU_VALGRIND_HG_ENABLE_CHECKING(dest, sizeof *dest);
+    if (0) TOKU_VALGRIND_HG_ENABLE_CHECKING(dest, sizeof *dest); // disabled, see comment
 }
+
+template <typename T>
+void toku_unsafe_set(T &dest, const T src) {
+    toku_unsafe_set(&dest, src);
+}
+

@@ -178,7 +178,7 @@ toku_txn_begin_with_xid (
         // this call will set txn->xids
         txn_create_xids(txn, parent);
     }
-    toku_drd_unsafe_set(txnp, txn);
+    toku_unsafe_set(txnp, txn);
 exit:
     return r;
 }
