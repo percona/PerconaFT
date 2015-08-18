@@ -10,7 +10,7 @@ Berkeley DB.
 
 To build the full MySQL product, see the instructions for
 [Percona/tokudb-engine][tokudb-engine].  To build TokuMX, see the instructions
-for [Percona/percona-server-mongo][mongo].  This document covers PerconaFT only.
+for [Percona/percona-server-mongodb][mongo].  This document covers PerconaFT only.
 
 [tokudb-engine]: https://github.com/Percona/tokudb-engine
 [mongo]: https://github.com/Percona/percona-server-mongodb
