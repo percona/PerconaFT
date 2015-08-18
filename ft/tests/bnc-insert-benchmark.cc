@@ -59,9 +59,10 @@ static void
 run_test(unsigned long eltsize, unsigned long nodesize, unsigned long repeat)
 {
     int cur = 0;
-    long keys[1024];
-    char *vals[1024];
-    for (int i = 0; i < 1024; ++i) {
+    const int n = 1024;
+    long keys[n];
+    char *vals[n];
+    for (int i = 0; i < n; ++i) {
         keys[i] = rand();
         XMALLOC_N(eltsize - (sizeof keys[i]), vals[i]);
         unsigned int j = 0;
@@ -92,14 +93,21 @@ run_test(unsigned long eltsize, unsigned long nodesize, unsigned long repeat)
         bnc = toku_create_empty_nl();
         for (; toku_bnc_nbytesinbuf(bnc) <= nodesize; ++cur) {
             toku_bnc_insert_msg(bnc,
-                                &keys[cur % 1024], sizeof keys[cur % 1024],
-                                vals[cur % 1024], eltsize - (sizeof keys[cur % 1024]),
+                                &keys[cur % n], sizeof keys[cur % n],
+                                vals[cur % n], eltsize - (sizeof keys[cur % n]),
                                 FT_NONE, next_dummymsn(), xids_123, true,
                                 cmp); assert_zero(r);
         }
         nbytesinserted += toku_bnc_nbytesinbuf(bnc);
         destroy_nonleaf_childinfo(bnc);
     }
+
+    for (int i = 0; i < n; ++i) {
+        toku_free(vals[i]);
+        vals[i] = nullptr;
+    }
+
+    toku_xids_destroy(&xids_123);
 
     gettimeofday(&t[1], NULL);
     double dt;
