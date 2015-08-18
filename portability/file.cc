@@ -277,25 +277,29 @@ toku_os_pwrite (int fd, const void *buf, size_t len, toku_off_t off) {
     return result;
 }
 
-FILE * 
+TOKU_FILE *
 toku_os_fdopen(int fildes, const char *mode) {
     FILE * rval;
     if (t_fdopen)
 	rval = t_fdopen(fildes, mode);
     else 
 	rval = fdopen(fildes, mode);
-    return rval;
+    if (FT_UNLIKELY(rval == nullptr))
+        return nullptr;
+    return new TOKU_FILE(rval);
 }
     
 
-FILE *
+TOKU_FILE *
 toku_os_fopen(const char *filename, const char *mode){
     FILE * rval;
     if (t_fopen)
 	rval = t_fopen(filename, mode);
     else
 	rval = fopen(filename, mode);
-    return rval;
+    if (FT_UNLIKELY(rval == nullptr))
+        return nullptr;
+    return new TOKU_FILE(rval);
 }
 
 int 
@@ -328,17 +332,18 @@ toku_os_open_direct(const char *path, int oflag, int mode) {
 }
 
 int
-toku_os_fclose(FILE * stream) {  
+toku_os_fclose(TOKU_FILE * stream) {
     int rval = -1;
     if (t_fclose)
-	rval = t_fclose(stream);
+	rval = t_fclose(stream->file);
     else {                      // if EINTR, retry until success
 	while (rval != 0) {
-	    rval = fclose(stream);
+	    rval = fclose(stream->file);
 	    if (rval && (errno != EINTR))
 		break;
 	}
     }
+    delete stream;
     return rval;
 }
 

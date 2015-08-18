@@ -209,6 +209,8 @@ extern void *realloc(void*, size_t)            __THROW __attribute__((__deprecat
 };
 #endif
 
+#include "portability/toku_instrumentation.h"
+
 void *os_malloc(size_t) __attribute__((__visibility__("default")));
 // Effect: See man malloc(2)
 
@@ -240,12 +242,12 @@ ssize_t toku_os_pwrite (int fd, const void *buf, size_t len, toku_off_t off) __a
 int toku_os_write (int fd, const void *buf, size_t len) __attribute__((__visibility__("default")));
 
 // wrappers around file system calls
-FILE * toku_os_fdopen(int fildes, const char *mode);    
-FILE * toku_os_fopen(const char *filename, const char *mode);
+TOKU_FILE * toku_os_fdopen(int fildes, const char *mode);
+TOKU_FILE * toku_os_fopen(const char *filename, const char *mode);
 int toku_os_open(const char *path, int oflag, int mode);
 int toku_os_open_direct(const char *path, int oflag, int mode);
 int toku_os_close(int fd);
-int toku_os_fclose(FILE * stream);
+int toku_os_fclose(TOKU_FILE * stream);
 ssize_t toku_os_read(int fd, void *buf, size_t count);
 ssize_t toku_os_pread(int fd, void *buf, size_t count, off_t offset);
 void toku_os_recursive_delete(const char *path);

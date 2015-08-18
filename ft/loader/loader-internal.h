@@ -66,7 +66,7 @@ struct file_info {
     bool is_open;
     bool is_extant; // if true, the file must be unlinked.
     char *fname;
-    FILE *file;
+    TOKU_FILE *file;
     uint64_t n_rows; // how many rows were written into that file
     size_t buffer_size;
     void *buffer;
@@ -82,7 +82,7 @@ typedef struct fidx { int idx; } FIDX;
 static const FIDX FIDX_NULL __attribute__((__unused__)) = {-1};
 static int fidx_is_null (const FIDX f) __attribute__((__unused__));
 static int fidx_is_null (const FIDX f) { return f.idx==-1; }
-FILE *toku_bl_fidx2file (FTLOADER bl, FIDX i);
+TOKU_FILE *toku_bl_fidx2file (FTLOADER bl, FIDX i);
 
 int ft_loader_open_temp_file (FTLOADER bl, FIDX*file_idx);
 
@@ -103,8 +103,9 @@ int init_rowset (struct rowset *rows, uint64_t memory_budget);
 void destroy_rowset (struct rowset *rows);
 int add_row (struct rowset *rows, DBT *key, DBT *val);
 
-int loader_write_row(DBT *key, DBT *val, FIDX data, FILE*, uint64_t *dataoff, struct wbuf *wb, FTLOADER bl);
-int loader_read_row (FILE *f, DBT *key, DBT *val);
+int loader_write_row(DBT *key, DBT *val, FIDX data, TOKU_FILE*,
+                     uint64_t *dataoff, struct wbuf *wb, FTLOADER bl);
+int loader_read_row (TOKU_FILE *f, DBT *key, DBT *val);
 
 struct merge_fileset {
     bool have_sorted_output;  // Is there an previous key?
@@ -197,7 +198,7 @@ struct ft_loader_s {
     bool allow_puts;
     uint64_t   reserved_memory; // how much memory are we allowed to use?
 
-    /* To make it easier to recover from errors, we don't use FILE*, instead we use an index into the file_infos. */
+    /* To make it easier to recover from errors, we don't use TOKU_FILE*, instead we use an index into the file_infos. */
     struct file_infos file_infos;
 
 #define PROGRESS_MAX (1<<16)

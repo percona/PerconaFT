@@ -40,6 +40,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include <string.h>
 
+#include "portability/toku_portability.h"
 #include "portability/memory.h"
 #include "portability/toku_assert.h"
 #include "portability/toku_stdint.h"
@@ -54,16 +55,17 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #define VALIDATE()
 #endif
 
-static FILE *ba_trace_file = nullptr;
+static TOKU_FILE *ba_trace_file = nullptr;
 
 void block_allocator::maybe_initialize_trace(void) {
     const char *ba_trace_path = getenv("TOKU_BA_TRACE_PATH");        
     if (ba_trace_path != nullptr) {
         ba_trace_file = toku_os_fopen(ba_trace_path, "w");
-        if (ba_trace_file == nullptr) {
+        if (FT_UNLIKELY(ba_trace_file->file == nullptr)) {
             fprintf(stderr, "tokuft: error: block allocator trace path found in environment (%s), "
                             "but it could not be opened for writing (errno %d)\n",
                             ba_trace_path, get_maybe_error_errno());
+            ba_trace_file = nullptr;
         } else {
             fprintf(stderr, "tokuft: block allocator tracing enabled, path: %s\n", ba_trace_path);
         }
@@ -404,57 +406,57 @@ void block_allocator::validate() const {
 void block_allocator::_trace_create(void) {
     if (ba_trace_file != nullptr) {
         toku_mutex_lock(&_trace_lock);
-        fprintf(ba_trace_file, "ba_trace_create %p %" PRIu64 " %" PRIu64 "\n",
+        fprintf(ba_trace_file->file, "ba_trace_create %p %" PRIu64 " %" PRIu64 "\n",
                 this, _reserve_at_beginning, _alignment);
         toku_mutex_unlock(&_trace_lock);
 
-        fflush(ba_trace_file);
+        fflush(ba_trace_file->file);
     }
 }
 
 void block_allocator::_trace_create_from_blockpairs(void) {
     if (ba_trace_file != nullptr) {
         toku_mutex_lock(&_trace_lock);
-        fprintf(ba_trace_file, "ba_trace_create_from_blockpairs %p %" PRIu64 " %" PRIu64 " ",
+        fprintf(ba_trace_file->file, "ba_trace_create_from_blockpairs %p %" PRIu64 " %" PRIu64 " ",
                 this, _reserve_at_beginning, _alignment);
         for (uint64_t i = 0; i < _n_blocks; i++) {
-            fprintf(ba_trace_file, "[%" PRIu64 " %" PRIu64 "] ",
+            fprintf(ba_trace_file->file, "[%" PRIu64 " %" PRIu64 "] ",
                     _blocks_array[i].offset, _blocks_array[i].size);
         }
-        fprintf(ba_trace_file, "\n");
+        fprintf(ba_trace_file->file, "\n");
         toku_mutex_unlock(&_trace_lock);
 
-        fflush(ba_trace_file);
+        fflush(ba_trace_file->file);
     }
 }
 
 void block_allocator::_trace_destroy(void) {
     if (ba_trace_file != nullptr) {
         toku_mutex_lock(&_trace_lock);
-        fprintf(ba_trace_file, "ba_trace_destroy %p\n", this);
+        fprintf(ba_trace_file->file, "ba_trace_destroy %p\n", this);
         toku_mutex_unlock(&_trace_lock);
 
-        fflush(ba_trace_file);
+        fflush(ba_trace_file->file);
     }
 }
 
 void block_allocator::_trace_alloc(uint64_t size, uint64_t heat, uint64_t offset) {
     if (ba_trace_file != nullptr) {
         toku_mutex_lock(&_trace_lock);
-        fprintf(ba_trace_file, "ba_trace_alloc %p %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+        fprintf(ba_trace_file->file, "ba_trace_alloc %p %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
                 this, size, heat, offset);
         toku_mutex_unlock(&_trace_lock);
 
-        fflush(ba_trace_file);
+        fflush(ba_trace_file->file);
     }
 }
 
 void block_allocator::_trace_free(uint64_t offset) {
     if (ba_trace_file != nullptr) {
         toku_mutex_lock(&_trace_lock);
-        fprintf(ba_trace_file, "ba_trace_free %p %" PRIu64 "\n", this, offset);
+        fprintf(ba_trace_file->file, "ba_trace_free %p %" PRIu64 "\n", this, offset);
         toku_mutex_unlock(&_trace_lock);
 
-        fflush(ba_trace_file);
+        fflush(ba_trace_file->file);
     }
 }

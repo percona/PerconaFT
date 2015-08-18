@@ -67,11 +67,11 @@ void ft_loader_set_os_fwrite (size_t (*fwrite_fun)(const void*,size_t,size_t,FIL
     os_fwrite_fun=fwrite_fun;
 }
 
-static size_t do_fwrite (const void *ptr, size_t size, size_t nmemb, FILE *stream) {
+static size_t do_fwrite (const void *ptr, size_t size, size_t nmemb, TOKU_FILE *stream) {
     if (os_fwrite_fun) {
-        return os_fwrite_fun(ptr, size, nmemb, stream);
+        return os_fwrite_fun(ptr, size, nmemb, stream->file);
     } else {
-        return fwrite(ptr, size, nmemb, stream);
+        return fwrite(ptr, size, nmemb, stream->file);
     }
 }
 
@@ -130,7 +130,8 @@ static int add_big_buffer(struct file_info *file) {
             newbuffer = true;
     }
     if (result == 0) {
-        int r = setvbuf(file->file, (char *) file->buffer, _IOFBF, file->buffer_size);
+        int r = setvbuf(file->file->file, (char *) file->buffer, _IOFBF,
+                        file->buffer_size);
         if (r != 0) {
             result = get_error_errno();
             if (newbuffer) {
@@ -196,7 +197,7 @@ void ft_loader_fi_destroy (struct file_infos *fi, bool is_error)
 }
 
 static int open_file_add (struct file_infos *fi,
-                          FILE *file,
+                          TOKU_FILE *file,
                           char *fname,
                           /* out */ FIDX *idx)
 {
@@ -308,7 +309,7 @@ int ft_loader_open_temp_file (FTLOADER bl, FIDX *file_idx)
     int result = 0;
     if (result) // debug hack
         return result;
-    FILE *f = NULL;
+    TOKU_FILE *f = nullptr;
     int fd = -1;
     char *fname = toku_strdup(bl->temp_file_template);    
     if (fname == NULL)
@@ -319,7 +320,7 @@ int ft_loader_open_temp_file (FTLOADER bl, FIDX *file_idx)
             result = get_error_errno();
         } else {
             f = toku_os_fdopen(fd, "r+");
-            if (f == NULL)
+            if (f->file == NULL)
                 result = get_error_errno();
             else
                 result = open_file_add(&bl->file_infos, f, fname, file_idx);
@@ -658,16 +659,16 @@ static void ft_loader_set_panic(FTLOADER bl, int error, bool callback, int which
 }
 
 // One of the tests uses this.
-FILE *toku_bl_fidx2file (FTLOADER bl, FIDX i) {
+TOKU_FILE *toku_bl_fidx2file (FTLOADER bl, FIDX i) {
     toku_mutex_lock(&bl->file_infos.lock);
     invariant(i.idx >=0 && i.idx < bl->file_infos.n_files);
     invariant(bl->file_infos.file_infos[i.idx].is_open);
-    FILE *result=bl->file_infos.file_infos[i.idx].file;
+    TOKU_FILE *result=bl->file_infos.file_infos[i.idx].file;
     toku_mutex_unlock(&bl->file_infos.lock);
     return result;
 }
 
-static int bl_finish_compressed_write(FILE *stream, struct wbuf *wb) {
+static int bl_finish_compressed_write(TOKU_FILE *stream, struct wbuf *wb) {
     int r;
     char *compressed_buf = NULL;
     const size_t data_size = wb->ndone;
@@ -727,7 +728,7 @@ static int bl_finish_compressed_write(FILE *stream, struct wbuf *wb) {
             if (os_fwrite_fun)    // if using hook to induce artificial errors (for testing) ...
                 r = get_maybe_error_errno();        // ... then there is no error in the stream, but there is one in errno
             else
-                r = ferror(stream);
+                r = ferror(stream->file);
             invariant(r!=0);
             goto exit;
         }
@@ -740,7 +741,8 @@ exit:
     return r;
 }
 
-static int bl_compressed_write(void *ptr, size_t nbytes, FILE *stream, struct wbuf *wb) {
+static int bl_compressed_write(void *ptr, size_t nbytes, TOKU_FILE *stream,
+                               struct wbuf *wb) {
     invariant(wb->size <= MAX_UNCOMPRESSED_BUF);
     size_t bytes_left = nbytes;
     char *buf = (char*)ptr;
@@ -766,7 +768,8 @@ static int bl_compressed_write(void *ptr, size_t nbytes, FILE *stream, struct wb
     return 0;
 }
 
-static int bl_fwrite(void *ptr, size_t size, size_t nmemb, FILE *stream, struct wbuf *wb, FTLOADER bl)
+static int bl_fwrite(void *ptr, size_t size, size_t nmemb, TOKU_FILE *stream,
+                     struct wbuf *wb, FTLOADER bl)
 /* Effect: this is a wrapper for fwrite that returns 0 on success, otherwise returns an error number.
  * Arguments:
  *   ptr    the data to be writen.
@@ -785,7 +788,7 @@ static int bl_fwrite(void *ptr, size_t size, size_t nmemb, FILE *stream, struct 
             if (os_fwrite_fun)    // if using hook to induce artificial errors (for testing) ...
                 e = get_maybe_error_errno();        // ... then there is no error in the stream, but there is one in errno
             else
-                e = ferror(stream);
+                e = ferror(stream->file);
             invariant(e!=0);
             return e;
         }
@@ -799,7 +802,7 @@ static int bl_fwrite(void *ptr, size_t size, size_t nmemb, FILE *stream, struct 
     return 0;
 }
 
-static int bl_fread (void *ptr, size_t size, size_t nmemb, FILE *stream)
+static int bl_fread (void *ptr, size_t size, size_t nmemb, TOKU_FILE *stream)
 /* Effect: this is a wrapper for fread that returns 0 on success, otherwise returns an error number.
  * Arguments:
  *  ptr      read data into here.
@@ -809,12 +812,12 @@ static int bl_fread (void *ptr, size_t size, size_t nmemb, FILE *stream)
  * Return value: 0 on success, an error number otherwise.
  */
 {
-    size_t r = fread(ptr, size, nmemb, stream);
+    size_t r = fread(ptr, size, nmemb, stream->file);
     if (r==0) {
-        if (feof(stream)) return EOF;
+        if (feof(stream->file)) return EOF;
         else {
         do_error: ;
-            int e = ferror(stream);
+            int e = ferror(stream->file);
             // r == 0 && !feof && e == 0, how does this happen? invariant(e!=0);
             return e;
         }
@@ -825,7 +828,8 @@ static int bl_fread (void *ptr, size_t size, size_t nmemb, FILE *stream)
     }
 }
 
-static int bl_write_dbt (DBT *dbt, FILE* datafile, uint64_t *dataoff, struct wbuf *wb, FTLOADER bl)
+static int bl_write_dbt (DBT *dbt, TOKU_FILE* datafile, uint64_t *dataoff,
+                         struct wbuf *wb, FTLOADER bl)
 {
     int r;
     int dlen = dbt->size;
@@ -836,7 +840,7 @@ static int bl_write_dbt (DBT *dbt, FILE* datafile, uint64_t *dataoff, struct wbu
     return 0;
 }
 
-static int bl_read_dbt (/*in*/DBT *dbt, FILE *stream)
+static int bl_read_dbt (/*in*/DBT *dbt, TOKU_FILE *stream)
 {
     int len;
     {
@@ -892,7 +896,8 @@ static int bl_read_dbt_from_dbufio (/*in*/DBT *dbt, DBUFIO_FILESET bfs, int file
 }
 
 
-int loader_write_row(DBT *key, DBT *val, FIDX data, FILE *dataf, uint64_t *dataoff, struct wbuf *wb, FTLOADER bl)
+int loader_write_row(DBT *key, DBT *val, FIDX data, TOKU_FILE *dataf,
+                     uint64_t *dataoff, struct wbuf *wb, FTLOADER bl)
 /* Effect: Given a key and a val (both DBTs), write them to a file.  Increment *dataoff so that it's up to date.
  * Arguments:
  *   key, val   write these.
@@ -915,7 +920,7 @@ int loader_write_row(DBT *key, DBT *val, FIDX data, FILE *dataf, uint64_t *datao
     return 0;
 }
 
-int loader_read_row (FILE *f, DBT *key, DBT *val)
+int loader_read_row (TOKU_FILE *f, DBT *key, DBT *val)
 /* Effect: Read a key value pair from a file.  The DBTs must have DB_DBT_REALLOC set.
  * Arguments:
  *    f         where to read it from.
@@ -1625,7 +1630,7 @@ static int write_rowset_to_file (FTLOADER bl, FIDX sfile, const struct rowset ro
     struct wbuf wb;
     wbuf_init(&wb, uncompressed_buffer, MAX_UNCOMPRESSED_BUF);
 
-    FILE *sstream = toku_bl_fidx2file(bl, sfile);
+    TOKU_FILE *sstream = toku_bl_fidx2file(bl, sfile);
     for (size_t i=0; i<rows.n_rows; i++) {
         DBT skey = make_dbt(rows.data + rows.rows[i].off,                     rows.rows[i].klen);
         DBT sval = make_dbt(rows.data + rows.rows[i].off + rows.rows[i].klen, rows.rows[i].vlen);
@@ -1746,7 +1751,7 @@ int toku_merge_some_files_using_dbufio (const bool to_q, FIDX dest_data, QUEUE q
 {
     int result = 0;
 
-    FILE *dest_stream = to_q ? NULL : toku_bl_fidx2file(bl, dest_data);
+    TOKU_FILE *dest_stream = to_q ? NULL : toku_bl_fidx2file(bl, dest_data);
 
     //printf(" merge_some_files progress=%d fin at %d\n", bl->progress, bl->progress+progress_allocation);
     DBT keys[n_sources];
@@ -1945,7 +1950,7 @@ static int merge_some_files (const bool to_q, FIDX dest_data, QUEUE q, int n_sou
     if (fds==NULL) result=get_error_errno();
     if (result==0) {
         for (int i=0; i<n_sources; i++) {
-            int r = fileno(toku_bl_fidx2file(bl, srcs_fidxs[i])); // we rely on the fact that when the files are closed, the fd is also closed.
+            int r = fileno(toku_bl_fidx2file(bl, srcs_fidxs[i])->file); // we rely on the fact that when the files are closed, the fd is also closed.
             if (r==-1) {
                 result=get_error_errno();
                 break;
@@ -2386,7 +2391,7 @@ static int toku_loader_write_ft_from_q (FTLOADER bl,
         assert_zero(r);
         return result;
     }
-    FILE *pivots_stream = toku_bl_fidx2file(bl, pivots_file);
+    TOKU_FILE *pivots_stream = toku_bl_fidx2file(bl, pivots_file);
 
     TXNID root_xid_that_created = TXNID_NONE;
     if (bl->root_xids_that_created)
@@ -3011,7 +3016,7 @@ static int read_some_pivots (FIDX pivots_file, int n_to_read, FTLOADER bl,
     for (int i = 0; i < n_to_read; i++)
         pivots[i] = zero_dbt;
 
-    FILE *pivots_stream = toku_bl_fidx2file(bl, pivots_file);
+    TOKU_FILE *pivots_stream = toku_bl_fidx2file(bl, pivots_file);
 
     int result = 0;
     for (int i = 0; i < n_to_read; i++) {
@@ -3063,7 +3068,7 @@ static int setup_nonleaf_block (int n_children,
     }
 
     if (result == 0) {
-        FILE *next_pivots_stream = toku_bl_fidx2file(bl, next_pivots_file);
+        TOKU_FILE *next_pivots_stream = toku_bl_fidx2file(bl, next_pivots_file);
         int r = bl_write_dbt(&pivots[n_children-1], next_pivots_stream, NULL, nullptr, bl);
         if (r)
             result = r;
@@ -3179,7 +3184,7 @@ static int write_nonleaves (FTLOADER bl, FIDX pivots_fidx, struct dbout *out, st
         //  2) We put the 15 pivots and 16 blocks into an non-leaf node.
         //  3) We put the 16th pivot into the next pivots file.
         {
-            int r = fseek(toku_bl_fidx2file(bl, pivots_fidx), 0, SEEK_SET);
+            int r = fseek(toku_bl_fidx2file(bl, pivots_fidx)->file, 0, SEEK_SET);
             if (r!=0) { return get_error_errno(); }
         }
 
