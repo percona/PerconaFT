@@ -13,7 +13,7 @@ To build the full MySQL product, see the instructions for
 for [Percona/percona-server-mongo][mongo].  This document covers PerconaFT only.
 
 [tokudb-engine]: https://github.com/Percona/tokudb-engine
-[mongo]: https://github.com/Percona/percona-server-mongo
+[mongo]: https://github.com/Percona/percona-server-mongodb
 
 
 Building
