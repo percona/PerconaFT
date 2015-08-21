@@ -148,4 +148,5 @@ struct context_status {
 
 void toku_context_get_status(struct context_status *status);
 
+void toku_context_status_init(void);
 void toku_context_status_destroy(void);

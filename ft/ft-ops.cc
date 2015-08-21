@@ -4323,6 +4323,7 @@ int toku_ft_layer_init(void) {
 
     partitioned_counters_init();
     toku_status_init();
+    toku_context_status_init();
     toku_checkpoint_init();
     toku_ft_serialize_layer_init();
     toku_mutex_init(&ft_open_close_lock, NULL);
