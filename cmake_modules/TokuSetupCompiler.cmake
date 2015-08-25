@@ -117,7 +117,6 @@ if (NOT CMAKE_CXX_COMPILER_ID MATCHES Clang)
     )
 endif ()
 
-## 
 option (PROFILING "Allow profiling and debug" OFF)
 if (PROFILING)
   set_cflags_if_supported(
