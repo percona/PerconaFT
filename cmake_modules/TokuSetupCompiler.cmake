@@ -117,7 +117,7 @@ if (NOT CMAKE_CXX_COMPILER_ID MATCHES Clang)
     )
 endif ()
 
-option (PROFILING "Allow profiling and debug" OFF)
+option (PROFILING "Allow profiling and debug" ON)
 if (PROFILING)
   set_cflags_if_supported(
     -fno-omit-frame-pointer
