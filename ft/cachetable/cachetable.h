@@ -102,6 +102,8 @@ uint32_t toku_get_cleaner_period_unlocked (CACHETABLE ct);
 void toku_set_cleaner_iterations (CACHETABLE ct, uint32_t new_iterations);
 uint32_t toku_get_cleaner_iterations (CACHETABLE ct);
 uint32_t toku_get_cleaner_iterations_unlocked (CACHETABLE ct);
+void toku_set_enable_partial_eviction (CACHETABLE ct, bool enabled);
+bool toku_get_enable_partial_eviction (CACHETABLE ct);
 
 // cachetable operations
 
