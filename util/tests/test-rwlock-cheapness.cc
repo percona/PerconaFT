@@ -243,6 +243,7 @@ int main (int UU(argc), const char* UU(argv[])) {
     // and context because normally toku_ft_layer_init() does that
     // for us, but we don't want to initialize everything.
     partitioned_counters_init();
+    toku_context_status_init();
     test_write_cheapness();
     toku_context_status_destroy();
     partitioned_counters_destroy();

@@ -70,8 +70,7 @@ const toku::context *toku_thread_get_context() {
 static struct context_status context_status;
 #define CONTEXT_STATUS_INIT(key, legend) TOKUFT_STATUS_INIT(context_status, key, nullptr, PARCOUNT, "context: " legend, TOKU_ENGINE_STATUS)
 
-static void
-context_status_init(void) {
+void toku_context_status_init(void) {
     CONTEXT_STATUS_INIT(CTX_SEARCH_BLOCKED_BY_FULL_FETCH,           "tree traversals blocked by a full fetch");
     CONTEXT_STATUS_INIT(CTX_SEARCH_BLOCKED_BY_PARTIAL_FETCH,        "tree traversals blocked by a partial fetch");
     CONTEXT_STATUS_INIT(CTX_SEARCH_BLOCKED_BY_FULL_EVICTION,        "tree traversals blocked by a full eviction");
@@ -96,18 +95,14 @@ context_status_init(void) {
 #undef FS_STATUS_INIT
 
 void toku_context_get_status(struct context_status *status) {
-    if (!context_status.initialized) {
-        context_status_init();
-    }
+    assert(context_status.initialized);
     *status = context_status;
 }
 
 #define STATUS_INC(x, d) increment_partitioned_counter(context_status.status[x].value.parcount, d);
 
 void toku_context_note_frwlock_contention(const context_id blocked, const context_id blocking) {
-    if (!context_status.initialized) {
-        context_status_init();
-    }
+    assert(context_status.initialized);
     if (blocked != CTX_SEARCH && blocked != CTX_PROMO) {
         // Return early if this event is "unknown"
         STATUS_INC(CTX_BLOCKED_OTHER, 1);
