@@ -39,6 +39,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <memory.h>
 
 #include <portability/toku_config.h>
+#include <portability/toku_time.h>
 #include <toku_pthread.h>
 
 #include "kibbutz.h"
@@ -63,6 +64,12 @@ struct kibbutz {
     int n_workers;
     pthread_t *workers; // an array of n_workers
     struct kid *ids;    // pass this in when creating a worker so it knows who it is.
+
+    uint64_t threads_active;
+    uint64_t queue_size;
+    uint64_t max_queue_size;
+    uint64_t total_items_processed;
+    uint64_t total_execution_time;
 };
 
 static void *work_on_kibbutz (void *);
@@ -77,6 +84,11 @@ int toku_kibbutz_create (int n_workers, KIBBUTZ *kb_ret) {
     k->head = NULL;
     k->tail = NULL;
     k->n_workers = n_workers;
+    k->threads_active = 0;
+    k->queue_size = 0;
+    k->max_queue_size = 0;
+    k->total_items_processed = 0;
+    k->total_execution_time = 0;
     XMALLOC_N(n_workers, k->workers);
     XMALLOC_N(n_workers, k->ids);
     for (int i = 0; i < n_workers; i++) {
@@ -121,6 +133,7 @@ static void *work_on_kibbutz (void *kidv) {
         while (k->tail) {
             struct todo *item = k->tail;
             k->tail = item->prev;
+            toku_sync_sub_and_fetch(&k->queue_size, 1);
             if (k->tail==NULL) {
                 k->head=NULL;
             } else {
@@ -128,7 +141,13 @@ static void *work_on_kibbutz (void *kidv) {
                 ksignal(k);
             }
             kunlock(k);
+            toku_sync_add_and_fetch(&k->threads_active, 1);
+            uint64_t starttime = toku_current_time_microsec();
             item->f(item->extra);
+            uint64_t duration = toku_current_time_microsec() - starttime;
+            toku_sync_add_and_fetch(&k->total_execution_time, duration);
+            toku_sync_add_and_fetch(&k->total_items_processed, 1);
+            toku_sync_sub_and_fetch(&k->threads_active, 1);
             toku_free(item);
             klock(k);
             // if there's another item on k->head, then we'll just go grab it now, without waiting for a signal.
@@ -164,8 +183,28 @@ void toku_kibbutz_enq (KIBBUTZ k, void (*f)(void*), void *extra) {
     }
     k->head = td;
     if (k->tail==NULL) k->tail = td;
+
+    uint64_t newsize = toku_sync_add_and_fetch(&k->queue_size, 1);
+    // not exactly precise but we'll live with it
+    if (newsize > k->max_queue_size) k->max_queue_size = k->queue_size;
+
     ksignal(k);
     kunlock(k);
+}
+
+void toku_kibbutz_get_status(KIBBUTZ k,
+                             uint64_t *num_threads,
+                             uint64_t *num_threads_active,
+                             uint64_t *queue_size,
+                             uint64_t *max_queue_size,
+                             uint64_t *total_items_processed,
+                             uint64_t *total_execution_time) {
+    *num_threads = k->n_workers;
+    *num_threads_active = k->threads_active;
+    *queue_size = k->queue_size;
+    *max_queue_size = k->max_queue_size;
+    *total_items_processed = k->total_items_processed;
+    *total_execution_time = k->total_execution_time / 1000; // return in ms.
 }
 
 void toku_kibbutz_destroy (KIBBUTZ k)

@@ -140,6 +140,27 @@ toku_cachetable_get_status(CACHETABLE ct, CACHETABLE_STATUS statp) {
     CT_STATUS_VAL(CT_CLEANER_EXECUTIONS)     = cleaner_executions;
     CT_STATUS_VAL(CT_CLEANER_PERIOD)         = toku_get_cleaner_period_unlocked(ct);
     CT_STATUS_VAL(CT_CLEANER_ITERATIONS)     = toku_get_cleaner_iterations_unlocked(ct);
+    toku_kibbutz_get_status(ct->client_kibbutz,
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_NUM_THREADS),
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_NUM_THREADS_ACTIVE),
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_MAX_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_TOTAL_ITEMS_PROCESSED),
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_TOTAL_EXECUTION_TIME));
+    toku_kibbutz_get_status(ct->ct_kibbutz,
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_NUM_THREADS),
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_NUM_THREADS_ACTIVE),
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_MAX_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_TOTAL_ITEMS_PROCESSED),
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_TOTAL_EXECUTION_TIME));
+    toku_kibbutz_get_status(ct->checkpointing_kibbutz,
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_NUM_THREADS),
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_NUM_THREADS_ACTIVE),
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_MAX_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_TOTAL_ITEMS_PROCESSED),
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_TOTAL_EXECUTION_TIME));
     ct->ev.fill_engine_status();
     *statp = ct_status;
 }
