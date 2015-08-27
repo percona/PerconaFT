@@ -98,6 +98,9 @@ struct __toku_db_env_internal {
     generate_row_for_del_func generate_row_for_del;
 
     unsigned long cachetable_size;
+    unsigned long client_pool_threads;
+    unsigned long cachetable_pool_threads;
+    unsigned long checkpoint_pool_threads;
     CACHETABLE cachetable;
     TOKULOGGER logger;
     toku::locktree_manager ltm;

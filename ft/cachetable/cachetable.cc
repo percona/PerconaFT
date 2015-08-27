@@ -235,7 +235,11 @@ bool toku_get_enable_partial_eviction (CACHETABLE ct) {
 // reserve 25% as "unreservable".  The loader cannot have it.
 #define unreservable_memory(size) ((size)/4)
 
-int toku_cachetable_create(CACHETABLE *ct_result, long size_limit, LSN UU(initial_lsn), TOKULOGGER logger) {
+int toku_cachetable_create_ex(CACHETABLE *ct_result, long size_limit,
+                           unsigned long client_pool_threads,
+                           unsigned long cachetable_pool_threads,
+                           unsigned long checkpoint_pool_threads,
+                           LSN UU(initial_lsn), TOKULOGGER logger) {
     int result = 0;
     int r;
 
@@ -249,17 +253,20 @@ int toku_cachetable_create(CACHETABLE *ct_result, long size_limit, LSN UU(initia
 
     int num_processors = toku_os_get_number_active_processors();
     int checkpointing_nworkers = (num_processors/4) ? num_processors/4 : 1;
-    r = toku_kibbutz_create(num_processors, &ct->client_kibbutz);
+    r = toku_kibbutz_create(client_pool_threads ? client_pool_threads : num_processors,
+                            &ct->client_kibbutz);
     if (r != 0) {
         result = r;
         goto cleanup;
     }
-    r = toku_kibbutz_create(2*num_processors, &ct->ct_kibbutz);
+    r = toku_kibbutz_create(cachetable_pool_threads ? cachetable_pool_threads : 2*num_processors,
+                            &ct->ct_kibbutz);
     if (r != 0) {
         result = r;
         goto cleanup;
     }
-    r = toku_kibbutz_create(checkpointing_nworkers, &ct->checkpointing_kibbutz);
+    r = toku_kibbutz_create(checkpoint_pool_threads ? checkpoint_pool_threads : checkpointing_nworkers,
+                            &ct->checkpointing_kibbutz);
     if (r != 0) {
         result = r;
         goto cleanup;

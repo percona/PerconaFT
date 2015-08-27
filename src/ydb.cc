@@ -918,7 +918,11 @@ env_open(DB_ENV * env, const char *home, uint32_t flags, int mode) {
 
     if (env->i->cachetable==NULL) {
         // If we ran recovery then the cachetable should be set here.
-        r = toku_cachetable_create(&env->i->cachetable, env->i->cachetable_size, ZERO_LSN, env->i->logger);
+        r = toku_cachetable_create_ex(&env->i->cachetable, env->i->cachetable_size,
+                                   env->i->client_pool_threads,
+                                   env->i->cachetable_pool_threads,
+                                   env->i->checkpoint_pool_threads,
+                                   ZERO_LSN, env->i->logger);
         if (r != 0) {
             r = toku_ydb_do_error(env, r, "Cant create a cachetable\n");
             goto cleanup;
@@ -1206,6 +1210,27 @@ env_set_cachesize(DB_ENV * env, uint32_t gbytes, uint32_t bytes, int ncache) {
         return EINVAL;
     }
     env->i->cachetable_size = cs;
+    return 0;
+}
+
+static int 
+env_set_client_pool_threads(DB_ENV * env, uint32_t threads) {
+    HANDLE_PANICKED_ENV(env);
+    env->i->client_pool_threads = threads;
+    return 0;
+}
+
+static int 
+env_set_cachetable_pool_threads(DB_ENV * env, uint32_t threads) {
+    HANDLE_PANICKED_ENV(env);
+    env->i->cachetable_pool_threads = threads;
+    return 0;
+}
+
+static int 
+env_set_checkpoint_pool_threads(DB_ENV * env, uint32_t threads) {
+    HANDLE_PANICKED_ENV(env);
+    env->i->checkpoint_pool_threads = threads;
     return 0;
 }
 
@@ -2575,6 +2600,9 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     USENV(evictor_set_enable_partial_eviction);
     USENV(evictor_get_enable_partial_eviction);
     USENV(set_cachesize);
+    USENV(set_client_pool_threads);
+    USENV(set_cachetable_pool_threads);
+    USENV(set_checkpoint_pool_threads);
 #if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3
     USENV(get_cachesize);
 #endif

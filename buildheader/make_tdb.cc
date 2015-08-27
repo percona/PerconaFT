@@ -417,6 +417,9 @@ static void print_db_env_struct (void) {
                              "uint64_t (*get_loader_memory_size)(DB_ENV *env)",
                              "void (*set_killed_callback)(DB_ENV *env, uint64_t default_killed_time_msec, uint64_t (*get_killed_time_callback)(uint64_t default_killed_time_msec), int (*killed_callback)(void))",
                              "void (*do_backtrace)                        (DB_ENV *env)",
+                             "int (*set_client_pool_threads)(DB_ENV *, uint32_t)",
+                             "int (*set_cachetable_pool_threads)(DB_ENV *, uint32_t)",
+                             "int (*set_checkpoint_pool_threads)(DB_ENV *, uint32_t)",
                              NULL};
 
         sort_and_dump_fields("db_env", true, extra);

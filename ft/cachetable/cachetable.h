@@ -110,7 +110,14 @@ bool toku_get_enable_partial_eviction (CACHETABLE ct);
 // create and initialize a cache table
 // size_limit is the upper limit on the size of the size of the values in the table
 // pass 0 if you want the default
-int toku_cachetable_create(CACHETABLE *result, long size_limit, LSN initial_lsn, struct tokulogger *logger);
+int toku_cachetable_create_ex(CACHETABLE *result, long size_limit,
+                           unsigned long client_pool_threads,
+                           unsigned long cachetable_pool_threads,
+                           unsigned long checkpoint_pool_threads,
+                           LSN initial_lsn, struct tokulogger *logger);
+
+#define toku_cachetable_create(r, s, l, o) \
+    toku_cachetable_create_ex(r, s, 0, 0, 0, l, o);
 
 // Create a new cachetable.
 // Effects: a new cachetable is created and initialized.
