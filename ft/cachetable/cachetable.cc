@@ -203,6 +203,14 @@ uint32_t toku_get_cleaner_iterations_unlocked (CACHETABLE ct) {
     return ct->cl.get_iterations();
 }
 
+void toku_set_enable_partial_eviction (CACHETABLE ct, bool enabled) {
+    ct->ev.set_enable_partial_eviction(enabled);
+}
+
+bool toku_get_enable_partial_eviction (CACHETABLE ct) {
+    return ct->ev.get_enable_partial_eviction();
+}
+
 // reserve 25% as "unreservable".  The loader cannot have it.
 #define unreservable_memory(size) ((size)/4)
 
@@ -3552,6 +3560,8 @@ int evictor::init(long _size_limit, pair_list* _pl, cachefile_list* _cf_list, KI
         m_high_size_watermark = m_high_size_hysteresis + max_diff;
     }
     
+    m_enable_partial_eviction = true;
+
     m_size_reserved = unreservable_memory(_size_limit);
     m_size_current = 0;
     m_size_cloned_data = 0;
@@ -3929,53 +3939,48 @@ bool evictor::run_eviction_on_pair(PAIR curr_in_clock) {
                 curr_in_clock->count--;
             }
         }
-        // call the partial eviction callback
-        curr_in_clock->value_rwlock.write_lock(true);
 
-        void *value = curr_in_clock->value_data;
-        void* disk_data = curr_in_clock->disk_data;
-        void *write_extraargs = curr_in_clock->write_extraargs;
-        enum partial_eviction_cost cost;
-        long bytes_freed_estimate = 0;
-        curr_in_clock->pe_est_callback(
-            value, 
-            disk_data,
-            &bytes_freed_estimate, 
-            &cost, 
-            write_extraargs
-            );
-        if (cost == PE_CHEAP) {
+        if (m_enable_partial_eviction) {
+            // call the partial eviction callback
+            curr_in_clock->value_rwlock.write_lock(true);
+
+            void *value = curr_in_clock->value_data;
+            void* disk_data = curr_in_clock->disk_data;
+            void *write_extraargs = curr_in_clock->write_extraargs;
+            enum partial_eviction_cost cost;
+            long bytes_freed_estimate = 0;
+            curr_in_clock->pe_est_callback(value, disk_data,
+                                           &bytes_freed_estimate, &cost,
+                                           write_extraargs);
+            if (cost == PE_CHEAP) {
+                pair_unlock(curr_in_clock);
+                curr_in_clock->size_evicting_estimate = 0;
+                this->do_partial_eviction(curr_in_clock);
+                bjm_remove_background_job(cf->bjm);
+            } else if (cost == PE_EXPENSIVE) {
+                // only bother running an expensive partial eviction
+                // if it is expected to free space
+                if (bytes_freed_estimate > 0) {
+                    pair_unlock(curr_in_clock);
+                    curr_in_clock->size_evicting_estimate = bytes_freed_estimate;
+                    toku_mutex_lock(&m_ev_thread_lock);
+                    m_size_evicting += bytes_freed_estimate;
+                    toku_mutex_unlock(&m_ev_thread_lock);
+                    toku_kibbutz_enq(m_kibbutz, cachetable_partial_eviction,
+                                     curr_in_clock);
+                } else {
+                    curr_in_clock->value_rwlock.write_unlock();
+                    pair_unlock(curr_in_clock);
+                    bjm_remove_background_job(cf->bjm);
+                }
+            } else {
+                assert(false);
+            }
+        } else {
             pair_unlock(curr_in_clock);
-            curr_in_clock->size_evicting_estimate = 0;
-            this->do_partial_eviction(curr_in_clock);
             bjm_remove_background_job(cf->bjm);
         }
-        else if (cost == PE_EXPENSIVE) {
-            // only bother running an expensive partial eviction
-            // if it is expected to free space
-            if (bytes_freed_estimate > 0) {
-                pair_unlock(curr_in_clock);
-                curr_in_clock->size_evicting_estimate = bytes_freed_estimate;
-                toku_mutex_lock(&m_ev_thread_lock);
-                m_size_evicting += bytes_freed_estimate;
-                toku_mutex_unlock(&m_ev_thread_lock);
-                toku_kibbutz_enq(
-                    m_kibbutz, 
-                    cachetable_partial_eviction, 
-                    curr_in_clock
-                    );
-            }
-            else {
-                curr_in_clock->value_rwlock.write_unlock();
-                pair_unlock(curr_in_clock);
-                bjm_remove_background_job(cf->bjm);
-            }
-        }
-        else {
-            assert(false);
-        }        
-    }
-    else {
+    } else {
         toku::context pe_ctx(CTX_FULL_EVICTION);
 
         // responsibility of try_evict_pair to eventually remove background job
@@ -4280,6 +4285,14 @@ void evictor::fill_engine_status() {
     CT_STATUS_VAL(CT_WAIT_PRESSURE_TIME) = read_partitioned_counter(m_wait_pressure_time);
     CT_STATUS_VAL(CT_LONG_WAIT_PRESSURE_COUNT) = read_partitioned_counter(m_long_wait_pressure_count);
     CT_STATUS_VAL(CT_LONG_WAIT_PRESSURE_TIME) = read_partitioned_counter(m_long_wait_pressure_time);
+}
+
+void evictor::set_enable_partial_eviction(bool enabled) {
+    m_enable_partial_eviction = enabled;
+}
+
+bool evictor::get_enable_partial_eviction(void) const {
+    return m_enable_partial_eviction;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

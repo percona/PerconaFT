@@ -86,6 +86,10 @@ if(BUILD_TESTING OR BUILD_FT_TESTS)
   declare_custom_tests(bnc-insert-benchmark)
   add_ft_test(bnc-insert-benchmark 100 4096000 1000)
 
+  declare_custom_tests(cachetable-5097)
+  add_ft_test_aux(cachetable-5097-enabled cachetable-5097 enable_pe)
+  add_ft_test_aux(cachetable-5097-disabled cachetable-5097 disable_pe)
+
   add_ft_test_aux(ftdump-test-generate ft-test)
   add_test(NAME ft/ftdump-test
     COMMAND $<TARGET_FILE:tokuftdump> "ftdump-test-generate.ctest-data"

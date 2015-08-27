@@ -1576,6 +1576,24 @@ env_cleaner_get_iterations(DB_ENV * env, uint32_t *iterations) {
 }
 
 static int
+env_evictor_set_enable_partial_eviction(DB_ENV* env, bool enabled) {
+    HANDLE_PANICKED_ENV(env);
+    int r = 0;
+    if (!env_opened(env)) r = EINVAL;
+    else toku_set_enable_partial_eviction(env->i->cachetable, enabled);
+    return r;
+}
+
+static int
+env_evictor_get_enable_partial_eviction(DB_ENV* env, bool *enabled) {
+    HANDLE_PANICKED_ENV(env);
+    int r = 0;
+    if (!env_opened(env)) r = EINVAL;
+    else *enabled = toku_get_enable_partial_eviction(env->i->cachetable);
+    return r;
+}
+
+static int
 env_checkpointing_postpone(DB_ENV * env) {
     HANDLE_PANICKED_ENV(env);
     int r = 0;
@@ -2554,6 +2572,8 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     USENV(cleaner_get_period);
     USENV(cleaner_set_iterations);
     USENV(cleaner_get_iterations);
+    USENV(evictor_set_enable_partial_eviction);
+    USENV(evictor_get_enable_partial_eviction);
     USENV(set_cachesize);
 #if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3
     USENV(get_cachesize);

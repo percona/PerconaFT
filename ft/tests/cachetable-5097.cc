@@ -45,6 +45,7 @@ bool check_flush;
 bool dirty_flush_called;
 bool check_pe_callback;
 bool pe_callback_called;
+bool enable_partial_eviction;
 
 CACHETABLE ct;
 
@@ -101,7 +102,10 @@ static void *f2_pin(void *arg) {
     assert(r == 0);
     ct->ev.signal_eviction_thread();
     usleep(1*1024*1024);
-    assert(pe_callback_called);
+    if (enable_partial_eviction)
+        assert(pe_callback_called);
+    else
+        assert(!pe_callback_called);
     pe_callback_called = false;
     r = toku_test_cachetable_unpin(f2, make_blocknum(1), 1, CACHETABLE_CLEAN, make_pair_attr(8));
     check_pe_callback = false;
@@ -121,6 +125,8 @@ cachetable_test (void) {
     toku_cachetable_create(&ct, test_limit, ZERO_LSN, nullptr);
     evictor_test_helpers::disable_ev_thread(&ct->ev); // disable eviction thread
     
+    toku_set_enable_partial_eviction(ct, enable_partial_eviction);
+
     toku_os_recursive_delete(TOKU_TEST_FILENAME);
     r = toku_os_mkdir(TOKU_TEST_FILENAME, S_IRWXU);
     assert_zero(r);
@@ -156,7 +162,10 @@ cachetable_test (void) {
     usleep(2*1024*1024);
     check_flush = true;
     toku_cachefile_close(&f1, false, ZERO_LSN); 
-    assert(dirty_flush_called);
+    if (enable_partial_eviction)
+        assert(dirty_flush_called);
+    else
+        assert(!dirty_flush_called);
     check_flush = false;
 
     void *ret;
@@ -171,7 +180,12 @@ cachetable_test (void) {
 
 int
 test_main(int argc, const char *argv[]) {
-  default_parse_args(argc, argv);
-  cachetable_test();
-  return 0;
+    if (argc!=2) { printf("argcount should be 2.\n");  exit(1); }
+    if (strcmp(argv[1], "enable_pe") == 0) {
+        enable_partial_eviction = true;
+    } else {
+        enable_partial_eviction = false;
+    }
+    cachetable_test();
+    return 0;
 }

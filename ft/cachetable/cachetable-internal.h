@@ -477,6 +477,8 @@ public:
     // function needed for testing
     void get_state(long *size_current_ptr, long *size_limit_ptr);
     void fill_engine_status();
+    void set_enable_partial_eviction(bool enabled);
+    bool get_enable_partial_eviction(void) const;
 private:
     void add_to_size_current(long size);
     void remove_from_size_current(long size);
@@ -506,6 +508,8 @@ private:
     int64_t m_low_size_hysteresis; // if cachetable grows to this size, client threads wake up eviction thread upon adding data
     int64_t m_high_size_watermark; // if cachetable grows to this size, client threads sleep upon adding data
     int64_t m_high_size_hysteresis; // if > cachetable size, then sleeping client threads may wake up
+
+    bool m_enable_partial_eviction; // true if partial evictions are permitted
 
     // used to calculate random numbers
     struct random_data m_random_data;
