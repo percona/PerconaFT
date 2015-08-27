@@ -223,7 +223,7 @@ void locktree::sto_end(void) {
 void locktree::sto_end_early_no_accounting(void *prepared_lkr) {
     sto_migrate_buffer_ranges_to_tree(prepared_lkr);
     sto_end();
-    toku_drd_unsafe_set(&m_sto_score, 0);
+    toku_unsafe_set(m_sto_score, 0);
 }
 
 void locktree::sto_end_early(void *prepared_lkr) {
@@ -278,7 +278,7 @@ void locktree::sto_migrate_buffer_ranges_to_tree(void *prepared_lkr) {
 bool locktree::sto_try_acquire(void *prepared_lkr,
                                TXNID txnid,
                                const DBT *left_key, const DBT *right_key) {
-    if (m_rangetree->is_empty() && m_sto_buffer.is_empty() && data_race::unsafe_read<int>(m_sto_score) >= STO_SCORE_THRESHOLD) {
+    if (m_rangetree->is_empty() && m_sto_buffer.is_empty() && toku_unsafe_fetch(m_sto_score) >= STO_SCORE_THRESHOLD) {
         // We can do the optimization because the rangetree is empty, and
         // we know its worth trying because the sto score is big enough.
         sto_begin(txnid);
@@ -484,16 +484,16 @@ void locktree::remove_overlapping_locks_for_txnid(TXNID txnid,
 }
 
 bool locktree::sto_txnid_is_valid_unsafe(void) const {
-    return data_race::unsafe_read<TXNID>(m_sto_txnid) != TXNID_NONE;
+    return toku_unsafe_fetch(m_sto_txnid) != TXNID_NONE;
 }
 
 int locktree::sto_get_score_unsafe(void) const {
-    return data_race::unsafe_read<int>(m_sto_score);
+    return toku_unsafe_fetch(m_sto_score);
 }
 
 bool locktree::sto_try_release(TXNID txnid) {
     bool released = false;
-    if (data_race::unsafe_read<TXNID>(m_sto_txnid) != TXNID_NONE) {
+    if (toku_unsafe_fetch(m_sto_txnid) != TXNID_NONE) {
         // check the bit again with a prepared locked keyrange,
         // which protects the optimization bits and rangetree data
         concurrent_tree::locked_keyrange lkr;
@@ -533,7 +533,7 @@ void locktree::release_locks(TXNID txnid, const range_buffer *ranges) {
         // the threshold and we'll try the optimization again. This
         // is how a previously multithreaded system transitions into
         // a single threaded system that benefits from the optimization.
-        if (data_race::unsafe_read<int>(m_sto_score) < STO_SCORE_THRESHOLD) {
+        if (toku_unsafe_fetch(m_sto_score) < STO_SCORE_THRESHOLD) {
             toku_sync_fetch_and_add(&m_sto_score, 1);
         }
     }
