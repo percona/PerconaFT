@@ -1,96 +1,43 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
-/*
-COPYING CONDITIONS NOTICE:
-
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
-
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
-
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
-
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
-
-COPYRIGHT NOTICE:
-
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
-
-DISCLAIMER:
-
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
-
-UNIVERSITY PATENT NOTICE:
-
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 #ident "$Id$"
+/*======
+This file is part of PerconaFT.
+
+
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
+
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
+
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+
+----------------------------------------
+
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
+
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
+
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 extern const char *toku_patent_string;
-const char *toku_copyright_string = "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved.";
+const char *toku_copyright_string = "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.";
 
 #include <db.h>
 #include <errno.h>
@@ -252,14 +199,14 @@ static void
 env_fs_report_in_yellow(DB_ENV *UU(env)) {
     char tbuf[26];
     time_t tnow = time(NULL);
-    fprintf(stderr, "%.24s TokuFT file system space is low\n", ctime_r(&tnow, tbuf)); fflush(stderr);
+    fprintf(stderr, "%.24s PerconaFT file system space is low\n", ctime_r(&tnow, tbuf)); fflush(stderr);
 }
 
 static void
 env_fs_report_in_red(DB_ENV *UU(env)) {
     char tbuf[26];
     time_t tnow = time(NULL);
-    fprintf(stderr, "%.24s TokuFT file system space is really low and access is restricted\n", ctime_r(&tnow, tbuf)); fflush(stderr);
+    fprintf(stderr, "%.24s PerconaFT file system space is really low and access is restricted\n", ctime_r(&tnow, tbuf)); fflush(stderr);
 }
 
 static inline uint64_t
@@ -834,20 +781,20 @@ env_open(DB_ENV * env, const char *home, uint32_t flags, int mode) {
     HANDLE_EXTRA_FLAGS(env, flags, 
                        DB_CREATE|DB_PRIVATE|DB_INIT_LOG|DB_INIT_TXN|DB_RECOVER|DB_INIT_MPOOL|DB_INIT_LOCK|DB_THREAD);
 
-    // DB_CREATE means create if env does not exist, and TokuFT requires it because
-    // TokuFT requries DB_PRIVATE.
+    // DB_CREATE means create if env does not exist, and PerconaFT requires it because
+    // PerconaFT requries DB_PRIVATE.
     if ((flags & DB_PRIVATE) && !(flags & DB_CREATE)) {
         r = toku_ydb_do_error(env, ENOENT, "DB_PRIVATE requires DB_CREATE (seems gratuitous to us, but that's BDB's behavior\n");
         goto cleanup;
     }
 
     if (!(flags & DB_PRIVATE)) {
-        r = toku_ydb_do_error(env, ENOENT, "TokuFT requires DB_PRIVATE\n");
+        r = toku_ydb_do_error(env, ENOENT, "PerconaFT requires DB_PRIVATE\n");
         goto cleanup;
     }
 
     if ((flags & DB_INIT_LOG) && !(flags & DB_INIT_TXN)) {
-        r = toku_ydb_do_error(env, EINVAL, "TokuFT requires transactions for logging\n");
+        r = toku_ydb_do_error(env, EINVAL, "PerconaFT requires transactions for logging\n");
         goto cleanup;
     }
 
@@ -959,7 +906,7 @@ env_open(DB_ENV * env, const char *home, uint32_t flags, int mode) {
 
 // This is probably correct, but it will be pain...
 //    if ((flags & DB_THREAD)==0) {
-//        r = toku_ydb_do_error(env, EINVAL, "TokuFT requires DB_THREAD");
+//        r = toku_ydb_do_error(env, EINVAL, "PerconaFT requires DB_THREAD");
 //        goto cleanup;
 //    }
     unused_flags &= ~DB_THREAD;
@@ -971,7 +918,11 @@ env_open(DB_ENV * env, const char *home, uint32_t flags, int mode) {
 
     if (env->i->cachetable==NULL) {
         // If we ran recovery then the cachetable should be set here.
-        r = toku_cachetable_create(&env->i->cachetable, env->i->cachetable_size, ZERO_LSN, env->i->logger);
+        r = toku_cachetable_create_ex(&env->i->cachetable, env->i->cachetable_size,
+                                   env->i->client_pool_threads,
+                                   env->i->cachetable_pool_threads,
+                                   env->i->checkpoint_pool_threads,
+                                   ZERO_LSN, env->i->logger);
         if (r != 0) {
             r = toku_ydb_do_error(env, r, "Cant create a cachetable\n");
             goto cleanup;
@@ -1262,6 +1213,27 @@ env_set_cachesize(DB_ENV * env, uint32_t gbytes, uint32_t bytes, int ncache) {
     return 0;
 }
 
+static int 
+env_set_client_pool_threads(DB_ENV * env, uint32_t threads) {
+    HANDLE_PANICKED_ENV(env);
+    env->i->client_pool_threads = threads;
+    return 0;
+}
+
+static int 
+env_set_cachetable_pool_threads(DB_ENV * env, uint32_t threads) {
+    HANDLE_PANICKED_ENV(env);
+    env->i->cachetable_pool_threads = threads;
+    return 0;
+}
+
+static int 
+env_set_checkpoint_pool_threads(DB_ENV * env, uint32_t threads) {
+    HANDLE_PANICKED_ENV(env);
+    env->i->checkpoint_pool_threads = threads;
+    return 0;
+}
+
 static int env_dbremove(DB_ENV * env, DB_TXN *txn, const char *fname, const char *dbname, uint32_t flags);
 
 static int
@@ -1385,7 +1357,7 @@ env_set_flags(DB_ENV * env, uint32_t flags, int onoff) {
         flags  &= ~DB_AUTO_COMMIT;
     }
     if (flags != 0 && onoff) {
-        return toku_ydb_do_error(env, EINVAL, "TokuFT does not (yet) support any nonzero ENV flags other than DB_AUTO_COMMIT\n");
+        return toku_ydb_do_error(env, EINVAL, "PerconaFT does not (yet) support any nonzero ENV flags other than DB_AUTO_COMMIT\n");
     }
     if   (onoff) env->i->open_flags |=  change;
     else         env->i->open_flags &= ~change;
@@ -1431,7 +1403,7 @@ env_get_lg_max(DB_ENV * env, uint32_t *lg_maxp) {
 static int 
 env_set_lk_detect(DB_ENV * env, uint32_t UU(detect)) {
     HANDLE_PANICKED_ENV(env);
-    return toku_ydb_do_error(env, EINVAL, "TokuFT does not (yet) support set_lk_detect\n");
+    return toku_ydb_do_error(env, EINVAL, "PerconaFT does not (yet) support set_lk_detect\n");
 }
 
 static int 
@@ -1625,6 +1597,24 @@ env_cleaner_get_iterations(DB_ENV * env, uint32_t *iterations) {
     if (!env_opened(env)) r = EINVAL;
     else 
         *iterations = toku_get_cleaner_iterations(env->i->cachetable);
+    return r;
+}
+
+static int
+env_evictor_set_enable_partial_eviction(DB_ENV* env, bool enabled) {
+    HANDLE_PANICKED_ENV(env);
+    int r = 0;
+    if (!env_opened(env)) r = EINVAL;
+    else toku_set_enable_partial_eviction(env->i->cachetable, enabled);
+    return r;
+}
+
+static int
+env_evictor_get_enable_partial_eviction(DB_ENV* env, bool *enabled) {
+    HANDLE_PANICKED_ENV(env);
+    int r = 0;
+    if (!env_opened(env)) r = EINVAL;
+    else *enabled = toku_get_enable_partial_eviction(env->i->cachetable);
     return r;
 }
 
@@ -2503,6 +2493,8 @@ static int iter_txns_callback(TOKUTXN txn, void *extra) {
         reinterpret_cast<iter_txns_callback_extra *>(extra);
     DB_TXN *dbtxn = toku_txn_get_container_db_txn(txn);
     invariant_notnull(dbtxn);
+    struct __toku_db_txn_internal *db_txn_internal __attribute__((__unused__)) = db_txn_struct_i(dbtxn);
+    TOKU_VALGRIND_HG_DISABLE_CHECKING(db_txn_internal, sizeof *db_txn_internal);
     if (db_txn_struct_i(dbtxn)->tokutxn == txn) { // make sure that the dbtxn is fully initialized
         toku_mutex_lock(&db_txn_struct_i(dbtxn)->txn_mutex);
         toku_pthread_rwlock_rdlock(&info->env->i->open_dbs_rwlock);
@@ -2513,6 +2505,7 @@ static int iter_txns_callback(TOKUTXN txn, void *extra) {
         toku_pthread_rwlock_rdunlock(&info->env->i->open_dbs_rwlock);
         toku_mutex_unlock(&db_txn_struct_i(dbtxn)->txn_mutex);
     }
+    TOKU_VALGRIND_HG_ENABLE_CHECKING(db_txn_internal, sizeof *db_txn_internal);
 
     return r;
 }
@@ -2604,7 +2597,12 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     USENV(cleaner_get_period);
     USENV(cleaner_set_iterations);
     USENV(cleaner_get_iterations);
+    USENV(evictor_set_enable_partial_eviction);
+    USENV(evictor_get_enable_partial_eviction);
     USENV(set_cachesize);
+    USENV(set_client_pool_threads);
+    USENV(set_cachetable_pool_threads);
+    USENV(set_checkpoint_pool_threads);
 #if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3
     USENV(get_cachesize);
 #endif
@@ -3065,15 +3063,15 @@ db_strerror(int error) {
         case TOKUDB_OUT_OF_LOCKS:
             return "Out of locks";
         case TOKUDB_DICTIONARY_TOO_OLD:
-            return "Dictionary too old for this version of TokuFT";
+            return "Dictionary too old for this version of PerconaFT";
         case TOKUDB_DICTIONARY_TOO_NEW:
-            return "Dictionary too new for this version of TokuFT";
+            return "Dictionary too new for this version of PerconaFT";
         case TOKUDB_CANCELED:
             return "User cancelled operation";
         case TOKUDB_NO_DATA:
             return "Ran out of data (not EOF)";
         case TOKUDB_HUGE_PAGES_ENABLED:
-            return "Transparent huge pages are enabled but TokuFT's memory allocator will oversubscribe main memory with transparent huge pages.  This check can be disabled by setting the environment variable TOKU_HUGE_PAGES_OK.";
+            return "Transparent huge pages are enabled but PerconaFT's memory allocator will oversubscribe main memory with transparent huge pages.  This check can be disabled by setting the environment variable TOKU_HUGE_PAGES_OK.";
     }
 
     static char unknown_result[100];    // Race condition if two threads call this at the same time. However even in a bad case, it should be some sort of null-terminated string.

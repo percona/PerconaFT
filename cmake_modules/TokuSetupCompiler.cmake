@@ -117,6 +117,13 @@ if (NOT CMAKE_CXX_COMPILER_ID MATCHES Clang)
     )
 endif ()
 
+option (PROFILING "Allow profiling and debug" ON)
+if (PROFILING)
+  set_cflags_if_supported(
+    -fno-omit-frame-pointer
+  )
+endif ()
+
 ## this hits with optimized builds somewhere in ftleaf_split, we don't
 ## know why but we don't think it's a big deal
 set_cflags_if_supported(

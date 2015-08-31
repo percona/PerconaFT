@@ -1,93 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 /*
 
@@ -1041,7 +988,7 @@ exit:
 // We need a function to have something a drd suppression can reference
 // see src/tests/drd.suppressions (unsafe_touch_clock)
 static void unsafe_touch_clock(FTNODE node, int i) {
-    toku_drd_unsafe_set(&node->bp[i].clock_count, static_cast<unsigned char>(1));
+    toku_unsafe_set(&node->bp[i].clock_count, static_cast<unsigned char>(1));
 }
 
 // Callback that states if a partial fetch of the node is necessary
@@ -1461,13 +1408,13 @@ static void inject_message_in_locked_node(
     paranoid_invariant(msg_with_msn.msn().msn == node->max_msn_applied_to_node_on_disk.msn);
 
     if (node->blocknum.b == ft->rightmost_blocknum.b) {
-        if (toku_drd_unsafe_fetch(&ft->seqinsert_score) < FT_SEQINSERT_SCORE_THRESHOLD) {
+        if (toku_unsafe_fetch(&ft->seqinsert_score) < FT_SEQINSERT_SCORE_THRESHOLD) {
             // we promoted to the rightmost leaf node and the seqinsert score has not yet saturated.
             toku_sync_fetch_and_add(&ft->seqinsert_score, 1);
         }
-    } else if (toku_drd_unsafe_fetch(&ft->seqinsert_score) != 0) {
+    } else if (toku_unsafe_fetch(&ft->seqinsert_score) != 0) {
         // we promoted to something other than the rightmost leaf node and the score should reset
-        toku_drd_unsafe_set(&ft->seqinsert_score, static_cast<uint32_t>(0));
+        toku_unsafe_set(&ft->seqinsert_score, static_cast<uint32_t>(0));
     }
 
     // if we call toku_ft_flush_some_child, then that function unpins the root
@@ -1629,16 +1576,16 @@ static inline bool should_inject_in_node(seqinsert_loc loc, int height, int dept
 static void ft_verify_or_set_rightmost_blocknum(FT ft, BLOCKNUM b)
 // Given: 'b', the _definitive_ and constant rightmost blocknum of 'ft'
 {
-    if (toku_drd_unsafe_fetch(&ft->rightmost_blocknum.b) == RESERVED_BLOCKNUM_NULL) {
+    if (toku_unsafe_fetch(&ft->rightmost_blocknum.b) == RESERVED_BLOCKNUM_NULL) {
         toku_ft_lock(ft);
         if (ft->rightmost_blocknum.b == RESERVED_BLOCKNUM_NULL) {
-            toku_drd_unsafe_set(&ft->rightmost_blocknum, b);
+            toku_unsafe_set(&ft->rightmost_blocknum, b);
         }
         toku_ft_unlock(ft);
     }
     // The rightmost blocknum only transitions from RESERVED_BLOCKNUM_NULL to non-null.
     // If it's already set, verify that the stored value is consistent with 'b'
-    invariant(toku_drd_unsafe_fetch(&ft->rightmost_blocknum.b) == b.b);
+    invariant(toku_unsafe_fetch(&ft->rightmost_blocknum.b) == b.b);
 }
 
 bool toku_bnc_should_promote(FT ft, NONLEAF_CHILDINFO bnc) {
@@ -2122,7 +2069,7 @@ static int ft_maybe_insert_into_rightmost_leaf(FT ft, DBT *key, DBT *val, XIDS m
 
     // Don't do the optimization if our heurstic suggests that
     // insertion pattern is not sequential.
-    if (toku_drd_unsafe_fetch(&ft->seqinsert_score) < FT_SEQINSERT_SCORE_THRESHOLD) {
+    if (toku_unsafe_fetch(&ft->seqinsert_score) < FT_SEQINSERT_SCORE_THRESHOLD) {
         goto cleanup;
     }
 
@@ -4376,6 +4323,7 @@ int toku_ft_layer_init(void) {
 
     partitioned_counters_init();
     toku_status_init();
+    toku_context_status_init();
     toku_checkpoint_init();
     toku_ft_serialize_layer_init();
     toku_mutex_init(&ft_open_close_lock, NULL);

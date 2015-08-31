@@ -1,90 +1,39 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
+/*======
+This file is part of PerconaFT.
 
-/*
-COPYING CONDITIONS NOTICE:
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-COPYRIGHT NOTICE:
+----------------------------------------
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2014 Tokutek, Inc.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-DISCLAIMER:
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-UNIVERSITY PATENT NOTICE:
-
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #include "ft/msg_buffer.h"
 #include "util/dbt.h"
@@ -92,6 +41,7 @@ PATENT RIGHTS GRANT:
 void message_buffer::create() {
     _num_entries = 0;
     _memory = nullptr;
+    _memory_usable = 0;
     _memory_size = 0;
     _memory_used = 0;
 }
@@ -102,11 +52,13 @@ void message_buffer::clone(message_buffer *src) {
     _memory_size = src->_memory_size;
     XMALLOC_N(_memory_size, _memory);
     memcpy(_memory, src->_memory, _memory_size);
+    _memory_usable = toku_malloc_usable_size(_memory);
 }
 
 void message_buffer::destroy() {
     if (_memory != nullptr) {
         toku_free(_memory);
+        _memory_usable = 0;
     }
 }
 
@@ -202,6 +154,7 @@ MSN message_buffer::deserialize_from_rbuf_v13(struct rbuf *rb,
 void message_buffer::_resize(size_t new_size) {
     XREALLOC_N(new_size, _memory);
     _memory_size = new_size;
+    _memory_usable = toku_malloc_usable_size(_memory);
 }
 
 static int next_power_of_two (int n) {
@@ -289,7 +242,17 @@ size_t message_buffer::memory_size_in_use() const {
 }
 
 size_t message_buffer::memory_footprint() const {
-    return sizeof(*this) + toku_memory_footprint(_memory, _memory_used);
+#ifdef TOKU_DEBUG_PARANOID
+    // Enable this code if you want to verify that the new way of computing
+    // the memory footprint is the same as the old.
+    // It slows the code down by perhaps 10%.
+    assert(_memory_usable == toku_malloc_usable_size(_memory));
+    size_t fp = toku_memory_footprint(_memory, _memory_used);
+    size_t fpg = toku_memory_footprint_given_usable_size(_memory_used, _memory_usable);
+    if (fp != fpg) printf("ptr=%p mu=%ld fp=%ld fpg=%ld\n", _memory, _memory_usable, fp, fpg);
+    assert(fp  == fpg);
+#endif // TOKU_DEBUG_PARANOID
+    return sizeof(*this) + toku_memory_footprint_given_usable_size(_memory_used, _memory_usable);
 }
 
 bool message_buffer::equals(message_buffer *other) const {

@@ -1,93 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #include <string.h>
 #include <time.h>
@@ -193,6 +140,27 @@ toku_cachetable_get_status(CACHETABLE ct, CACHETABLE_STATUS statp) {
     CT_STATUS_VAL(CT_CLEANER_EXECUTIONS)     = cleaner_executions;
     CT_STATUS_VAL(CT_CLEANER_PERIOD)         = toku_get_cleaner_period_unlocked(ct);
     CT_STATUS_VAL(CT_CLEANER_ITERATIONS)     = toku_get_cleaner_iterations_unlocked(ct);
+    toku_kibbutz_get_status(ct->client_kibbutz,
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_NUM_THREADS),
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_NUM_THREADS_ACTIVE),
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_MAX_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_TOTAL_ITEMS_PROCESSED),
+                            &CT_STATUS_VAL(CT_POOL_CLIENT_TOTAL_EXECUTION_TIME));
+    toku_kibbutz_get_status(ct->ct_kibbutz,
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_NUM_THREADS),
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_NUM_THREADS_ACTIVE),
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_MAX_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_TOTAL_ITEMS_PROCESSED),
+                            &CT_STATUS_VAL(CT_POOL_CACHETABLE_TOTAL_EXECUTION_TIME));
+    toku_kibbutz_get_status(ct->checkpointing_kibbutz,
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_NUM_THREADS),
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_NUM_THREADS_ACTIVE),
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_MAX_QUEUE_SIZE),
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_TOTAL_ITEMS_PROCESSED),
+                            &CT_STATUS_VAL(CT_POOL_CHECKPOINT_TOTAL_EXECUTION_TIME));
     ct->ev.fill_engine_status();
     *statp = ct_status;
 }
@@ -256,10 +224,22 @@ uint32_t toku_get_cleaner_iterations_unlocked (CACHETABLE ct) {
     return ct->cl.get_iterations();
 }
 
+void toku_set_enable_partial_eviction (CACHETABLE ct, bool enabled) {
+    ct->ev.set_enable_partial_eviction(enabled);
+}
+
+bool toku_get_enable_partial_eviction (CACHETABLE ct) {
+    return ct->ev.get_enable_partial_eviction();
+}
+
 // reserve 25% as "unreservable".  The loader cannot have it.
 #define unreservable_memory(size) ((size)/4)
 
-int toku_cachetable_create(CACHETABLE *ct_result, long size_limit, LSN UU(initial_lsn), TOKULOGGER logger) {
+int toku_cachetable_create_ex(CACHETABLE *ct_result, long size_limit,
+                           unsigned long client_pool_threads,
+                           unsigned long cachetable_pool_threads,
+                           unsigned long checkpoint_pool_threads,
+                           LSN UU(initial_lsn), TOKULOGGER logger) {
     int result = 0;
     int r;
 
@@ -273,17 +253,20 @@ int toku_cachetable_create(CACHETABLE *ct_result, long size_limit, LSN UU(initia
 
     int num_processors = toku_os_get_number_active_processors();
     int checkpointing_nworkers = (num_processors/4) ? num_processors/4 : 1;
-    r = toku_kibbutz_create(num_processors, &ct->client_kibbutz);
+    r = toku_kibbutz_create(client_pool_threads ? client_pool_threads : num_processors,
+                            &ct->client_kibbutz);
     if (r != 0) {
         result = r;
         goto cleanup;
     }
-    r = toku_kibbutz_create(2*num_processors, &ct->ct_kibbutz);
+    r = toku_kibbutz_create(cachetable_pool_threads ? cachetable_pool_threads : 2*num_processors,
+                            &ct->ct_kibbutz);
     if (r != 0) {
         result = r;
         goto cleanup;
     }
-    r = toku_kibbutz_create(checkpointing_nworkers, &ct->checkpointing_kibbutz);
+    r = toku_kibbutz_create(checkpoint_pool_threads ? checkpoint_pool_threads : checkpointing_nworkers,
+                            &ct->checkpointing_kibbutz);
     if (r != 0) {
         result = r;
         goto cleanup;
@@ -2489,7 +2472,7 @@ toku_cachetable_minicron_shutdown(CACHETABLE ct) {
 
 void toku_cachetable_prepare_close(CACHETABLE ct UU()) {
     extern bool toku_serialize_in_parallel;
-    toku_drd_unsafe_set(&toku_serialize_in_parallel, true);
+    toku_unsafe_set(&toku_serialize_in_parallel, true);
 }
 
 /* Requires that it all be flushed. */
@@ -3616,6 +3599,8 @@ int evictor::init(long _size_limit, pair_list* _pl, cachefile_list* _cf_list, KI
         m_high_size_watermark = m_high_size_hysteresis + max_diff;
     }
     
+    m_enable_partial_eviction = true;
+
     m_size_reserved = unreservable_memory(_size_limit);
     m_size_current = 0;
     m_size_cloned_data = 0;
@@ -3676,7 +3661,7 @@ void evictor::destroy() {
     if (m_ev_thread_init) {
         toku_mutex_lock(&m_ev_thread_lock);
         m_run_thread = false;
-        this->signal_eviction_thread();
+        this->signal_eviction_thread_locked();
         toku_mutex_unlock(&m_ev_thread_lock);
         void *ret;
         int r = toku_pthread_join(m_ev_thread, &ret); 
@@ -3783,7 +3768,7 @@ uint64_t evictor::reserve_memory(double fraction, uint64_t upper_bound) {
     }
     m_size_reserved += reserved_memory;
     (void) toku_sync_fetch_and_add(&m_size_current, reserved_memory);
-    this->signal_eviction_thread();  
+    this->signal_eviction_thread_locked();  
     toku_mutex_unlock(&m_ev_thread_lock);
 
     if (this->should_client_thread_sleep()) {
@@ -3801,7 +3786,7 @@ void evictor::release_reserved_memory(uint64_t reserved_memory){
     m_size_reserved -= reserved_memory;
     // signal the eviction thread in order to possibly wake up sleeping clients
     if (m_num_sleepers  > 0) {
-        this->signal_eviction_thread();
+        this->signal_eviction_thread_locked();
     }
     toku_mutex_unlock(&m_ev_thread_lock);
 }
@@ -3993,53 +3978,48 @@ bool evictor::run_eviction_on_pair(PAIR curr_in_clock) {
                 curr_in_clock->count--;
             }
         }
-        // call the partial eviction callback
-        curr_in_clock->value_rwlock.write_lock(true);
 
-        void *value = curr_in_clock->value_data;
-        void* disk_data = curr_in_clock->disk_data;
-        void *write_extraargs = curr_in_clock->write_extraargs;
-        enum partial_eviction_cost cost;
-        long bytes_freed_estimate = 0;
-        curr_in_clock->pe_est_callback(
-            value, 
-            disk_data,
-            &bytes_freed_estimate, 
-            &cost, 
-            write_extraargs
-            );
-        if (cost == PE_CHEAP) {
+        if (m_enable_partial_eviction) {
+            // call the partial eviction callback
+            curr_in_clock->value_rwlock.write_lock(true);
+
+            void *value = curr_in_clock->value_data;
+            void* disk_data = curr_in_clock->disk_data;
+            void *write_extraargs = curr_in_clock->write_extraargs;
+            enum partial_eviction_cost cost;
+            long bytes_freed_estimate = 0;
+            curr_in_clock->pe_est_callback(value, disk_data,
+                                           &bytes_freed_estimate, &cost,
+                                           write_extraargs);
+            if (cost == PE_CHEAP) {
+                pair_unlock(curr_in_clock);
+                curr_in_clock->size_evicting_estimate = 0;
+                this->do_partial_eviction(curr_in_clock);
+                bjm_remove_background_job(cf->bjm);
+            } else if (cost == PE_EXPENSIVE) {
+                // only bother running an expensive partial eviction
+                // if it is expected to free space
+                if (bytes_freed_estimate > 0) {
+                    pair_unlock(curr_in_clock);
+                    curr_in_clock->size_evicting_estimate = bytes_freed_estimate;
+                    toku_mutex_lock(&m_ev_thread_lock);
+                    m_size_evicting += bytes_freed_estimate;
+                    toku_mutex_unlock(&m_ev_thread_lock);
+                    toku_kibbutz_enq(m_kibbutz, cachetable_partial_eviction,
+                                     curr_in_clock);
+                } else {
+                    curr_in_clock->value_rwlock.write_unlock();
+                    pair_unlock(curr_in_clock);
+                    bjm_remove_background_job(cf->bjm);
+                }
+            } else {
+                assert(false);
+            }
+        } else {
             pair_unlock(curr_in_clock);
-            curr_in_clock->size_evicting_estimate = 0;
-            this->do_partial_eviction(curr_in_clock);
             bjm_remove_background_job(cf->bjm);
         }
-        else if (cost == PE_EXPENSIVE) {
-            // only bother running an expensive partial eviction
-            // if it is expected to free space
-            if (bytes_freed_estimate > 0) {
-                pair_unlock(curr_in_clock);
-                curr_in_clock->size_evicting_estimate = bytes_freed_estimate;
-                toku_mutex_lock(&m_ev_thread_lock);
-                m_size_evicting += bytes_freed_estimate;
-                toku_mutex_unlock(&m_ev_thread_lock);
-                toku_kibbutz_enq(
-                    m_kibbutz, 
-                    cachetable_partial_eviction, 
-                    curr_in_clock
-                    );
-            }
-            else {
-                curr_in_clock->value_rwlock.write_unlock();
-                pair_unlock(curr_in_clock);
-                bjm_remove_background_job(cf->bjm);
-            }
-        }
-        else {
-            assert(false);
-        }        
-    }
-    else {
+    } else {
         toku::context pe_ctx(CTX_FULL_EVICTION);
 
         // responsibility of try_evict_pair to eventually remove background job
@@ -4219,7 +4199,7 @@ void evictor::decrease_size_evicting(long size_evicting_estimate) {
         m_size_evicting -= size_evicting_estimate;
         assert(m_size_evicting >= 0);
         if (need_to_signal_ev_thread) {
-            this->signal_eviction_thread();
+            this->signal_eviction_thread_locked();
         }
         toku_mutex_unlock(&m_ev_thread_lock);
     }
@@ -4234,7 +4214,7 @@ void evictor::wait_for_cache_pressure_to_subside() {
     uint64_t t0 = toku_current_time_microsec();
     toku_mutex_lock(&m_ev_thread_lock);
     m_num_sleepers++;
-    this->signal_eviction_thread();
+    this->signal_eviction_thread_locked();
     toku_cond_wait(&m_flow_control_cond, &m_ev_thread_lock);    
     m_num_sleepers--;
     toku_mutex_unlock(&m_ev_thread_lock);
@@ -4268,6 +4248,12 @@ void evictor::get_state(long *size_current_ptr, long *size_limit_ptr) {
 // As a result, scheduling is not guaranteed, but that is tolerable.
 //
 void evictor::signal_eviction_thread() {
+    toku_mutex_lock(&m_ev_thread_lock);
+    toku_cond_signal(&m_ev_thread_cond);
+    toku_mutex_unlock(&m_ev_thread_lock);
+}
+
+void evictor::signal_eviction_thread_locked() {
     toku_cond_signal(&m_ev_thread_cond);
 }
 
@@ -4338,6 +4324,14 @@ void evictor::fill_engine_status() {
     CT_STATUS_VAL(CT_WAIT_PRESSURE_TIME) = read_partitioned_counter(m_wait_pressure_time);
     CT_STATUS_VAL(CT_LONG_WAIT_PRESSURE_COUNT) = read_partitioned_counter(m_long_wait_pressure_count);
     CT_STATUS_VAL(CT_LONG_WAIT_PRESSURE_TIME) = read_partitioned_counter(m_long_wait_pressure_time);
+}
+
+void evictor::set_enable_partial_eviction(bool enabled) {
+    m_enable_partial_eviction = enabled;
+}
+
+bool evictor::get_enable_partial_eviction(void) const {
+    return m_enable_partial_eviction;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4825,6 +4819,7 @@ void cachefile_list::remove_stale_cf_unlocked(CACHEFILE cf) {
 
 FILENUM cachefile_list::reserve_filenum() {
     // taking a write lock because we are modifying next_filenum_to_use
+    FILENUM filenum = FILENUM_NONE;
     write_lock();
     while (1) {
         int r = m_active_filenum.find_zero<FILENUM, cachefile_find_by_filenum>(m_next_filenum_to_use, nullptr, nullptr);
@@ -4833,10 +4828,17 @@ FILENUM cachefile_list::reserve_filenum() {
             continue;
         }
         assert(r == DB_NOTFOUND);
+
+        // skip the reserved value UINT32_MAX and wrap around to zero
+        if (m_next_filenum_to_use.fileid == FILENUM_NONE.fileid) {
+            m_next_filenum_to_use.fileid = 0;
+            continue;
+        }
+
+        filenum = m_next_filenum_to_use;
+        m_next_filenum_to_use.fileid++;
         break;
     }
-    FILENUM filenum = m_next_filenum_to_use;
-    m_next_filenum_to_use.fileid++;
     write_unlock();
     return filenum;
 }

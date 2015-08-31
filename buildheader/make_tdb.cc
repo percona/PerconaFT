@@ -1,93 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
-/*
-COPYING CONDITIONS NOTICE:
-
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
-
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
-
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
-
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
-
-COPYRIGHT NOTICE:
-
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
-
-DISCLAIMER:
-
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
-
-UNIVERSITY PATENT NOTICE:
-
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
 #ident "$Id$"
-/* LICENSE:  This file is licensed under the GPL or from Tokutek. */
+/*======
+This file is part of PerconaFT.
+
+
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
+
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
+
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+
+----------------------------------------
+
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
+
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
+
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 /* Make a db.h that will be link-time compatible with Sleepycat's Berkeley DB. */
 
@@ -342,8 +289,8 @@ static void print_defines (void) {
         dodefine_from_track(txn_flags, DB_READ_COMMITTED_ALWAYS);
     }
     
-    /* TokuFT specific error codes*/
-    printf("/* TokuFT specific error codes */\n");
+    /* PerconaFT specific error codes*/
+    printf("/* PerconaFT specific error codes */\n");
     dodefine(TOKUDB_OUT_OF_LOCKS);
     dodefine(TOKUDB_SUCCEEDED_EARLY);
     dodefine(TOKUDB_FOUND_BUT_REJECTED);
@@ -422,10 +369,12 @@ static void print_db_env_struct (void) {
                              "int (*cleaner_get_period)                   (DB_ENV*, uint32_t*) /* Retrieve the delay between automatic cleaner attempts.  0 means disabled. */",
                              "int (*cleaner_set_iterations)               (DB_ENV*, uint32_t) /* Change the number of attempts on each cleaner invokation.  0 means disabled. */",
                              "int (*cleaner_get_iterations)               (DB_ENV*, uint32_t*) /* Retrieve the number of attempts on each cleaner invokation.  0 means disabled. */",
+                             "int (*evictor_set_enable_partial_eviction)  (DB_ENV*, bool) /* Enables or disabled partial eviction of nodes from cachetable. */",
+                             "int (*evictor_get_enable_partial_eviction)  (DB_ENV*, bool*) /* Retrieve the status of partial eviction of nodes from cachetable. */",
                              "int (*checkpointing_postpone)               (DB_ENV*) /* Use for 'rename table' or any other operation that must be disjoint from a checkpoint */",
                              "int (*checkpointing_resume)                 (DB_ENV*) /* Alert tokuft that 'postpone' is no longer necessary */",
                              "int (*checkpointing_begin_atomic_operation) (DB_ENV*) /* Begin a set of operations (that must be atomic as far as checkpoints are concerned). i.e. inserting into every index in one table */",
-                             "int (*checkpointing_end_atomic_operation)   (DB_ENV*) /* End   a set of operations (that must be atomic as far as checkpoints are concerned). */",
+                             "int (*checkpointing_end_atomic_operation)   (DB_ENV*) /* End a set of operations (that must be atomic as far as checkpoints are concerned). */",
                              "int (*set_default_bt_compare)               (DB_ENV*,int (*bt_compare) (DB *, const DBT *, const DBT *)) /* Set default (key) comparison function for all DBs in this environment.  Required for RECOVERY since you cannot open the DBs manually. */",
                              "int (*get_engine_status_num_rows)           (DB_ENV*, uint64_t*)  /* return number of rows in engine status */",
                              "int (*get_engine_status)                    (DB_ENV*, TOKU_ENGINE_STATUS_ROW, uint64_t, uint64_t*, fs_redzone_state*, uint64_t*, char*, int, toku_engine_status_include_type) /* Fill in status struct and redzone state, possibly env panic string */",
@@ -468,6 +417,9 @@ static void print_db_env_struct (void) {
                              "uint64_t (*get_loader_memory_size)(DB_ENV *env)",
                              "void (*set_killed_callback)(DB_ENV *env, uint64_t default_killed_time_msec, uint64_t (*get_killed_time_callback)(uint64_t default_killed_time_msec), int (*killed_callback)(void))",
                              "void (*do_backtrace)                        (DB_ENV *env)",
+                             "int (*set_client_pool_threads)(DB_ENV *, uint32_t)",
+                             "int (*set_cachetable_pool_threads)(DB_ENV *, uint32_t)",
+                             "int (*set_checkpoint_pool_threads)(DB_ENV *, uint32_t)",
                              NULL};
 
         sort_and_dump_fields("db_env", true, extra);
@@ -483,7 +435,9 @@ static void print_db_key_range_struct (void) {
 
 static void print_db_lsn_struct (void) {
     field_counter=0;
-    sort_and_dump_fields("db_lsn", false, NULL);
+    /* A dummy field to make sizeof(DB_LSN) equal in C and C++ */
+    const char *extra[] = { "char dummy", NULL };
+    sort_and_dump_fields("db_lsn", false, extra);
 }
 
 static void print_dbt_struct (void) {
@@ -577,7 +531,7 @@ static void print_db_txn_struct (void) {
     STRUCT_SETUP(DB_TXN, prepare,     "int (*%s) (DB_TXN*, uint8_t gid[DB_GID_SIZE], uint32_t flags)");
     STRUCT_SETUP(DB_TXN, discard,     "int (*%s) (DB_TXN*, uint32_t)");
     STRUCT_SETUP(DB_TXN, id,          "uint32_t (*%s) (DB_TXN *)");
-    STRUCT_SETUP(DB_TXN, mgrp,        "DB_ENV *%s /* In TokuFT, mgrp is a DB_ENV, not a DB_TXNMGR */");
+    STRUCT_SETUP(DB_TXN, mgrp,        "DB_ENV *%s /* In PerconaFT, mgrp is a DB_ENV, not a DB_TXNMGR */");
     STRUCT_SETUP(DB_TXN, parent,      "DB_TXN *%s");
     const char *extra[] = {
 	"int (*txn_stat)(DB_TXN *, struct txn_stat **)", 
@@ -632,8 +586,8 @@ int main (int argc, char *const argv[] __attribute__((__unused__))) {
 
     printf("#ifndef _DB_H\n");
     printf("#define _DB_H\n");
-    printf("/* This code generated by make_db_h.   Copyright (c) 2007-2013 Tokutek */\n");
-    printf("#ident \"Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved.\"\n");
+    printf("/* This code generated by make_db_h.   Copyright (c) 2006, 2015, Percona and/or its affiliates. */\n");
+    printf("#ident \"Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.\"\n");
     printf("#include <sys/types.h>\n");
     printf("/*stdio is needed for the FILE* in db->verify*/\n");
     printf("#include <stdio.h>\n");
@@ -645,9 +599,9 @@ int main (int argc, char *const argv[] __attribute__((__unused__))) {
 
     printf("#define DB_VERSION_MAJOR %d\n", DB_VERSION_MAJOR);
     printf("#define DB_VERSION_MINOR %d\n", DB_VERSION_MINOR);
-    printf("/* As of r40364 (post TokuFT 5.2.7), the patch version number is 100+ the BDB header patch version number.*/\n");
+    printf("/* As of r40364 (post PerconaFT 5.2.7), the patch version number is 100+ the BDB header patch version number.*/\n");
     printf("#define DB_VERSION_PATCH %d\n", 100+DB_VERSION_PATCH);
-    printf("#define DB_VERSION_STRING \"Tokutek: TokuFT %d.%d.%d\"\n", DB_VERSION_MAJOR, DB_VERSION_MINOR, 100+DB_VERSION_PATCH);
+    printf("#define DB_VERSION_STRING \"Percona: PerconaFT %d.%d.%d\"\n", DB_VERSION_MAJOR, DB_VERSION_MINOR, 100+DB_VERSION_PATCH);
 
 #ifndef DB_GID_SIZE
 #define DB_GID_SIZE DB_XIDDATASIZE
@@ -699,6 +653,7 @@ int main (int argc, char *const argv[] __attribute__((__unused__))) {
     // compression methods
     printf("typedef enum toku_compression_method {\n");
     printf("    TOKU_NO_COMPRESSION = 0,\n");  // "identity" compression
+    printf("    TOKU_SNAPPY_METHOD  = 7,\n");  // google snappy
     printf("    TOKU_ZLIB_METHOD    = 8,\n");  // RFC 1950 says use 8 for zlib.  It reserves 15 to allow more bytes.
     printf("    TOKU_QUICKLZ_METHOD = 9,\n");  // We use 9 for QUICKLZ (the QLZ compression level is stored int he high-order nibble).  I couldn't find any standard for any other numbers, so I just use 9. -Bradley
     printf("    TOKU_LZMA_METHOD    = 10,\n");  // We use 10 for LZMA.  (Note the compression level is stored in the high-order nibble).
