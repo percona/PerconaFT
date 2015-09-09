@@ -178,7 +178,7 @@ namespace ftcxx {
 
         Stats get_stats() const {
             Stats stats;
-            DB_BTREE_STAT64 s = {0, 0, 0};
+            DB_BTREE_STAT64 s = {0, 0, 0, 0, 0, 0, 0};
             int r = _db->stat64(_db, NULL, &s);
             handle_ft_retval(r);
             stats.data_size = s.bt_dsize;
