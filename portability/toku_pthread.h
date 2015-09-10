@@ -80,7 +80,8 @@ typedef struct toku_mutex_aligned {
 //   toku_mutex_t foo = ZERO_MUTEX_INITIALIZER;
 //   #pragma GCC diagnostic pop
 //
-// In general it will be a lot of busy work to make this codebase compile cleanly with -Wmissing-field-initializers
+// In general it will be a lot of busy work to make this codebase compile
+// cleanly with -Wmissing-field-initializers
 
 # define ZERO_MUTEX_INITIALIZER {}
 
