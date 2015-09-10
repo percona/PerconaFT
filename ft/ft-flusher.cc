@@ -1897,12 +1897,12 @@ void toku_ft_flush_node_on_background_thread(FT ft, FTNODE parent)
     FTNODE child;
     uint32_t childfullhash = compute_child_fullhash(ft->cf, parent, childnum);
     int r = toku_maybe_pin_ftnode_clean(ft, BP_BLOCKNUM(parent, childnum), childfullhash, PL_WRITE_EXPENSIVE, &child);
-    if (r == -2) {
+    if (r == MAYBE_PIN_FAILED_PENDING) {
         // The child was blocked on checkpoint.
         // Don't do anything for now, just unlock the parent.
         // Eventually we should note that the parent needs some work (after the checkpoint)
         toku_unpin_ftnode(ft, parent);
-    } else if (r != 0) {
+    } else if (r != MAYBE_PIN_CLEAN_SUCCESS) {
         // In this case, we could not lock the child, so just place the parent on the background thread
         // In the callback, we will use toku_ft_flush_some_child, which checks to
         // see if we should blow away the old basement nodes.

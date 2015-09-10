@@ -318,11 +318,11 @@ void toku_pin_ftnode(FT ft,
     toku_pin_ftnode_with_dep_nodes(ft, blocknum, fullhash, bfe, lock_type, 0, nullptr, node_p, move_messages);
 }
 
-int toku_maybe_pin_ftnode_clean(FT ft, BLOCKNUM blocknum, uint32_t fullhash, pair_lock_type lock_type, FTNODE *nodep) 
+enum maybe_pin_result toku_maybe_pin_ftnode_clean(FT ft, BLOCKNUM blocknum, uint32_t fullhash, pair_lock_type lock_type, FTNODE *nodep) 
 // Specification: See the ft-cachetable-wrappers.h for the specification of this function.
 {
     void *node_v;
-    int r = toku_cachetable_maybe_get_and_pin_clean(ft->cf, blocknum, fullhash, lock_type, &node_v);
+    enum maybe_pin_result r = toku_cachetable_maybe_get_and_pin_clean(ft->cf, blocknum, fullhash, lock_type, &node_v);
     if (r != 0) {
         goto cleanup;
     }

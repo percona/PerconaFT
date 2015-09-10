@@ -607,6 +607,7 @@ void toku_ftnode_clone_callback(
     void* write_extraargs
     )
 {
+    printf("%s:%d cloning\n", __FILE__, __LINE__);
     FTNODE node = static_cast<FTNODE>(value_data);
     toku_ftnode_assert_fully_in_memory(node);
     FT ft = static_cast<FT>(write_extraargs);
@@ -1716,7 +1717,7 @@ static void push_something_in_subtree(
                     }
                 } else {
                     r = toku_maybe_pin_ftnode_clean(ft, child_blocknum, child_fullhash, lock_type, &child);
-                    if (r != 0) {
+                    if (r != MAYBE_PIN_CLEAN_SUCCESS) {
                         // We couldn't get the child cheaply, so give up on promoting.
                         FT_STATUS_INC(FT_PRO_NUM_STOP_LOCK_CHILD, 1);
                         goto relock_and_push_here;

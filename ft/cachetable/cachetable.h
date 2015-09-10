@@ -422,7 +422,8 @@ int toku_cachetable_maybe_get_and_pin (CACHEFILE, CACHEKEY, uint32_t /*fullhash*
 // Returns: If the the item is already in memory, then return 0 and store it in the
 // void**.  If the item is not in memory, then return a nonzero error number.
 
-int toku_cachetable_maybe_get_and_pin_clean (CACHEFILE, CACHEKEY, uint32_t /*fullhash*/, pair_lock_type, void**);
+enum maybe_pin_result { MAYBE_PIN_CLEAN_SUCCESS = 0, MAYBE_PIN_FAILED_BLOCKED = -1, MAYBE_PIN_FAILED_PENDING = -2 };
+enum maybe_pin_result toku_cachetable_maybe_get_and_pin_clean (CACHEFILE, CACHEKEY, uint32_t /*fullhash*/, pair_lock_type, void**);
 // Effect: Like maybe get and pin, but may pin a clean pair.
 
 int toku_cachetable_unpin(CACHEFILE, PAIR, enum cachetable_dirty dirty, PAIR_ATTR size);
@@ -575,3 +576,4 @@ void toku_pair_list_set_lock_size(uint32_t num_locks);
 // layer.
 __attribute__((const,nonnull))
 bool toku_ctpair_is_write_locked(PAIR pair);
+

@@ -125,10 +125,10 @@ void toku_pin_ftnode_with_dep_nodes(
     bool move_messages
     );
 
-int toku_maybe_pin_ftnode_clean(FT ft, BLOCKNUM blocknum, uint32_t fullhash, pair_lock_type lock_type, FTNODE *nodep);
-// Effect: If pinning is cheap pin the ftnode, and return the pinned ftnode in *nodep, returning 0.
-//   Else if the node is pending a checkpoint, return -2.
-//   Else (the node is already locked or I/O would be required to pin the node), the node is not pinned and -1 is returned.
+enum maybe_pin_result toku_maybe_pin_ftnode_clean(FT ft, BLOCKNUM blocknum, uint32_t fullhash, pair_lock_type lock_type, FTNODE *nodep);
+// Effect: If pinning is cheap pin the ftnode, and return the pinned ftnode in *nodep, returning MAYBE_PIN_CLEAN_SUCCESS.
+//   Else if the node is pending a checkpoint, return MAYBE_PIN_FAILED_PENDING.
+//   Else (the node is already locked or I/O would be required to pin the node), the node is not pinned and MAYBE_PIN_FAILED_BLOCKED is returned.
 
 /**
  * Effect: Unpin an ftnode.

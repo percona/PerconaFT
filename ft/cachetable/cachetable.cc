@@ -1771,19 +1771,19 @@ int toku_cachetable_maybe_get_and_pin (CACHEFILE cachefile, CACHEKEY key, uint32
     return r;
 }
 
-int toku_cachetable_maybe_get_and_pin_clean (CACHEFILE cachefile, CACHEKEY key, uint32_t fullhash, pair_lock_type lock_type, void**value) 
+enum maybe_pin_result toku_cachetable_maybe_get_and_pin_clean (CACHEFILE cachefile, CACHEKEY key, uint32_t fullhash, pair_lock_type lock_type, void**value) 
 // Effect: Same as toku_cachetable_maybe_get_and_pin except that we
 //   don't care if the node is clean or dirty (return the node even if
 //   it is clean.) The return codes are slightly different to reflect
 //   that a checkpoint is pending.
 //
-//   Specifically if the page has a checkpoint pending, we return -2 (don't pin it)
-//   If the page is otherwise expensive to checkpoint, return -1 (don't pin it).
+//   Specifically if the page has a checkpoint pending, we return MAYBE_PIN_FAILED_PENDING (-2) (don't pin it)
+//   If the page is otherwise expensive to checkpoint, return MAYBE_PIN_FAILED_PENDING (-1) (don't pin it).
 //
 // Usage note:  This is used by flusher threads to possibly pin a child on client thread if pinning is cheap.
 {
     CACHETABLE ct = cachefile->cachetable;
-    int r = -1;
+    enum maybe_pin_result r = MAYBE_PIN_FAILED_BLOCKED;
     ct->list.pair_lock_by_fullhash(fullhash);
     PAIR p = ct->list.find_pair(cachefile, key, fullhash);
     if (p) {
@@ -1819,14 +1819,14 @@ int toku_cachetable_maybe_get_and_pin_clean (CACHEFILE cachefile, CACHEKEY key, 
                 if (checkpoint_pending) {
                     // Previously: write_locked_pair_for_checkpoint(ct, p, checkpoint_pending);
                     // Now return -2
-                    r = -2;
+                    r = MAYBE_PIN_FAILED_PENDING;
                 }
             }
             break;
         }
         if (got_lock) {
             *value = p->value_data;
-            r = 0;
+            r = MAYBE_PIN_CLEAN_SUCCESS;
         }
     } else {
         ct->list.pair_unlock_by_fullhash(fullhash);
