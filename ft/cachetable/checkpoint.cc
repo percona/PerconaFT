@@ -259,6 +259,7 @@ toku_checkpoint(CHECKPOINTER cp, TOKULOGGER logger,
     CP_STATUS_VAL(CP_TIME_LAST_CHECKPOINT_BEGIN) = time(NULL);
     uint64_t t_checkpoint_begin_start = toku_current_time_microsec();
     toku_cachetable_begin_checkpoint(cp, logger);
+    printf("begin_checkpoint\n");
     uint64_t t_checkpoint_begin_end = toku_current_time_microsec();
 
     toku_ft_open_close_unlock();
@@ -273,6 +274,7 @@ toku_checkpoint(CHECKPOINTER cp, TOKULOGGER logger,
     toku_cachetable_end_checkpoint(cp, logger, callback2_f, extra2);
     uint64_t t_checkpoint_end_end = toku_current_time_microsec();
 
+    printf("end_checkpoint\n");
     SET_CHECKPOINT_FOOTPRINT(50);
     if (logger) {
         last_completed_checkpoint_lsn = logger->last_completed_checkpoint_lsn;
