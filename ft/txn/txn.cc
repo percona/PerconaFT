@@ -256,15 +256,16 @@ static txn_child_manager tcm;
         // TOKU_MUTEX_INITIALIZER) except in static variables, and this
         // is initializing an auto variable.
         // 
-        // Simply avoid initializing these fields, which avoids
-        // -Wmissing-field-initializer errors under gcc (since this
-        // initialization uses designated initializers.)
+        // And we cannot simply avoid initializing these fields
+        // because, although it avoids -Wmissing-field-initializer
+        // errors under gcc, it gets other errors about non-trivial
+        // designated initializers not being supported.
 
         .txn_lock = ZERO_MUTEX_INITIALIZER,   // Not TOKU_MUTEX_INITIALIZER
         .open_fts = open_fts,
         .roll_info = roll_info,
-        .state_lock = ZERO_MUTEX_INITIALIZER,
-        .state_cond = ZERO_COND_INITIALIZER,
+        .state_lock = ZERO_MUTEX_INITIALIZER, // Not TOKU_MUTEX_INITIALIZER
+        .state_cond = ZERO_COND_INITIALIZER,  // Not TOKU_COND_INITIALIZER
         .state = TOKUTXN_LIVE,
         .num_pin = 0,
         .client_id = 0,
