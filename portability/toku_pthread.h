@@ -226,15 +226,9 @@ typedef struct toku_cond {
     pthread_cond_t pcond;
 } toku_cond_t;
 
-// Different OSes implement mutexes as different amounts of nested structs.
-// C++ will fill out all missing values with zeroes if you provide at least one zero, but it needs the right amount of nesting.
-#if defined(__FreeBSD__)
-# define ZERO_COND_INITIALIZER {0}
-#elif defined(__APPLE__)
-# define ZERO_COND_INITIALIZER {{0}}
-#else // __linux__, at least
-# define ZERO_COND_INITIALIZER {{{0}}}
-#endif
+// Same considerations as for ZERO_MUTEX_INITIALIZER apply
+#define ZERO_COND_INITIALIZER {}
+
 #define TOKU_COND_INITIALIZER {PTHREAD_COND_INITIALIZER}
 
 static inline void
