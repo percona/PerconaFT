@@ -138,6 +138,9 @@ int toku_cachefile_of_filenum (CACHETABLE t, FILENUM filenum, CACHEFILE *cf);
 // During a transaction, we cannot reuse an iname.
 int toku_cachefile_of_iname_in_env (CACHETABLE ct, const char *iname_in_env, CACHEFILE *cf);
 
+// Check a cachefile is in checkpoint or NOT
+bool toku_cachefile_forcheckpoint(CACHEFILE cf);
+
 // Get the iname (within the cwd) associated with the cachefile
 // Return the filename
 char *toku_cachefile_fname_in_cwd (CACHEFILE cf);

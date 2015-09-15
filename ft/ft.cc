@@ -256,7 +256,9 @@ static void ft_close(CACHEFILE cachefile, int fd, void *header_v, bool oplsn_val
     }
     if (ft->h->dirty) {               // this is the only place this bit is tested (in currentheader)
         bool do_checkpoint = true;
-        if (logger && logger->rollback_cachefile == cachefile) {
+        bool for_checkpoint = toku_cachefile_forcheckpoint(cachefile);
+        // It would be better for FT to update header only in checkpoint, so all FT files keep consistency before next checkpoint.
+        if ((!for_checkpoint) || (logger && logger->rollback_cachefile == cachefile)) {
             do_checkpoint = false;
         }
         if (do_checkpoint) {
