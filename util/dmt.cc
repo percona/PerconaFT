@@ -870,26 +870,42 @@ void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::rebalance(subtree *const subtree
 
 template<typename dmtdata_t, typename dmtdataout_t, typename dmtwriter_t>
 void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::copyout(uint32_t *const outlen, dmtdata_t *const out, const dmt_node *const n) {
-    *outlen = n->value_length;
-    *out = n->value;
+    if (outlen) {
+        *outlen = n->value_length;
+    }
+    if (out) {
+        *out = n->value;
+    }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, typename dmtwriter_t>
 void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::copyout(uint32_t *const outlen, dmtdata_t **const out, dmt_node *const n) {
-    *outlen = n->value_length;
-    *out = &n->value;
+    if (outlen) {
+        *outlen = n->value_length;
+    }
+    if (out) {
+        *out = &n->value;
+    }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, typename dmtwriter_t>
 void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::copyout(uint32_t *const outlen, dmtdata_t *const out, const uint32_t len, const dmtdata_t *const stored_value_ptr) {
-    *outlen = len;
-    *out = *stored_value_ptr;
+    if (outlen) {
+        *outlen = len;
+    }
+    if (out) {
+        *out = *stored_value_ptr;
+    }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, typename dmtwriter_t>
 void dmt<dmtdata_t, dmtdataout_t, dmtwriter_t>::copyout(uint32_t *const outlen, dmtdata_t **const out, const uint32_t len, dmtdata_t *const stored_value_ptr) {
-    *outlen = len;
-    *out = stored_value_ptr;
+    if (outlen) {
+        *outlen = len;
+    }
+    if (out) {
+        *out = stored_value_ptr;
+    }
 }
 
 template<typename dmtdata_t, typename dmtdataout_t, typename dmtwriter_t>
