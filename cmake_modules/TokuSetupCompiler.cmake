@@ -188,6 +188,16 @@ if (NOT CMAKE_CXX_COMPILER_ID STREQUAL Clang)
   set_cflags_if_supported(-Wcast-align)
 endif ()
 
+## Clang's pointer comparison warnings create false
+## negatives when instantiating templates that are
+## sometimes instantiated with null pointers and
+## other times with non-null local variable addresses.
+## The DMT implementation and test are examples.
+if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
+   set_cflags_if_supported(-Wno-tautological-pointer-compare)
+   set_cflags_if_supported(-Wno-pointer-bool-conversion)
+endif()
+
 ## always want these
 set(CMAKE_C_FLAGS "-Wall -Werror ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "-Wall -Werror ${CMAKE_CXX_FLAGS}")
