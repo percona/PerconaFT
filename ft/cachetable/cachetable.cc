@@ -251,7 +251,7 @@ int toku_cachetable_create_ex(CACHETABLE *ct_result, long size_limit,
     ct->list.init();
     ct->cf_list.init();
 
-    int num_processors = toku_os_get_number_active_processors();
+    int num_processors = toku_os_get_number_cpus();
     int checkpointing_nworkers = (num_processors/4) ? num_processors/4 : 1;
     r = toku_kibbutz_create(client_pool_threads ? client_pool_threads : num_processors,
                             &ct->client_kibbutz);

@@ -50,11 +50,8 @@ int toku_os_getpid(void)   __attribute__((__visibility__("default")));
 // Returns: the current thread id
 int toku_os_gettid(void)  __attribute__((__visibility__("default")));
 
-// Returns: the number of processors in the system
-int toku_os_get_number_processors(void);
-
-// Returns: the number of active processors in the system
-int toku_os_get_number_active_processors(void);
+// Returns: the number of cpus in the system
+int toku_os_get_number_cpus(void);
 
 // Returns: the system page size (in bytes)
 int toku_os_get_pagesize(void);

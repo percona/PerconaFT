@@ -425,7 +425,7 @@ main(int argc, char const * const argv[])
     }
 
     // body of toku_ft_serialize_init();
-    num_cores = toku_os_get_number_active_processors();
+    num_cores = toku_os_get_number_cpus();
     r = toku_thread_pool_create(&ft_pool, num_cores); lazy_assert_zero(r);
     assert_zero(r);
 

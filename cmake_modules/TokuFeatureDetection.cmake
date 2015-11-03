@@ -43,6 +43,7 @@ check_include_files(sys/sysctl.h HAVE_SYS_SYSCTL_H)
 check_include_files(sys/syslimits.h HAVE_SYS_SYSLIMITS_H)
 check_include_files(sys/time.h HAVE_SYS_TIME_H)
 check_include_files(unistd.h HAVE_UNISTD_H)
+check_include_files(sched.h HAVE_SCHED_H)
 
 include(CheckSymbolExists)
 
@@ -112,6 +113,7 @@ check_function_exists(pthread_yield_np HAVE_PTHREAD_YIELD_NP)
 ## check if we have pthread_getthreadid_np() (i.e. freebsd)
 check_function_exists(pthread_getthreadid_np HAVE_PTHREAD_GETTHREADID_NP)
 check_function_exists(sched_getcpu HAVE_SCHED_GETCPU)
+check_function_exists(sched_getaffinity HAVE_SCHED_GETAFFINITY)
 
 include(CheckCSourceCompiles)
 
