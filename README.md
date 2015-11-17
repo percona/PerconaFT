@@ -121,3 +121,54 @@ See [COPYING.AGPLv3][agpllicense],
 [agpllicense]: http://github.com/Perona/PerconaFT/blob/master/COPYING.AGPLv3
 [gpllicense]: http://github.com/Perona/PerconaFT/blob/master/COPYING.GPLv2
 [patents]: http://github.com/Perona/PerconaFT/blob/master/PATENTS
+
+
+Coding standards
+----------------
+
+Code contributions must conform to the [Google C++ Style Guide][googlec++styleguide].
+
+Lines, spaces and tabs:
+  - Source files must use spaces, no tabs.
+  - Tabs are four spaces.
+  - Lines must not exceed 80 characters and must be clean and free of trailing whitespace.
+  - Assignments and comparisons must have exacly one space on each side of the operator.
+  - if, for, while, switch, etc... must all be in the form of "if (...) {"
+
+Function declarations, definitions, calls, and initializer lists:
+  - Should be on a single line if possible.
+  - If would exceed 80 characters, the arguments must all follow on subsequent lines, one argument per line, one indent more then the initiating line.
+  - Closing ) and opening { should be on the same line as the last argument.
+
+Example:
+```C
+static int my_function(
+    int first_argument,
+    int second_argument,
+    int third_argument,
+    int fourth_argument,
+    int fifth_argument) {
+
+    int ret = 0;
+    if (first_argument || second_argument || third_argument ||
+        fourth_argument) {
+        ret = first_argument + second_argument + third_argument +
+              fourth_argument;
+    } else {
+        ret = fifth_argument;
+    }
+    return ret;
+}
+static int some_other_function() {
+    return my_function(
+        somevalue1,
+        somevalue2,
+        somevalue3,
+        somevalue4,
+        somevalue5);
+}
+```
+
+When contributing code, if you encounter code that is out of compliance, you should make a reasonabe effort to correct any code that is adjacent to your changes.
+
+[googlec++styleguide]: https://google.github.io/styleguide/cppguide.html
