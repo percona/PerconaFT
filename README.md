@@ -118,6 +118,6 @@ See [COPYING.AGPLv3][agpllicense],
 [COPYING.GPLv2][gpllicense], and
 [PATENTS][patents].
 
-[agpllicense]: http://github.com/Perona/PerconaFT/blob/master/COPYING.AGPLv3
-[gpllicense]: http://github.com/Perona/PerconaFT/blob/master/COPYING.GPLv2
-[patents]: http://github.com/Perona/PerconaFT/blob/master/PATENTS
+[agpllicense]: http://github.com/Percona/PerconaFT/blob/master/COPYING.AGPLv3
+[gpllicense]: http://github.com/Percona/PerconaFT/blob/master/COPYING.GPLv2
+[patents]: http://github.com/Percona/PerconaFT/blob/master/PATENTS
