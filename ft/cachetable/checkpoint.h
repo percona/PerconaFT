@@ -107,8 +107,6 @@ typedef enum {SCHEDULED_CHECKPOINT  = 0,   // "normal" checkpoint taken on check
 // Callbacks are primarily intended for use in testing.
 // caller_id identifies why the checkpoint is being taken.
 int toku_checkpoint(CHECKPOINTER cp, struct tokulogger *logger,
-                    void (*callback_f)(void *extra), void *extra,
-                    void (*callback2_f)(void *extra2), void *extra2,
                     checkpoint_caller_t caller_id);
 
 /******
@@ -118,3 +116,9 @@ int toku_checkpoint(CHECKPOINTER cp, struct tokulogger *logger,
  * (If checkpoint is in progress, it may overwrite status info while it is being read.)
  *****/
 void toku_checkpoint_get_status(CACHETABLE ct, CHECKPOINT_STATUS stat);
+
+// These are callbacks that are not designed to be used in production (but they have crept into the threaded_stress_test_helpers)
+// The first callback happens at the beginning of a checkpoint.
+// The second callback happens at the end of a checkpoint.
+void toku_checkpoint_set_callback(void (*callback)(void*), void *extra);
+void toku_checkpoint_set_callback2(void (*callback)(void*), void *extra);

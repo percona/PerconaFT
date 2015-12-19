@@ -147,7 +147,7 @@ static void cachetable_prefetch_checkpoint_test(int n, enum cachetable_dirty dir
     // all items should be kept in the cachetable
     n_flush = n_write_me = n_keep_me = n_fetch = 0;
     CHECKPOINTER cp = toku_cachetable_get_checkpointer(ct);
-    r = toku_checkpoint(cp, NULL, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);
+    r = toku_checkpoint(cp, NULL, CLIENT_CHECKPOINT);
     assert(r == 0);
     assert(n_flush == n && n_write_me == n && n_keep_me == n);
 
@@ -176,7 +176,7 @@ static void cachetable_prefetch_checkpoint_test(int n, enum cachetable_dirty dir
     // a subsequent checkpoint should cause no flushes, or writes since all of the items are clean
     n_flush = n_write_me = n_keep_me = n_fetch = 0;
 
-    r = toku_checkpoint(cp, NULL, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);
+    r = toku_checkpoint(cp, NULL, CLIENT_CHECKPOINT);
     assert(r == 0);
     assert(n_flush == 0 && n_write_me == 0 && n_keep_me == 0);
 

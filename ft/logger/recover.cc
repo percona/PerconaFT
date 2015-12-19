@@ -1548,7 +1548,7 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
     // checkpoint 
     tnow = time(NULL);
     fprintf(stderr, "%.24s PerconaFT recovery making a checkpoint\n", ctime(&tnow));
-    r = toku_checkpoint(renv->cp, renv->logger, NULL, NULL, NULL, NULL, RECOVERY_CHECKPOINT);
+    r = toku_checkpoint(renv->cp, renv->logger, RECOVERY_CHECKPOINT);
     assert(r == 0);
     tnow = time(NULL);
     fprintf(stderr, "%.24s PerconaFT recovery done\n", ctime(&tnow));

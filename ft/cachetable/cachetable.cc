@@ -191,7 +191,7 @@ checkpoint_thread (void *checkpointer_v)
 // This thread notices those changes by waiting on a condition variable.
 {
     CHECKPOINTER CAST_FROM_VOIDP(cp, checkpointer_v);
-    int r = toku_checkpoint(cp, cp->get_logger(), NULL, NULL, NULL, NULL, SCHEDULED_CHECKPOINT);
+    int r = toku_checkpoint(cp, cp->get_logger(), SCHEDULED_CHECKPOINT);
     invariant_zero(r);
     return r;
 }

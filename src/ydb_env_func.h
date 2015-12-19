@@ -38,11 +38,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #pragma once
 
-extern void (*checkpoint_callback_f)(void*);
-extern void * checkpoint_callback_extra;
-extern void (*checkpoint_callback2_f)(void*);
-extern void * checkpoint_callback2_extra;
-
 extern bool engine_status_enable;
 
 // Called to use dlmalloc functions.

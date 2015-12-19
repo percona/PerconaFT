@@ -71,7 +71,7 @@ static void test_it (int N) {
     r = toku_txn_commit_txn(txn, false, NULL, NULL);                                 CKERR(r);
     toku_txn_close_txn(txn);
     CHECKPOINTER cp = toku_cachetable_get_checkpointer(ct);
-    r = toku_checkpoint(cp, logger, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);                             CKERR(r);
+    r = toku_checkpoint(cp, logger, CLIENT_CHECKPOINT);                             CKERR(r);
     r = toku_close_ft_handle_nolsn(ft, NULL);                                                                          CKERR(r);
 
     unsigned int rands[N];
@@ -93,7 +93,7 @@ static void test_it (int N) {
 	toku_txn_close_txn(txn);
 
 
-	r = toku_checkpoint(cp, logger, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);                             CKERR(r);
+	r = toku_checkpoint(cp, logger, CLIENT_CHECKPOINT);                             CKERR(r);
 	r = toku_close_ft_handle_nolsn(ft, NULL);                                                                          CKERR(r);
 
 	if (verbose) printf("i=%d\n", i);
@@ -119,7 +119,7 @@ static void test_it (int N) {
 	r = toku_txn_commit_txn(txn, false, NULL, NULL);                                 CKERR(r);
 	toku_txn_close_txn(txn);
 
-	r = toku_checkpoint(cp, logger, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);                             CKERR(r);
+	r = toku_checkpoint(cp, logger, CLIENT_CHECKPOINT);                             CKERR(r);
 	r = toku_close_ft_handle_nolsn(ft, NULL);                                                                          CKERR(r);
 
 	if (verbose) printf("d=%d\n", i);
@@ -135,12 +135,12 @@ static void test_it (int N) {
     assert(is_empty);
     }
 
-    r = toku_checkpoint(cp, logger, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);                                CKERR(r);
+    r = toku_checkpoint(cp, logger, CLIENT_CHECKPOINT);                                CKERR(r);
     r = toku_close_ft_handle_nolsn(ft, NULL);                                                                             CKERR(r);
 
-    r = toku_checkpoint(cp, logger, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);                                CKERR(r);
+    r = toku_checkpoint(cp, logger, CLIENT_CHECKPOINT);                                CKERR(r);
     toku_logger_close_rollback(logger);
-    r = toku_checkpoint(cp, logger, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);                                CKERR(r);
+    r = toku_checkpoint(cp, logger, CLIENT_CHECKPOINT);                                CKERR(r);
     toku_cachetable_close(&ct);
     r = toku_logger_close(&logger);                                                        assert(r==0);
 

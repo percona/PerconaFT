@@ -98,7 +98,9 @@ static void *do_checkpoint(void *arg) {
     // first verify that checkpointed_data is correct;
     if (verbose) printf("starting a checkpoint\n");
     CHECKPOINTER cp = toku_cachetable_get_checkpointer(ct);
-    int r = toku_checkpoint(cp, NULL, checkpoint_callback, NULL, NULL, NULL, CLIENT_CHECKPOINT);
+    toku_checkpoint_set_callback(checkpoint_callback, NULL);
+    int r = toku_checkpoint(cp, NULL, CLIENT_CHECKPOINT);
+    toku_checkpoint_set_callback(NULL, NULL);
     assert_zero(r);
     if (verbose) printf("completed a checkpoint\n");
     return arg;

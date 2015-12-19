@@ -233,11 +233,27 @@ toku_checkpoint_destroy(void) {
 #define SET_CHECKPOINT_FOOTPRINT(x) CP_STATUS_VAL(CP_FOOTPRINT) = footprint_offset + x
 
 
+// For test purposes only.
+// These callbacks are never used in production code, only as a way to test the system
+// (for example, by causing crashes at predictable times).
+// These are not protected by a lock here, but are protected in the ydb layer by a lock.
+void (*checkpoint_callback_f)(void*) = NULL;
+void * checkpoint_callback_extra     = NULL;
+void (*checkpoint_callback2_f)(void*) = NULL;
+void * checkpoint_callback2_extra     = NULL;
+
+void toku_checkpoint_set_callback(void (*callback)(void*), void *extra) {
+    checkpoint_callback_f = callback;
+    checkpoint_callback_extra = extra;
+}
+void toku_checkpoint_set_callback2(void (*callback)(void*), void *extra) {
+    checkpoint_callback2_f = callback;
+    checkpoint_callback2_extra = extra;
+}
+
 // Take a checkpoint of all currently open dictionaries
 int 
 toku_checkpoint(CHECKPOINTER cp, TOKULOGGER logger,
-                void (*callback_f)(void*),  void * extra,
-                void (*callback2_f)(void*), void * extra2,
                 checkpoint_caller_t caller_id) {
     int footprint_offset = (int) caller_id * 1000;
 
@@ -265,12 +281,12 @@ toku_checkpoint(CHECKPOINTER cp, TOKULOGGER logger,
     multi_operation_checkpoint_unlock();
 
     SET_CHECKPOINT_FOOTPRINT(40);
-    if (callback_f) {
-        callback_f(extra);      // callback is called with checkpoint_safe_lock still held
+    if (checkpoint_callback_f) {
+        checkpoint_callback_f(checkpoint_callback_extra);      // callback is called with checkpoint_safe_lock still held
     }
 
     uint64_t t_checkpoint_end_start = toku_current_time_microsec();
-    toku_cachetable_end_checkpoint(cp, logger, callback2_f, extra2);
+    toku_cachetable_end_checkpoint(cp, logger, checkpoint_callback2_f, checkpoint_callback2_extra);
     uint64_t t_checkpoint_end_end = toku_current_time_microsec();
 
     SET_CHECKPOINT_FOOTPRINT(50);

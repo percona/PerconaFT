@@ -54,6 +54,8 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "toku_config.h"
 #include "test.h"
 
+#include <atomic>
+
 #include <stdio.h>
 #include <math.h>
 #include <locale.h>
@@ -138,6 +140,7 @@ struct cli_args {
     bool print_performance;
     bool print_thread_performance;
     bool print_iteration_performance;
+    bool print_checkpoint_column; // if true and doing csv or tsv formatting, the print two columns for whether a checkpoint is happening, and the checkpoint number.
     enum perf_output_format perf_output_format;
     enum toku_compression_method compression_method; // the compression method to use on newly created DBs
     int performance_period;
@@ -227,6 +230,19 @@ struct perf_formatter {
     void (*totals)(const struct cli_args *cli_args, uint64_t *counters[], const int num_threads);
 };
 
+static std::atomic_bool am_in_checkpoint(false);
+static std::atomic_int  n_checkpoints(0);
+
+static void did_start_checkpoint(void* ignore) {
+    assert(ignore == NULL);
+    am_in_checkpoint = true;
+    n_checkpoints++;
+}
+static void did_end_checkpoint(void* ignore) {
+    assert(ignore == NULL);
+    am_in_checkpoint = false;
+}
+
 static inline int
 seconds_in_this_iteration(const int current_time, const int performance_period)
 {
@@ -301,6 +317,7 @@ static void
 csv_print_perf_header(const struct cli_args *cli_args, const int num_threads)
 {
     printf("seconds");
+    if (cli_args->print_checkpoint_column) printf(",checkpointing,checkpoint_number");
     if (cli_args->print_thread_performance) {
         for (int t = 1; t <= num_threads; ++t) {
             for (int op = 0; op < (int) NUM_OPERATION_TYPES; ++op) {
@@ -319,6 +336,7 @@ csv_print_perf_iteration(const struct cli_args *cli_args, const int current_time
 {
     const int secondsthisiter = seconds_in_this_iteration(current_time, cli_args->performance_period);
     printf("%d", current_time);
+    if (cli_args->print_checkpoint_column) printf("\t%d\t%d", am_in_checkpoint.load(), n_checkpoints.load());
     uint64_t period_totals[(int) NUM_OPERATION_TYPES];
     ZERO_ARRAY(period_totals);
     for (int t = 0; t < num_threads; ++t) {
@@ -345,6 +363,7 @@ csv_print_perf_iteration(const struct cli_args *cli_args, const int current_time
 static void
 csv_print_perf_totals(const struct cli_args *cli_args, uint64_t *counters[], const int num_threads) {
     printf("overall");
+    if (cli_args->print_checkpoint_column) printf(",%d,%d", am_in_checkpoint.load(), n_checkpoints.load());
     uint64_t overall_totals[(int) NUM_OPERATION_TYPES];
     ZERO_ARRAY(overall_totals);
     for (int t = 0; t < num_threads; ++t) {
@@ -368,6 +387,7 @@ static void
 tsv_print_perf_header(const struct cli_args *cli_args, const int num_threads)
 {
     printf("\"seconds\"");
+    if (cli_args->print_checkpoint_column) printf("\t\"checkpointing\"\t\"checkpoint_number\"");
     if (cli_args->print_thread_performance) {
         for (int t = 1; t <= num_threads; ++t) {
             for (int op = 0; op < (int) NUM_OPERATION_TYPES; ++op) {
@@ -386,6 +406,7 @@ tsv_print_perf_iteration(const struct cli_args *cli_args, const int current_time
 {
     const int secondsthisiter = seconds_in_this_iteration(current_time, cli_args->performance_period);
     printf("%d", current_time);
+    if (cli_args->print_checkpoint_column) printf("\t%d\t%d", am_in_checkpoint.load(), n_checkpoints.load());
     uint64_t period_totals[(int) NUM_OPERATION_TYPES];
     ZERO_ARRAY(period_totals);
     for (int t = 0; t < num_threads; ++t) {
@@ -412,6 +433,7 @@ tsv_print_perf_iteration(const struct cli_args *cli_args, const int current_time
 static void
 tsv_print_perf_totals(const struct cli_args *cli_args, uint64_t *counters[], const int num_threads) {
     printf("\"overall\"");
+    if (cli_args->print_checkpoint_column) printf("\t%d\t%d", am_in_checkpoint.load(), n_checkpoints.load());
     uint64_t overall_totals[(int) NUM_OPERATION_TYPES];
     ZERO_ARRAY(overall_totals);
     for (int t = 0; t < num_threads; ++t) {
@@ -1947,6 +1969,8 @@ static int create_tables(DB_ENV **env_res, DB **db_res, int num_DBs,
     }
     int env_flags = get_env_open_flags(cli_args);
     r = env->open(env, env_args.envdir, env_flags, S_IRWXU+S_IRWXG+S_IRWXO); CKERR(r);
+    db_env_set_checkpoint_callback(did_start_checkpoint, NULL);
+    db_env_set_checkpoint_callback2(did_end_checkpoint, NULL);    
     r = env->checkpointing_set_period(env, env_args.checkpointing_period); CKERR(r);
     r = env->cleaner_set_period(env, env_args.cleaner_period); CKERR(r);
     r = env->cleaner_set_iterations(env, env_args.cleaner_iterations); CKERR(r);
@@ -2231,6 +2255,7 @@ static struct cli_args UU() get_default_args(void) {
         .print_performance = false,
         .print_thread_performance = true,
         .print_iteration_performance = true,
+        .print_checkpoint_column = false,
         .perf_output_format = HUMAN,
         .compression_method = TOKU_DEFAULT_COMPRESSION_METHOD,
         .performance_period = 1,
@@ -2627,6 +2652,7 @@ static inline void parse_stress_test_args (int argc, char *const argv[], struct 
         BOOL_ARG("print_performance",                 print_performance),
         BOOL_ARG("print_thread_performance",          print_thread_performance),
         BOOL_ARG("print_iteration_performance",       print_iteration_performance),
+        BOOL_ARG("print_checkpoint_column",           print_checkpoint_column),
         BOOL_ARG("only_create",                       only_create),
         BOOL_ARG("only_stress",                       only_stress),
         BOOL_ARG("test",                              do_test_and_crash),

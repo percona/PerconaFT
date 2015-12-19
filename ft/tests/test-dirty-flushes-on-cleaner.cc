@@ -284,7 +284,7 @@ doit (void) {
     // and to get the rebalancing to happen
     //
     CHECKPOINTER cp = toku_cachetable_get_checkpointer(ct);
-    r = toku_checkpoint(cp, NULL, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);
+    r = toku_checkpoint(cp, NULL, CLIENT_CHECKPOINT);
     assert_zero(r);
 
     // check that lookups on the two keys is still good

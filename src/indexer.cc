@@ -596,7 +596,7 @@ build_index(DB_INDEXER *indexer) {
         // Otherwise indexing would not be crash-safe becasue none of the undo-do messages are in the recovery log.
         DB_ENV *env = indexer->i->env;
         CHECKPOINTER cp = toku_cachetable_get_checkpointer(env->i->cachetable);
-        toku_checkpoint(cp, env->i->logger, NULL, NULL, NULL, NULL, INDEXER_CHECKPOINT);
+        toku_checkpoint(cp, env->i->logger, INDEXER_CHECKPOINT);
         (void) toku_sync_fetch_and_add(&STATUS_VALUE(INDEXER_BUILD), 1);
     } else {
         (void) toku_sync_fetch_and_add(&STATUS_VALUE(INDEXER_BUILD_FAIL), 1);
