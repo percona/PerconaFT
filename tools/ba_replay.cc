@@ -104,8 +104,8 @@ static string parse_token(char **ptr, int line_num) {
     char *line = *ptr;
 
     // parse the first token, which represents the traced function
-    char token[64];
-    int r = sscanf(*ptr, "%63s", token);
+    char token[65];
+    int r = sscanf(*ptr, "%64s", token);
     ba_replay_assert(r == 1, "malformed trace (missing string token)", line, line_num);
     *ptr += strlen(token);
     return string(token);
