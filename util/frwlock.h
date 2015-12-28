@@ -43,6 +43,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <stdbool.h>
 #include <stdint.h>
 #include <util/context.h>
+#include <queue>
 
 //TODO: update comment, this is from rwlock.h
 
@@ -71,84 +72,56 @@ public:
     // returns true if acquiring a read lock will be expensive
     bool read_lock_is_expensive(void);
 
+    // How many threads are holding or waiting on the lock ?
     uint32_t users(void) const;
+
+    // How many are waiting on the lock?
     uint32_t blocked_users(void) const;
+
+    // How many writer therads are holding the lock (0 or 1)?
     uint32_t writers(void) const;
+
+    // How many writers are waiting on the lock?
     uint32_t blocked_writers(void) const;
+
+    // How many readers currently hold the lock?
     uint32_t readers(void) const;
+
+    // How many readers currently wait on the lock?
     uint32_t blocked_readers(void) const;
 
 private:
-    struct queue_item {
-        toku_cond_t *cond;
-        struct queue_item *next;
-    };
-
-    bool queue_is_empty(void) const;
-    void enq_item(queue_item *const item);
-    toku_cond_t *deq_item(void);
-    void maybe_signal_or_broadcast_next(void);
-    void maybe_signal_next_writer(void);
-
-    // Discussion of the frwlock (especially of the condition
-    // variables).  This implementation seems needlessly complex, so
-    // it needs some documentation here.  We implements a fair
-    // readers-writer lock by keeping a queue.  We employ condition
-    // variables to wake up threads when they get to the front of the
-    // queue.
-    //
-    // For a read: If there is a writer (holding the lock, or in the
-    // queue), then the reader must wait (that makes it fair).
-    //  The way it waits: If there are any other readers in the queue, put this reader into the queue.
-    //                    We then wait on the condition variable.
-    //      Bradley says: This looks pretty buggy.  A reader could end up in the queue and then get spuriously woken up
-    //       I think this code is still not safe against spurious wakeups.
+    // the pair is the condition variable and true for read, false for write
+    std::queue<std::pair<toku_cond_t *, bool>> *m_queue;
 
     toku_mutex_t *m_mutex;
 
-    // How many readers currently hold the lock (any nonnegative
-    // number).
+    // How many readers hold the lock?
     uint32_t m_num_readers;
-
-    // How many writers currently hold the lock (must be zero or one).
+    
+    // How many writers hold the lock?
     uint32_t m_num_writers;
 
-    // Number of writers in the queue.
+    // How many readers in the queue?
+    uint32_t m_num_want_read;
+
+    // How many writers in the queue?
     uint32_t m_num_want_write;
 
-    // Number of readers in the queue.
-    uint32_t m_num_want_read;
-   // Number of readers that we have woken up (but they haven't
-   // woken up yet and, for example, incremented the m_num_readers.)
-    uint32_t m_num_signaled_readers;
-
-    // When we signal a writer to wake up, it must be waiting on this
-    // cond variable to avoid spurious wakeups.
-    toku_cond_t *m_waking_cond;
-
-    // number of writers waiting that are expensive
+    // Number of writers that are expensive (not including the writer that holds the lock, if any)
     // MUST be < m_num_want_write
     uint32_t m_num_expensive_want_write;
-    // bool that states if the current writer is expensive
-    // if there is no current writer, then is false
-    bool m_current_writer_expensive;
-    // bool that states if waiting for a read
-    // is expensive
-    // if there are currently no waiting readers, then set to false
-    bool m_read_wait_expensive;
+
+    // Is the current writer expensive (we must store this separately
+    // from m_num_expensive_want_write)
+    bool     m_current_writer_expensive;
+
     // thread-id of the current writer
     int m_current_writer_tid;
     // context id describing the context of the current writer blocking
     // new readers (either because this writer holds the write lock or
     // is the first to want the write lock).
     context_id m_blocking_writer_context_id;
-    
-    toku_cond_t m_wait_read;
-    queue_item m_queue_item_read;
-    bool m_wait_read_is_in_queue;
-
-    queue_item *m_wait_head;
-    queue_item *m_wait_tail;
 };
 
 ENSURE_POD(frwlock);

@@ -52,57 +52,22 @@ static int get_local_tid() {
 }
 
 void frwlock::init(toku_mutex_t *const mutex) {
+    m_queue = new std::queue<std::pair<toku_cond_t*,bool>>();
     m_mutex = mutex;
-
     m_num_readers = 0;
     m_num_writers = 0;
-    m_num_want_write = 0;
     m_num_want_read = 0;
-    m_num_signaled_readers = 0;
+    m_num_want_write = 0;
     m_num_expensive_want_write = 0;
-    m_waking_cond = nullptr;
-    
-    toku_cond_init(&m_wait_read, nullptr);
-    m_queue_item_read.cond = &m_wait_read;
-    m_queue_item_read.next = nullptr;
-    m_wait_read_is_in_queue = false;
-    m_current_writer_expensive = false;
-    m_read_wait_expensive = false;
+
+    // Do we really want these?
     m_current_writer_tid = -1;
     m_blocking_writer_context_id = CTX_INVALID;
-
-    m_wait_head = nullptr;
-    m_wait_tail = nullptr;
 }
 
 void frwlock::deinit(void) {
-    toku_cond_destroy(&m_wait_read);
-}
-
-bool frwlock::queue_is_empty(void) const {
-    return m_wait_head == nullptr;
-}
-
-void frwlock::enq_item(queue_item *const item) {
-    paranoid_invariant_null(item->next);
-    if (m_wait_tail != nullptr) {
-        m_wait_tail->next = item;
-    } else {
-        paranoid_invariant_null(m_wait_head);
-        m_wait_head = item;
-    }
-    m_wait_tail = item;
-}
-
-toku_cond_t *frwlock::deq_item(void) {
-    paranoid_invariant_notnull(m_wait_head);
-    paranoid_invariant_notnull(m_wait_tail);
-    queue_item *item = m_wait_head;
-    m_wait_head = m_wait_head->next;
-    if (m_wait_tail == item) {
-        m_wait_tail = nullptr;
-    }
-    return item->cond;
+    assert(m_queue->empty());
+    delete m_queue;
 }
 
 // Prerequisite: Holds m_mutex.
@@ -113,14 +78,12 @@ void frwlock::write_lock(bool expensive) {
     }
 
     toku_cond_t cond = TOKU_COND_INITIALIZER;
-    queue_item item = { .cond = &cond, .next = nullptr };
-    this->enq_item(&item);
-
-    // Wait for our turn.
+    m_queue->push(std::pair<toku_cond_t *,bool>(&cond, false));
     ++m_num_want_write;
     if (expensive) {
         ++m_num_expensive_want_write;
     }
+
     if (m_num_writers == 0 && m_num_want_write == 1) {
         // We are the first to want a write lock. No new readers can get the lock.
         // Set our thread id and context for proper instrumentation.
@@ -128,18 +91,17 @@ void frwlock::write_lock(bool expensive) {
         m_current_writer_tid = get_local_tid();
         m_blocking_writer_context_id = toku_thread_get_context()->get_id();
     }
-    while (m_waking_cond != &cond) {
-        // Wait until *this* cond variable is woken up.
+    while (m_num_writers || m_num_readers || m_queue->front().first != &cond) {
+        // Wait until this cond variable is woken up.  We could get a spurious wakeup.
         toku_cond_wait(&cond, m_mutex);
     }
-    m_waking_cond = nullptr;
+    m_queue->pop();
     toku_cond_destroy(&cond);
 
     // Now it's our turn.
     paranoid_invariant(m_num_want_write > 0);
     paranoid_invariant_zero(m_num_readers);
     paranoid_invariant_zero(m_num_writers);
-    paranoid_invariant_zero(m_num_signaled_readers);
 
     // Not waiting anymore; grab the lock.
     --m_num_want_write;
@@ -154,7 +116,7 @@ void frwlock::write_lock(bool expensive) {
 
 bool frwlock::try_write_lock(bool expensive) {
     toku_mutex_assert_locked(m_mutex);
-    if (m_num_readers > 0 || m_num_writers > 0 || m_num_signaled_readers > 0 || m_num_want_write > 0) {
+    if (m_num_readers > 0 || m_num_writers > 0 || !m_queue->empty()) {
         return false;
     }
     // No one holds the lock.  Grant the write lock.
@@ -169,54 +131,32 @@ bool frwlock::try_write_lock(bool expensive) {
 
 void frwlock::read_lock(void) {
     toku_mutex_assert_locked(m_mutex);
-    if (m_num_writers > 0 || m_num_want_write > 0) {
-        if (!m_wait_read_is_in_queue) {
-            // Throw the read cond_t onto the queue.
-            paranoid_invariant(m_num_signaled_readers == m_num_want_read);
-            m_queue_item_read.next = nullptr;
-            this->enq_item(&m_queue_item_read);
-            m_wait_read_is_in_queue = true;
-            paranoid_invariant(!m_read_wait_expensive);
-            m_read_wait_expensive = (
-                m_current_writer_expensive || 
-                (m_num_expensive_want_write > 0)
-                );
-        }
-
-        // Note this contention event in engine status.
+    if (this->try_read_lock()) return;
+    
+    toku_cond_t cond = TOKU_COND_INITIALIZER;
+    m_queue->push(std::pair<toku_cond_t *, bool>(&cond, true));
+    ++m_num_want_read;
+    while (m_num_writers || m_queue->front().first != &cond) {
         toku_context_note_frwlock_contention(
             toku_thread_get_context()->get_id(),
-            m_blocking_writer_context_id
-            );
-
-        // Wait for our turn.
-        ++m_num_want_read;
-        while (m_num_writers > 0 || m_num_want_read == 0 || m_num_signaled_readers == 0) {
-            // Must put this in a loop, since we could get a spurious
-            // wakeup from toku_cond_wait.  A spurious wakeup could
-            // result in an unfair scheduling (since we might get
-            // woken up just before a writer ahead of us gets the
-            // write lock), but it appears that at least we will
-            // correctly obtain a read lock in this situation.
-            toku_cond_wait(&m_wait_read, m_mutex);
-        }
-        m_waking_cond = nullptr;
-
-        // Now it's our turn.
-        paranoid_invariant_zero(m_num_writers);
-        paranoid_invariant(m_num_want_read > 0);
-        paranoid_invariant(m_num_signaled_readers > 0);
-
-        // Not waiting anymore; grab the lock.
-        --m_num_want_read;
-        --m_num_signaled_readers;
+            m_blocking_writer_context_id);
+        toku_cond_wait(&cond, m_mutex);
     }
+    m_queue->pop();
+    toku_cond_destroy(&cond);
+    paranoid_invariant_zero(m_num_writers);
+    paranoid_invariant(m_num_want_read > 0);
+    --m_num_want_read;
     ++m_num_readers;
+    if (!m_queue->empty() && m_queue->front().second) {
+        // The next guy is a reader, so wake him up too.
+        toku_cond_signal(m_queue->front().first);
+    }
 }
 
 bool frwlock::try_read_lock(void) {
     toku_mutex_assert_locked(m_mutex);
-    if (m_num_writers > 0 || m_num_want_write > 0) {
+    if (m_num_writers > 0 || !m_queue->empty()) {
         return false;
     }
     // No writer holds the lock.
@@ -226,61 +166,19 @@ bool frwlock::try_read_lock(void) {
     return true;
 }
 
-void frwlock::maybe_signal_next_writer(void) {
-    if (m_num_want_write > 0 && m_num_signaled_readers == 0 && m_num_readers == 0) {
-        toku_cond_t *cond = this->deq_item();
-        paranoid_invariant(cond != &m_wait_read);
-        // Grant write lock to waiting writer.
-        paranoid_invariant(m_num_want_write > 0);
-        m_waking_cond = cond;
-        toku_cond_signal(cond);
-    }
-}
-
 void frwlock::read_unlock(void) {
     toku_mutex_assert_locked(m_mutex);
     paranoid_invariant(m_num_writers == 0);
     paranoid_invariant(m_num_readers > 0);
     --m_num_readers;
-    this->maybe_signal_next_writer();
+    if (m_num_readers == 0 && !m_queue->empty()) {
+        toku_cond_signal(m_queue->front().first);
+    }
 }
 
 bool frwlock::read_lock_is_expensive(void) {
     toku_mutex_assert_locked(m_mutex);
-    if (m_wait_read_is_in_queue) {
-        return m_read_wait_expensive;
-    }
-    else {
-        return m_current_writer_expensive || (m_num_expensive_want_write > 0);
-    }
-}
-
-
-void frwlock::maybe_signal_or_broadcast_next(void) {
-    paranoid_invariant(m_num_signaled_readers == 0);
-
-    if (this->queue_is_empty()) {
-        paranoid_invariant(m_num_want_write == 0);
-        paranoid_invariant(m_num_want_read == 0);
-        return;
-    }
-    toku_cond_t *cond = this->deq_item();
-    if (cond == &m_wait_read) {
-        // Grant read locks to all waiting readers
-        paranoid_invariant(m_wait_read_is_in_queue);
-        paranoid_invariant(m_num_want_read > 0);
-        m_num_signaled_readers = m_num_want_read;
-        m_wait_read_is_in_queue = false;
-        m_read_wait_expensive = false;
-        m_waking_cond = nullptr;
-        toku_cond_broadcast(cond);
-    }
-    else {
-        // Grant write lock to waiting writer.
-        paranoid_invariant(m_num_want_write > 0);
-        m_waking_cond = cond;
-        toku_cond_signal(cond);
-    }
+    return m_num_expensive_want_write > 0 || m_current_writer_expensive;
 }
 
 void frwlock::write_unlock(void) {
@@ -290,11 +188,13 @@ void frwlock::write_unlock(void) {
     m_current_writer_expensive = false;
     m_current_writer_tid = -1;
     m_blocking_writer_context_id = CTX_INVALID;
-    this->maybe_signal_or_broadcast_next();
+    if (!m_queue->empty()) {
+        toku_cond_signal(m_queue->front().first);
+    }
 }
 bool frwlock::write_lock_is_expensive(void) {
     toku_mutex_assert_locked(m_mutex);
-    return (m_num_expensive_want_write > 0) || (m_current_writer_expensive);
+    return (m_num_expensive_want_write > 0) || m_current_writer_expensive;
 }
 
 
