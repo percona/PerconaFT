@@ -247,8 +247,32 @@ toku_cond_destroy(toku_cond_t *cond) {
 static inline void
 toku_cond_wait(toku_cond_t *cond, toku_mutex_t *mutex) {
 #if TOKU_PTHREAD_DEBUG
-    if (random()%2) return; // sometimes we simply spuriously wakeup to see if we are using the cond wait correctly.
     invariant(mutex->locked);
+
+    switch (random()%3) {
+        case 0: 
+            // Sometimes we return immediately.  This is one case of a
+            // spurious wakeup, which cond_wait is allowed to do.  We
+            // want to exercise the users of this code to make sure
+            // they handle it.
+            return; 
+        case 1:
+            // Sometimes we unlock the mutex and relock it.  This is
+            // another case of a spurious wakeup.  It's different from
+            // case 0, in that it gives someone else a chance to run,
+            // and then we can spuriously wake up after they have
+            // possibly released the mutex without setting the
+            // condition to the one that our caller expects.
+            toku_mutex_unlock(mutex);
+            toku_mutex_lock(mutex);
+            return;
+        default: 
+            // The default is to simply call pthread_cond_wait, (which
+            // may still spuriosly wake up, but won't do it reliably
+            // enough to test the caller's use of the condition.
+            break;
+    }
+
     mutex->locked = false;
     mutex->owner = 0;
 #endif

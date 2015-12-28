@@ -60,6 +60,7 @@ void frwlock::init(toku_mutex_t *const mutex) {
     m_num_want_read = 0;
     m_num_signaled_readers = 0;
     m_num_expensive_want_write = 0;
+    m_waking_cond = nullptr;
     
     toku_cond_init(&m_wait_read, nullptr);
     m_queue_item_read.cond = &m_wait_read;
@@ -127,7 +128,11 @@ void frwlock::write_lock(bool expensive) {
         m_current_writer_tid = get_local_tid();
         m_blocking_writer_context_id = toku_thread_get_context()->get_id();
     }
-    toku_cond_wait(&cond, m_mutex);
+    while (m_waking_cond != &cond) {
+        // Wait until *this* cond variable is woken up.
+        toku_cond_wait(&cond, m_mutex);
+    }
+    m_waking_cond = nullptr;
     toku_cond_destroy(&cond);
 
     // Now it's our turn.
@@ -186,7 +191,16 @@ void frwlock::read_lock(void) {
 
         // Wait for our turn.
         ++m_num_want_read;
-        toku_cond_wait(&m_wait_read, m_mutex);
+        while (m_num_writers > 0 || m_num_want_read == 0 || m_num_signaled_readers == 0) {
+            // Must put this in a loop, since we could get a spurious
+            // wakeup from toku_cond_wait.  A spurious wakeup could
+            // result in an unfair scheduling (since we might get
+            // woken up just before a writer ahead of us gets the
+            // write lock), but it appears that at least we will
+            // correctly obtain a read lock in this situation.
+            toku_cond_wait(&m_wait_read, m_mutex);
+        }
+        m_waking_cond = nullptr;
 
         // Now it's our turn.
         paranoid_invariant_zero(m_num_writers);
@@ -218,6 +232,7 @@ void frwlock::maybe_signal_next_writer(void) {
         paranoid_invariant(cond != &m_wait_read);
         // Grant write lock to waiting writer.
         paranoid_invariant(m_num_want_write > 0);
+        m_waking_cond = cond;
         toku_cond_signal(cond);
     }
 }
@@ -257,11 +272,13 @@ void frwlock::maybe_signal_or_broadcast_next(void) {
         m_num_signaled_readers = m_num_want_read;
         m_wait_read_is_in_queue = false;
         m_read_wait_expensive = false;
+        m_waking_cond = nullptr;
         toku_cond_broadcast(cond);
     }
     else {
         // Grant write lock to waiting writer.
         paranoid_invariant(m_num_want_write > 0);
+        m_waking_cond = cond;
         toku_cond_signal(cond);
     }
 }

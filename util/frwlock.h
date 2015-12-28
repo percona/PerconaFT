@@ -51,6 +51,11 @@ namespace toku {
 class frwlock {
 public:
 
+    // This is a fair readers-writers lock.  It has one extra property
+    // beyond a vanilla fair rw lock: it can tell you whether waiting
+    // on a lock may be "expensive".  This is done by requiring anyone
+    // who obtains a write lock to say whether it's expensive.
+
     void init(toku_mutex_t *const mutex);
     void deinit(void);
 
@@ -85,13 +90,42 @@ private:
     void maybe_signal_or_broadcast_next(void);
     void maybe_signal_next_writer(void);
 
+    // Discussion of the frwlock (especially of the condition
+    // variables).  This implementation seems needlessly complex, so
+    // it needs some documentation here.  We implements a fair
+    // readers-writer lock by keeping a queue.  We employ condition
+    // variables to wake up threads when they get to the front of the
+    // queue.
+    //
+    // For a read: If there is a writer (holding the lock, or in the
+    // queue), then the reader must wait (that makes it fair).
+    //  The way it waits: If there are any other readers in the queue, put this reader into the queue.
+    //                    We then wait on the condition variable.
+    //      Bradley says: This looks pretty buggy.  A reader could end up in the queue and then get spuriously woken up
+    //       I think this code is still not safe against spurious wakeups.
+
     toku_mutex_t *m_mutex;
 
+    // How many readers currently hold the lock (any nonnegative
+    // number).
     uint32_t m_num_readers;
+
+    // How many writers currently hold the lock (must be zero or one).
     uint32_t m_num_writers;
+
+    // Number of writers in the queue.
     uint32_t m_num_want_write;
+
+    // Number of readers in the queue.
     uint32_t m_num_want_read;
+   // Number of readers that we have woken up (but they haven't
+   // woken up yet and, for example, incremented the m_num_readers.)
     uint32_t m_num_signaled_readers;
+
+    // When we signal a writer to wake up, it must be waiting on this
+    // cond variable to avoid spurious wakeups.
+    toku_cond_t *m_waking_cond;
+
     // number of writers waiting that are expensive
     // MUST be < m_num_want_write
     uint32_t m_num_expensive_want_write;
