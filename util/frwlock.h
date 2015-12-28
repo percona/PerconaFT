@@ -44,6 +44,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <stdint.h>
 #include <util/context.h>
 #include <queue>
+#include <atomic>
 
 //TODO: update comment, this is from rwlock.h
 
@@ -122,7 +123,7 @@ public:
     // How many threads are holding or waiting on the lock ?  (You must hold the lock to call this.)
     uint32_t users(void) const;
 
-    // How many writer therads are holding the lock (0 or 1)?  (You must hold the lock to hold this).
+    // How many writer therads are holding the lock (0 or 1)?  (You need not hold the lock to call this.)
     uint32_t writers(void) const;
 
     // How many readers currently hold the lock?  (You must hold the lock to call this.)
@@ -138,7 +139,7 @@ private:
     uint32_t m_num_readers;
     
     // How many writers hold the lock?
-    uint32_t m_num_writers;
+    std::atomic<uint32_t> m_num_writers; // this is accessed without a lock, so we make it atomic.
 
     // Number of writers that are expensive (not including the writer that holds the lock, if any)
     // MUST be < the number in the queue that want to write.

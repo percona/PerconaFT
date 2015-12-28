@@ -198,15 +198,12 @@ uint32_t frwlock::users(void) const {
 uint32_t frwlock::writers(void) const {
     // The following comment was found, and if true means the code is
     // incorrect (we would at least have to make m_num_writers be an
-    // atomic variable).  Fortunately, the following comment appears
-    // to be completely out of date.
+    // atomic variable).  Unfortunately, such code actually exists, so I made the m_num_writer be atomic.
+    
+    // This is sometimes called as "assert(lock->writers())" when we
+    // assume we have the write lock.  if that's the assumption, we may
+    // not own the mutex, so we don't assert_locked here
     //
-    //   this is sometimes called as "assert(lock->writers())" when we
-    //   assume we have the write lock.  if that's the assumption, we may
-    //   not own the mutex, so we don't assert_locked here
-    //
-    // So we go ahead and assert it.
-    toku_mutex_assert_locked(m_mutex);
     return m_num_writers;
 }
 
