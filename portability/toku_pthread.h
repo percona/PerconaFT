@@ -41,6 +41,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <pthread.h>
 #include <time.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "toku_assert.h"
 
@@ -246,6 +247,7 @@ toku_cond_destroy(toku_cond_t *cond) {
 static inline void
 toku_cond_wait(toku_cond_t *cond, toku_mutex_t *mutex) {
 #if TOKU_PTHREAD_DEBUG
+    if (random()%2) return; // sometimes we simply spuriously wakeup to see if we are using the cond wait correctly.
     invariant(mutex->locked);
     mutex->locked = false;
     mutex->owner = 0;
