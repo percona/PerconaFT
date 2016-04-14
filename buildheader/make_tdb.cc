@@ -337,10 +337,10 @@ static void print_db_env_struct (void) {
     STRUCT_SETUP(DB_ENV, set_cachesize, "int  (*%s) (DB_ENV *, uint32_t, uint32_t, int)");
     STRUCT_SETUP(DB_ENV, set_data_dir, "int  (*%s) (DB_ENV *, const char *)");
 #if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1
-    STRUCT_SETUP(DB_ENV, set_errcall, "void (*%s) (DB_ENV *, void (*)(const char *, char *))");
+    STRUCT_SETUP(DB_ENV, set_errcall, "void (*%s) (DB_ENV *, void (*)(const char *, char *, bool))");
 #endif
 #if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3
-    STRUCT_SETUP(DB_ENV, set_errcall, "void (*%s) (DB_ENV *, void (*)(const DB_ENV *, const char *, const char *))");
+    STRUCT_SETUP(DB_ENV, set_errcall, "void (*%s) (DB_ENV *, void (*)(const DB_ENV *, const char *, const char *, bool))");
 #endif
     STRUCT_SETUP(DB_ENV, set_errfile, "void (*%s) (DB_ENV *, FILE*)");
     STRUCT_SETUP(DB_ENV, set_errpfx, "void (*%s) (DB_ENV *, const char *)");

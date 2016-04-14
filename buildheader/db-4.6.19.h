@@ -1717,7 +1717,7 @@ struct __db {
 		__P((DB *, int (*)(DB *, const DBT *, const DBT *)));
 	int  (*set_encrypt) __P((DB *, const char *, uint32_t));
 	void (*set_errcall) __P((DB *,
-		void (*)(const DB_ENV *, const char *, const char *)));
+		void (*)(const DB_ENV *, const char *, const char *, bool)));
 	void (*set_errfile) __P((DB *, FILE *));
 	void (*set_errpfx) __P((DB *, const char *));
 	int  (*set_feedback) __P((DB *, void (*)(DB *, int, int)));
@@ -2406,7 +2406,7 @@ struct __db_env {
 	int  (*set_data_dir) __P((DB_ENV *, const char *));
 	int  (*set_encrypt) __P((DB_ENV *, const char *, uint32_t));
 	void (*set_errcall) __P((DB_ENV *,
-		void (*)(const DB_ENV *, const char *, const char *)));
+		void (*)(const DB_ENV *, const char *, const char *, bool)));
 	void (*set_errfile) __P((DB_ENV *, FILE *));
 	void (*set_errpfx) __P((DB_ENV *, const char *));
 	int  (*set_event_notify)

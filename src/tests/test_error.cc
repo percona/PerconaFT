@@ -47,7 +47,7 @@ char const* expect_errpfx;
 int n_handle_error=0;
 
 static void
-handle_error (const DB_ENV *UU(dbenv), const char *errpfx, const char *UU(msg)) {
+handle_error (const DB_ENV *UU(dbenv), const char *errpfx, const char *UU(msg), bool) {
     assert(errpfx==expect_errpfx);
     n_handle_error++;
 }
