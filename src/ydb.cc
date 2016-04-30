@@ -768,11 +768,10 @@ env_open(DB_ENV * env, const char *home, uint32_t flags, int mode) {
         goto cleanup;
     }
 
-    if (toku_os_huge_pages_enabled()) {
+    // Issue warning if huge pages are enabled and continue
+    if (toku_os_huge_pages_enabled())
         r = toku_ydb_do_error(env, TOKUDB_HUGE_PAGES_ENABLED,
-                              "Huge pages are enabled, disable them before continuing\n");
-        goto cleanup;
-    }
+                              "Huge pages are enabled, disable them for optimal memory usage\n");
 
     most_recent_env = NULL;
 

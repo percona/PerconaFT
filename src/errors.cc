@@ -109,7 +109,7 @@ void toku_ydb_error_all_cases(const DB_ENV * env,
     }
 
     /* Print via errcall */
-    if (env->i->errcall) env->i->errcall(env, env->i->errpfx, buf);
+    if (env->i->errcall) env->i->errcall(env, env->i->errpfx, buf, error != TOKUDB_HUGE_PAGES_ENABLED);
 
     /* Print out on a file */
     toku__ydb_error_file(env, use_stderr_if_nothing_else, buf);

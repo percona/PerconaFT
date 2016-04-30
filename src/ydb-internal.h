@@ -73,9 +73,9 @@ int toku_db_set_indexer(DB *db, DB_INDEXER *indexer);
 DB_INDEXER *toku_db_get_indexer(DB *db);
 
 #if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1
-typedef void (*toku_env_errcall_t)(const char *, char *);
+typedef void (*toku_env_errcall_t)(const char *, char *, bool);
 #elif DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3
-typedef void (*toku_env_errcall_t)(const DB_ENV *, const char *, const char *);
+typedef void (*toku_env_errcall_t)(const DB_ENV *, const char *, const char *, bool);
 #else
 #error
 #endif
