@@ -768,7 +768,7 @@ env_open(DB_ENV * env, const char *home, uint32_t flags, int mode) {
         goto cleanup;
     }
 
-    if (toku_os_huge_pages_enabled()) {
+    if (env->get_check_thp(env) && toku_os_huge_pages_enabled()) {
         r = toku_ydb_do_error(env, TOKUDB_HUGE_PAGES_ENABLED,
                               "Huge pages are enabled, disable them before continuing\n");
         goto cleanup;
@@ -1232,6 +1232,18 @@ env_set_checkpoint_pool_threads(DB_ENV * env, uint32_t threads) {
     HANDLE_PANICKED_ENV(env);
     env->i->checkpoint_pool_threads = threads;
     return 0;
+}
+
+static void
+env_set_check_thp(DB_ENV * env, bool new_val) {
+    assert(env);
+    env->i->check_thp = new_val;
+}
+
+static bool
+env_get_check_thp(DB_ENV * env) {
+    assert(env);
+    return env->i->check_thp;
 }
 
 static int env_dbremove(DB_ENV * env, DB_TXN *txn, const char *fname, const char *dbname, uint32_t flags);
@@ -2634,6 +2646,8 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     USENV(get_loader_memory_size);
     USENV(set_killed_callback);
     USENV(do_backtrace);
+    USENV(set_check_thp);
+    USENV(get_check_thp);
 #undef USENV
     
     // unlocked methods
@@ -2658,6 +2672,8 @@ toku_env_create(DB_ENV ** envp, uint32_t flags) {
     result->i->tmpdir_lockfd  = -1;
     env_fs_init(result);
     env_fsync_log_init(result);
+
+    result->i->check_thp = true;
 
     result->i->bt_compare = toku_builtin_compare_fun;
 
