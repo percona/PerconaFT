@@ -623,32 +623,39 @@ ydb_recover_log_exists(DB_ENV *env) {
 }
 
 // Validate that all required files are present, no side effects.
-// Return 0 if all is well, ENOENT if some files are present but at least one is missing, 
+// Return 0 if all is well, ENOENT if some files are present but at least one is
+// missing,
 // other non-zero value if some other error occurs.
 // Set *valid_newenv if creating a new environment (all files missing).
-// (Note, if special dictionaries exist, then they were created transactionally and log should exist.)
-static int 
-validate_env(DB_ENV * env, bool * valid_newenv, bool need_rollback_cachefile) {
+// (Note, if special dictionaries exist, then they were created transactionally
+// and log should exist.)
+static int validate_env(DB_ENV *env,
+                        bool *valid_newenv,
+                        bool need_rollback_cachefile) {
     int r;
-    bool expect_newenv = false;        // set true if we expect to create a new env
+    bool expect_newenv = false;  // set true if we expect to create a new env
     toku_struct_stat buf;
-    char* path = NULL;
+    char *path = NULL;
 
     // Test for persistent environment
-    path = toku_construct_full_name(2, env->i->dir, toku_product_name_strings.environmentdictionary);
+    path = toku_construct_full_name(
+        2, env->i->dir, toku_product_name_strings.environmentdictionary);
     assert(path);
     r = toku_stat(path, &buf);
     if (r == 0) {
         expect_newenv = false;  // persistent info exists
-    }
-    else {
+    } else {
         int stat_errno = get_error_errno();
         if (stat_errno == ENOENT) {
             expect_newenv = true;
             r = 0;
-        }
-        else {
-            r = toku_ydb_do_error(env, stat_errno, "Unable to access persistent environment\n");
+        } else {
+            r = toku_ydb_do_error(
+                env,
+                stat_errno,
+                "Unable to access persistent environment [%s] in [%s]\n",
+                toku_product_name_strings.environmentdictionary,
+                env->i->dir);
             assert(r);
         }
     }
@@ -656,23 +663,40 @@ validate_env(DB_ENV * env, bool * valid_newenv, bool need_rollback_cachefile) {
 
     // Test for existence of rollback cachefile if it is expected to exist
     if (r == 0 && need_rollback_cachefile) {
-        path = toku_construct_full_name(2, env->i->dir, toku_product_name_strings.rollback_cachefile);
+        path = toku_construct_full_name(
+            2, env->i->dir, toku_product_name_strings.rollback_cachefile);
         assert(path);
         r = toku_stat(path, &buf);
-        if (r == 0) {  
-            if (expect_newenv)  // rollback cachefile exists, but persistent env is missing
-                r = toku_ydb_do_error(env, ENOENT, "Persistent environment is missing\n");
-        }
-        else {
+        if (r == 0) {
+            if (expect_newenv)  // rollback cachefile exists, but persistent env
+                                // is missing
+                r = toku_ydb_do_error(
+                    env,
+                    ENOENT,
+                    "Persistent environment is missing while looking for "
+                    "rollback cachefile [%s] in [%s]\n",
+                    toku_product_name_strings.rollback_cachefile, env->i->dir);
+        } else {
             int stat_errno = get_error_errno();
             if (stat_errno == ENOENT) {
-                if (!expect_newenv)  // rollback cachefile is missing but persistent env exists
-                    r = toku_ydb_do_error(env, ENOENT, "rollback cachefile directory is missing\n");
-                else 
-                    r = 0;           // both rollback cachefile and persistent env are missing
-            }
-            else {
-                r = toku_ydb_do_error(env, stat_errno, "Unable to access rollback cachefile\n");
+                if (!expect_newenv)  // rollback cachefile is missing but
+                                     // persistent env exists
+                    r = toku_ydb_do_error(
+                        env,
+                        ENOENT,
+                        "rollback cachefile [%s] is missing from [%s]\n",
+                        toku_product_name_strings.rollback_cachefile,
+                        env->i->dir);
+                else
+                    r = 0;  // both rollback cachefile and persistent env are
+                            // missing
+            } else {
+                r = toku_ydb_do_error(
+                    env,
+                    stat_errno,
+                    "Unable to access rollback cachefile [%s] in [%s]\n",
+                    toku_product_name_strings.rollback_cachefile,
+                    env->i->dir);
                 assert(r);
             }
         }
@@ -681,23 +705,41 @@ validate_env(DB_ENV * env, bool * valid_newenv, bool need_rollback_cachefile) {
 
     // Test for fileops directory
     if (r == 0) {
-        path = toku_construct_full_name(2, env->i->dir, toku_product_name_strings.fileopsdirectory);
+        path = toku_construct_full_name(
+            2, env->i->dir, toku_product_name_strings.fileopsdirectory);
         assert(path);
         r = toku_stat(path, &buf);
-        if (r == 0) {  
-            if (expect_newenv)  // fileops directory exists, but persistent env is missing
-                r = toku_ydb_do_error(env, ENOENT, "Persistent environment is missing\n");
-        }
-        else {
+        if (r == 0) {
+            if (expect_newenv)  // fileops directory exists, but persistent env
+                                // is missing
+                r = toku_ydb_do_error(
+                    env,
+                    ENOENT,
+                    "Persistent environment is missing while looking for "
+                    "fileops directory [%s] in [%s]\n",
+                    toku_product_name_strings.fileopsdirectory,
+                    env->i->dir);
+        } else {
             int stat_errno = get_error_errno();
             if (stat_errno == ENOENT) {
-                if (!expect_newenv)  // fileops directory is missing but persistent env exists
-                    r = toku_ydb_do_error(env, ENOENT, "Fileops directory is missing\n");
-                else 
-                    r = 0;           // both fileops directory and persistent env are missing
-            }
-            else {
-                r = toku_ydb_do_error(env, stat_errno, "Unable to access fileops directory\n");
+                if (!expect_newenv)  // fileops directory is missing but
+                                     // persistent env exists
+                    r = toku_ydb_do_error(
+                        env,
+                        ENOENT,
+                        "Fileops directory [%s] is missing from [%s]\n",
+                        toku_product_name_strings.fileopsdirectory,
+                        env->i->dir);
+                else
+                    r = 0;  // both fileops directory and persistent env are
+                            // missing
+            } else {
+                r = toku_ydb_do_error(
+                    env,
+                    stat_errno,
+                    "Unable to access fileops directory [%s] in [%s]\n",
+                    toku_product_name_strings.fileopsdirectory,
+                    env->i->dir);
                 assert(r);
             }
         }
@@ -709,16 +751,26 @@ validate_env(DB_ENV * env, bool * valid_newenv, bool need_rollback_cachefile) {
         // if using transactions, test for existence of log
         r = ydb_recover_log_exists(env);  // return 0 or ENOENT
         if (expect_newenv && (r != ENOENT))
-            r = toku_ydb_do_error(env, ENOENT, "Persistent environment information is missing (but log exists)\n");
+            r = toku_ydb_do_error(env,
+                                  ENOENT,
+                                  "Persistent environment information is "
+                                  "missing (but log exists) while looking for "
+                                  "recovery log files in [%s]\n",
+                                  env->i->real_log_dir);
         else if (!expect_newenv && r == ENOENT)
-            r = toku_ydb_do_error(env, ENOENT, "Recovery log is missing (persistent environment information is present)\n");
+            r = toku_ydb_do_error(env,
+                                  ENOENT,
+                                  "Recovery log is missing (persistent "
+                                  "environment information is present) while "
+                                  "looking for recovery log files in [%s]\n",
+                                  env->i->real_log_dir);
         else
             r = 0;
     }
 
     if (r == 0)
         *valid_newenv = expect_newenv;
-    else 
+    else
         *valid_newenv = false;
     return r;
 }
