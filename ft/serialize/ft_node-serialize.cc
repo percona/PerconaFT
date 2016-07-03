@@ -1897,7 +1897,7 @@ read_and_decompress_block_from_fd_into_rbuf(int fd, BLOCKNUM blocknum,
                                             /* out */ int *layout_version_p);
 
 // This function upgrades a version 14 or 13 ftnode to the current
-// verison. NOTE: This code assumes the first field of the rbuf has
+// version. NOTE: This code assumes the first field of the rbuf has
 // already been read from the buffer (namely the layout_version of the
 // ftnode.)
 static int
@@ -2704,7 +2704,7 @@ exit:
 }
 
 static int decompress_from_raw_block_into_rbuf_versioned(uint32_t version, uint8_t *raw_block, size_t raw_block_size, struct rbuf *rb, BLOCKNUM blocknum) {
-    // This function exists solely to accomodate future changes in compression.
+    // This function exists solely to accommodate future changes in compression.
     int r = 0;
     if ((version == FT_LAYOUT_VERSION_13 || version == FT_LAYOUT_VERSION_14) ||
         (FT_LAYOUT_VERSION_25 <= version && version <= FT_LAYOUT_VERSION_27) ||

@@ -166,7 +166,7 @@ static void test_oldest_referenced_xid_gets_propogated(void) {
     toku_ft_flush_some_child(t->ft, node, &fa);
 
     // pin the child, verify that oldest referenced xid was
-    // propogated from parent to child during the flush
+    // propagated from parent to child during the flush
     toku_pin_ftnode(
         t->ft, 
         child_nonleaf_blocknum,
