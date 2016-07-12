@@ -89,6 +89,7 @@ static void test_insert_remove(void) {
     }
 
     tree->Destroy();
+    delete tree;
 }
 
 int test_main(int argc, const char *argv[]) {
