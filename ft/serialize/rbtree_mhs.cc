@@ -397,7 +397,7 @@ namespace MhsRbTree {
                         pred, succ, pair, left_merge, right_merge, false);
                 } else {
                     // construct the node
-                    Node::Pair mhsp = {._left = 0, ._right = 0};
+                    Node::Pair mhsp {0, 0};
                     node =
                         new Node(EColor::BLACK, pair, mhsp, nullptr, nullptr, nullptr);
                     if (!node)
@@ -417,7 +417,7 @@ namespace MhsRbTree {
                         pred, succ, pair, left_merge, right_merge, true);
                 } else {
                     // construct the node
-                    Node::Pair mhsp = {._left = 0, ._right = 0};
+                    Node::Pair mhsp {0, 0};
                     node =
                         new Node(EColor::BLACK, pair, mhsp, nullptr, nullptr, nullptr);
                     if (!node)
@@ -428,7 +428,7 @@ namespace MhsRbTree {
                 }
             }
         } else {
-            Node::Pair mhsp = {._left = 0, ._right = 0};
+            Node::Pair mhsp {0, 0};
             node = new Node(EColor::BLACK, pair, mhsp, nullptr, nullptr, nullptr);
             if (!node)
                 return -1;
