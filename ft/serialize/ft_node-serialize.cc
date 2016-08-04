@@ -996,6 +996,7 @@ BASEMENTNODE toku_clone_bn(BASEMENTNODE orig_bn) {
     bn->seqinsert = orig_bn->seqinsert;
     bn->stale_ancestor_messages_applied = orig_bn->stale_ancestor_messages_applied;
     bn->stat64_delta = orig_bn->stat64_delta;
+    bn->logical_rows_delta = orig_bn->logical_rows_delta;
     bn->data_buffer.clone(&orig_bn->data_buffer);
     return bn;
 }
@@ -1006,6 +1007,7 @@ BASEMENTNODE toku_create_empty_bn_no_buffer(void) {
     bn->seqinsert = 0;
     bn->stale_ancestor_messages_applied = false;
     bn->stat64_delta = ZEROSTATS;
+    bn->logical_rows_delta = 0;
     bn->data_buffer.init_zero();
     return bn;
 }
