@@ -195,7 +195,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
       endif ()
 
       add_ydb_drd_test_aux(drd_tiny_${test} ${test} --num_seconds 5 --num_elements 150 --join_timeout 3000)
-      set_tests_properties(ydb/drd_tiny_${test} PROPERTIES TIMEOUT 3600)
 
       add_test(ydb/drd_mid_${test}/prepare ${test} --only_create --num_elements 10000)
       setup_toku_test_properties(ydb/drd_mid_${test}/prepare drd_mid_${test})
@@ -203,7 +202,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
       set_tests_properties(ydb/drd_mid_${test} PROPERTIES
         DEPENDS ydb/drd_mid_${test}/prepare
         REQUIRED_FILES "drd_mid_${test}.ctest-data"
-        TIMEOUT 15000
         )
 
       add_test(ydb/drd_large_${test}/prepare ${test} --only_create --num_elements 150000)
@@ -212,7 +210,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
       set_tests_properties(ydb/drd_large_${test} PROPERTIES
         DEPENDS ydb/drd_large_${test}/prepare
         REQUIRED_FILES "drd_large_${test}.ctest-data"
-        TIMEOUT 30000
         )
     endif()
   endforeach(src)
@@ -244,14 +241,12 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
               set_tests_properties(${testnamebase}/copy PROPERTIES
                 DEPENDS ${testnamebase}/remove
                 REQUIRED_FILES "${oldenvdir}")
-
               add_test(NAME ${testnamebase}
                 COMMAND ${test} --only_stress --num_elements ${size} --num_seconds 600 --join_timeout 7200)
               setup_toku_test_properties(${testnamebase} "${envdirbase}")
               set_tests_properties(${testnamebase} PROPERTIES
                 DEPENDS ${testnamebase}/copy
-                REQUIRED_FILES "${envdir}"
-                TIMEOUT 10800)
+                REQUIRED_FILES "${envdir}")
             endforeach(size)
           endif ()
         endforeach(p_or_s)
@@ -431,61 +426,4 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
   string(REGEX REPLACE ";" ";ydb/" tdb_tests_that_should_fail "${tdb_tests_that_should_fail}")
   set_tests_properties(${tdb_tests_that_should_fail} PROPERTIES WILL_FAIL TRUE)
 
-  ## give some tests, that time out normally, 1 hour to complete
-  set(long_tests
-    ydb/drd_test_groupcommit_count.tdb
-    ydb/env-put-multiple.tdb
-    ydb/filesize.tdb
-    ydb/loader-cleanup-test0.tdb
-    ydb/loader-cleanup-test0z.tdb
-    ydb/manyfiles.tdb
-    ydb/recover-loader-test.abortrecover
-    ydb/recovery_fileops_stress.tdb
-    ydb/root_fifo_1.tdb
-    ydb/root_fifo_2.tdb
-    ydb/root_fifo_31.tdb
-    ydb/root_fifo_32.tdb
-    ydb/shutdown-3344.tdb
-    ydb/stat64-create-modify-times.tdb
-    ydb/test1572.tdb
-    ydb/test_abort4_19_0.tdb
-    ydb/test_abort4_19_1.tdb
-    ydb/test_abort5.tdb
-    ydb/test_archive1.tdb
-    ydb/test_logmax.tdb
-    ydb/test_query.tdb
-    ydb/test_txn_abort5.tdb
-    ydb/test_txn_abort5a.tdb
-    ydb/test_txn_abort6.tdb
-    ydb/test_txn_nested2.tdb
-    ydb/test_txn_nested4.tdb
-    ydb/test_txn_nested5.tdb
-    ydb/test_update_broadcast_stress.tdb
-    )
-  set_tests_properties(${long_tests} PROPERTIES TIMEOUT 3600)
-  ## some take even longer, with valgrind
-  set(extra_long_tests
-    ydb/drd_test_4015.tdb
-    ydb/hotindexer-with-queries.tdb
-    ydb/hot-optimize-table-tests.tdb
-    ydb/loader-cleanup-test2.tdb
-    ydb/loader-cleanup-test2z.tdb
-    ydb/loader-dup-test0.tdb
-    ydb/loader-stress-del.nop.loader
-    ydb/loader-stress-del.p.loader
-    ydb/loader-stress-del.comp.loader
-    ydb/test3039.tdb
-    ydb/test_update_stress.tdb
-    )
-  set_tests_properties(${extra_long_tests} PROPERTIES TIMEOUT 7200)
-  ## these really take a long time with valgrind
-  set(phenomenally_long_tests
-    ydb/checkpoint_stress.tdb
-    ydb/loader-stress-test4.tdb
-    ydb/loader-stress-test4z.tdb
-    ydb/recover_stress.tdb
-    ydb/test3529.tdb
-    ydb/test_insert_unique.tdb
-    )
-  set_tests_properties(${phenomenally_long_tests} PROPERTIES TIMEOUT 14400)
 endif(BUILD_TESTING OR BUILD_SRC_TESTS)
