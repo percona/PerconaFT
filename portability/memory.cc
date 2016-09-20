@@ -318,7 +318,7 @@ char *toku_strndup(const char *s, size_t n) {
     size_t bytes_to_copy = n > s_size ? s_size : n;
     ++bytes_to_copy;
     char *result = (char *)toku_memdup(s, bytes_to_copy);
-    result[bytes_to_copy] = 0;
+    result[bytes_to_copy - 1] = 0;
     return result;
 }
 
