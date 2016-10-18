@@ -1,0 +1,12 @@
+#build
+simple_compression
+simple_decompression
+dictionary_compression
+dictionary_decompression
+streaming_compression
+streaming_decompression
+
+#test artefact
+tmp*
+test*
+*.zst

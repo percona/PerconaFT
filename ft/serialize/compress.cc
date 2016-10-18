@@ -42,6 +42,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <zlib.h>
 #include <lzma.h>
 #include <snappy.h>
+#include <zstd.h>
 
 #include "compress.h"
 #include "memory.h"
@@ -53,7 +54,9 @@ normalize_compression_method(enum toku_compression_method method)
 // Effect: resolve "friendly" names like "fast" and "small" into their real values.
 {
     switch (method) {
+    // defaults is zstd
     case TOKU_DEFAULT_COMPRESSION_METHOD:
+        return TOKU_ZSTD_METHOD;
     case TOKU_FAST_COMPRESSION_METHOD:
         return TOKU_QUICKLZ_METHOD;
     case TOKU_SMALL_COMPRESSION_METHOD:
@@ -80,6 +83,8 @@ size_t toku_compress_bound (enum toku_compression_method a, size_t size)
         return 2+deflateBound(nullptr, size); // We need one extra for the rfc1950-style header byte, and one extra to store windowBits (a bit over cautious about future upgrades maybe).
     case TOKU_SNAPPY_METHOD:
         return (1 + snappy::MaxCompressedLength(size));
+    case TOKU_ZSTD_METHOD:
+         return 1 + ZSTD_compressBound(size);
     default:
         break;
     }
@@ -176,6 +181,22 @@ void toku_compress (enum toku_compression_method a,
         dest[0] = TOKU_SNAPPY_METHOD;
         return;
     }
+    case TOKU_ZSTD_METHOD: {
+         if (sourceLen == 0) {
+             // requires at least one byte, so we handle this ourselves
+             assert(1 <= *destLen);
+             *destLen = 1;
+         } else {
+             // zstd with default compression level 1
+             int compression_level = 1;
+             size_t const actual_len = ZSTD_compress((void*)(dest + 1), *destLen - 1, source, sourceLen, compression_level);
+             assert(!ZSTD_isError(actual_len));
+             *destLen = actual_len + 1;
+         }
+         // Fill in that first byte
+         dest[0] = TOKU_ZSTD_METHOD;
+         return;
+     }
     default:
         break;
     }
@@ -251,6 +272,15 @@ void toku_decompress (Bytef       *dest,   uLongf destLen,
         assert(r);
         return;
     }
+    case TOKU_ZSTD_METHOD: {
+        if (sourceLen > 1 ) {
+            size_t const actual_len = ZSTD_decompress((void*)dest, destLen, (void*)(source + 1), sourceLen - 1);
+            assert(!ZSTD_isError(actual_len));
+        } else {
+            assert(destLen==0);
+        }
+         return;
+     }
     }
     // default fall through to error.
     assert(0);

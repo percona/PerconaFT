@@ -36,7 +36,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
-// Test zlib, lzma, quicklz, and snappy.
+// Test zlib, lzma, quicklz, snappy and zstd.
 // Compare to compress-test which tests the toku compression (which is a composite of quicklz and zlib).
 
 #include <sys/time.h>
@@ -132,6 +132,15 @@ static void test_compress_methods () {
     test_compress(TOKU_SNAPPY_METHOD, &compress_size, &uncompress_size);
     gettimeofday(&end, NULL);
     printf("TOKU_SNAPPY_METHOD Time=%.6fs, Ratio=%.2f[%d/%d]\n",
+            tdiff(&start, &end),
+            (float)compress_size / (float)uncompress_size, (int)compress_size, (int)uncompress_size);
+
+    compress_size = 0;
+    uncompress_size = 0;
+    gettimeofday(&start, NULL);
+    test_compress(TOKU_ZSTD_METHOD, &compress_size, &uncompress_size);
+    gettimeofday(&end, NULL);
+    printf("TOKU_ZSTD_METHOD Time=%.6fs, Ratio=%.2f[%d/%d]\n",
             tdiff(&start, &end),
             (float)compress_size / (float)uncompress_size, (int)compress_size, (int)uncompress_size);
 }

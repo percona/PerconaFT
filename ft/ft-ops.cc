@@ -904,8 +904,8 @@ int toku_ftnode_pe_callback(void *ftnode_pv,
                         compress_internal_node_partition(
                             node,
                             i,
-                            // Always compress with quicklz
-                            TOKU_QUICKLZ_METHOD);
+                            // Always compress with zstd
+                            TOKU_ZSTD_METHOD);
                     } else {
                         // We're not compressing buffers before eviction. Simply
                         // detach the buffer and set the child's state to

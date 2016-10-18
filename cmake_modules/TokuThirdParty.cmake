@@ -140,3 +140,37 @@ add_library(snappy STATIC IMPORTED)
 set_target_properties(snappy PROPERTIES IMPORTED_LOCATION
   "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/snappy/lib/libsnappy.a")
 add_dependencies(snappy build_snappy)
+
+## add zstd with an external project
+set(ZSTD_SOURCE_DIR "${TokuDB_SOURCE_DIR}/third_party/zstd-1.1.0" CACHE FILEPATH "Where to find sources for zstd.")
+if (NOT EXISTS "${SNAPPY_SOURCE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "Can't find the zstd sources.  Please check them out to ${ZSTD_SOURCE_DIR} or modify ZSTD_SOURCE_DIR.")
+endif ()
+
+FILE(GLOB ZSTD_ALL_FILES ${ZSTD_SOURCE_DIR}/*)
+ExternalProject_Add(build_zstd
+    PREFIX zstd
+    DOWNLOAD_COMMAND
+        cp -a "${ZSTD_ALL_FILES}" "<SOURCE_DIR>/"
+    CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        ${USE_PROJECT_CMAKE_MODULE_PATH}
+)
+FILE(GLOB_RECURSE ZSTD_ALL_FILES_RECURSIVE ${ZSTD_SOURCE_DIR}/*)
+ExternalProject_Add_Step(build_zstd reclone_src # Names of project and custom step
+    COMMENT "(re)cloning zstd source..."     # Text printed when step executes
+    DEPENDERS download configure   # Steps that depend on this step
+    DEPENDS   ${ZSTD_ALL_FILES_RECURSIVE}   # Files on which this step depends
+)
+
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/zstd/include")
+
+add_library(zstd STATIC IMPORTED)
+set_target_properties(zstd PROPERTIES IMPORTED_LOCATION
+  "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/zstd/lib/libzstd.a")
+add_dependencies(zstd build_zstd)
