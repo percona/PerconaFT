@@ -2653,7 +2653,7 @@ static std::unique_ptr<char[], decltype(&toku_free)> toku_file_get_parent_dir(
     return result;
 }
 
-static bool toku_create_subdirs_if_needed(const char *path) {
+bool toku_create_subdirs_if_needed(const char *path) {
     static const mode_t dir_mode = S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP |
                                    S_IWGRP | S_IXGRP | S_IROTH | S_IXOTH;
 
@@ -4564,6 +4564,8 @@ int toku_ft_rename_iname(DB_TXN *txn,
                          bs_new_name);
     }
 
+    if (!toku_create_subdirs_if_needed(new_iname_full.get()))
+        return get_error_errno();
     r = toku_os_rename(old_iname_full.get(), new_iname_full.get());
     if (r != 0)
         return r;
