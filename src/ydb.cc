@@ -2975,8 +2975,10 @@ env_dbremove(DB_ENV * env, DB_TXN *txn, const char *fname, const char *dbname, u
     if (txn && r) {
         if (r == EMFILE || r == ENFILE)
             r = toku_ydb_do_error(env, r, "toku dbremove failed because open file limit reached\n");
-        else
+        else if (r != ENOENT)
             r = toku_ydb_do_error(env, r, "toku dbremove failed\n");
+        else
+            r = 0;
         goto exit;
     }
     if (txn) {
