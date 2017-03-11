@@ -4183,7 +4183,7 @@ try_again : {
 
     {
         int r;
-        int64_t numrows = ft_handle->ft->in_memory_stats.numrows;
+        int64_t numrows = ft_handle->ft->in_memory_logical_rows;
         if (numrows < 0)
             numrows = 0;  // prevent appearance of a negative number
         r = toku_ft_keysrange_internal(ft_handle,
