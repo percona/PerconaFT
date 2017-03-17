@@ -87,6 +87,12 @@ namespace toku {
         lt_counters counters;
         std::atomic_ullong retry_want;
         unsigned long long retry_done;
+        toku_mutex_t retry_mutex;
+        toku_cond_t retry_cv;
+        bool running_retry;
+
+        void init(void);
+        void destroy(void);
     };
 
     // The locktree manager manages a set of locktrees, one for each open dictionary.

@@ -325,34 +325,48 @@ void lock_request::retry_all_lock_requests(locktree *lt, void (*after_retry_all_
     if (info->pending_is_empty)
         return;
 
-    toku_mutex_lock(&info->mutex);
+    toku_mutex_lock(&info->retry_mutex);
 
     // here is the group retry algorithm.
     // get the latest retry_want count and use it as the generation number of this retry operation.
     // if this retry generation is > the last retry generation, then do the lock retries.  otherwise,
     // no lock retries are needed.
-    unsigned long long retry_gen = info->retry_want.load();
-    if (retry_gen > info->retry_done) {
-
-        // retry all of the pending lock requests.
-        for (size_t i = 0; i < info->pending_lock_requests.size(); ) {
-            lock_request *request;
-            int r = info->pending_lock_requests.fetch(i, &request);
-            invariant_zero(r);
-
-            // retry this lock request. if it didn't succeed,
-            // move on to the next lock request. otherwise
-            // the request is gone from the list so we may
-            // read the i'th entry for the next one.
-            r = request->retry();
-            if (r != 0) {
-                i++;
-            }
+    unsigned long long retry_gen;
+    while ((retry_gen = info->retry_want.load()) > info->retry_done) {
+        if (!info->running_retry) {
+            info->running_retry = true;
+            toku_mutex_unlock(&info->retry_mutex);
+            retry_all_lock_requests_locked(info);
+            if (after_retry_all_test_callback) after_retry_all_test_callback();
+            toku_mutex_lock(&info->retry_mutex);
+            info->running_retry = false;
+            info->retry_done = retry_gen;
+            toku_cond_broadcast(&info->retry_cv);
+        } else {
+            toku_cond_wait(&info->retry_cv, &info->retry_mutex);
         }
-        if (after_retry_all_test_callback) after_retry_all_test_callback();
-        info->retry_done = retry_gen;
     }
 
+    toku_mutex_unlock(&info->retry_mutex);
+}
+
+void lock_request::retry_all_lock_requests_locked(lt_lock_request_info *info) {
+    toku_mutex_lock(&info->mutex);
+    // retry all of the pending lock requests.
+    for (size_t i = 0; i < info->pending_lock_requests.size(); ) {
+        lock_request *request;
+        int r = info->pending_lock_requests.fetch(i, &request);
+        invariant_zero(r);
+
+        // retry this lock request. if it didn't succeed,
+        // move on to the next lock request. otherwise
+        // the request is gone from the list so we may
+        // read the i'th entry for the next one.
+        r = request->retry();
+        if (r != 0) {
+            i++;
+        }
+    }
     toku_mutex_unlock(&info->mutex);
 }
 
