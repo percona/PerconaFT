@@ -110,7 +110,7 @@ public:
     //         Any lock requests successfully restarted is completed and woken up.
     //         The rest remain pending.
     static void retry_all_lock_requests(locktree *lt, void (*after_retry_test_callback)(void) = nullptr);
-    static void retry_all_lock_requests_locked(lt_lock_request_info *info);
+    static void retry_all_lock_requests_info(lt_lock_request_info *info);
 
     void set_start_test_callback(void (*f)(void));
     void set_start_before_pending_test_callback(void (*f)(void));

@@ -317,7 +317,8 @@ int lock_request::retry(void) {
 void lock_request::retry_all_lock_requests(locktree *lt, void (*after_retry_all_test_callback)(void)) {
     lt_lock_request_info *info = lt->get_lock_request_info();
 
-    info->retry_want++;
+    // get my retry generation (post increment of retry_want)
+    unsigned long long my_retry_want = (info->retry_want += 1);
 
     // if there are no pending lock requests than there is nothing to do
     // the unlocked data race on pending_is_empty is OK since lock requests
@@ -331,12 +332,12 @@ void lock_request::retry_all_lock_requests(locktree *lt, void (*after_retry_all_
     // get the latest retry_want count and use it as the generation number of this retry operation.
     // if this retry generation is > the last retry generation, then do the lock retries.  otherwise,
     // no lock retries are needed.
-    unsigned long long retry_gen;
-    while ((retry_gen = info->retry_want.load()) > info->retry_done) {
+    while (my_retry_want > info->retry_done) {
         if (!info->running_retry) {
             info->running_retry = true;
+            unsigned long long retry_gen = info->retry_want;
             toku_mutex_unlock(&info->retry_mutex);
-            retry_all_lock_requests_locked(info);
+            retry_all_lock_requests_info(info);
             if (after_retry_all_test_callback) after_retry_all_test_callback();
             toku_mutex_lock(&info->retry_mutex);
             info->running_retry = false;
@@ -350,7 +351,7 @@ void lock_request::retry_all_lock_requests(locktree *lt, void (*after_retry_all_
     toku_mutex_unlock(&info->retry_mutex);
 }
 
-void lock_request::retry_all_lock_requests_locked(lt_lock_request_info *info) {
+void lock_request::retry_all_lock_requests_info(lt_lock_request_info *info) {
     toku_mutex_lock(&info->mutex);
     // retry all of the pending lock requests.
     for (size_t i = 0; i < info->pending_lock_requests.size(); ) {
