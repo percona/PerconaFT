@@ -181,7 +181,16 @@ int toku_db_get_range_lock(DB *db, DB_TXN *txn, const DBT *left_key, const DBT *
     request.create();
     int r = toku_db_start_range_lock(db, txn, left_key, right_key, lock_type, &request);
     if (r == DB_LOCK_NOTGRANTED) {
+        toku_debug_sync(db_txn_struct_i(txn)->tokutxn,
+                        "toku_range_lock_before_wait");
         r = toku_db_wait_range_lock(db, txn, &request);
+        if (r == DB_LOCK_NOTGRANTED)
+            toku_debug_sync(db_txn_struct_i(txn)->tokutxn,
+                            "toku_range_lock_not_granted_after_wait");
+    }
+    else if (r == 0) {
+        toku_debug_sync(db_txn_struct_i(txn)->tokutxn,
+                        "toku_range_lock_granted_immediately");
     }
 
     request.destroy();
