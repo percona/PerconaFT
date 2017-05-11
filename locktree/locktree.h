@@ -38,9 +38,11 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #pragma once
 
+#include <atomic>
+
 #include <db.h>
-#include <toku_time.h>
 #include <toku_pthread.h>
+#include <toku_time.h>
 
 #include <ft/ft-ops.h> // just for DICTIONARY_ID..
 #include <ft/comparator.h>
@@ -80,14 +82,22 @@ namespace toku {
     // Lock request state for some locktree
     struct lt_lock_request_info {
         omt<lock_request *> pending_lock_requests;
+        std::atomic_bool pending_is_empty;
         toku_mutex_t mutex;
-        bool should_retry_lock_requests;
         lt_counters counters;
+        std::atomic_ullong retry_want;
+        unsigned long long retry_done;
+        toku_mutex_t retry_mutex;
+        toku_cond_t retry_cv;
+        bool running_retry;
+
+        void init(void);
+        void destroy(void);
     };
 
-    // The locktree manager manages a set of locktrees, one for each open dictionary.
-    // Locktrees are retrieved from the manager. When they are no longer needed, they 
-    // are be released by the user.
+    // The locktree manager manages a set of locktrees, one for each open
+    // dictionary. Locktrees are retrieved from the manager. When they are no
+    // longer needed, they are be released by the user.
     class locktree_manager {
     public:
         // param: create_cb, called just after a locktree is first created.

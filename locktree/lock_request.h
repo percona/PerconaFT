@@ -107,20 +107,30 @@ public:
     TXNID get_conflicting_txnid(void) const;
 
     // effect: Retries all of the lock requests for the given locktree.
-    //         Any lock requests successfully restarted is completed and woken up.
+    //         Any lock requests successfully restarted is completed and woken
+    //         up.
     //         The rest remain pending.
-    static void retry_all_lock_requests(locktree *lt);
+    static void retry_all_lock_requests(
+        locktree *lt,
+        void (*after_retry_test_callback)(void) = nullptr);
+    static void retry_all_lock_requests_info(lt_lock_request_info *info);
 
     void set_start_test_callback(void (*f)(void));
+    void set_start_before_pending_test_callback(void (*f)(void));
     void set_retry_test_callback(void (*f)(void));
-private:
 
+    void *get_extra(void) const;
+
+    void kill_waiter(void);
+    static void kill_waiter(locktree *lt, void *extra);
+
+   private:
     enum state {
-        UNINITIALIZED,
-        INITIALIZED,
-        PENDING,
-        COMPLETE,
-        DESTROYED,
+      UNINITIALIZED,
+      INITIALIZED,
+      PENDING,
+      COMPLETE,
+      DESTROYED,
     };
 
     // The keys for a lock request are stored "unowned" in m_left_key
@@ -184,9 +194,10 @@ private:
 
     void copy_keys(void);
 
-    static int find_by_txnid(lock_request * const &request, const TXNID &txnid);
+    static int find_by_txnid(lock_request *const &request, const TXNID &txnid);
 
     void (*m_start_test_callback)(void);
+    void (*m_start_before_pending_test_callback)(void);
     void (*m_retry_test_callback)(void);
 
     friend class lock_request_unit_test;
