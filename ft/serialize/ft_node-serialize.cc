@@ -830,6 +830,13 @@ int toku_serialize_ftnode_to(int fd,
     node->dirty = 0;  // See #1957.   Must set the node to be clean after
                       // serializing it so that it doesn't get written again on
                       // the next checkpoint or eviction.
+    if (node->height == 0) {
+        for (int i = 0; i < node->n_children; i++) {
+            if (BP_STATE(node, i) == PT_AVAIL) {
+                BLB_LRD(node, i) = 0;
+            }
+        }
+    }
     return 0;
 }
 
@@ -996,6 +1003,7 @@ BASEMENTNODE toku_clone_bn(BASEMENTNODE orig_bn) {
     bn->seqinsert = orig_bn->seqinsert;
     bn->stale_ancestor_messages_applied = orig_bn->stale_ancestor_messages_applied;
     bn->stat64_delta = orig_bn->stat64_delta;
+    bn->logical_rows_delta = orig_bn->logical_rows_delta;
     bn->data_buffer.clone(&orig_bn->data_buffer);
     return bn;
 }
@@ -1006,6 +1014,7 @@ BASEMENTNODE toku_create_empty_bn_no_buffer(void) {
     bn->seqinsert = 0;
     bn->stale_ancestor_messages_applied = false;
     bn->stat64_delta = ZEROSTATS;
+    bn->logical_rows_delta = 0;
     bn->data_buffer.init_zero();
     return bn;
 }
@@ -1430,7 +1439,6 @@ static FTNODE alloc_ftnode_for_deserialize(uint32_t fullhash, BLOCKNUM blocknum)
     node->fullhash = fullhash;
     node->blocknum = blocknum;
     node->dirty = 0;
-    node->logical_rows_delta = 0;
     node->bp = nullptr;
     node->oldest_referenced_xid_known = TXNID_NONE;
     return node; 
