@@ -336,6 +336,11 @@ int toku_cachefile_of_filenum (CACHETABLE ct, FILENUM filenum, CACHEFILE *cf) {
     return ct->cf_list.cachefile_of_filenum(filenum, cf);
 }
 
+// Check a cachefile is in checkpoint or NOT
+bool toku_cachefile_forcheckpoint(CACHEFILE cf) {
+    return cf->for_checkpoint;
+}
+
 // TEST-ONLY function
 // If something goes wrong, close the fd.  After this, the caller shouldn't close the fd, but instead should close the cachefile.
 int toku_cachetable_openfd (CACHEFILE *cfptr, CACHETABLE ct, int fd, const char *fname_in_env) {
