@@ -80,7 +80,13 @@ static void push_to_malloced_memory(void *returned_pointer, void *true_pointer, 
     malloc_lock();
     if (malloced_now_count == malloced_now_size) {
         malloced_now_size = 2*malloced_now_size + 1;
-        malloced_now = (struct malloc_pair *)realloc(malloced_now, malloced_now_size * sizeof(*malloced_now));
+        struct malloc_pair *malloced_now_new = (struct malloc_pair *)realloc(malloced_now, malloced_now_size * sizeof(*malloced_now));
+        if (malloced_now_new == nullptr) {
+            free(malloced_now);
+            malloc_unlock();
+            return;
+        }
+        malloced_now = malloced_now_new;
     }
     malloced_now[malloced_now_count].returned_pointer = returned_pointer;
     malloced_now[malloced_now_count].true_pointer     = true_pointer;
