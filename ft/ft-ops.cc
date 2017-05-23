@@ -770,24 +770,48 @@ toku_ft_status_update_pivot_fetch_reason(ftnode_fetch_extra *bfe)
     }
 }
 
-int toku_ftnode_fetch_callback (CACHEFILE UU(cachefile), PAIR p, int fd, BLOCKNUM blocknum, uint32_t fullhash,
-                                 void **ftnode_pv,  void** disk_data, PAIR_ATTR *sizep, int *dirtyp, void *extraargs) {
+int toku_ftnode_fetch_callback(CACHEFILE UU(cachefile),
+                               PAIR p,
+                               int fd,
+                               BLOCKNUM blocknum,
+                               uint32_t fullhash,
+                               void **ftnode_pv,
+                               void **disk_data,
+                               PAIR_ATTR *sizep,
+                               int *dirtyp,
+                               void *extraargs) {
     assert(extraargs);
-    assert(*ftnode_pv == NULL);
-    FTNODE_DISK_DATA* ndd = (FTNODE_DISK_DATA*)disk_data;
+    assert(*ftnode_pv == nullptr);
+    FTNODE_DISK_DATA *ndd = (FTNODE_DISK_DATA *)disk_data;
     ftnode_fetch_extra *bfe = (ftnode_fetch_extra *)extraargs;
-    FTNODE *node=(FTNODE*)ftnode_pv;
+    FTNODE *node = (FTNODE *)ftnode_pv;
     // deserialize the node, must pass the bfe in because we cannot
     // evaluate what piece of the the node is necessary until we get it at
     // least partially into memory
-    int r = toku_deserialize_ftnode_from(fd, blocknum, fullhash, node, ndd, bfe);
+    int r =
+        toku_deserialize_ftnode_from(fd, blocknum, fullhash, node, ndd, bfe);
     if (r != 0) {
         if (r == TOKUDB_BAD_CHECKSUM) {
-            fprintf(stderr,
-                    "Checksum failure while reading node in file %s.\n",
-                    toku_cachefile_fname_in_env(cachefile));
+            fprintf(
+                stderr,
+                "%s:%d:toku_ftnode_fetch_callback - "
+                "file[%s], blocknum[%ld], toku_deserialize_ftnode_from "
+                "failed with a checksum error.\n",
+                __FILE__,
+                __LINE__,
+                toku_cachefile_fname_in_env(cachefile),
+                blocknum.b);
         } else {
-            fprintf(stderr, "Error deserializing node, errno = %d", r);
+            fprintf(
+                stderr,
+                "%s:%d:toku_ftnode_fetch_callback - "
+                "file[%s], blocknum[%ld], toku_deserialize_ftnode_from "
+                "failed with %d.\n",
+                __FILE__,
+                __LINE__,
+                toku_cachefile_fname_in_env(cachefile),
+                blocknum.b,
+                r);
         }
         // make absolutely sure we crash before doing anything else.
         abort();
@@ -796,7 +820,8 @@ int toku_ftnode_fetch_callback (CACHEFILE UU(cachefile), PAIR p, int fd, BLOCKNU
     if (r == 0) {
         *sizep = make_ftnode_pair_attr(*node);
         (*node)->ct_pair = p;
-        *dirtyp = (*node)->dirty;  // deserialize could mark the node as dirty (presumably for upgrade)
+        *dirtyp = (*node)->dirty;  // deserialize could mark the node as dirty
+                                   // (presumably for upgrade)
     }
     return r;
 }

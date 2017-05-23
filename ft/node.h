@@ -384,6 +384,16 @@ enum reactivity toku_ftnode_get_reactivity(FT ft, FTNODE node);
 enum reactivity toku_ftnode_get_nonleaf_reactivity(FTNODE node, unsigned int fanout);
 enum reactivity toku_ftnode_get_leaf_reactivity(FTNODE node, uint32_t nodesize);
 
+inline const char* toku_ftnode_get_cachefile_fname_in_env(FTNODE node) {
+    if (node->ct_pair) {
+        CACHEFILE cf = toku_pair_get_cachefile(node->ct_pair);
+        if (cf) {
+            return toku_cachefile_fname_in_env(cf);
+        }
+    }
+    return nullptr;
+}
+
 /**
  * Finds the next child for HOT to flush to, given that everything up to
  * and including k has been flattened.
