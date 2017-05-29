@@ -79,6 +79,7 @@ static void test_large_sequential_insert_unique(DB_ENV *env) {
     // very small nodes/basements to make a taller tree
     r = db->set_pagesize(db, 8 * 1024); CKERR(r);
     r = db->set_readpagesize(db, 2 * 1024); CKERR(r);
+    r = db->set_fanout(db, 4); CKERR(r);
     r = db->open(db, NULL, "db", NULL, DB_BTREE, DB_CREATE, 0644); CKERR(r);
 
     const int val_size = 8;
@@ -88,7 +89,7 @@ static void test_large_sequential_insert_unique(DB_ENV *env) {
     dbt_init(&val, val_buf, val_size);
 
     // grow a tree to about depth 3, taking sanity checks along the way
-    const int start_num_rows = (64 * 1024 * 1024) / val_size;
+    const int start_num_rows = (1024 * 1024) / val_size;
     for (int i = 0; i < start_num_rows; i++) {
         DBT key;
         int k = toku_htonl(i);
