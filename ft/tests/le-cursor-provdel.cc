@@ -116,12 +116,12 @@ create_populate_tree(const char *logdir, const char *fname, int n) {
     assert(error == 0);
     
     CHECKPOINTER cp = toku_cachetable_get_checkpointer(ct);
-    error = toku_checkpoint(cp, logger, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);
+    error = toku_checkpoint(cp, logger, CLIENT_CHECKPOINT);
     assert(error == 0);
 
     toku_logger_close_rollback(logger);
     
-    error = toku_checkpoint(cp, logger, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);
+    error = toku_checkpoint(cp, logger, CLIENT_CHECKPOINT);
     assert(error == 0);
 
     toku_logger_shutdown(logger);
@@ -216,7 +216,7 @@ test_provdel(const char *logdir, const char *fname, int n) {
     error = toku_close_ft_handle_nolsn(ft, NULL);
     assert(error == 0);
     CHECKPOINTER cp = toku_cachetable_get_checkpointer(ct);
-    error = toku_checkpoint(cp, logger, NULL, NULL, NULL, NULL, CLIENT_CHECKPOINT);
+    error = toku_checkpoint(cp, logger, CLIENT_CHECKPOINT);
     assert(error == 0);
 
     toku_logger_close_rollback(logger);

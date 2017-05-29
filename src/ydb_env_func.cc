@@ -50,14 +50,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include "ydb_env_func.h"
 
-// For test purposes only.
-// These callbacks are never used in production code, only as a way to test the system
-// (for example, by causing crashes at predictable times).
-void (*checkpoint_callback_f)(void*) = NULL;
-void * checkpoint_callback_extra     = NULL;
-void (*checkpoint_callback2_f)(void*) = NULL;
-void * checkpoint_callback2_extra     = NULL;
-
 bool engine_status_enable = true; // if false, suppress engine status output on failed assert, for test programs only
 
 void db_env_set_direct_io (bool direct_io_on) {
@@ -129,16 +121,14 @@ void db_env_set_func_free (void (*f)(void*)) {
 void 
 db_env_set_checkpoint_callback (void (*callback_f)(void*), void* extra) {
     toku_checkpoint_safe_client_lock();
-    checkpoint_callback_f = callback_f;
-    checkpoint_callback_extra = extra;
+    toku_checkpoint_set_callback(callback_f, extra);
     toku_checkpoint_safe_client_unlock();
 }
 
 void 
 db_env_set_checkpoint_callback2 (void (*callback_f)(void*), void* extra) {
     toku_checkpoint_safe_client_lock();
-    checkpoint_callback2_f = callback_f;
-    checkpoint_callback2_extra = extra;
+    toku_checkpoint_set_callback2(callback_f, extra);
     toku_checkpoint_safe_client_unlock();
 }
 

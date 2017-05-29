@@ -1061,7 +1061,7 @@ env_open(DB_ENV * env, const char *home, uint32_t flags, int mode) {
         txn = NULL;
     }
     cp = toku_cachetable_get_checkpointer(env->i->cachetable);
-    r = toku_checkpoint(cp, env->i->logger, NULL, NULL, NULL, NULL, STARTUP_CHECKPOINT);
+    r = toku_checkpoint(cp, env->i->logger, STARTUP_CHECKPOINT);
     assert_zero(r);
     env_fs_poller(env);          // get the file system state at startup
     r = env_fs_init_minicron(env);
@@ -1147,7 +1147,7 @@ env_close(DB_ENV * env, uint32_t flags) {
             CHECKPOINTER cp = nullptr;
             if (clean_shutdown) {
                 cp = toku_cachetable_get_checkpointer(env->i->cachetable);
-                r = toku_checkpoint(cp, env->i->logger, NULL, NULL, NULL, NULL, SHUTDOWN_CHECKPOINT);
+                r = toku_checkpoint(cp, env->i->logger, SHUTDOWN_CHECKPOINT);
                 if (r) {
                     err_msg = "Cannot close environment (error during checkpoint)\n";
                     toku_ydb_do_error(env, r, "%s", err_msg);
@@ -1157,7 +1157,7 @@ env_close(DB_ENV * env, uint32_t flags) {
             toku_logger_close_rollback_check_empty(env->i->logger, clean_shutdown);
             if (clean_shutdown) {
                 //Do a second checkpoint now that the rollback cachefile is closed.
-                r = toku_checkpoint(cp, env->i->logger, NULL, NULL, NULL, NULL, SHUTDOWN_CHECKPOINT);
+                r = toku_checkpoint(cp, env->i->logger, SHUTDOWN_CHECKPOINT);
                 if (r) {
                     err_msg = "Cannot close environment (error during checkpoint)\n";
                     toku_ydb_do_error(env, r, "%s", err_msg);
@@ -1690,8 +1690,6 @@ static int
 toku_env_txn_checkpoint(DB_ENV * env, uint32_t kbyte __attribute__((__unused__)), uint32_t min __attribute__((__unused__)), uint32_t flags __attribute__((__unused__))) {
     CHECKPOINTER cp = toku_cachetable_get_checkpointer(env->i->cachetable);
     int r = toku_checkpoint(cp, env->i->logger,
-                            checkpoint_callback_f,  checkpoint_callback_extra,
-                            checkpoint_callback2_f, checkpoint_callback2_extra,
                             CLIENT_CHECKPOINT);
     if (r) {
         // Panicking the whole environment may be overkill, but I'm not sure what else to do.

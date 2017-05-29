@@ -207,7 +207,7 @@ upgrade_log(const char *env_dir, const char *log_dir, LSN last_lsn, TXNID last_x
     }
     { //Checkpoint
         CHECKPOINTER cp = toku_cachetable_get_checkpointer(ct);
-        r = toku_checkpoint(cp, logger, NULL, NULL, NULL, NULL, UPGRADE_CHECKPOINT); //fsyncs log dir
+        r = toku_checkpoint(cp, logger, UPGRADE_CHECKPOINT); //fsyncs log dir
         assert(r == 0);
     }
     { //Close cachetable and logger
