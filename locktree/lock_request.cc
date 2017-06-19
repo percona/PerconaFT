@@ -79,7 +79,7 @@ void lock_request::destroy(void) {
 }
 
 // set the lock request parameters. this API allows a lock request to be reused.
-void lock_request::set(locktree *lt, TXNID txnid, const DBT *left_key, const DBT *right_key, lock_request::type lock_type, bool big_txn) {
+void lock_request::set(locktree *lt, TXNID txnid, const DBT *left_key, const DBT *right_key, lock_request::type lock_type, bool big_txn, void *extra) {
     invariant(m_state != state::PENDING);
     m_lt = lt;
     m_txnid = txnid;
@@ -91,6 +91,7 @@ void lock_request::set(locktree *lt, TXNID txnid, const DBT *left_key, const DBT
     m_state = state::INITIALIZED;
     m_info = lt ? lt->get_lock_request_info() : nullptr;
     m_big_txn = big_txn;
+    m_extra = extra;
 }
 
 // get rid of any stored left and right key copies and
@@ -204,6 +205,12 @@ int lock_request::wait(uint64_t wait_time_ms, uint64_t killed_time_ms, int (*kil
     toku_mutex_lock(&m_info->mutex);
 
     while (m_state == state::PENDING) {
+        // check if this thread is killed
+        if (killed_callback && killed_callback()) {
+            remove_from_lock_requests();
+            complete(DB_LOCK_NOTGRANTED);
+            continue;
+        }
 
         // compute next wait time
         uint64_t t_wait;
@@ -221,7 +228,7 @@ int lock_request::wait(uint64_t wait_time_ms, uint64_t killed_time_ms, int (*kil
         invariant(r == 0 || r == ETIMEDOUT);
 
         t_now = toku_current_time_microsec();
-        if (m_state == state::PENDING && (t_now >= t_end || (killed_callback && killed_callback()))) {
+        if (m_state == state::PENDING && t_now >= t_end) {
             m_info->counters.timeout_count += 1;
             
             // if we're still pending and we timed out, then remove our
@@ -343,6 +350,30 @@ void lock_request::retry_all_lock_requests(locktree *lt) {
     // future threads should only retry lock requests if some still exist
     info->should_retry_lock_requests = info->pending_lock_requests.size() > 0;
 
+    toku_mutex_unlock(&info->mutex);
+}
+
+void *lock_request::get_extra(void) const {
+    return m_extra;
+}
+
+void lock_request::kill_waiter(void) {
+    remove_from_lock_requests();
+    complete(DB_LOCK_NOTGRANTED);
+    toku_cond_broadcast(&m_wait_cond);
+}
+
+void lock_request::kill_waiter(locktree *lt, void *extra) {
+    lt_lock_request_info *info = lt->get_lock_request_info();
+    toku_mutex_lock(&info->mutex);
+    for (size_t i = 0; i < info->pending_lock_requests.size(); i++) {
+        lock_request *request;
+        int r = info->pending_lock_requests.fetch(i, &request);
+        if (r == 0 && request->get_extra() == extra) {
+            request->kill_waiter();
+            break;
+        }
+    }
     toku_mutex_unlock(&info->mutex);
 }
 
