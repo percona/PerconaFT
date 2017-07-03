@@ -136,7 +136,8 @@ class block_table {
     void realloc_descriptor_on_disk(DISKOFF size,
                                     DISKOFF *offset,
                                     struct ft *ft,
-                                    int fd);
+                                    int fd,
+                                    const char *dbg_context);
     void get_descriptor_offset_size(DISKOFF *offset, DISKOFF *size);
 
     // External verfication
@@ -148,7 +149,8 @@ class block_table {
     void serialize_translation_to_wbuf(int fd,
                                        struct wbuf *w,
                                        int64_t *address,
-                                       int64_t *size);
+                                       int64_t *size,
+                                       const char *dbg_context);
 
     // DEBUG ONLY (ftdump included), tests included
     void blocknum_dump_translation(BLOCKNUM b);
@@ -259,7 +261,8 @@ class block_table {
     void _maybe_truncate_file(int fd, uint64_t size_needed_before);
     void _ensure_safe_write_unlocked(int fd,
                                      DISKOFF block_size,
-                                     DISKOFF block_offset);
+                                     DISKOFF block_offset,
+                                     const char *dbg_context);
 
     // Verification
     bool _is_valid_blocknum(struct translation *t, BLOCKNUM b);
@@ -337,4 +340,42 @@ static inline void rbuf_ma_BLOCKNUM(struct rbuf *rb,
                                     memarena *UU(ma),
                                     BLOCKNUM *blocknum) {
     *blocknum = rbuf_blocknum(rb);
+}
+
+inline const char *construct_dbg_context_for_write_node(const char *fname,
+                                                        bool for_checkpoint,
+                                                        const char *func_name) {
+    char *dbg_context = (char *)toku_malloc(
+        sizeof("Called by %s: writing to file %s for checkpoint") +
+        sizeof(func_name) + PATH_MAX);
+
+    if (for_checkpoint)
+        sprintf(dbg_context,
+                "Called by %s: writing to file %s for checkpoint",
+                func_name,
+                fname);
+    else
+        sprintf(dbg_context,
+                "Called by %s; writing to file %s for eviction",
+                func_name,
+                fname);
+
+    return (const char *)dbg_context;
+}
+
+inline const char *construct_dbg_context_for_write_others(const char *fname,
+                                                          const char *func_name,
+                                                          const char *others) {
+    char *dbg_context =
+        (char *)toku_malloc(sizeof("Called by %s: writing to file %s for %s") +
+                            sizeof(func_name) + PATH_MAX + sizeof(others));
+    sprintf(dbg_context,
+            "Called by %s: writing to file %s for %s",
+            func_name,
+            fname,
+            others);
+    return (const char *)dbg_context;
+}
+inline void destruct_dbg_context_for_write(const char *buffer) {
+    toku_free((void *)buffer);
 }

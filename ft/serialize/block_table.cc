@@ -478,7 +478,8 @@ void block_table::_realloc_on_disk_internal(BLOCKNUM b,
 
 void block_table::_ensure_safe_write_unlocked(int fd,
                                               DISKOFF block_size,
-                                              DISKOFF block_offset) {
+                                              DISKOFF block_offset,
+                                              const char *dbg_context) {
     // Requires: holding _mutex
     uint64_t size_needed = block_size + block_offset;
     if (size_needed > _safe_file_size) {
@@ -489,7 +490,7 @@ void block_table::_ensure_safe_write_unlocked(int fd,
 
             int64_t size_after;
             toku_maybe_preallocate_in_file(
-                fd, size_needed, _safe_file_size, &size_after);
+                fd, size_needed, _safe_file_size, &size_after, dbg_context);
 
             _mutex_lock();
             _safe_file_size = size_after;
@@ -509,7 +510,11 @@ void block_table::realloc_on_disk(BLOCKNUM b,
     _verify_valid_freeable_blocknum(t, b);
     _realloc_on_disk_internal(b, size, offset, ft, for_checkpoint);
 
-    _ensure_safe_write_unlocked(fd, size, *offset);
+    char *fname = toku_cachefile_fname_in_env(ft->cf);
+    const char *dbg_context =
+        construct_dbg_context_for_write_node(fname, for_checkpoint, __func__);
+    _ensure_safe_write_unlocked(fd, size, *offset, dbg_context);
+    destruct_dbg_context_for_write(dbg_context);
     _mutex_unlock();
 }
 
@@ -553,7 +558,8 @@ void block_table::_alloc_inprogress_translation_on_disk_unlocked() {
 void block_table::serialize_translation_to_wbuf(int fd,
                                                 struct wbuf *w,
                                                 int64_t *address,
-                                                int64_t *size) {
+                                                int64_t *size,
+                                                const char *dbg_context) {
     _mutex_lock();
     struct translation *t = &_inprogress;
 
@@ -599,7 +605,7 @@ void block_table::serialize_translation_to_wbuf(int fd,
     *size = size_translation;
     invariant((*address) % 512 == 0);
 
-    _ensure_safe_write_unlocked(fd, size_aligned, *address);
+    _ensure_safe_write_unlocked(fd, size_aligned, *address, dbg_context);
     _mutex_unlock();
 }
 
@@ -1018,10 +1024,11 @@ void block_table::_realloc_descriptor_on_disk_unlocked(DISKOFF size,
 void block_table::realloc_descriptor_on_disk(DISKOFF size,
                                              DISKOFF *offset,
                                              FT ft,
-                                             int fd) {
+                                             int fd,
+                                             const char *dbg_context) {
     _mutex_lock();
     _realloc_descriptor_on_disk_unlocked(size, offset, ft);
-    _ensure_safe_write_unlocked(fd, size, *offset);
+    _ensure_safe_write_unlocked(fd, size, *offset, dbg_context);
     _mutex_unlock();
 }
 

@@ -449,22 +449,44 @@ swap_inbuf_outbuf (TOKULOGGER logger)
     assert(logger->inbuf.n_in_buf == 0);
 }
 
-static void
-write_outbuf_to_logfile (TOKULOGGER logger, LSN *fsynced_lsn)
-// Effect:  Write the contents of outbuf to logfile.  Don't necessarily fsync (but it might, in which case fynced_lsn is updated).
-//  If the logfile gets too big, open the next one (that's the case where an fsync might happen).
-// Entry and exit: Holds permission to modify output (and doesn't let it go, so it's ok to also hold the inlock).
+static void write_outbuf_to_logfile(TOKULOGGER logger, LSN *fsynced_lsn)
+// Effect:  Write the contents of outbuf to logfile.  Don't necessarily fsync
+// (but it might, in which case fynced_lsn is updated).
+//  If the logfile gets too big, open the next one (that's the case where an
+//  fsync might happen).
+// Entry and exit: Holds permission to modify output (and doesn't let it go, so
+// it's ok to also hold the inlock).
 {
-    if (logger->outbuf.n_in_buf>0) {
+    if (logger->outbuf.n_in_buf > 0) {
         // Write the outbuf to disk, take accounting measurements
+
+        int fnamelen = strlen(logger->directory) + 50;
+        char fname[fnamelen];
+        snprintf(fname,
+                 fnamelen,
+                 "%s/log%012lld.tokulog%d",
+                 logger->directory,
+                 logger->next_log_file_number,
+                 TOKU_LOG_VERSION);
+
+        const char *dbg_context = construct_dbg_context_for_logging(
+            fname, __func__, "flushing redo logs to the log file");
         tokutime_t io_t0 = toku_time_now();
-        toku_os_full_write(logger->fd, logger->outbuf.buf, logger->outbuf.n_in_buf);
+        toku_os_full_write(logger->fd,
+                           logger->outbuf.buf,
+                           logger->outbuf.n_in_buf,
+                           dbg_context);
         tokutime_t io_t1 = toku_time_now();
+        destruct_dbg_context(dbg_context);
+
         logger->num_writes_to_disk++;
         logger->bytes_written_to_disk += logger->outbuf.n_in_buf;
         logger->time_spent_writing_to_disk += (io_t1 - io_t0);
 
-        assert(logger->outbuf.max_lsn_in_buf.lsn > logger->written_lsn.lsn); // since there is something in the buffer, its LSN must be bigger than what's previously written.
+        assert(logger->outbuf.max_lsn_in_buf.lsn >
+               logger->written_lsn.lsn);  // since there is something in the
+                                          // buffer, its LSN must be bigger than
+                                          // what's previously written.
         logger->written_lsn = logger->outbuf.max_lsn_in_buf;
         logger->n_in_file += logger->outbuf.n_in_buf;
         logger->outbuf.n_in_buf = 0;
@@ -672,30 +694,43 @@ void toku_logger_free_logfiles(char **logfiles, int n_logfiles) {
     toku_free(logfiles);
 }
 
-static int open_logfile (TOKULOGGER logger)
+static int open_logfile(TOKULOGGER logger)
 // Entry and Exit: This thread has permission to modify the output.
 {
-    int fnamelen = strlen(logger->directory)+50;
+    int fnamelen = strlen(logger->directory) + 50;
     char fname[fnamelen];
-    snprintf(fname, fnamelen, "%s/log%012lld.tokulog%d", logger->directory, logger->next_log_file_number, TOKU_LOG_VERSION);
+    snprintf(fname,
+             fnamelen,
+             "%s/log%012lld.tokulog%d",
+             logger->directory,
+             logger->next_log_file_number,
+             TOKU_LOG_VERSION);
     long long index = logger->next_log_file_number;
     if (logger->write_log_files) {
-        logger->fd = open(fname, O_CREAT+O_WRONLY+O_TRUNC+O_EXCL+O_BINARY, S_IRUSR+S_IWUSR);
-        if (logger->fd==-1) {
+        logger->fd = open(fname,
+                          O_CREAT + O_WRONLY + O_TRUNC + O_EXCL + O_BINARY,
+                          S_IRUSR + S_IWUSR);
+        if (logger->fd == -1) {
             return get_error_errno();
         }
         fsync_logdir(logger);
         logger->next_log_file_number++;
     } else {
-        logger->fd = open(DEV_NULL_FILE, O_WRONLY+O_BINARY);
-        if (logger->fd==-1) {
+        logger->fd = open(DEV_NULL_FILE, O_WRONLY + O_BINARY);
+        if (logger->fd == -1) {
             return get_error_errno();
         }
     }
-    toku_os_full_write(logger->fd, "tokulogg", 8);
-    int version_l = toku_htonl(log_format_version); //version MUST be in network byte order regardless of disk order
-    toku_os_full_write(logger->fd, &version_l, 4);
-    if ( logger->write_log_files ) {
+    const char *dbg_context = construct_dbg_context_for_logging(
+        fname, __func__, "initing the logfile upon opening");
+    toku_os_full_write(logger->fd, "tokulogg", 8, dbg_context);
+    int version_l = toku_htonl(log_format_version);  // version MUST be in
+                                                     // network byte order
+                                                     // regardless of disk order
+    toku_os_full_write(logger->fd, &version_l, 4, dbg_context);
+    destruct_dbg_context(dbg_context);
+
+    if (logger->write_log_files) {
         TOKULOGFILEINFO XMALLOC(lf_info);
         lf_info->index = index;
         lf_info->maxlsn = logger->written_lsn;
