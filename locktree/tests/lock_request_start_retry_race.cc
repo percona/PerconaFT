@@ -122,7 +122,8 @@ int main(void) {
     toku_pthread_t ids[n_workers];
     for (int i = 0; i < n_workers; i++) {
         toku::locker_arg *arg = new toku::locker_arg(&lt, i, one);
-        r = toku_pthread_create(&ids[i], nullptr, toku::locker, arg);
+        r = toku_pthread_create(
+            toku_uninstrumented, &ids[i], nullptr, toku::locker, arg);
         assert_zero(r);
     }
     for (int i = 0; i < n_workers; i++) {

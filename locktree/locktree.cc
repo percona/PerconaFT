@@ -82,7 +82,8 @@ void locktree::create(locktree_manager *mgr, DICTIONARY_ID dict_id, const compar
 
     m_lock_request_info.pending_lock_requests.create();
     ZERO_STRUCT(m_lock_request_info.mutex);
-    toku_mutex_init(&m_lock_request_info.mutex, nullptr);
+    toku_mutex_init(
+        *locktree_request_info_mutex_key, &m_lock_request_info.mutex, nullptr);
     m_lock_request_info.should_retry_lock_requests = false;
     ZERO_STRUCT(m_lock_request_info.counters);
 
