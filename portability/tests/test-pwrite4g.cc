@@ -62,7 +62,7 @@ int test_main(int UU(argc), char *const UU(argv[])) {
     memset(buf, 0, 512);
     strcpy(buf, "hello");
     int64_t offset = (1LL<<32) + 512;
-    toku_os_full_pwrite(fd, buf, 512, offset);
+    toku_os_full_pwrite(fd, buf, 512, offset, "test-pwrite4g");
     char newbuf[512];
     r = pread(fd, newbuf, sizeof newbuf, 100);
     assert(r==sizeof newbuf);

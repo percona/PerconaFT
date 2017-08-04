@@ -52,7 +52,8 @@ void toku_serialize_ft_to_wbuf(struct wbuf *wbuf,
                                DISKOFF translation_size_on_disk);
 void toku_serialize_descriptor_contents_to_fd(int fd,
                                               DESCRIPTOR desc,
-                                              DISKOFF offset);
+                                              DISKOFF offset,
+                                              const char *dbg_context);
 void toku_serialize_descriptor_contents_to_wbuf(struct wbuf *wb,
                                                 DESCRIPTOR desc);
 int toku_deserialize_ft_from(int fd,

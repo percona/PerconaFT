@@ -866,16 +866,22 @@ toku_ft_update_descriptor(FT ft, DESCRIPTOR desc)
 // from the ft's cachefile. we do this so serialize code can
 // update a descriptor before the ft is fully opened and has
 // a valid cachefile.
-void
-toku_ft_update_descriptor_with_fd(FT ft, DESCRIPTOR desc, int fd) {
+void toku_ft_update_descriptor_with_fd(FT ft, DESCRIPTOR desc, int fd) {
     // the checksum is four bytes, so that's where the magic number comes from
     // make space for the new descriptor and write it out to disk
     DISKOFF offset, size;
     size = toku_serialize_descriptor_size(desc) + 4;
-    ft->blocktable.realloc_descriptor_on_disk(size, &offset, ft, fd);
-    toku_serialize_descriptor_contents_to_fd(fd, desc, offset);
 
-    // cleanup the old descriptor and set the in-memory descriptor to the new one
+    const char *dbg_context = construct_dbg_context_for_write_others(
+        toku_cachefile_fname_in_env(ft->cf),
+        __func__,
+        "updating the descriptor for an ft");
+    ft->blocktable.realloc_descriptor_on_disk(
+        size, &offset, ft, fd, dbg_context);
+    toku_serialize_descriptor_contents_to_fd(fd, desc, offset, dbg_context);
+    destruct_dbg_context_for_write(dbg_context);
+    // cleanup the old descriptor and set the in-memory descriptor to the new
+    // one
     toku_destroy_dbt(&ft->descriptor.dbt);
     toku_clone_dbt(&ft->descriptor.dbt, desc->dbt);
 }

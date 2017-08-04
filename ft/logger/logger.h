@@ -272,3 +272,21 @@ static inline void rbuf_ma_FILENUMS(struct rbuf *rb, memarena *ma, FILENUMS *fil
         rbuf_ma_FILENUM(rb, ma, &(filenums->filenums[i]));
     }
 }
+
+inline const char *construct_dbg_context_for_logging(char *fname,
+                                                     const char *func_name,
+                                                     const char *others) {
+    char *dbg_context =
+        (char *)toku_malloc(sizeof("Called by %s: writing to file %s for %s") +
+                            sizeof(__func__) + PATH_MAX + sizeof(others));
+    sprintf(dbg_context,
+            "Called by %s: writing to file %s for %s",
+            func_name,
+            fname,
+            others);
+    return (const char *)dbg_context;
+}
+
+inline void destruct_dbg_context(const char *buffer) {
+    toku_free((void *)buffer);
+}

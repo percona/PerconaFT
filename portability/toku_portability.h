@@ -234,9 +234,19 @@ size_t os_malloc_usable_size(const void *p) __attribute__((__visibility__("defau
 // Effect: Return an estimate of the usable size inside a pointer.  If this function is not defined the memory.cc will
 //  look for the jemalloc, libc, or darwin versions of the function for computing memory footprint.
 
-// full_pwrite and full_write performs a pwrite, and checks errors.  It doesn't return unless all the data was written. */
-void toku_os_full_pwrite (int fd, const void *buf, size_t len, toku_off_t off) __attribute__((__visibility__("default")));
-void toku_os_full_write (int fd, const void *buf, size_t len) __attribute__((__visibility__("default")));
+// full_pwrite and full_write performs a pwrite, and checks errors.  It doesn't
+// return unless all the data was written. */
+void toku_os_full_pwrite(int fd,
+                         const void *buf,
+                         size_t len,
+                         toku_off_t off,
+                         const char *dbg_context)
+    __attribute__((__visibility__("default")));
+void toku_os_full_write(int fd,
+                        const void *buf,
+                        size_t len,
+                        const char *dbg_context)
+    __attribute__((__visibility__("default")));
 
 // os_write returns 0 on success, otherwise an errno.
 ssize_t toku_os_pwrite (int fd, const void *buf, size_t len, toku_off_t off) __attribute__((__visibility__("default")));
