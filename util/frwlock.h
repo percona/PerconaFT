@@ -43,13 +43,67 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <stdbool.h>
 #include <stdint.h>
 #include <util/context.h>
+#include <queue>
+#include <atomic>
 
 //TODO: update comment, this is from rwlock.h
 
 namespace toku {
 
+class frwlock_queueitem {
+  public:
+    toku_cond_t *m_cond;
+    bool         m_is_read;
+    int          m_writer_tid;
+    context_id   m_writer_context_id;
+    frwlock_queueitem(toku_cond_t *cond) 
+            : m_cond(cond)
+            , m_is_read(true)
+            , m_writer_tid(-1)
+            , m_writer_context_id(CTX_INVALID)
+    {}
+    frwlock_queueitem(toku_cond_t *cond, int writer_tid, context_id writer_context_id)
+            : m_cond(cond)
+            , m_is_read(false)
+            , m_writer_tid(writer_tid)
+            , m_writer_context_id(writer_context_id)
+    {}
+};
+
 class frwlock {
 public:
+
+    // This is a fair readers-writers lock.  It has two extra properties
+    // beyond a vanilla fair rw lock: 
+    //
+    //  1) It can tell you whether waiting on a lock may be
+    //     "expensive".  This is done by requiring anyone who obtains
+    //     a write lock to say whether it's expensive, and keeping
+    //     track of whether any expensive write request is either
+    //     holding the lock or in the queue waiting.
+    //
+    //  2) It records the context and thread id of the writer who is
+    //     currently blocking any other thread from getting the lock.
+    //     It does this by recording the context and thread id when a
+    //     writer gets the lock, or when a reader gets the lock and
+    //     the next item in the queue is a writer.
+    //
+    // The implementation employs a std::queue of frwlock_queueitems
+    // (which contain a condition variable, a bool indicatin whether
+    // the request is a reader or a writer, and the threadid and
+    // context of the requesting thread.
+    //
+    // When a reader or writer tries, and cannot get, the lock, it
+    // places a condition variable into the queue.
+    //
+    // When a reader releases a lock, it checks to see if there are
+    // any other readers still holding the lock, and if not, it
+    // signals the next item in the queue (which is responsible for
+    // fremoving itself from the queue, and if it is a reader, for
+    // signaling the next item in the queue if it is a reader).
+    //
+    // When a writer releases a lock, it signals the next item in the
+    // queue.
 
     void init(toku_mutex_t *const mutex);
     void deinit(void);
@@ -66,55 +120,42 @@ public:
     // returns true if acquiring a read lock will be expensive
     bool read_lock_is_expensive(void);
 
+    // How many threads are holding or waiting on the lock ?  (You must hold the lock to call this.)
     uint32_t users(void) const;
-    uint32_t blocked_users(void) const;
+
+    // How many writer therads are holding the lock (0 or 1)?  (You need not hold the lock to call this.)
     uint32_t writers(void) const;
-    uint32_t blocked_writers(void) const;
+
+    // How many readers currently hold the lock?  (You must hold the lock to call this.)
     uint32_t readers(void) const;
-    uint32_t blocked_readers(void) const;
 
 private:
-    struct queue_item {
-        toku_cond_t *cond;
-        struct queue_item *next;
-    };
-
-    bool queue_is_empty(void) const;
-    void enq_item(queue_item *const item);
-    toku_cond_t *deq_item(void);
-    void maybe_signal_or_broadcast_next(void);
-    void maybe_signal_next_writer(void);
+    // the pair is the condition variable and true for read, false for write
+    std::queue<frwlock_queueitem> *m_queue;
 
     toku_mutex_t *m_mutex;
 
+    // How many readers hold the lock?
     uint32_t m_num_readers;
-    uint32_t m_num_writers;
-    uint32_t m_num_want_write;
-    uint32_t m_num_want_read;
-    uint32_t m_num_signaled_readers;
-    // number of writers waiting that are expensive
-    // MUST be < m_num_want_write
+    
+    // How many writers hold the lock?
+    std::atomic<uint32_t> m_num_writers; // this is accessed without a lock, so we make it atomic.
+
+    // Number of writers that are expensive (not including the writer that holds the lock, if any)
+    // MUST be < the number in the queue that want to write.
     uint32_t m_num_expensive_want_write;
-    // bool that states if the current writer is expensive
-    // if there is no current writer, then is false
-    bool m_current_writer_expensive;
-    // bool that states if waiting for a read
-    // is expensive
-    // if there are currently no waiting readers, then set to false
-    bool m_read_wait_expensive;
+
+    // Is the current writer expensive (we must store this separately
+    // from m_num_expensive_want_write)
+    bool     m_current_writer_expensive;
+
     // thread-id of the current writer
     int m_current_writer_tid;
+
     // context id describing the context of the current writer blocking
     // new readers (either because this writer holds the write lock or
-    // is the first to want the write lock).
+    // is one of the ones that wants the write lock).
     context_id m_blocking_writer_context_id;
-    
-    toku_cond_t m_wait_read;
-    queue_item m_queue_item_read;
-    bool m_wait_read_is_in_queue;
-
-    queue_item *m_wait_head;
-    queue_item *m_wait_tail;
 };
 
 ENSURE_POD(frwlock);
