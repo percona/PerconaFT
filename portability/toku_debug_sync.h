@@ -38,36 +38,40 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #pragma once
 
-#include "ft/ft.h"
-#include "ft/serialize/block_table.h"
+struct tokutxn;
 
-size_t toku_serialize_ft_size(struct ft_header *h);
-void toku_serialize_ft_to(int fd,
-                          struct ft_header *h,
-                          block_table *bt,
-                          CACHEFILE cf);
-void toku_serialize_ft_to_wbuf(struct wbuf *wbuf,
-                               struct ft_header *h,
-                               DISKOFF translation_location_on_disk,
-                               DISKOFF translation_size_on_disk);
-void toku_serialize_descriptor_contents_to_fd(int fd,
-                                              DESCRIPTOR desc,
-                                              DISKOFF offset);
-void toku_serialize_descriptor_contents_to_wbuf(struct wbuf *wb,
-                                                DESCRIPTOR desc);
-int toku_deserialize_ft_from(int fd,
-                             const char *fn,
-                             LSN max_acceptable_lsn,
-                             FT *ft);
+#if defined(ENABLED_DEBUG_SYNC)
 
-// TODO rename
-int deserialize_ft_from_fd_into_rbuf(int fd,
-                                     toku_off_t offset_of_header,
-                                     struct rbuf *rb,
-                                     uint64_t *checkpoint_count,
-                                     LSN *checkpoint_lsn,
-                                     uint32_t *version_p);
+/*
+  the below macros are defined in my_global.h, which is included in m_string.h,
+  the same macros are defined in TokuSetupCompiler.cmake as compiler options,
+  undefine them here to avoid build errors
+*/
+#undef __STDC_FORMAT_MACROS
+#undef __STDC_LIMIT_MACROS
 
-// used by verify
-// TODO rename
-int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ft, uint32_t version);
+#include "m_string.h"
+#include "debug_sync.h"
+
+void toku_txn_get_client_id(struct tokutxn *txn,
+                            uint64_t *client_id,
+                            void **client_extra);
+
+inline void toku_debug_sync(struct tokutxn *txn, const char *sync_point_name) {
+    uint64_t client_id;
+    void *client_extra;
+    THD *thd;
+
+    if (likely(!opt_debug_sync_timeout))
+        return;
+
+    toku_txn_get_client_id(txn, &client_id, &client_extra);
+    thd = reinterpret_cast<THD *>(client_extra);
+    debug_sync(thd, sync_point_name, strlen(sync_point_name));
+}
+
+#else // defined(ENABLED_DEBUG_SYNC)
+
+inline void toku_debug_sync(struct tokutxn *, const char *) {};
+
+#endif // defined(ENABLED_DEBUG_SYNC)
