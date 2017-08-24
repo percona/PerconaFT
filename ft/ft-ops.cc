@@ -204,6 +204,9 @@ toku_instr_key *result_i_open_dbs_rwlock_key;
 // locktree
 toku_instr_key *lock_request_m_wait_cond_key;
 toku_instr_key *manager_m_escalator_done_key;
+toku_instr_key *locktree_request_info_mutex_key;
+toku_instr_key *locktree_request_info_retry_mutex_key;
+toku_instr_key *locktree_request_info_retry_cv_key;
 
 // this is a sample probe for custom instrumentation
 static toku_instr_key *fti_probe_1_key;

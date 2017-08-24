@@ -51,10 +51,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 // the locktree source file instead of the header.
 #include "concurrent_tree.h"
 
-toku_instr_key *locktree_request_info_mutex_key;
-toku_instr_key *locktree_request_info_retry_mutex_key;
-toku_instr_key *locktree_request_info_retry_cv_key;
-
 namespace toku {
 
 // A locktree represents the set of row locks owned by all transactions
