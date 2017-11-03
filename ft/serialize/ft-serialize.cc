@@ -511,7 +511,8 @@ int deserialize_ft_from_fd_into_rbuf(int fd,
                                      struct rbuf *rb,
                                      uint64_t *checkpoint_count,
                                      LSN *checkpoint_lsn,
-                                     uint32_t *version_p)
+                                     uint32_t *version_p,
+                                     int block_size)
 // Effect: Read and parse the header of a fractalal tree
 //
 //  Simply reading the raw bytes of the header into an rbuf is insensitive
@@ -525,8 +526,8 @@ int deserialize_ft_from_fd_into_rbuf(int fd,
                                 4 +  // version
                                 4 +  // build_id
                                 4;   // size
-    const int64_t read_size = roundup_to_multiple(512, prefix_size);
-    unsigned char *XMALLOC_N_ALIGNED(512, read_size, prefix);
+    const int64_t read_size = roundup_to_multiple(block_size, prefix_size);
+    unsigned char *XMALLOC_N_ALIGNED(block_size, read_size, prefix);
     rb->buf = NULL;
     int64_t n = toku_os_pread(fd, prefix, read_size, offset_of_header);
     if (n != read_size) {
@@ -589,10 +590,10 @@ int deserialize_ft_from_fd_into_rbuf(int fd,
     rb->size = size;
     {
         toku_free(rb->buf);
-        uint32_t size_to_read = roundup_to_multiple(512, size);
-        XMALLOC_N_ALIGNED(512, size_to_read, rb->buf);
+        uint32_t size_to_read = roundup_to_multiple(block_size, size);
+        XMALLOC_N_ALIGNED(block_size, size_to_read, rb->buf);
 
-        invariant(offset_of_header % 512 == 0);
+        invariant(offset_of_header % block_size == 0);
         n = toku_os_pread(fd, rb->buf, size_to_read, offset_of_header);
         if (n != size_to_read) {
             if (n < 0) {
@@ -686,6 +687,11 @@ int toku_deserialize_ft_from(int fd,
     bool h1_acceptable = false;
     struct rbuf *rb = NULL;
     int r0, r1, r = 0;
+    int block_size;
+    toku_struct_stat st;
+
+    toku_os_fstat(fd, &st);
+    block_size = st.st_blksize;
 
     toku_off_t header_0_off = 0;
     r0 = deserialize_ft_from_fd_into_rbuf(fd,
@@ -693,7 +699,8 @@ int toku_deserialize_ft_from(int fd,
                                           &rb_0,
                                           &checkpoint_count_0,
                                           &checkpoint_lsn_0,
-                                          &version_0);
+                                          &version_0,
+                                          block_size);
     if (r0 == 0 && checkpoint_lsn_0.lsn <= max_acceptable_lsn.lsn) {
         h0_acceptable = true;
     }
@@ -704,7 +711,8 @@ int toku_deserialize_ft_from(int fd,
                                           &rb_1,
                                           &checkpoint_count_1,
                                           &checkpoint_lsn_1,
-                                          &version_1);
+                                          &version_1,
+                                          block_size);
     if (r1 == 0 && checkpoint_lsn_1.lsn <= max_acceptable_lsn.lsn) {
         h1_acceptable = true;
     }

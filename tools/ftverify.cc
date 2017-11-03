@@ -132,7 +132,12 @@ deserialize_headers(int fd, struct ft **h1p, struct ft **h2p)
     bool h1_acceptable = false;
     int r0, r1;
     int r;
+    int block_size;
 
+    toku_struct_stat st;
+
+    toku_os_fstat(fd, &st);
+    block_size = st.st_blksize;
     {
         toku_off_t header_0_off = 0;
         r0 = deserialize_ft_from_fd_into_rbuf(
@@ -141,8 +146,8 @@ deserialize_headers(int fd, struct ft **h1p, struct ft **h2p)
             &rb_0,
             &checkpoint_count_0,
             &checkpoint_lsn_0,
-            &version_0
-            );
+            &version_0,
+            block_size);
         if ((r0==0) && (checkpoint_lsn_0.lsn <= MAX_LSN.lsn)) {
             h0_acceptable = true;
         }
@@ -155,8 +160,8 @@ deserialize_headers(int fd, struct ft **h1p, struct ft **h2p)
             &rb_1,
             &checkpoint_count_1,
             &checkpoint_lsn_1,
-            &version_1
-            );
+            &version_1,
+            block_size);
         if ((r1==0) && (checkpoint_lsn_1.lsn <= MAX_LSN.lsn)) {
             h1_acceptable = true;
         }

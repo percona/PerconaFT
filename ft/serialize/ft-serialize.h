@@ -66,7 +66,8 @@ int deserialize_ft_from_fd_into_rbuf(int fd,
                                      struct rbuf *rb,
                                      uint64_t *checkpoint_count,
                                      LSN *checkpoint_lsn,
-                                     uint32_t *version_p);
+                                     uint32_t *version_p,
+                                     int block_size);
 
 // used by verify
 // TODO rename
