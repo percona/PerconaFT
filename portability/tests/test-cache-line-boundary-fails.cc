@@ -49,7 +49,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 int verbose = 0;
 
-static const size_t cachelinesize = 64;
+static const size_t cachelinesize = CPU_LEVEL1_DCACHE_LINESIZE;
 
 // cache line is 64 bytes
 // nine 7-byte structs fill 63 bytes

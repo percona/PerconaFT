@@ -96,4 +96,19 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #cmakedefine HAVE_GNU_TLS 1
 
+#cmakedefine CPU_LEVEL1_DCACHE_LINESIZE 0
+#if !defined(CPU_LEVEL1_DCACHE_LINESIZE) || CPU_LEVEL1_DCACHE_LINESIZE == 0
+  #if CPU_LEVEL1_DCACHE_LINESIZE == 0
+    #undef CPU_LEVEL1_DCACHE_LINESIZE
+  #endif
+
+  #if defined(__s390__)
+    #define CPU_LEVEL1_DCACHE_LINESIZE 256
+  #elif defined(__powerpc__) || defined(__aarch64__)
+    #define CPU_LEVEL1_DCACHE_LINESIZE 128
+  #else
+    #define CPU_LEVEL1_DCACHE_LINESIZE 64
+  #endif
+#endif
+
 #endif /* __CONFIG_H__ */

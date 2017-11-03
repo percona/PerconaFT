@@ -63,6 +63,8 @@ namespace std {
 
 #endif
 
+#include <portability/toku_config.h>
+
 /**
  * Declare *allocx() and mallctl() as weak symbols. These will be provided by
  * jemalloc if we are using jemalloc, or will be NULL if we are using another
@@ -110,11 +112,12 @@ namespace malloc_utils {
             return minSize;
         }
         size_t goodSize;
-        if (minSize <= 64) {
-            // Choose smallest allocation to be 64 bytes - no tripping
+        if (minSize <= CPU_LEVEL1_DCACHE_LINESIZE) {
+            // Choose smallest allocation to be
+            // CPU_LEVEL1_DCACHE_LINESIZE bytes - no tripping
             // over cache line boundaries, and small string optimization
             // takes care of short strings anyway.
-            goodSize = 64;
+            goodSize = CPU_LEVEL1_DCACHE_LINESIZE;
         } else if (minSize <= 512) {
             // Round up to the next multiple of 64; we don't want to trip
             // over cache line boundaries.

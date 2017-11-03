@@ -36,6 +36,7 @@ add_custom_target(generate_config_h DEPENDS
 
 # detect when we are being built as a subproject
 if (NOT DEFINED MYSQL_PROJECT_NAME_DOCSTRING)
+  include(TokuCPUInfo)
   install(
     FILES toku_os_types.h toku_time.h toku_list.h toku_os.h
     DESTINATION include
