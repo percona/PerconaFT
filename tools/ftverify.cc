@@ -136,8 +136,7 @@ deserialize_headers(int fd, struct ft **h1p, struct ft **h2p)
 
     toku_struct_stat st;
 
-    toku_os_fstat(fd, &st);
-    block_size = st.st_blksize;
+    block_size = toku_os_fstat(fd, &st) ? 512 : st.st_blksize;
     {
         toku_off_t header_0_off = 0;
         r0 = deserialize_ft_from_fd_into_rbuf(
