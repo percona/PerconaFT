@@ -121,3 +121,9 @@ See [COPYING.AGPLv3][agpllicense],
 [agpllicense]: http://github.com/Percona/PerconaFT/blob/master/COPYING.AGPLv3
 [gpllicense]: http://github.com/Percona/PerconaFT/blob/master/COPYING.GPLv2
 [patents]: http://github.com/Percona/PerconaFT/blob/master/PATENTS
+
+
+Test status:
+------------
+
+* [![test status](https://travis-ci.org/XeLabs/ft-index.svg?branch=master)](https://travis-ci.org/XeLabs/ft-index) travis-ci.org (master branch)
