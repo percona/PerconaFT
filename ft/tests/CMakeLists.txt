@@ -123,22 +123,4 @@ if(BUILD_TESTING OR BUILD_FT_TESTS)
     get_filename_component(test_basename "${test}" NAME)
     add_ft_test_aux(test-${test_basename} test-upgrade-recovery-logs ${test})
   endforeach(test)
-
-  ## give some tests, that time out normally, 1 hour to complete
-  set(long_tests
-    ft/ftloader-test-extractor-3a
-    ft/log-test7
-    ft/recovery-bad-last-entry
-    ft/subblock-test-compression
-    ft/upgrade_test_simple
-    )
-  set_tests_properties(${long_tests} PROPERTIES TIMEOUT 3600)
-  ## some take even longer, with valgrind
-  set(extra_long_tests
-    ft/benchmark-test
-    ft/benchmark-test_256
-    ft/is_empty
-    ft/subblock-test-checksum
-    )
-  set_tests_properties(${extra_long_tests} PROPERTIES TIMEOUT 7200)
 endif(BUILD_TESTING OR BUILD_FT_TESTS)

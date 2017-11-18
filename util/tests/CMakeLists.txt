@@ -16,9 +16,4 @@ if(BUILD_TESTING)
   foreach(test ${tests})
     add_test(util/${test} ${test})
   endforeach(test)
-
-  set(long_tests
-    util/helgrind_test_partitioned_counter
-    )
-  set_tests_properties(${long_tests} PROPERTIES TIMEOUT 3600)
 endif(BUILD_TESTING)
