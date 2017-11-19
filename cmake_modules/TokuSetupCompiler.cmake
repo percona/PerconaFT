@@ -108,6 +108,8 @@ set_cflags_if_supported(
   -fno-rtti
   -fno-exceptions
   -Wno-error=nonnull-compare
+  -Wno-missing-braces
+  -Wno-address-of-packed-member
   )
 ## set_cflags_if_supported_named("-Weffc++" -Weffcpp)
 
