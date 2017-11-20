@@ -217,7 +217,7 @@ do_args(int argc, char * const argv[]) {
                     // arg that suppresses valgrind on this child process
                     break;
                 }
-            // otherwise, fall through to an error
+                /* fall through */ // otherwise, fall through to an error
 	default:
             usage();
             break;
