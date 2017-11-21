@@ -666,6 +666,7 @@ int main (int argc, char *const argv[] __attribute__((__unused__))) {
     // compression methods
     printf("typedef enum toku_compression_method {\n");
     printf("    TOKU_NO_COMPRESSION = 0,\n");  // "identity" compression
+    printf("    TOKU_ZSTD_METHOD  = 6,\n");  // facebook zstd
     printf("    TOKU_SNAPPY_METHOD  = 7,\n");  // google snappy
     printf("    TOKU_ZLIB_METHOD    = 8,\n");  // RFC 1950 says use 8 for zlib.  It reserves 15 to allow more bytes.
     printf("    TOKU_QUICKLZ_METHOD = 9,\n");  // We use 9 for QUICKLZ (the QLZ compression level is stored int he high-order nibble).  I couldn't find any standard for any other numbers, so I just use 9. -Bradley

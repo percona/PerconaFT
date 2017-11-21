@@ -1,0 +1,35 @@
+language: cpp
+
+# sources  list: https://github.com/travis-ci/apt-source-whitelist/blob/master/ubuntu.json,
+# packages list: https://github.com/travis-ci/apt-package-whitelist/blob/master/ubuntu-precise
+
+matrix:
+  include:
+    - os: linux
+      compiler: clang
+      addons:
+        apt:
+          sources: [ 'ubuntu-toolchain-r-test', 'kalakris-cmake', 'llvm-toolchain-trusty-5.0']
+          packages: [ 'g++-5', 'libstdc++-5-dev', 'cmake', 'valgrind']
+      env: MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+
+# container-based builds
+sudo: true
+
+before_install:
+  - env
+  - eval "${MATRIX_EVAL}"
+  - export SRC_DIR="`pwd`"
+  - echo never | sudo tee /sys/kernel/mm/transparent_hugepage/enabled > /dev/null
+
+script:
+  - $CXX --version
+  - cmake --version
+  - mkdir build && cd build
+  - cmake -D CMAKE_BUILD_TYPE=Release ../
+  - make -j16
+  - ctest -j16 --no-compress-output -T Test -E '(helgrind|stress|drd|test_insert_unique|try-leak-reachable|dump-env|checkpoint_fairness).*'
+
+notifications:
+  email:
+    - overred.shuttler@gmail.com

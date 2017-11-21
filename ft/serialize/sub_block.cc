@@ -47,7 +47,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include "ft/serialize/compress.h"
 #include "ft/serialize/sub_block.h"
-#include "ft/serialize/quicklz.h"
 #include "util/threadpool.h"
 #include "util/x1764.h"
 
