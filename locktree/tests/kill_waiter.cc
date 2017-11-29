@@ -8,7 +8,6 @@
 #include "test.h"
 #include "locktree_unit_test.h"
 #include <thread>
-#include <atomic>
 
 namespace toku {
 

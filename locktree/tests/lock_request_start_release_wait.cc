@@ -8,8 +8,6 @@
 // again when lock retries are locked out.
 
 #include "lock_request.h"
-#include <atomic>
-#include <thread>
 #include "locktree.h"
 #include "locktree_unit_test.h"
 #include "test.h"
