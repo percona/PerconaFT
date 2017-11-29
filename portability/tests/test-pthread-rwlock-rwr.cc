@@ -45,17 +45,17 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 // write a test see if things happen in the right order.
 
-volatile int state = 0;
+std::atomic_int state (0);
 int verbose = 0;
 
 static void *f(void *arg) {
     toku_pthread_rwlock_t *mylock = (toku_pthread_rwlock_t *) arg;
-    sleep(2);
+    while (state != 42) sleep(2);
     assert(state==42); state = 16; if (verbose) printf("%s:%d\n", __FUNCTION__, __LINE__);
     toku_pthread_rwlock_wrlock(mylock);
     assert(state==49); state = 17; if (verbose) printf("%s:%d\n", __FUNCTION__, __LINE__);
     toku_pthread_rwlock_wrunlock(mylock);
-    sleep(10);
+    while (state != 52) sleep(10);
     assert(state==52); state = 20; if (verbose) printf("%s:%d\n", __FUNCTION__, __LINE__);
     return arg;
 }
@@ -84,15 +84,15 @@ int test_main(int argc , char *const argv[] ) {
     state = 42;
     if (verbose)
         printf("%s:%d\n", __FUNCTION__, __LINE__);
-    sleep(4);
+    while (state != 16) sleep(4);
     assert(state==16); state = 44; if (verbose) printf("%s:%d\n", __FUNCTION__, __LINE__);
     toku_pthread_rwlock_rdlock(&rwlock);
     assert(state==44); state = 46; if (verbose) printf("%s:%d\n", __FUNCTION__, __LINE__);
     toku_pthread_rwlock_rdunlock(&rwlock);
-    sleep(4);
+    while (state != 46) sleep(4);
     assert(state==46); state=49; if (verbose) printf("%s:%d\n", __FUNCTION__, __LINE__); // still have a read lock
     toku_pthread_rwlock_rdunlock(&rwlock);
-    sleep(6);
+    while (state != 17) sleep(6);
     assert(state==17); state=52; if (verbose) printf("%s:%d\n", __FUNCTION__, __LINE__);
 
     r = toku_pthread_join(tid, &retptr); assert(r == 0);
