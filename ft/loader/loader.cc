@@ -1078,7 +1078,7 @@ static void* extractor_thread (void *blv) {
     FTLOADER bl = (FTLOADER)blv;
     int r = 0;
     while (1) {
-        void *item;
+        void *item = nullptr;
         {
             int rq = toku_queue_deq(bl->primary_rowset_queue, &item, NULL, NULL);
             if (rq==EOF) break;
@@ -3336,7 +3336,7 @@ static int write_nonleaves (FTLOADER bl, FIDX pivots_fidx, struct dbout *out, st
         while (sts->n_subtrees - n_subtrees_used >= n_per_block*2) {
             // grab the first N_PER_BLOCK and build a node.
             DBT *pivots;
-            int64_t blocknum_of_new_node;
+            int64_t blocknum_of_new_node = 0;
             struct subtree_info *subtree_info;
             int r = setup_nonleaf_block (n_per_block,
                                          sts, pivots_fidx, n_subtrees_used,
