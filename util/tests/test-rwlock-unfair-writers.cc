@@ -42,9 +42,10 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <assert.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <atomic>
 
 pthread_rwlock_t rwlock;
-volatile int killed = 0;
+std::atomic_int killed(0);
 
 static void *t1_func(void *arg) {
     int i;

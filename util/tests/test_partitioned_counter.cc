@@ -80,6 +80,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <memory.h>
 #include <util/partitioned_counter.h>
 #include "test.h"
+#include <atomic>
 
 // The test code includes the fastest version I could figure out to make, implemented below.
 
@@ -311,7 +312,7 @@ struct test_arguments {
     PARTITIONED_COUNTER pc;
     uint64_t            limit;
     uint64_t            total_increment_per_writer;
-    volatile uint64_t   unfinished_count;
+    std::atomic_uint64_t unfinished_count;
 };
 
 static void *reader_test_fun (void *ta_v) {
@@ -322,7 +323,7 @@ static void *reader_test_fun (void *ta_v) {
 	assert(lastval <= thisval);
 	assert(thisval <= ta->limit+2);
 	lastval = thisval;
-	if (verboseness_cmdarg && (0==(thisval & (thisval-1)))) printf("ufc=%" PRIu64 " Thisval=%" PRIu64 "\n", ta->unfinished_count,thisval);
+	if (verboseness_cmdarg && (0==(thisval & (thisval-1)))) printf("ufc=%" PRIu64 " Thisval=%" PRIu64 "\n", (uint64_t) ta->unfinished_count, thisval);
     }
     uint64_t thisval = read_partitioned_counter(ta->pc);
     assert(thisval==ta->limit+2); // we incremented two extra times in the test
@@ -335,7 +336,7 @@ static void *writer_test_fun (void *ta_v) {
 	if (i%1000 == 0) sched_yield();
 	increment_partitioned_counter(ta->pc, 1);
     }
-    uint64_t c __attribute__((__unused__)) = toku_sync_fetch_and_sub(&ta->unfinished_count, 1);
+    uint64_t c __attribute__((__unused__)) = ta->unfinished_count.fetch_sub(1);
     return ta_v;
 }
     
@@ -375,7 +376,8 @@ static void do_testit (void) {
     }
 }
 
-volatile int spinwait=0;
+#include <atomic>
+std::atomic_int spinwait (0);
 static void* test2_fun (void* mypc_v) {
     PARTITIONED_COUNTER mypc = (PARTITIONED_COUNTER)mypc_v;
     increment_partitioned_counter(mypc, 3);

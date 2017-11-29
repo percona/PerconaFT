@@ -43,10 +43,11 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <unistd.h>
 #include <pthread.h>
 #include <util/frwlock.h>
+#include <atomic>
 
 toku_mutex_t rwlock_mutex;
 toku::frwlock rwlock;
-volatile int killed = 0;
+std::atomic_int killed(0);
 
 static void *t1_func(void *arg) {
     int i;

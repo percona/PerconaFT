@@ -44,8 +44,9 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <toku_pthread.h>
 #include <toku_race_tools.h>
 #include <util/scoped_malloc.h>
+#include <atomic>
 
-volatile int state = 0;
+std::atomic_int state(0);
 
 static void sm_test(void) {
     toku::scoped_malloc a(1);

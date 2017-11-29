@@ -45,7 +45,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <unistd.h>
 #include <db.h>
 #include <string.h>
-
+#include <atomic>
 #include <memory.h>
 
 #include <portability/toku_atomic.h>
@@ -155,7 +155,7 @@ int int_heaviside(const uint32_t &v, const uint32_t &target) {
 
 struct stress_shared {
     stress_omt *omt;
-    volatile bool running;
+    std::atomic_bool running;
     struct st_rwlock lock;
     toku_mutex_t mutex;
     int num_marker_threads;
@@ -385,7 +385,8 @@ static void *stress_delete_worker(void *extrav) {
         rwlock_write_unlock(&shared.lock);
         toku_mutex_unlock(&mutex);
     }
-    toku_sync_bool_compare_and_swap(&shared.running, true, false);
+    bool expected = true;
+    atomic_compare_exchange_strong(&shared.running, &expected, false);
     return nullptr;
 }
 
