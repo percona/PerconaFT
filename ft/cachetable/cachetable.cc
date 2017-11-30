@@ -615,7 +615,7 @@ static void cachetable_free_pair(PAIR p) {
     void *write_extraargs = p->write_extraargs;
     PAIR_ATTR old_attr = p->attr;
     
-    cachetable_evictions++;
+    toku_unsafe_inc(&cachetable_evictions);
     PAIR_ATTR new_attr = p->attr;
     // Note that flush_callback is called with write_me false, so the only purpose of this 
     // call is to tell the ft layer to evict the node (keep_me is false).
@@ -1715,8 +1715,8 @@ beginning:
         // The pair being fetched will be marked as pending if a checkpoint happens during the
         // fetch because begin_checkpoint will mark as pending any pair that is locked even if it is clean.        
         cachetable_fetch_pair(ct, cachefile, p, fetch_callback, read_extraargs, true);
-        cachetable_miss++;
-        cachetable_misstime += get_tnow() - t0;
+        toku_unsafe_inc(&cachetable_miss);
+        toku_unsafe_add(&cachetable_misstime, get_tnow() - t0);
 
         // If the lock_type requested was a PL_READ, we downgrade to PL_READ,
         // but if the request was for a PL_WRITE_CHEAP, we don't bother 
@@ -2063,8 +2063,8 @@ try_again:
         // no list lock is held
         uint64_t t0 = get_tnow();
         cachetable_fetch_pair(ct, cf, p, fetch_callback, read_extraargs, false);
-        cachetable_miss++;
-        cachetable_misstime += get_tnow() - t0;
+        toku_unsafe_inc(&cachetable_miss);
+        toku_unsafe_add(&cachetable_misstime, get_tnow() - t0);
 
         if (ct->ev.should_client_thread_sleep()) {
             ct->ev.wait_for_cache_pressure_to_subside();
@@ -2206,7 +2206,7 @@ int toku_cachefile_prefetch(CACHEFILE cf, CACHEKEY key, uint32_t fullhash,
     p = ct->list.find_pair(cf, key, fullhash);
     // if not found then create a pair and fetch it
     if (p == NULL) {
-        cachetable_prefetches++;
+        toku_unsafe_inc(&cachetable_prefetches);
         ct->list.pair_unlock_by_fullhash(fullhash);
         ct->list.write_list_lock();
         ct->list.pair_lock_by_fullhash(fullhash);
@@ -3076,7 +3076,7 @@ int cleaner::run_cleaner(void) {
     int r;
     uint32_t num_iterations = this->get_iterations();
     for (uint32_t i = 0; i < num_iterations; ++i) {
-        cleaner_executions++;
+        toku_unsafe_inc(&cleaner_executions);
         m_pl->read_list_lock();
         PAIR best_pair = NULL;
         int n_seen = 0;
@@ -3992,7 +3992,7 @@ bool evictor::run_eviction_on_pair(PAIR curr_in_clock) {
     // extract and use these values so that we don't risk them changing
     // out from underneath us in calculations below.
     n_in_table = m_pl->m_n_in_table;
-    size_current = m_size_current; 
+    size_current = unsafe_read_size_current();
 
     // now that we have the pair mutex we care about, we can
     // release the read list lock and reacquire it at the end of the function
