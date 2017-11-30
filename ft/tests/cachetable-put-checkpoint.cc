@@ -59,7 +59,7 @@ int64_t checkpointed_data[NUM_ELEMENTS];
 PAIR data_pair[NUM_ELEMENTS];
 
 uint32_t time_of_test;
-bool run_test;
+std::atomic_bool run_test;
 
 static void
 put_callback_pair(

@@ -53,8 +53,8 @@ enum { NODESIZE = 1024, KSIZE=NODESIZE-100, TOKU_PSIZE=20 };
 CACHETABLE ct;
 FT_HANDLE t;
 
-bool checkpoint_called;
-bool checkpoint_callback_called;
+std::atomic_bool checkpoint_called;
+std::atomic_bool checkpoint_callback_called;
 toku_pthread_t checkpoint_tid;
 
 

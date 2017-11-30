@@ -47,8 +47,8 @@ clone_callback(void* UU(value_data), void** cloned_value_data, long* clone_size,
     new_attr->is_valid = false;
 }
 
-bool clone_flush_started;
-bool clone_flush_completed;
+std::atomic_bool clone_flush_started;
+std::atomic_bool clone_flush_completed;
 CACHETABLE ct;
 
 static void

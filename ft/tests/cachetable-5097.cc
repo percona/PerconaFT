@@ -41,11 +41,11 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 CACHEFILE f1;
 CACHEFILE f2;
 
-bool check_flush;
-bool dirty_flush_called;
-bool check_pe_callback;
-bool pe_callback_called;
-bool enable_partial_eviction;
+std::atomic_bool check_flush;
+std::atomic_bool dirty_flush_called;
+std::atomic_bool check_pe_callback;
+std::atomic_bool pe_callback_called;
+std::atomic_bool enable_partial_eviction;
 
 CACHETABLE ct;
 

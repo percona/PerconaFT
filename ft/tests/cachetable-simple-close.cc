@@ -39,8 +39,8 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "test.h"
 #include "cachetable-test.h"
 
-bool close_called;
-bool free_called;
+std::atomic_bool close_called;
+std::atomic_bool free_called;
 
 static void close_usr(CACHEFILE UU(cf), int UU(i), void* UU(p), bool UU(b), LSN UU(lsn)) {
     close_called = true;

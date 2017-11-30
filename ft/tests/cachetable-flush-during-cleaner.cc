@@ -40,7 +40,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 CACHEFILE f1;
 
-bool should_close;
+std::atomic_bool should_close;
 
 static int
 cleaner_callback(

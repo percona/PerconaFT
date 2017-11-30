@@ -46,6 +46,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <stdio.h>
 #include <memory.h>
 #include <string.h>
+#include <atomic>
 #include <portability/toku_path.h>
 
 #include "ft/serialize/block_allocator.h"

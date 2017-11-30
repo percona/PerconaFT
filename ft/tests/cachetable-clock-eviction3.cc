@@ -38,8 +38,8 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include "test.h"
 
-bool flush_may_occur;
-long expected_bytes_to_free;
+std::atomic_bool flush_may_occur;
+std::atomic_long expected_bytes_to_free;
 
 static void
 flush (CACHEFILE f __attribute__((__unused__)),

@@ -48,7 +48,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 const int item_size = 1;
 
-int n_flush, n_write_me, n_keep_me, n_fetch;
+std::atomic_int n_flush, n_write_me, n_keep_me, n_fetch;
 
 static void flush(
     CACHEFILE UU(cf), 

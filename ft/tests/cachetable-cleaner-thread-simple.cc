@@ -44,7 +44,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 //
 
 CACHEFILE f1;
-bool my_cleaner_callback_called;
+std::atomic_bool my_cleaner_callback_called;
 
 static int
 my_cleaner_callback(

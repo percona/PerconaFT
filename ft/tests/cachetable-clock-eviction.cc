@@ -38,10 +38,9 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include "test.h"
 
-int num_entries;
-bool flush_may_occur;
-int expected_flushed_key;
-bool check_flush;
+std::atomic_bool flush_may_occur;
+std::atomic_int expected_flushed_key;
+std::atomic_bool check_flush;
 
 static void
 flush (CACHEFILE f __attribute__((__unused__)),
@@ -59,7 +58,7 @@ flush (CACHEFILE f __attribute__((__unused__)),
        ) {
     /* Do nothing */
     if (check_flush && !keep) {
-        if (verbose) { printf("FLUSH: %d write_me %d expected %d\n", (int)k.b, w, expected_flushed_key); }
+        if (verbose) { printf("FLUSH: %d write_me %d expected %d\n", (int)k.b, w, (int)expected_flushed_key); }
         assert(flush_may_occur);
         assert(!w);
         assert(expected_flushed_key == (int)k.b);
@@ -88,7 +87,6 @@ fetch (CACHEFILE f        __attribute__((__unused__)),
 static void
 cachetable_test (void) {
     const int test_limit = 4;
-    num_entries = 0;
     int r;
     CACHETABLE ct;
     toku_cachetable_create(&ct, test_limit, ZERO_LSN, nullptr);

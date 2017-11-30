@@ -51,7 +51,7 @@ int    *values;
 
 static const int item_size = sizeof(int);
 
-static volatile int n_flush, n_write_me, n_keep_me, n_fetch;
+static std::atomic_int n_flush, n_write_me, n_keep_me, n_fetch;
 
 static void
 sleep_random (void)
@@ -84,9 +84,9 @@ flush (
     int *CAST_FROM_VOIDP(v, value);
     if (*v!=expect_value) printf("got %d expect %d\n", *v, expect_value);
     assert(*v==expect_value);
-    (void)toku_sync_fetch_and_add(&n_flush, 1);
-    if (write_me) (void)toku_sync_fetch_and_add(&n_write_me, 1);
-    if (keep_me)  (void)toku_sync_fetch_and_add(&n_keep_me, 1);
+    (void)n_flush.fetch_add(1);
+    if (write_me) (void)n_write_me.fetch_add(1);
+    if (keep_me)  (void)n_keep_me.fetch_add(1);
     sleep_random();
 }
 

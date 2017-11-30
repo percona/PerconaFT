@@ -45,13 +45,14 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include "cachetable/checkpoint.h"
 #include "test.h"
+#include <atomic>
 
 CACHETABLE ct;
 FT_HANDLE t;
 
 static TOKUTXN const null_txn = 0;
 
-volatile bool done = false;
+std::atomic_bool done (false);
 
 static void setup (void) {
     toku_cachetable_create(&ct, 0, ZERO_LSN, nullptr);
