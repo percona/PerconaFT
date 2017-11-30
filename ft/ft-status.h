@@ -435,7 +435,13 @@ extern FT_FLUSHER_STATUS_S fl_status;
 
 #define FL_STATUS_VAL(x) fl_status.status[FT_FLUSHER_STATUS_S::x].value.num
 
-
+#define FL_STATUS_INC(x) FL_STATUS_VAL(x)++
+#if defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+#undef FL_STATUS_INC
+#define FL_STATUS_INC(x) toku_unsafe_inc(&FL_STATUS_VAL(x))
+#endif
+#endif
 
 //
 // Hot Flusher

@@ -99,22 +99,22 @@ find_heaviest_child(FTNODE node)
 
 static void
 update_flush_status(FTNODE child, int cascades) {
-    FL_STATUS_VAL(FT_FLUSHER_FLUSH_TOTAL)++;
+    FL_STATUS_INC(FT_FLUSHER_FLUSH_TOTAL);
     if (cascades > 0) {
-        FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES)++;
+        FL_STATUS_INC(FT_FLUSHER_FLUSH_CASCADES);
         switch (cascades) {
         case 1:
-            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_1)++; break;
+            FL_STATUS_INC(FT_FLUSHER_FLUSH_CASCADES_1); break;
         case 2:
-            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_2)++; break;
+            FL_STATUS_INC(FT_FLUSHER_FLUSH_CASCADES_2); break;
         case 3:
-            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_3)++; break;
+            FL_STATUS_INC(FT_FLUSHER_FLUSH_CASCADES_3); break;
         case 4:
-            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_4)++; break;
+            FL_STATUS_INC(FT_FLUSHER_FLUSH_CASCADES_4); break;
         case 5:
-            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_5)++; break;
+            FL_STATUS_INC(FT_FLUSHER_FLUSH_CASCADES_5); break;
         default:
-            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_GT_5)++; break;
+            FL_STATUS_INC(FT_FLUSHER_FLUSH_CASCADES_GT_5); break;
         }
     }
     bool flush_needs_io = false;
@@ -124,9 +124,9 @@ update_flush_status(FTNODE child, int cascades) {
         }
     }
     if (flush_needs_io) {
-        FL_STATUS_VAL(FT_FLUSHER_FLUSH_NEEDED_IO)++;
+        FL_STATUS_INC(FT_FLUSHER_FLUSH_NEEDED_IO);
     } else {
-        FL_STATUS_VAL(FT_FLUSHER_FLUSH_IN_MEMORY)++;
+        FL_STATUS_INC(FT_FLUSHER_FLUSH_IN_MEMORY);
     }
 }
 
@@ -685,7 +685,7 @@ ftleaf_split(
 {
 
     paranoid_invariant(node->height == 0);
-    FL_STATUS_VAL(FT_FLUSHER_SPLIT_LEAF)++;
+    FL_STATUS_INC(FT_FLUSHER_SPLIT_LEAF);
     if (node->n_children) {
         // First move all the accumulated stat64info deltas into the first basement.
         // After the split, either both nodes or neither node will be included in the next checkpoint.
@@ -862,7 +862,7 @@ ft_nonleaf_split(
     FTNODE* dependent_nodes)
 {
     //VERIFY_NODE(t,node);
-    FL_STATUS_VAL(FT_FLUSHER_SPLIT_NONLEAF)++;
+    FL_STATUS_INC(FT_FLUSHER_SPLIT_NONLEAF);
     toku_ftnode_assert_fully_in_memory(node);
     int old_n_children = node->n_children;
     int n_children_in_a = old_n_children/2;
@@ -1018,7 +1018,7 @@ flush_this_child(
 static void
 merge_leaf_nodes(FTNODE a, FTNODE b)
 {
-    FL_STATUS_VAL(FT_FLUSHER_MERGE_LEAF)++;
+    FL_STATUS_INC(FT_FLUSHER_MERGE_LEAF);
     toku_ftnode_assert_fully_in_memory(a);
     toku_ftnode_assert_fully_in_memory(b);
     paranoid_invariant(a->height == 0);
@@ -1094,7 +1094,7 @@ static void balance_leaf_nodes(
 //  If b is bigger then move stuff from b to a until b is the smaller.
 //  If a is bigger then move stuff from a to b until a is the smaller.
 {
-    FL_STATUS_VAL(FT_FLUSHER_BALANCE_LEAF)++;
+    FL_STATUS_INC(FT_FLUSHER_BALANCE_LEAF);
     // first merge all the data into a
     merge_leaf_nodes(a,b);
     // now split them
@@ -1173,7 +1173,7 @@ maybe_merge_pinned_nonleaf_nodes(
     *did_rebalance = false;
     toku_init_dbt(splitk);
 
-    FL_STATUS_VAL(FT_FLUSHER_MERGE_NONLEAF)++;
+    FL_STATUS_INC(FT_FLUSHER_MERGE_NONLEAF);
 }
 
 static void
@@ -1627,16 +1627,16 @@ update_cleaner_status(
     FTNODE node,
     int childnum)
 {
-    FL_STATUS_VAL(FT_FLUSHER_CLEANER_TOTAL_NODES)++;
+    FL_STATUS_INC(FT_FLUSHER_CLEANER_TOTAL_NODES);
     if (node->height == 1) {
-        FL_STATUS_VAL(FT_FLUSHER_CLEANER_H1_NODES)++;
+        FL_STATUS_INC(FT_FLUSHER_CLEANER_H1_NODES);
     } else {
-        FL_STATUS_VAL(FT_FLUSHER_CLEANER_HGT1_NODES)++;
+        FL_STATUS_INC(FT_FLUSHER_CLEANER_HGT1_NODES);
     }
 
     unsigned int nbytesinbuf = toku_bnc_nbytesinbuf(BNC(node, childnum));
     if (nbytesinbuf == 0) {
-        FL_STATUS_VAL(FT_FLUSHER_CLEANER_EMPTY_NODES)++;
+        FL_STATUS_INC(FT_FLUSHER_CLEANER_EMPTY_NODES);
     } else {
         if (nbytesinbuf > FL_STATUS_VAL(FT_FLUSHER_CLEANER_MAX_BUFFER_SIZE)) {
             FL_STATUS_VAL(FT_FLUSHER_CLEANER_MAX_BUFFER_SIZE) = nbytesinbuf;
