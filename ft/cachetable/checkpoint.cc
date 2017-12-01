@@ -195,7 +195,7 @@ checkpoint_safe_checkpoint_unlock(void) {
 
 void 
 toku_multi_operation_client_lock(void) {
-    if (locked_mo)
+    if (toku_unsafe_fetch(locked_mo))
         (void) toku_sync_fetch_and_add(&CP_STATUS_VAL(CP_CLIENT_WAIT_ON_MO), 1);
     toku_pthread_rwlock_rdlock(&multi_operation_lock);   
 }
@@ -215,7 +215,7 @@ void toku_low_priority_multi_operation_client_unlock(void) {
 
 void 
 toku_checkpoint_safe_client_lock(void) {
-    if (locked_cs)
+    if (toku_unsafe_fetch(locked_cs))
         (void) toku_sync_fetch_and_add(&CP_STATUS_VAL(CP_CLIENT_WAIT_ON_CS), 1);
     toku_mutex_lock(&checkpoint_safe_mutex);
     checkpoint_safe_lock.read_lock();
