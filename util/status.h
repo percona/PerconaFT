@@ -40,6 +40,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include <util/partitioned_counter.h>
 #include <util/constexpr.h>
+#include <portability/toku_race_tools.h>
 
 #define TOKUFT_STATUS_INIT(array,k,c,t,l,inc) do {   \
     array.status[k].keyname = #k;                    \
@@ -59,3 +60,13 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
     }                                                                  \
 } while (0)
 
+#define TOKUFT_STATUS_ADD(v,n) (v) += (n)
+#define TOKUFT_STATUS_INC(v) (v)++
+#if defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+#undef TOKUFT_STATUS_ADD
+#define TOKUFT_STATUS_ADD(v,n) toku_unsafe_add(&(v),(n))
+#undef TOKUFT_STATUS_INC
+#define TOKUFT_STATUS_INC(v) toku_unsafe_inc(&(v))
+#endif
+#endif
