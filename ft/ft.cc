@@ -196,7 +196,7 @@ static void ft_checkpoint (CACHEFILE cf, int fd, void *header_v) {
         ch->checkpoint_count++;
         ft_hack_highest_unused_msn_for_upgrade_for_checkpoint(ft);
         ch->on_disk_logical_rows =
-            ft->h->on_disk_logical_rows = ft->in_memory_logical_rows;
+            ft->h->on_disk_logical_rows = toku_unsafe_fetch(ft->in_memory_logical_rows);
                                                              
         // write translation and header to disk (or at least to OS internal buffer)
         toku_serialize_ft_to(fd, ch, &ft->blocktable, ft->cf);
