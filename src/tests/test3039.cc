@@ -109,8 +109,13 @@ struct reader_thread_state {
     int              do_local;
 
     /* communicate to the thread while running */
-    volatile int finish;
+    std::atomic_int finish;
 
+    reader_thread_state(double _elapsed_time, unsigned long long _n_did_read,
+                        signed long long _n_to_read, int _do_local, int _finish) :
+        elapsed_time(_elapsed_time), n_did_read(_n_did_read), n_to_read(_n_to_read),
+        do_local(_do_local), finish(_finish) {
+    }
 };
 
 static
@@ -182,16 +187,10 @@ void* reader_thread (void *arg)
 static
 void do_threads (unsigned long long N, int do_nonlocal) {
     toku_pthread_t ths[2];
-    struct reader_thread_state rstates[2] = {{.elapsed_time = 0.0,
-                                              .n_did_read = 0,
-                                              .n_to_read = (long long signed)N,
-                                              .do_local = 1,
-                                              .finish = 0},
-                                             {.elapsed_time = 0.0,
-                                              .n_did_read = 0,
-                                              .n_to_read = -1,
-                                              .do_local = 0,
-                                              .finish = 0}};
+    struct reader_thread_state rstates[2] = {
+        {0.0, 0, (long long signed)N, 1, 0},
+        {0.0, 0, -1, 0, 0}
+    };
     int n_to_create = do_nonlocal ? 2 : 1;
     for (int i = 0; i < n_to_create; i++) {
         int r = toku_pthread_create(toku_uninstrumented,
@@ -222,10 +221,10 @@ void do_threads (unsigned long long N, int do_nonlocal) {
     }
 }
 
-static volatile unsigned long long n_preads;
+static std::atomic_ullong n_preads;
 
 static ssize_t my_pread (int fd, void *buf, size_t count, off_t offset) {
-    (void) toku_sync_fetch_and_add(&n_preads, 1);
+    (void) n_preads.fetch_add(1);
     usleep(1000); // sleep for a millisecond
     return pread(fd, buf, count, offset);
 }
@@ -269,16 +268,16 @@ int test_main (int argc, char * const argv[])  {
     db_env_set_func_pread(my_pread);
 
     create_db (N);
-    if (verbose) printf("%lld preads\n", n_preads);
+    if (verbose) printf("%lld preads\n", (long long) n_preads);
     do_threads (M, 0);
-    if (verbose) printf("%lld preads\n", n_preads);
+    if (verbose) printf("%lld preads\n", (long long) n_preads);
     do_threads (M, 0);
-    if (verbose) printf("%lld preads\n", n_preads);
+    if (verbose) printf("%lld preads\n", (long long) n_preads);
     do_threads (M, 1);
-    if (verbose) printf("%lld preads\n", n_preads);
+    if (verbose) printf("%lld preads\n", (long long) n_preads);
     { int r = db->close(db, 0);                                                CKERR(r); }
     { int r = env->close(env, 0);                                              CKERR(r); }
-    if (verbose) printf("%lld preads\n", n_preads);
+    if (verbose) printf("%lld preads\n", (long long) n_preads);
     return 0;
 }
 

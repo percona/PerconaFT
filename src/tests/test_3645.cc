@@ -61,7 +61,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 // If the test runs to completion without crashing, we consider it a success.
 //
 
-bool run_test;
+std::atomic_bool run_test;
 int time_of_test;
 int num_elements;
 

@@ -53,6 +53,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "toku_assert.h"
 #include <signal.h>
 #include <time.h>
+#include <atomic>
 
 #include "ydb.h"
 //TDB uses DB_NOTFOUND for c_del and DB_CURRENT errors.

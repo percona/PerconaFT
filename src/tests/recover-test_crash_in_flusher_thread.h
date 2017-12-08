@@ -52,8 +52,8 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "threaded_stress_test_helpers.h"
 
 toku_pthread_t checkpoint_tid;
-static int cnt = 0;
-static bool starting_a_chkpt = false;
+static std::atomic_int cnt = { 0 };
+static std::atomic_bool starting_a_chkpt = { false };
 
 int state_to_crash = 0;
 

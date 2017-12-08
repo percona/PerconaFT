@@ -82,7 +82,7 @@ static void print_matching_engine_status_rows(DB_ENV *env, const char *pattern) 
     fflush(stderr);
 }
 
-static volatile int killed = 0;
+static std::atomic_int killed = { 0 };
 
 // in a big transaction, insert a bunch of rows.
 static void big_test(DB_ENV *env, DB *db, uint64_t max_i) {

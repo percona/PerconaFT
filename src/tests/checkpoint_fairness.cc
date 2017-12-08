@@ -50,16 +50,17 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "test.h"
 #include "toku_pthread.h"
 #include <portability/toku_atomic.h>
+#include <atomic>
 
 DB_ENV *env;
 DB     *db;
 const char   *env_dir = TOKU_TEST_FILENAME;
 
 const int n_threads = 100;
-volatile int reader_start_count = 0;
+std::atomic_int reader_start_count = { 0 };
 
 const int W = 10;
-volatile int writer_done_count = 0;
+std::atomic_int writer_done_count = { 0 };
 
 static void *start_txns (void *e) {
     int *CAST_FROM_VOIDP(idp, e);
@@ -72,7 +73,7 @@ static void *start_txns (void *e) {
 	{ int chk_r = env->txn_begin(env, NULL, &txn, 0); CKERR(chk_r); }
 	{ int chk_r = db->put(db, txn, &k, &k, 0); CKERR(chk_r); }
 	{ int chk_r = txn->commit(txn, 0); CKERR(chk_r); }
-	if (j==10) (void)toku_sync_fetch_and_add(&reader_start_count, 1);
+	if (j==10) (void)reader_start_count.fetch_add(1);
 	if (j%1000==999) { printf("."); fflush(stdout); }
 	assert(j<1000); // Get upset if we manage to run this many transactions without the checkpoint thread 
     }
@@ -86,7 +87,7 @@ static void start_checkpoints (void) {
 	{ int chk_r = env->txn_checkpoint(env, 0, 0, 0); CKERR(chk_r); }
 	if (verbose) printf("ck\n");
 	sched_yield();
-	(void)toku_sync_fetch_and_add(&writer_done_count, 1);
+	(void)writer_done_count.fetch_add(1);
     }
 }
 

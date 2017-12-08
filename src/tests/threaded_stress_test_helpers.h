@@ -77,7 +77,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 static const size_t min_val_size = sizeof(int32_t);
 static const size_t min_key_size = sizeof(int32_t);
 
-volatile bool run_test; // should be volatile since we are communicating through this variable.
+std::atomic_bool run_test; // should be volatile since we are communicating through this variable.
 
 typedef struct arg *ARG;
 typedef int (*operation_t)(DB_TXN *txn, ARG arg, void *operation_extra, void *stats_extra);
@@ -1712,9 +1712,10 @@ static void *test_time(void *arg) {
     if (verbose) {
         printf("should now end test\n");
     }
-    toku_sync_bool_compare_and_swap(&run_test, true, false); // make this atomic to make valgrind --tool=drd happy.
+    bool expected = true;
+    run_test.compare_exchange_strong(expected, false); // toku_sync_bool_compare_and_swap(&run_test, true, false); // make this atomic to make valgrind --tool=drd happy.
     if (verbose) {
-        printf("run_test %d\n", run_test);
+        printf("run_test %d\n", (bool)run_test);
     }
     if (tte->crash_at_end) {
         toku_hard_crash_on_purpose();

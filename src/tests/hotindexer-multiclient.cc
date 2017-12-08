@@ -73,7 +73,7 @@ typedef struct {
     uint32_t *flags;
 } client_spec_t, *client_spec;
 
-int client_count = 0;
+std::atomic_int client_count = { 0 };
 
 static void * client(void *arg)
 {
