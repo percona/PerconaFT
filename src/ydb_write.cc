@@ -52,7 +52,8 @@ static YDB_WRITE_LAYER_STATUS_S ydb_write_layer_status;
 #undef STATUS_VALUE
 #endif
 #define STATUS_VALUE(x) ydb_write_layer_status.status[x].value.num
-
+#define STATUS_VALUE_ADD(x,y) TOKUFT_STATUS_ADD(STATUS_VALUE(x),y)
+#define STATUS_VALUE_INC(x) TOKUFT_STATUS_INC(STATUS_VALUE(x))
 #define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(ydb_write_layer_status, k, c, t, l, inc)
 
 static void
@@ -192,10 +193,10 @@ toku_db_del(DB *db, DB_TXN *txn, DBT *key, uint32_t flags, bool holds_mo_lock) {
     }
 
     if (r == 0) {
-        STATUS_VALUE(YDB_LAYER_NUM_DELETES)++;  // accountability 
+        STATUS_VALUE_INC(YDB_LAYER_NUM_DELETES);  // accountability 
     }
     else {
-        STATUS_VALUE(YDB_LAYER_NUM_DELETES_FAIL)++;  // accountability 
+        STATUS_VALUE_INC(YDB_LAYER_NUM_DELETES_FAIL);  // accountability 
     }
     return r;
 }
@@ -251,11 +252,11 @@ toku_db_put(DB *db, DB_TXN *txn, DBT *key, DBT *val, uint32_t flags, bool holds_
 
     if (r == 0) {
         // helgrind flags a race on this status update.  we increment it atomically to satisfy helgrind.
-        // STATUS_VALUE(YDB_LAYER_NUM_INSERTS)++;  // accountability 
-        (void) toku_sync_fetch_and_add(&STATUS_VALUE(YDB_LAYER_NUM_INSERTS), 1);
+        STATUS_VALUE_INC(YDB_LAYER_NUM_INSERTS);  // accountability 
+        // (void) toku_sync_fetch_and_add(&STATUS_VALUE(YDB_LAYER_NUM_INSERTS), 1);
     } else {
-        // STATUS_VALUE(YDB_LAYER_NUM_INSERTS_FAIL)++;  // accountability 
-        (void) toku_sync_fetch_and_add(&STATUS_VALUE(YDB_LAYER_NUM_INSERTS_FAIL), 1);
+        STATUS_VALUE_INC(YDB_LAYER_NUM_INSERTS_FAIL);  // accountability 
+        // (void) toku_sync_fetch_and_add(&STATUS_VALUE(YDB_LAYER_NUM_INSERTS_FAIL), 1);
     }
 
     return r;
@@ -293,9 +294,9 @@ toku_db_update(DB *db, DB_TXN *txn,
 
 cleanup:
     if (r == 0) 
-        STATUS_VALUE(YDB_LAYER_NUM_UPDATES)++;  // accountability 
+        STATUS_VALUE_INC(YDB_LAYER_NUM_UPDATES);  // accountability 
     else
-        STATUS_VALUE(YDB_LAYER_NUM_UPDATES_FAIL)++;  // accountability 
+        STATUS_VALUE_INC(YDB_LAYER_NUM_UPDATES_FAIL);  // accountability 
     return r;
 }
 
@@ -351,9 +352,9 @@ toku_db_update_broadcast(DB *db, DB_TXN *txn,
 
 cleanup:
     if (r == 0) 
-        STATUS_VALUE(YDB_LAYER_NUM_UPDATES_BROADCAST)++;  // accountability 
+        STATUS_VALUE_INC(YDB_LAYER_NUM_UPDATES_BROADCAST);  // accountability 
     else
-        STATUS_VALUE(YDB_LAYER_NUM_UPDATES_BROADCAST_FAIL)++;  // accountability 
+        STATUS_VALUE_INC(YDB_LAYER_NUM_UPDATES_BROADCAST_FAIL);  // accountability 
     return r;
 }
 
@@ -582,9 +583,9 @@ env_del_multiple(
 
 cleanup:
     if (r == 0)
-        STATUS_VALUE(YDB_LAYER_NUM_MULTI_DELETES) += num_dbs;  // accountability 
+        STATUS_VALUE_ADD(YDB_LAYER_NUM_MULTI_DELETES, (uint64_t)num_dbs);  // accountability 
     else
-        STATUS_VALUE(YDB_LAYER_NUM_MULTI_DELETES_FAIL) += num_dbs;  // accountability 
+        STATUS_VALUE_ADD(YDB_LAYER_NUM_MULTI_DELETES_FAIL, (uint64_t)num_dbs);  // accountability 
     return r;
 }
 
@@ -764,9 +765,9 @@ env_put_multiple_internal(
 
 cleanup:
     if (r == 0)
-        STATUS_VALUE(YDB_LAYER_NUM_MULTI_INSERTS) += num_dbs;  // accountability 
+        STATUS_VALUE_ADD(YDB_LAYER_NUM_MULTI_INSERTS, (uint64_t)num_dbs);  // accountability 
     else
-        STATUS_VALUE(YDB_LAYER_NUM_MULTI_INSERTS_FAIL) += num_dbs;  // accountability 
+        STATUS_VALUE_ADD(YDB_LAYER_NUM_MULTI_INSERTS_FAIL, (uint64_t)num_dbs);  // accountability 
     return r;
 }
 
@@ -1050,9 +1051,9 @@ env_update_multiple(DB_ENV *env, DB *src_db, DB_TXN *txn,
 
 cleanup:
     if (r == 0)
-        STATUS_VALUE(YDB_LAYER_NUM_MULTI_UPDATES) += num_dbs;  // accountability 
+        STATUS_VALUE_ADD(YDB_LAYER_NUM_MULTI_UPDATES, (uint64_t)num_dbs);  // accountability 
     else
-        STATUS_VALUE(YDB_LAYER_NUM_MULTI_UPDATES_FAIL) += num_dbs;  // accountability 
+        STATUS_VALUE_ADD(YDB_LAYER_NUM_MULTI_UPDATES_FAIL, (uint64_t)num_dbs);  // accountability 
     return r;
 }
 
