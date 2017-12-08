@@ -391,7 +391,7 @@ void locktree_manager::escalate_locktrees(locktree **locktrees, int num_locktree
     toku_mutex_lock(&m_escalation_mutex);
     m_escalation_count++;
     m_escalation_time += (t1 - t0);
-    m_escalation_latest_result = m_current_lock_memory;
+    m_escalation_latest_result = toku_unsafe_fetch(m_current_lock_memory);
     toku_mutex_unlock(&m_escalation_mutex);
 }
 
