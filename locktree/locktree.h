@@ -181,7 +181,7 @@ namespace toku {
 
         // tracks the current number of locks and lock memory
         uint64_t m_max_lock_memory;
-        uint64_t m_current_lock_memory;
+        std::atomic_uint64_t m_current_lock_memory;
 
         struct lt_counters m_lt_counters;
 

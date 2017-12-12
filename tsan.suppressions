@@ -21,10 +21,6 @@ race:toku_context_get_status
 # ignore racy locktree status function
 race:locktree_manager::get_status
 
-# ignore races on locktree current lock memory variable
-race:locktree_manager::out_of_locks
-race:locktree_manager::over_big_threshold
-
 # ignore deadlocks in concurrent tree due to tree rebalancing.  deadlocks can not
 # happen in concurrent tree algorithms, but thread sanitizer does not know that.
 deadlock:toku::treenode::child_ptr::get_locked
