@@ -318,7 +318,7 @@ namespace toku {
     private:
         locktree_manager *m_mgr;
         DICTIONARY_ID m_dict_id;
-        uint32_t m_reference_count;
+        std::atomic_uint32_t m_reference_count;
 
         // Since the memory referenced by this comparator is not owned by the
         // locktree, the user must guarantee it will outlive the locktree.

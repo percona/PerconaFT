@@ -118,11 +118,11 @@ void lt_lock_request_info::destroy(void) {
 }
 
 void locktree::add_reference(void) {
-    (void)toku_sync_add_and_fetch(&m_reference_count, 1);
+    m_reference_count++;
 }
 
 uint32_t locktree::release_reference(void) {
-    return toku_sync_sub_and_fetch(&m_reference_count, 1);
+    return --m_reference_count;
 }
 
 uint32_t locktree::get_reference_count(void) {
