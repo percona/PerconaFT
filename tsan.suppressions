@@ -1,0 +1,65 @@
+# suppress operations already marked unsafe
+race:toku_unsafe_fetch
+race:toku_unsafe_set
+race:toku_unsafe_inc
+race:toku_unsafe_add
+
+# ignore racy omt functions marked as ignored by valgrind.
+race:toku::omt_internal::subtree_templated<true>::enable_bit
+race:toku::omt_internal::subtree_templated<true>::get_bit
+race:toku::omt_internal::subtree_templated<true>::get_index
+
+# races on the partitioned counter sum are ignored by valgrind, should be ignored
+# by the thread sanitizer.  alternatively, the sum could be an c++ atomic variable.
+race:sumit(local_counter*, unsigned long*)
+race:^increment_partitioned_counter$
+
+# ignore racy util status functions
+race:toku_kibbutz_get_status
+race:toku_context_get_status
+
+# ignore racy locktree status function
+race:locktree_manager::get_status
+
+# ignore races on locktree current lock memory variable
+race:locktree_manager::out_of_locks
+race:locktree_manager::over_big_threshold
+
+# ignore deadlocks in concurrent tree due to tree rebalancing.  deadlocks can not
+# happen in concurrent tree algorithms, but thread sanitizer does not know that.
+deadlock:toku::treenode::child_ptr::get_locked
+
+# ignore racy ft functions
+race:evictor::unsafe_read_size_current
+race:evictor::eviction_needed
+race:evictor::fill_engine_status
+race:evictor::should_client_wake_eviction_thread
+race:evictor::get_state
+
+# ignore racy in ft tests
+race:evictor_unit_test::
+race:evictor_test_helpers::
+race:cleaner::get_iterations
+race:cleaner::set_iterations
+
+# ignore racy ft status functions
+race:update_flush_status(ftnode*, int)
+race:toku_ft_flusher_get_status
+race:toku_ft_hot_get_status
+race:toku_ft_upgrade_get_status
+race:toku_ft_get_status
+race:toku_le_get_status
+race:toku_cachetable_get_status
+race:toku_cachetable_get_state
+race:update_le_status
+race:toku_checkpoint_get_status
+
+# the adjust logical row count is racy.  could use an algorithm that does
+# an unsafe read followed by a compare and exchange instead.
+race:toku_ft_adjust_logical_row_count
+
+# stat64 is racy on many variables
+race:toku_ft_stat64
+
+# memory statistics are racy.  probably they should be removed.
+race:portability/memory.cc
