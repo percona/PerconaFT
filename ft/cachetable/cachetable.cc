@@ -3779,7 +3779,7 @@ void evictor::change_pair_attr(PAIR_ATTR old_attr, PAIR_ATTR new_attr) {
 // the size of the cachetable.
 //
 void evictor::add_to_size_current(long size) {
-    (void) toku_sync_fetch_and_add(&m_size_current, size);
+    m_size_current += size; // atomic add fetch
 }
 
 //
@@ -3787,7 +3787,7 @@ void evictor::add_to_size_current(long size) {
 // approximation of the cachetable size.
 //
 void evictor::remove_from_size_current(long size) {
-    (void) toku_sync_fetch_and_sub(&m_size_current, size);
+    m_size_current -= size; // atomic sub fetch
 }
 
 //
@@ -3812,14 +3812,11 @@ void evictor::remove_cloned_data_size(long size) {
 uint64_t evictor::reserve_memory(double fraction, uint64_t upper_bound) {
     toku_mutex_lock(&m_ev_thread_lock);
     uint64_t reserved_memory = fraction * (m_low_size_watermark - m_size_reserved);
-    if (0) { // debug
-        fprintf(stderr, "%s %" PRIu64 " %" PRIu64 "\n", __PRETTY_FUNCTION__, reserved_memory, upper_bound);
-    }
     if (upper_bound > 0 && reserved_memory > upper_bound) {
         reserved_memory = upper_bound;
     }
     m_size_reserved += reserved_memory;
-    (void) toku_sync_fetch_and_add(&m_size_current, reserved_memory);
+    m_size_current += reserved_memory; // atomic add fetch
     this->signal_eviction_thread_locked();  
     toku_mutex_unlock(&m_ev_thread_lock);
 
@@ -3833,7 +3830,7 @@ uint64_t evictor::reserve_memory(double fraction, uint64_t upper_bound) {
 // TODO: (Zardosht) comment this function
 //
 void evictor::release_reserved_memory(uint64_t reserved_memory){
-    (void) toku_sync_fetch_and_sub(&m_size_current, reserved_memory);
+    m_size_current -= reserved_memory; // atomic sub fetch
     toku_mutex_lock(&m_ev_thread_lock);    
     m_size_reserved -= reserved_memory;
     // signal the eviction thread in order to possibly wake up sleeping clients

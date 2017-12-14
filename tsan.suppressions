@@ -26,10 +26,7 @@ race:locktree_manager::get_status
 deadlock:toku::treenode::child_ptr::get_locked
 
 # ignore racy ft functions
-race:evictor::unsafe_read_size_current
-race:evictor::eviction_needed
 race:evictor::fill_engine_status
-race:evictor::should_client_wake_eviction_thread
 race:evictor::get_state
 
 # ignore racy in ft tests

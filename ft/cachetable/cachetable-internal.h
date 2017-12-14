@@ -44,6 +44,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <util/kibbutz.h>
 #include <util/nb_mutex.h>
 #include <util/partitioned_counter.h>
+#include <atomic>
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -498,12 +499,12 @@ private:
 
     pair_list* m_pl;
     cachefile_list* m_cf_list;
-    int64_t m_size_current;            // the sum of the sizes of the pairs in the cachetable
+    std::atomic_int64_t m_size_current;            // the sum of the sizes of the pairs in the cachetable
     int64_t m_size_cloned_data; // stores amount of cloned data we have, only used for engine status
     // changes to these two values are protected
     // by ev_thread_lock
     int64_t m_size_reserved;           // How much memory is reserved (e.g., by the loader)
-    int64_t m_size_evicting;           // the sum of the sizes of the pairs being written
+    std::atomic_int64_t m_size_evicting;           // the sum of the sizes of the pairs being written
 
     // these are constants
     int64_t m_low_size_watermark; // target max size of cachetable that eviction thread aims for
@@ -531,7 +532,7 @@ private:
     // in init, set to false during destroy
     bool m_run_thread;
     // bool that states if the eviction thread is currently running
-    bool m_ev_thread_is_running;
+    std::atomic_bool m_ev_thread_is_running;
     // period which the eviction thread sleeps
     uint32_t m_period_in_seconds;
     // condition variable on which client threads wait on when sleeping
