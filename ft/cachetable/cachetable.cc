@@ -2764,7 +2764,7 @@ void toku_cachetable_begin_checkpoint (CHECKPOINTER cp, TOKULOGGER UU(logger)) {
 
 
 // This is used by the cachetable_race test.  
-static volatile int toku_checkpointing_user_data_status = 0;
+static std::atomic_int toku_checkpointing_user_data_status = {0};
 static void toku_cachetable_set_checkpointing_user_data_status (int v) {
     toku_checkpointing_user_data_status = v;
 }

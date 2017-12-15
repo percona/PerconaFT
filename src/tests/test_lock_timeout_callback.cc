@@ -45,13 +45,13 @@ static DB_ENV *env;
 static DB *db;
 static DB_TXN *txn1, *txn2;
 static const int magic_key = 100;
-static int callback_calls;
+static std::atomic_int callback_calls;
 toku_pthread_t thread1;
 
 static void lock_not_granted(DB *_db, uint64_t requesting_txnid,
                              const DBT *left_key, const DBT *right_key,
                              uint64_t blocking_txnid) {
-    toku_sync_fetch_and_add(&callback_calls, 1);
+    callback_calls++; // atomic fetch add
     invariant(strcmp(_db->get_dname(_db), db->get_dname(db)) == 0);
     if (requesting_txnid == txn2->id64(txn2)) {
         invariant(blocking_txnid == txn1->id64(txn1));
