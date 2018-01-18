@@ -264,7 +264,7 @@ static void* tl_doit_ptr (void *v) {
 static void timeit_with_thread_local_pointer (const char *description, void* (*f)(void*)) {
     struct timeval start, end;
     pthread_t threads[T];
-    struct { uint64_t values[8] __attribute__((__aligned__(64))); } values[T]; // pad to different cache lines.
+    struct { uint64_t values[8] __attribute__((__aligned__(CPU_LEVEL1_DCACHE_LINESIZE))); } values[T]; // pad to different cache lines.
     gettimeofday(&start, 0);
     for (int i=0; i<T; i++) {
         values[i].values[0]=0;
