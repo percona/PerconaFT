@@ -91,6 +91,8 @@ static void doit() {
   r = toku_testsetup_leaf(ft, &node_leaf, 2, pivots, &pivot_len);
   assert(r == 0);
 
+  toku_free(pivots[0]);
+
   r = toku_testsetup_nonleaf(ft, 1, &node_internal, 1, &node_leaf, 0, 0);
   assert(r == 0);
 
