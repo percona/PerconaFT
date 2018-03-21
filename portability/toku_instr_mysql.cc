@@ -1,4 +1,4 @@
-#ifdef MYSQL_TOKUDB_ENGINE
+#ifdef TOKU_MYSQL_WITH_PFS
 #include "toku_portability.h"
 #include "toku_pthread.h"
 
@@ -362,4 +362,4 @@ void toku_instr_rwlock_unlock(toku_pthread_rwlock_t &rwlock) {
         PSI_RWLOCK_CALL(unlock_rwlock)(rwlock.psi_rwlock);
 }
 
-#endif  // MYSQL_TOKUDB_ENGINE
+#endif  // TOKU_MYSQL_WITH_PFS
