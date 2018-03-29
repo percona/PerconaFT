@@ -2793,6 +2793,37 @@ void toku_cachetable_end_checkpoint(CHECKPOINTER cp, TOKULOGGER UU(logger),
     cp->end_checkpoint(testcallback_f, testextra);
 }
 
+// in_backup begin
+
+struct iterate_note_pin_backup {
+    static int fn(const CACHEFILE &cf, uint32_t UU(idx), void **UU(extra)) {
+        assert(cf->note_pin_by_backup);
+        cf->note_pin_by_backup(cf, cf->userdata);
+        return 0;
+    }
+};
+
+struct iterate_note_unpin_backup {
+    static int fn(const CACHEFILE &cf, uint32_t UU(idx), void **UU(extra)) {
+        assert(cf->note_unpin_by_backup);
+        cf->note_unpin_by_backup(cf, cf->userdata);
+        return 0;
+    }
+};
+void toku_cachetable_begin_backup(CACHETABLE ct)
+{
+    ct->cf_list.read_lock();
+    ct->cf_list.m_active_fileid.iterate<void *, iterate_note_pin_backup::fn>(nullptr); 
+    ct->cf_list.read_unlock();
+}
+
+void toku_cachetable_end_backup(CACHETABLE ct)
+{
+    ct->cf_list.m_active_fileid.iterate<void *, iterate_note_unpin_backup::fn>(nullptr); 
+}
+
+// in_backup end
+
 TOKULOGGER toku_cachefile_logger (CACHEFILE cf) {
     return cf->cachetable->cp.get_logger();
 }
@@ -2909,7 +2940,9 @@ toku_cachefile_set_userdata (CACHEFILE cf,
                              void (*begin_checkpoint_userdata)(LSN, void*),
                              void (*end_checkpoint_userdata)(CACHEFILE, int, void*),
                              void (*note_pin_by_checkpoint)(CACHEFILE, void*),
-                             void (*note_unpin_by_checkpoint)(CACHEFILE, void*)) {
+                             void (*note_unpin_by_checkpoint)(CACHEFILE, void*),
+                             void (*note_pin_by_backup)(CACHEFILE, void*),
+                             void (*note_unpin_by_backup)(CACHEFILE, void*)) {
     cf->userdata = userdata;
     cf->log_fassociate_during_checkpoint = log_fassociate_during_checkpoint;
     cf->close_userdata = close_userdata;
@@ -2919,6 +2952,8 @@ toku_cachefile_set_userdata (CACHEFILE cf,
     cf->end_checkpoint_userdata = end_checkpoint_userdata;
     cf->note_pin_by_checkpoint = note_pin_by_checkpoint;
     cf->note_unpin_by_checkpoint = note_unpin_by_checkpoint;
+    cf->note_pin_by_backup = note_pin_by_backup;
+    cf->note_unpin_by_backup = note_unpin_by_backup;
 }
 
 void *toku_cachefile_get_userdata(CACHEFILE cf) {
