@@ -266,7 +266,7 @@ void toku_ft_serialize_layer_destroy(void);
 void toku_maybe_truncate_file (int fd, uint64_t size_used, uint64_t expected_size, uint64_t *new_size);
 // Effect: truncate file if overallocated by at least 32MiB
 
-void toku_maybe_preallocate_in_file (int fd, int64_t size, int64_t expected_size, int64_t *new_size);
+void toku_maybe_preallocate_in_file (int fd, unsigned int block_size, int64_t size, int64_t expected_size, int64_t *new_size);
 // Effect: make the file bigger by either doubling it or growing by 16MiB whichever is less, until it is at least size
 // Return 0 on success, otherwise an error number.
 

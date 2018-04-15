@@ -106,17 +106,18 @@ static void setup_dn(enum ftnode_verify_type bft,
                      FTNODE *dn,
                      FTNODE_DISK_DATA *ndd) {
     int r;
+    unsigned int block_size = toku_cachefile_get_blocksize(ft_h->cf);
     if (bft == read_all) {
         ftnode_fetch_extra bfe;
         bfe.create_for_full_read(ft_h);
         r = toku_deserialize_ftnode_from(
-            fd, make_blocknum(20), 0 /*pass zero for hash*/, dn, ndd, &bfe);
+            fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, dn, ndd, &bfe);
         invariant(r == 0);
     } else if (bft == read_compressed || bft == read_none) {
         ftnode_fetch_extra bfe;
         bfe.create_for_min_read(ft_h);
         r = toku_deserialize_ftnode_from(
-            fd, make_blocknum(20), 0 /*pass zero for hash*/, dn, ndd, &bfe);
+            fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, dn, ndd, &bfe);
         invariant(r == 0);
         // invariant all bp's are compressed or on disk.
         for (int i = 0; i < (*dn)->n_children; i++) {

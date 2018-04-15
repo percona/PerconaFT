@@ -54,6 +54,7 @@ static void test_prefetch_read(int fd, FT_HANDLE UU(ft), FT ft_h) {
     FT_CURSOR XMALLOC(cursor);
     FTNODE dn = NULL;
     PAIR_ATTR attr;
+    unsigned int block_size = toku_cachefile_get_blocksize(ft_h->cf);
 
     // first test that prefetching everything should work
     memset(&cursor->range_lock_left_key, 0, sizeof(DBT));
@@ -70,7 +71,7 @@ static void test_prefetch_read(int fd, FT_HANDLE UU(ft), FT ft_h) {
     bfe.create_for_prefetch(ft_h, cursor);
     FTNODE_DISK_DATA ndd = NULL;
     r = toku_deserialize_ftnode_from(
-        fd, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
+        fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
     invariant(r == 0);
     invariant(dn->n_children == 3);
     invariant(BP_STATE(dn, 0) == PT_ON_DISK);
@@ -89,7 +90,7 @@ static void test_prefetch_read(int fd, FT_HANDLE UU(ft), FT ft_h) {
 
     bfe.create_for_prefetch(ft_h, cursor);
     r = toku_deserialize_ftnode_from(
-        fd, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
+        fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
     invariant(r == 0);
     invariant(dn->n_children == 3);
     invariant(BP_STATE(dn, 0) == PT_AVAIL);
@@ -113,7 +114,7 @@ static void test_prefetch_read(int fd, FT_HANDLE UU(ft), FT ft_h) {
     cursor->left_is_neg_infty = false;
     bfe.create_for_prefetch(ft_h, cursor);
     r = toku_deserialize_ftnode_from(
-        fd, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
+        fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
     invariant(r == 0);
     invariant(dn->n_children == 3);
     invariant(BP_STATE(dn, 0) == PT_ON_DISK);
@@ -137,7 +138,7 @@ static void test_prefetch_read(int fd, FT_HANDLE UU(ft), FT ft_h) {
     cursor->right_is_pos_infty = false;
     bfe.create_for_prefetch(ft_h, cursor);
     r = toku_deserialize_ftnode_from(
-        fd, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
+        fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
     invariant(r == 0);
     invariant(dn->n_children == 3);
     invariant(BP_STATE(dn, 0) == PT_ON_DISK);
@@ -160,7 +161,7 @@ static void test_prefetch_read(int fd, FT_HANDLE UU(ft), FT ft_h) {
     right_key = 100000;
     bfe.create_for_prefetch(ft_h, cursor);
     r = toku_deserialize_ftnode_from(
-        fd, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
+        fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
     invariant(r == 0);
     invariant(dn->n_children == 3);
     invariant(BP_STATE(dn, 0) == PT_ON_DISK);
@@ -183,7 +184,7 @@ static void test_prefetch_read(int fd, FT_HANDLE UU(ft), FT ft_h) {
     right_key = 100;
     bfe.create_for_prefetch(ft_h, cursor);
     r = toku_deserialize_ftnode_from(
-        fd, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
+        fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
     invariant(r == 0);
     invariant(dn->n_children == 3);
     invariant(BP_STATE(dn, 0) == PT_AVAIL);
@@ -233,7 +234,7 @@ static void test_subset_read(int fd, FT_HANDLE UU(ft), FT ft_h) {
     bfe.child_to_read = 2;
     bfe.disable_prefetching = true;
     r = toku_deserialize_ftnode_from(
-        fd, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
+        fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
     invariant(r == 0);
     invariant(dn->n_children == 3);
     invariant(BP_STATE(dn, 0) == PT_ON_DISK);
@@ -262,7 +263,7 @@ static void test_subset_read(int fd, FT_HANDLE UU(ft), FT ft_h) {
     bfe.child_to_read = 2;
     bfe.disable_prefetching = false;
     r = toku_deserialize_ftnode_from(
-        fd, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
+        fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
     invariant(r == 0);
     invariant(dn->n_children == 3);
     invariant(BP_STATE(dn, 0) == PT_ON_DISK);
@@ -290,7 +291,7 @@ static void test_subset_read(int fd, FT_HANDLE UU(ft), FT ft_h) {
     // fake the childnum to read
     bfe.child_to_read = 0;
     r = toku_deserialize_ftnode_from(
-        fd, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
+        fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd, &bfe);
     invariant(r == 0);
     invariant(dn->n_children == 3);
     invariant(BP_STATE(dn, 0) == PT_AVAIL);

@@ -136,8 +136,13 @@ int block_table::create_from_buffer(
 
     // Determine the file size
     int64_t file_size = 0;
-    r = toku_os_get_file_size(fd, &file_size);
-    lazy_assert_zero(r);
+    int blocksize;
+    toku_struct_stat st;
+
+    r = toku_os_fstat(fd, &st);
+    lazy_assert_zero(r );
+    blocksize = r ? st.st_blksize : 512;
+    file_size = r ? st.st_size : 0;
     invariant(file_size >= 0);
     _safe_file_size = file_size;
 
@@ -159,13 +164,14 @@ int block_table::create_from_buffer(
     _bt_block_allocator->CreateFromBlockPairs(
         BlockAllocator::BLOCK_ALLOCATOR_TOTAL_HEADER_RESERVE,
         BlockAllocator::BLOCK_ALLOCATOR_ALIGNMENT,
+        blocksize,
         pairs,
         n_pairs);
 
     return 0;
 }
 
-void block_table::create() {
+void block_table::create(unsigned int blocksize) {
     // Does not initialize the block allocator
     _create_internal();
 
@@ -187,7 +193,7 @@ void block_table::create() {
     // Create an empty block allocator.
     _bt_block_allocator->Create(
         BlockAllocator::BLOCK_ALLOCATOR_TOTAL_HEADER_RESERVE,
-        BlockAllocator::BLOCK_ALLOCATOR_ALIGNMENT);
+        BlockAllocator::BLOCK_ALLOCATOR_ALIGNMENT, blocksize);
 }
 
 // TODO: Refactor with FT-303
@@ -484,6 +490,7 @@ void block_table::_realloc_on_disk_internal(BLOCKNUM b,
 }
 
 void block_table::_ensure_safe_write_unlocked(int fd,
+                                              unsigned int disk_block_size,
                                               DISKOFF block_size,
                                               DISKOFF block_offset) {
     // Requires: holding _mutex
@@ -496,7 +503,7 @@ void block_table::_ensure_safe_write_unlocked(int fd,
 
             int64_t size_after;
             toku_maybe_preallocate_in_file(
-                fd, size_needed, _safe_file_size, &size_after);
+                fd, disk_block_size, size_needed, _safe_file_size, &size_after);
 
             _mutex_lock();
             _safe_file_size = size_after;
@@ -516,7 +523,7 @@ void block_table::realloc_on_disk(BLOCKNUM b,
     _verify_valid_freeable_blocknum(t, b);
     _realloc_on_disk_internal(b, size, offset, ft, for_checkpoint);
 
-    _ensure_safe_write_unlocked(fd, size, *offset);
+    _ensure_safe_write_unlocked(fd, toku_cachefile_get_blocksize(ft->cf), size, *offset);
     _mutex_unlock();
 }
 
@@ -550,14 +557,16 @@ void block_table::_alloc_inprogress_translation_on_disk_unlocked() {
 // Effect: Serializes the blocktable to a wbuf (which starts uninitialized)
 //   A clean shutdown runs checkpoint start so that current and inprogress are
 //   copies.
-//   The resulting wbuf buffer is guaranteed to be be 512-byte aligned and the
-//   total length is a multiple of 512 (so we pad with zeros at the end if
+//   The resulting wbuf buffer is guaranteed to be be blocksize-byte aligned and the
+//   total length is a multiple of blocksize (so we pad with zeros at the end if
 //   needd)
-//   The address is guaranteed to be 512-byte aligned, but the size is not
+//   The address is guaranteed to be blocksize-byte aligned, but the size is not
 //   guaranteed.
-//   It *is* guaranteed that we can read up to the next 512-byte boundary,
+//   It *is* guaranteed that we can read up to the next blocksize-byte boundary,
 //   however
+//   blocksize equates to the blocksize of the filesystem cf is on.
 void block_table::serialize_translation_to_wbuf(int fd,
+                                                unsigned int blocksize,
                                                 struct wbuf *w,
                                                 int64_t *address,
                                                 int64_t *size) {
@@ -566,11 +575,11 @@ void block_table::serialize_translation_to_wbuf(int fd,
 
     BLOCKNUM b = make_blocknum(RESERVED_BLOCKNUM_TRANSLATION);
     _alloc_inprogress_translation_on_disk_unlocked();  // The allocated block
-                                                       // must be 512-byte
+                                                       // must be blocksize-byte
                                                        // aligned to make
                                                        // O_DIRECT happy.
     uint64_t size_translation = _calculate_size_on_disk(t);
-    uint64_t size_aligned = roundup_to_multiple(512, size_translation);
+    uint64_t size_aligned = roundup_to_multiple(blocksize, size_translation);
     invariant((int64_t)size_translation == t->block_translation[b.b].size);
     {
         // Init wbuf
@@ -582,7 +591,7 @@ void block_table::serialize_translation_to_wbuf(int fd,
                 __LINE__,
                 size_translation,
                 t->block_translation[b.b].u.diskoff);
-        char *XMALLOC_N_ALIGNED(512, size_aligned, buf);
+        char *XMALLOC_N_ALIGNED(blocksize, size_aligned, buf);
         for (uint64_t i = size_translation; i < size_aligned; i++)
             buf[i] = 0;  // fill in the end of the buffer with zeros.
         wbuf_init(w, buf, size_aligned);
@@ -604,9 +613,9 @@ void block_table::serialize_translation_to_wbuf(int fd,
     wbuf_int(w, checksum);
     *address = t->block_translation[b.b].u.diskoff;
     *size = size_translation;
-    invariant((*address) % 512 == 0);
+    invariant((*address) % blocksize == 0);
 
-    _ensure_safe_write_unlocked(fd, size_aligned, *address);
+    _ensure_safe_write_unlocked(fd, blocksize, size_aligned, *address);
     _mutex_unlock();
 }
 
@@ -1028,7 +1037,7 @@ void block_table::realloc_descriptor_on_disk(DISKOFF size,
                                              int fd) {
     _mutex_lock();
     _realloc_descriptor_on_disk_unlocked(size, offset, ft);
-    _ensure_safe_write_unlocked(fd, size, *offset);
+    _ensure_safe_write_unlocked(fd, toku_cachefile_get_blocksize(ft->cf), size, *offset);
     _mutex_unlock();
 }
 

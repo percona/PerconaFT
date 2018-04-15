@@ -56,10 +56,10 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #endif
 
 void BlockAllocator::CreateInternal(uint64_t reserve_at_beginning,
-                                    uint64_t alignment) {
-    // the alignment must be at least 512 and aligned with 512 to work with
+                                    uint64_t alignment, unsigned int blocksize) {
+    // the alignment must be at least blocksize and aligned with blocksize to work with
     // direct I/O
-    invariant(alignment >= 512 && (alignment % 512) == 0);
+    invariant(alignment >= blocksize && (alignment % blocksize) == 0);
 
     _reserve_at_beginning = reserve_at_beginning;
     _alignment = alignment;
@@ -68,8 +68,9 @@ void BlockAllocator::CreateInternal(uint64_t reserve_at_beginning,
     _tree = new MhsRbTree::Tree(alignment);
 }
 
-void BlockAllocator::Create(uint64_t reserve_at_beginning, uint64_t alignment) {
-    CreateInternal(reserve_at_beginning, alignment);
+void BlockAllocator::Create(uint64_t reserve_at_beginning, uint64_t alignment,
+                            unsigned int blocksize) {
+    CreateInternal(reserve_at_beginning, alignment, blocksize);
     _tree->Insert({reserve_at_beginning, MAX_BYTE});
     VALIDATE();
 }
@@ -80,9 +81,10 @@ void BlockAllocator::Destroy() {
 
 void BlockAllocator::CreateFromBlockPairs(uint64_t reserve_at_beginning,
                                           uint64_t alignment,
+                                          unsigned int blocksize,
                                           struct BlockPair *translation_pairs,
                                           uint64_t n_blocks) {
-    CreateInternal(reserve_at_beginning, alignment);
+    CreateInternal(reserve_at_beginning, alignment, blocksize);
     _n_blocks = n_blocks;
 
     struct BlockPair *XMALLOC_N(n_blocks, pairs);
@@ -124,7 +126,7 @@ static inline uint64_t Align(uint64_t value, uint64_t ba_alignment) {
 
 // Effect: Allocate a block. The resulting block must be aligned on the
 // ba->alignment (which to make direct_io happy must be a positive multiple of
-// 512).
+// blocksize).
 void BlockAllocator::AllocBlock(uint64_t size,
                                 uint64_t *offset) {
     // Allocator does not support size 0 blocks. See block_allocator_free_block.

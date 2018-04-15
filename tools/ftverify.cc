@@ -132,21 +132,21 @@ deserialize_headers(int fd, struct ft **h1p, struct ft **h2p)
     bool h1_acceptable = false;
     int r0, r1;
     int r;
-    int block_size;
+    unsigned int block_size;
 
     toku_struct_stat st;
 
-    block_size = toku_os_fstat(fd, &st) ? 512 : st.st_blksize;
+    block_size = toku_os_fstat(fd, &st) ? st.st_blksize : 512;
     {
         toku_off_t header_0_off = 0;
         r0 = deserialize_ft_from_fd_into_rbuf(
             fd,
+            block_size,
             header_0_off,
             &rb_0,
             &checkpoint_count_0,
             &checkpoint_lsn_0,
-            &version_0,
-            block_size);
+            &version_0);
         if ((r0==0) && (checkpoint_lsn_0.lsn <= MAX_LSN.lsn)) {
             h0_acceptable = true;
         }
@@ -155,12 +155,12 @@ deserialize_headers(int fd, struct ft **h1p, struct ft **h2p)
         toku_off_t header_1_off = BlockAllocator::BLOCK_ALLOCATOR_HEADER_RESERVE;
         r1 = deserialize_ft_from_fd_into_rbuf(
             fd,
+            block_size,
             header_1_off,
             &rb_1,
             &checkpoint_count_1,
             &checkpoint_lsn_1,
-            &version_1,
-            block_size);
+            &version_1);
         if ((r1==0) && (checkpoint_lsn_1.lsn <= MAX_LSN.lsn)) {
             h1_acceptable = true;
         }
@@ -173,7 +173,7 @@ deserialize_headers(int fd, struct ft **h1p, struct ft **h2p)
     }
     if (h0_acceptable) {
         printf("Found dictionary header 1 with LSN %" PRIu64 "\n", checkpoint_lsn_0.lsn);
-        r = deserialize_ft_versioned(fd, &rb_0, h1p, version_0);
+        r = deserialize_ft_versioned(fd, block_size, &rb_0, h1p, version_0);
 
 	if (r != 0) {
 	    printf("---Header Error----\n");
@@ -184,7 +184,7 @@ deserialize_headers(int fd, struct ft **h1p, struct ft **h2p)
     }
     if (h1_acceptable) {
         printf("Found dictionary header 2 with LSN %" PRIu64 "\n", checkpoint_lsn_1.lsn);
-        r = deserialize_ft_versioned(fd, &rb_1, h2p, version_1);
+        r = deserialize_ft_versioned(fd, block_size, &rb_1, h2p, version_1);
 	if (r != 0) {
 	    printf("---Header Error----\n");
 	}
@@ -225,7 +225,7 @@ check_old_node(FTNODE node, struct rbuf *rb, int version)
 
 // Read, decompress, and check the given block.
 static int
-check_block(BLOCKNUM blocknum, int64_t UU(blocksize), int64_t UU(address), void *extra)
+check_block(BLOCKNUM blocknum, int64_t blocksize, int64_t UU(address), void *extra)
 {
     int r = 0;
     int failure = 0;
@@ -239,7 +239,7 @@ check_block(BLOCKNUM blocknum, int64_t UU(blocksize), int64_t UU(address), void 
     // Let's read the block off of disk and fill a buffer with that
     // block.
     struct rbuf rb = RBUF_INITIALIZER;
-    read_block_from_fd_into_rbuf(fd, blocknum, ft, &rb);
+    read_block_from_fd_into_rbuf(fd, blocksize, blocknum, ft, &rb);
 
     // Allocate the node.
     FTNODE XMALLOC(node);

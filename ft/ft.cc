@@ -410,7 +410,7 @@ void toku_ft_create(FT *ftp, FT_OPTIONS options, CACHEFILE cf, TOKUTXN txn) {
     toku_ft_init_reflock(ft);
 
     // Assign blocknum for root block, also dirty the header
-    ft->blocktable.create();
+    ft->blocktable.create(toku_cachefile_get_blocksize(cf));
     ft->blocktable.allocate_blocknum(&ft->h->root_blocknum, ft);
 
     ft_init(ft, options, cf);
@@ -431,9 +431,8 @@ int toku_read_ft_and_store_in_cachefile (FT_HANDLE ft_handle, CACHEFILE cf, LSN 
         return 0;
     }
 
-    int fd = toku_cachefile_get_fd(cf);
     const char *fn = toku_cachefile_fname_in_env(cf);
-    int r = toku_deserialize_ft_from(fd, fn, max_acceptable_lsn, &ft);
+    int r = toku_deserialize_ft_from(toku_cachefile_get_fd(cf), toku_cachefile_get_blocksize(cf), fn, max_acceptable_lsn, &ft);
     if (r == TOKUDB_BAD_CHECKSUM) {
         fprintf(stderr, "Checksum failure while reading header in file %s.\n", toku_cachefile_fname_in_env(cf));
         assert(false);  // make absolutely sure we crash before doing anything else
@@ -868,9 +867,10 @@ toku_ft_update_descriptor_with_fd(FT ft, DESCRIPTOR desc, int fd) {
     // the checksum is four bytes, so that's where the magic number comes from
     // make space for the new descriptor and write it out to disk
     DISKOFF offset, size;
+    assert(fd == toku_cachefile_get_fd(ft->cf));
     size = toku_serialize_descriptor_size(desc) + 4;
     ft->blocktable.realloc_descriptor_on_disk(size, &offset, ft, fd);
-    toku_serialize_descriptor_contents_to_fd(fd, desc, offset);
+    toku_serialize_descriptor_contents_to_fd(fd, toku_cachefile_get_blocksize(ft->cf), desc, offset);
 
     // cleanup the old descriptor and set the in-memory descriptor to the new one
     toku_destroy_dbt(&ft->descriptor.dbt);
@@ -1036,7 +1036,7 @@ garbage_helper(BLOCKNUM blocknum, int64_t UU(size), int64_t UU(address), void *e
     ftnode_fetch_extra bfe;
     bfe.create_for_full_read(info->ft);
     int fd = toku_cachefile_get_fd(info->ft->cf);
-    int r = toku_deserialize_ftnode_from(fd, blocknum, 0, &node, &ndd, &bfe);
+    int r = toku_deserialize_ftnode_from(fd, toku_cachefile_get_blocksize(info->ft->cf), blocknum, 0, &node, &ndd, &bfe);
     if (r != 0) {
         goto no_node;
     }
