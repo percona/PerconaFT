@@ -141,6 +141,7 @@ struct cachefile {
     // If set then fclose will not be logged in recovery log.
     bool skip_log_recover_on_close;
     int fd;       /* Bug: If a file is opened read-only, then it is stuck in read-only.  If it is opened read-write, then subsequent writers can write to it too. */
+    unsigned int blocksize; /* Filesystem block size for O_DIRECT operations */
     CACHETABLE cachetable;
     struct fileid fileid;
     // the filenum is used as an identifer of the cachefile
