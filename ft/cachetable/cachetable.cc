@@ -371,7 +371,7 @@ toku_cachetable_reserve_filenum(CACHETABLE ct) {
 
 static unsigned int fd_blocksize(int fd) {
     toku_struct_stat st;
-    return (unsigned int) toku_os_fstat(fd, &st) ? st.st_blksize : 512;
+    return (unsigned int) toku_os_fstat(fd, &st) ? 512 : st.st_blksize;
 }
 
 static void create_new_cachefile(

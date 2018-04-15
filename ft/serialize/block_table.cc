@@ -141,7 +141,7 @@ int block_table::create_from_buffer(
 
     r = toku_os_fstat(fd, &st);
     lazy_assert_zero(r );
-    blocksize = r ? st.st_blksize : 512;
+    blocksize = r ? 512 : st.st_blksize;
     file_size = r ? st.st_size : 0;
     invariant(file_size >= 0);
     _safe_file_size = file_size;

@@ -86,7 +86,7 @@ static void test_serialize_leaf(int valsize,
                   S_IRWXU | S_IRWXG | S_IRWXO);
     invariant(fd >= 0);
 
-    block_size = toku_os_fstat(fd, &st) ? st.st_blksize : 512;
+    block_size = toku_os_fstat(fd, &st) ? 512 : st.st_blksize;
 
     int r;
 
