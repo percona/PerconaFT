@@ -878,7 +878,7 @@ void toku_serialize_ft_to(int fd, FT_HEADER h, block_table *bt, CACHEFILE cf) {
     struct wbuf w_main;
     size_t size_main = toku_serialize_ft_size(h);
     size_t size_main_aligned = roundup_to_multiple(blocksize, size_main);
-    invariant(size_main_aligned <
+    invariant(size_main_aligned <=
               BlockAllocator::BLOCK_ALLOCATOR_HEADER_RESERVE);
     char *XMALLOC_N_ALIGNED(blocksize, size_main_aligned, mainbuf);
     for (size_t i = size_main; i < size_main_aligned; i++)
