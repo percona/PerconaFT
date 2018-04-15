@@ -165,7 +165,6 @@ toku_maybe_preallocate_in_file (int fd, unsigned int block_size, int64_t size, i
         lazy_assert_zero(r);
     }
     invariant(file_size >= 0);
-    invariant(expected_size == file_size);
     // We want to double the size of the file, or add 16MiB, whichever is less.
     // We emulate calling this function repeatedly until it satisfies the request.
     int64_t to_write = 0;
