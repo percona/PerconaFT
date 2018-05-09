@@ -107,7 +107,11 @@ run_case_that_should_fail(CACHEFILE f1, pair_lock_type first_lock, pair_lock_typ
 
 static void
 run_test (void) {
-    const int test_limit = 12;
+    // sometimes the cachetable evictor runs during the test.  this sometimes causes cachetable pair locking contention,
+    // which results with a TOKUDB_TRY_AGAIN error occurring.  unfortunately, the test does not expect this and fails.
+    // set cachetable size limit to a value big enough so that the cachetable evictor is not triggered during the test.
+    const int test_limit = 100;
+
     int r;
     CACHETABLE ct;
     toku_cachetable_create(&ct, test_limit, ZERO_LSN, nullptr);
