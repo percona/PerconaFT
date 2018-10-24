@@ -427,13 +427,13 @@ namespace toku {
 
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     void omt<omtdata_t, omtdataout_t, supports_marks>::unmark(
-        const subtree &subtree,
+        const subtree &st,
         const uint32_t index,
         GrowableArray<node_idx> *const indexes) {
-        if (subtree.is_null()) {
+        if (st.is_null()) {
             return;
         }
-        omt_node &n = this->d.t.nodes[subtree.get_index()];
+        omt_node &n = this->d.t.nodes[st.get_index()];
         const uint32_t index_root = index + this->nweight(n.left);
 
         const bool below = n.get_marks_below();
@@ -476,12 +476,12 @@ namespace toku {
 
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     uint32_t omt<omtdata_t, omtdataout_t, supports_marks>::
-        verify_marks_consistent_internal(const subtree &subtree,
+        verify_marks_consistent_internal(const subtree &st,
                                          const bool UU(allow_marks)) const {
-        if (subtree.is_null()) {
+        if (st.is_null()) {
             return 0;
         }
-        const omt_node &node = this->d.t.nodes[subtree.get_index()];
+        const omt_node &node = this->d.t.nodes[st.get_index()];
         uint32_t num_marks =
             verify_marks_consistent_internal(node.left, node.get_marks_below());
         num_marks += verify_marks_consistent_internal(node.right,
@@ -613,11 +613,11 @@ namespace toku {
 
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     uint32_t omt<omtdata_t, omtdataout_t, supports_marks>::nweight(
-        const subtree &subtree) const {
-        if (subtree.is_null()) {
+        const subtree &st) const {
+        if (st.is_null()) {
             return 0;
         } else {
-            return this->d.t.nodes[subtree.get_index()].weight;
+            return this->d.t.nodes[st.get_index()].weight;
         }
     }
 
@@ -657,10 +657,10 @@ namespace toku {
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     void omt<omtdata_t, omtdataout_t, supports_marks>::
         fill_array_with_subtree_values(omtdata_t *const array,
-                                       const subtree &subtree) const {
-        if (subtree.is_null())
+                                       const subtree &st) const {
+        if (st.is_null())
             return;
-        const omt_node &tree = this->d.t.nodes[subtree.get_index()];
+        const omt_node &tree = this->d.t.nodes[st.get_index()];
         this->fill_array_with_subtree_values(&array[0], tree.left);
         array[this->nweight(tree.left)] = tree.value;
         this->fill_array_with_subtree_values(
@@ -688,18 +688,18 @@ namespace toku {
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     void
     omt<omtdata_t, omtdataout_t, supports_marks>::rebuild_from_sorted_array(
-        subtree *const subtree,
+        subtree *const st,
         const omtdata_t *const values,
         const uint32_t numvalues) {
         if (numvalues == 0) {
-            subtree->set_to_null();
+            st->set_to_null();
         } else {
             const uint32_t halfway = numvalues / 2;
             const node_idx newidx = this->node_malloc();
             omt_node *const newnode = &this->d.t.nodes[newidx];
             newnode->weight = numvalues;
             newnode->value = values[halfway];
-            subtree->set_index(newidx);
+            st->set_index(newidx);
             // update everything before the recursive calls so the second call
             // can be a tail call.
             this->rebuild_from_sorted_array(
@@ -755,13 +755,13 @@ namespace toku {
 
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     bool omt<omtdata_t, omtdataout_t, supports_marks>::will_need_rebalance(
-        const subtree &subtree,
+        const subtree &st,
         const int leftmod,
         const int rightmod) const {
-        if (subtree.is_null()) {
+        if (st.is_null()) {
             return false;
         }
-        const omt_node &n = this->d.t.nodes[subtree.get_index()];
+        const omt_node &n = this->d.t.nodes[st.get_index()];
         // one of the 1's is for the root.
         // the other is to take ceil(n/2)
         const uint32_t weight_left = this->nweight(n.left) + leftmod;
@@ -815,11 +815,11 @@ namespace toku {
 
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     void omt<omtdata_t, omtdataout_t, supports_marks>::set_at_internal(
-        const subtree &subtree,
+        const subtree &st,
         const omtdata_t &value,
         const uint32_t idx) {
-        paranoid_invariant(!subtree.is_null());
-        omt_node &n = this->d.t.nodes[subtree.get_index()];
+        paranoid_invariant(!st.is_null());
+        omt_node &n = this->d.t.nodes[st.get_index()];
         const uint32_t leftweight = this->nweight(n.left);
         if (idx < leftweight) {
             this->set_at_internal(n.left, value, idx);
@@ -909,11 +909,11 @@ namespace toku {
     void omt<omtdata_t, omtdataout_t, supports_marks>::iterate_ptr_internal(
         const uint32_t left,
         const uint32_t right,
-        const subtree &subtree,
+        const subtree &st,
         const uint32_t idx,
         iterate_extra_t *const iterate_extra) {
-        if (!subtree.is_null()) {
-            omt_node &n = this->d.t.nodes[subtree.get_index()];
+        if (!st.is_null()) {
+            omt_node &n = this->d.t.nodes[st.get_index()];
             const uint32_t idx_root = idx + this->nweight(n.left);
             if (left < idx_root) {
                 this->iterate_ptr_internal<iterate_extra_t, f>(
@@ -952,14 +952,14 @@ namespace toku {
     int omt<omtdata_t, omtdataout_t, supports_marks>::iterate_internal(
         const uint32_t left,
         const uint32_t right,
-        const subtree &subtree,
+        const subtree &st,
         const uint32_t idx,
         iterate_extra_t *const iterate_extra) const {
-        if (subtree.is_null()) {
+        if (st.is_null()) {
             return 0;
         }
         int r;
-        const omt_node &n = this->d.t.nodes[subtree.get_index()];
+        const omt_node &n = this->d.t.nodes[st.get_index()];
         const uint32_t idx_root = idx + this->nweight(n.left);
         if (left < idx_root) {
             r = this->iterate_internal<iterate_extra_t, f>(
@@ -988,12 +988,12 @@ namespace toku {
     int omt<omtdata_t, omtdataout_t, supports_marks>::
         iterate_and_mark_range_internal(const uint32_t left,
                                         const uint32_t right,
-                                        const subtree &subtree,
+                                        const subtree &st,
                                         const uint32_t idx,
                                         iterate_extra_t *const iterate_extra) {
-        paranoid_invariant(!subtree.is_null());
+        paranoid_invariant(!st.is_null());
         int r;
-        omt_node &n = this->d.t.nodes[subtree.get_index()];
+        omt_node &n = this->d.t.nodes[st.get_index()];
         const uint32_t idx_root = idx + this->nweight(n.left);
         if (left < idx_root && !n.left.is_null()) {
             n.set_marks_below_bit();
@@ -1024,14 +1024,14 @@ namespace toku {
         int (*f)(const omtdata_t &, const uint32_t, iterate_extra_t *const)>
     int
     omt<omtdata_t, omtdataout_t, supports_marks>::iterate_over_marked_internal(
-        const subtree &subtree,
+        const subtree &st,
         const uint32_t idx,
         iterate_extra_t *const iterate_extra) const {
-        if (subtree.is_null()) {
+        if (st.is_null()) {
             return 0;
         }
         int r;
-        const omt_node &n = this->d.t.nodes[subtree.get_index()];
+        const omt_node &n = this->d.t.nodes[st.get_index()];
         const uint32_t idx_root = idx + this->nweight(n.left);
         if (n.get_marks_below()) {
             r = this->iterate_over_marked_internal<iterate_extra_t, f>(
@@ -1064,10 +1064,10 @@ namespace toku {
 
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     void omt<omtdata_t, omtdataout_t, supports_marks>::fetch_internal(
-        const subtree &subtree,
+        const subtree &st,
         const uint32_t i,
         omtdataout_t *const value) const {
-        omt_node &n = this->d.t.nodes[subtree.get_index()];
+        omt_node &n = this->d.t.nodes[st.get_index()];
         const uint32_t leftweight = this->nweight(n.left);
         if (i < leftweight) {
             this->fetch_internal(n.left, i, value);
@@ -1084,11 +1084,11 @@ namespace toku {
     void
     omt<omtdata_t, omtdataout_t, supports_marks>::fill_array_with_subtree_idxs(
         node_idx *const array,
-        const subtree &subtree) const {
-        if (!subtree.is_null()) {
-            const omt_node &tree = this->d.t.nodes[subtree.get_index()];
+        const subtree &st) const {
+        if (!st.is_null()) {
+            const omt_node &tree = this->d.t.nodes[st.get_index()];
             this->fill_array_with_subtree_idxs(&array[0], tree.left);
-            array[this->nweight(tree.left)] = subtree.get_index();
+            array[this->nweight(tree.left)] = st.get_index();
             this->fill_array_with_subtree_idxs(
                 &array[this->nweight(tree.left) + 1], tree.right);
         }
@@ -1097,16 +1097,16 @@ namespace toku {
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     void
     omt<omtdata_t, omtdataout_t, supports_marks>::rebuild_subtree_from_idxs(
-        subtree *const subtree,
+        subtree *const st,
         const node_idx *const idxs,
         const uint32_t numvalues) {
         if (numvalues == 0) {
-            subtree->set_to_null();
+            st->set_to_null();
         } else {
             uint32_t halfway = numvalues / 2;
-            subtree->set_index(idxs[halfway]);
+            st->set_index(idxs[halfway]);
             // node_idx newidx = idxs[halfway];
-            omt_node &newnode = this->d.t.nodes[subtree->get_index()];
+            omt_node &newnode = this->d.t.nodes[st->get_index()];
             newnode.weight = numvalues;
             // value is already in there.
             this->rebuild_subtree_from_idxs(&newnode.left, &idxs[0], halfway);
@@ -1118,8 +1118,8 @@ namespace toku {
 
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     void omt<omtdata_t, omtdataout_t, supports_marks>::rebalance(
-        subtree *const subtree) {
-        node_idx idx = subtree->get_index();
+        subtree *const st) {
+        node_idx idx = st->get_index();
         if (idx == this->d.t.root.get_index()) {
             // Try to convert to an array.
             // If this fails, (malloc) nothing will have changed.
@@ -1146,8 +1146,8 @@ namespace toku {
                 malloced = true;
                 XMALLOC_N(n.weight, tmp_array);
             }
-            this->fill_array_with_subtree_idxs(tmp_array, *subtree);
-            this->rebuild_subtree_from_idxs(subtree, tmp_array, n.weight);
+            this->fill_array_with_subtree_idxs(tmp_array, *st);
+            this->rebuild_subtree_from_idxs(st, tmp_array, n.weight);
             if (malloced)
                 toku_free(tmp_array);
         }
@@ -1224,16 +1224,16 @@ namespace toku {
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     template <typename omtcmp_t, int (*h)(const omtdata_t &, const omtcmp_t &)>
     int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_zero(
-        const subtree &subtree,
+        const subtree &st,
         const omtcmp_t &extra,
         omtdataout_t *const value,
         uint32_t *const idxp) const {
         paranoid_invariant_notnull(idxp);
-        if (subtree.is_null()) {
+        if (st.is_null()) {
             *idxp = 0;
             return DB_NOTFOUND;
         }
-        omt_node &n = this->d.t.nodes[subtree.get_index()];
+        omt_node &n = this->d.t.nodes[st.get_index()];
         int hv = h(n.value, extra);
         if (hv < 0) {
             int r = this->find_internal_zero<omtcmp_t, h>(
@@ -1291,15 +1291,15 @@ namespace toku {
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     template <typename omtcmp_t, int (*h)(const omtdata_t &, const omtcmp_t &)>
     int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_plus(
-        const subtree &subtree,
+        const subtree &st,
         const omtcmp_t &extra,
         omtdataout_t *const value,
         uint32_t *const idxp) const {
         paranoid_invariant_notnull(idxp);
-        if (subtree.is_null()) {
+        if (st.is_null()) {
             return DB_NOTFOUND;
         }
-        omt_node *const n = &this->d.t.nodes[subtree.get_index()];
+        omt_node *const n = &this->d.t.nodes[st.get_index()];
         int hv = h(n->value, extra);
         int r;
         if (hv > 0) {
@@ -1356,15 +1356,15 @@ namespace toku {
     template <typename omtdata_t, typename omtdataout_t, bool supports_marks>
     template <typename omtcmp_t, int (*h)(const omtdata_t &, const omtcmp_t &)>
     int omt<omtdata_t, omtdataout_t, supports_marks>::find_internal_minus(
-        const subtree &subtree,
+        const subtree &st,
         const omtcmp_t &extra,
         omtdataout_t *const value,
         uint32_t *const idxp) const {
         paranoid_invariant_notnull(idxp);
-        if (subtree.is_null()) {
+        if (st.is_null()) {
             return DB_NOTFOUND;
         }
-        omt_node *const n = &this->d.t.nodes[subtree.get_index()];
+        omt_node *const n = &this->d.t.nodes[st.get_index()];
         int hv = h(n->value, extra);
         if (hv < 0) {
             int r = this->find_internal_minus<omtcmp_t, h>(
