@@ -38,6 +38,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include "test.h"
 #include "cachetable-test.h"
+#include <string>
 
 bool close_called;
 bool free_called;
@@ -193,15 +194,15 @@ static void test_multiple_cachefiles(bool use_same_hash) {
         CACHETABLE ct;
         toku_cachetable_create(&ct, test_limit, ZERO_LSN, nullptr);
 
-        char fname1[strlen(TOKU_TEST_FILENAME) + sizeof("_1")];    
-        strcpy(fname1, TOKU_TEST_FILENAME);
-        strncat(fname1, "_1", sizeof("_1"));
-        char fname2[strlen(TOKU_TEST_FILENAME) + sizeof("_2")];    
-        strcpy(fname2, TOKU_TEST_FILENAME);
-        strncat(fname2, "_2", sizeof("_2"));
-        char fname3[strlen(TOKU_TEST_FILENAME) + sizeof("_3")];    
-        strcpy(fname3, TOKU_TEST_FILENAME);
-        strncat(fname3, "_3", sizeof("_3"));
+        std::string fname1s(TOKU_TEST_FILENAME);
+        fname1s.append("_1");
+        const char *fname1 = fname1s.c_str();
+        std::string fname2s(TOKU_TEST_FILENAME);
+        fname2s.append("_2");
+        const char *fname2 = fname2s.c_str();
+        std::string fname3s(TOKU_TEST_FILENAME);
+        fname3s.append("_3");
+        const char *fname3 = fname3s.c_str();
 
         unlink(fname1);
         unlink(fname2);
@@ -242,7 +243,7 @@ static void test_multiple_cachefiles(bool use_same_hash) {
         toku_cachefile_close(&f2, false, ZERO_LSN);
         toku_cachefile_close(&f3, false, ZERO_LSN);
 
-        char* fname_to_open = NULL;
+        const char* fname_to_open = NULL;
         if (iter == 0) {
             fname_to_open  = fname1;
         }
@@ -278,12 +279,12 @@ static void test_evictor(void) {
     CACHETABLE ct;
     toku_cachetable_create(&ct, test_limit, ZERO_LSN, nullptr);
 
-    char fname1[strlen(TOKU_TEST_FILENAME) + sizeof("_1")];    
-    strcpy(fname1, TOKU_TEST_FILENAME);
-    strncat(fname1, "_1", sizeof("_1"));
-    char fname2[strlen(TOKU_TEST_FILENAME) + sizeof("_2")];    
-    strcpy(fname2, TOKU_TEST_FILENAME);
-    strncat(fname2, "_2", sizeof("_2"));
+    std::string fname1s(TOKU_TEST_FILENAME);
+    fname1s.append("_1");
+    const char *fname1 = fname1s.c_str();
+    std::string fname2s(TOKU_TEST_FILENAME);
+    fname2s.append("_2");
+    const char *fname2 = fname2s.c_str();
 
     unlink(fname1);
     unlink(fname2);
