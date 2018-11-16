@@ -108,6 +108,7 @@ set_cflags_if_supported(
   -fno-rtti
   -fno-exceptions
   -Wno-error=nonnull-compare
+  -Wno-error=parentheses
   )
 ## set_cflags_if_supported_named("-Weffc++" -Weffcpp)
 
