@@ -65,7 +65,7 @@ static realloc_fun_t t_xrealloc = 0;
 static LOCAL_MEMORY_STATUS_S status;
 int toku_memory_do_stats = 0;
 
-static bool memory_startup_complete;
+static bool memory_startup_complete = false;
 
 int
 toku_memory_startup(void) {
@@ -83,8 +83,10 @@ toku_memory_startup(void) {
     if (success) {
         status.mallocator_version = "libc";
         status.mmap_threshold = mmap_threshold;
-    } else
+    } else {
         result = EINVAL;
+    }
+    assert(result == 0);
 #else
     // just a guess
     status.mallocator_version = "darwin";
@@ -100,12 +102,17 @@ toku_memory_startup(void) {
     if (mallctl_f) { // jemalloc is loaded
         size_t version_length = sizeof status.mallocator_version;
         result = mallctl_f("version", &status.mallocator_version, &version_length, NULL, 0);
+        assert(result == 0);
         if (result == 0) {
             size_t lg_chunk; // log2 of the mmap threshold
             size_t lg_chunk_length = sizeof lg_chunk;
             result  = mallctl_f("opt.lg_chunk", &lg_chunk, &lg_chunk_length, NULL, 0);
-            if (result == 0)
+            if (result == 0) {
                 status.mmap_threshold = 1 << lg_chunk;
+            } else {
+                status.mmap_threshold = 1 << 22;
+                result = 0;
+            }
         }
     }
 
