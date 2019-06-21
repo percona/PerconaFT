@@ -22,15 +22,13 @@ target_link_libraries(${LIBTOKUDB} LINK_PRIVATE locktree_static ft_static util_s
 target_link_libraries(${LIBTOKUDB} LINK_PUBLIC z)
 
 ## make the static library
-add_library(tokudb_static_conv STATIC ${tokudb_srcs})
-add_dependencies(tokudb_static_conv install_tdb_h generate_log_code)
-set_target_properties(tokudb_static_conv PROPERTIES POSITION_INDEPENDENT_CODE ON)
-set(tokudb_source_libs tokudb_static_conv locktree_static ft_static util_static lzma snappy)
-toku_merge_static_libs(${LIBTOKUDB}_static ${LIBTOKUDB}_static "${tokudb_source_libs}")
+add_library(${LIBTOKUDB}_static STATIC ${tokudb_srcs})
+add_dependencies(${LIBTOKUDB}_static install_tdb_h generate_log_code)
+target_link_libraries(${LIBTOKUDB}_static locktree_static ft_static util_static lzma snappy)
 
 ## add gcov and define _GNU_SOURCE
-maybe_add_gcov_to_libraries(${LIBTOKUDB} tokudb_static_conv)
-set_property(TARGET ${LIBTOKUDB} tokudb_static_conv APPEND PROPERTY COMPILE_DEFINITIONS _GNU_SOURCE)
+maybe_add_gcov_to_libraries(${LIBTOKUDB} ${LIBTOKUDB}_static)
+set_property(TARGET ${LIBTOKUDB} ${LIBTOKUDB}_static APPEND PROPERTY COMPILE_DEFINITIONS _GNU_SOURCE)
 
 ## add a version script and set -fvisibility=hidden for the shared library
 configure_file(export.map . COPYONLY)
