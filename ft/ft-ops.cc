@@ -2802,9 +2802,9 @@ static int ft_create_file(FT_HANDLE UU(ft_handle), const char *fname, int *fdp) 
 }
 
 // open a file for use by the ft.  if the file does not exist, error
-static int ft_open_file(const char *fname, int *fdp) {
+static int ft_open_file(const char *fname, int *fdp, bool rw) {
     int fd;
-    fd = ft_open_maybe_direct(fname, O_RDWR | O_BINARY, file_mode);
+    fd = ft_open_maybe_direct(fname, (rw ? O_RDWR : O_RDONLY) | O_BINARY, file_mode);
     if (fd==-1) {
         return get_error_errno();
     }
@@ -2955,7 +2955,7 @@ toku_ft_handle_inherit_options(FT_HANDLE t, FT ft) {
 // The checkpointed version (checkpoint_lsn) of the dictionary must be no later than max_acceptable_lsn .
 // Requires: The multi-operation client lock must be held to prevent a checkpoint from occuring.
 static int
-ft_handle_open(FT_HANDLE ft_h, const char *fname_in_env, int is_create, int only_create, CACHETABLE cachetable, TOKUTXN txn, FILENUM use_filenum, DICTIONARY_ID use_dictionary_id, LSN max_acceptable_lsn) {
+ft_handle_open(FT_HANDLE ft_h, const char *fname_in_env, int is_create, int only_create, CACHETABLE cachetable, TOKUTXN txn, FILENUM use_filenum, DICTIONARY_ID use_dictionary_id, LSN max_acceptable_lsn, bool open_rw = true) {
     int r;
     bool txn_created = false;
     char *fname_in_cwd = NULL;
@@ -2977,7 +2977,7 @@ ft_handle_open(FT_HANDLE ft_h, const char *fname_in_env, int is_create, int only
     fname_in_cwd = toku_cachetable_get_fname_in_cwd(cachetable, fname_in_env);
     {
         int fd = -1;
-        r = ft_open_file(fname_in_cwd, &fd);
+        r = ft_open_file(fname_in_cwd, &fd, open_rw);
         if (reserved_filenum.fileid == FILENUM_NONE.fileid) {
             reserved_filenum = toku_cachetable_reserve_filenum(cachetable);
         }
@@ -3123,15 +3123,15 @@ toku_ft_handle_open_recovery(FT_HANDLE t, const char *fname_in_env, int is_creat
 // Open an ft in normal use.  The FILENUM and dict_id are assigned by the ft_handle_open() function.
 // Requires: The multi-operation client lock must be held to prevent a checkpoint from occuring.
 int
-toku_ft_handle_open(FT_HANDLE t, const char *fname_in_env, int is_create, int only_create, CACHETABLE cachetable, TOKUTXN txn) {
+toku_ft_handle_open(FT_HANDLE t, const char *fname_in_env, int is_create, int only_create, CACHETABLE cachetable, TOKUTXN txn, bool open_rw) {
     int r;
-    r = ft_handle_open(t, fname_in_env, is_create, only_create, cachetable, txn, FILENUM_NONE, DICTIONARY_ID_NONE, MAX_LSN);
+    r = ft_handle_open(t, fname_in_env, is_create, only_create, cachetable, txn, FILENUM_NONE, DICTIONARY_ID_NONE, MAX_LSN, open_rw);
     return r;
 }
 
 // clone an ft handle. the cloned handle has a new dict_id but refers to the same fractal tree
 int 
-toku_ft_handle_clone(FT_HANDLE *cloned_ft_handle, FT_HANDLE ft_handle, TOKUTXN txn) {
+toku_ft_handle_clone(FT_HANDLE *cloned_ft_handle, FT_HANDLE ft_handle, TOKUTXN txn, bool open_rw) {
     FT_HANDLE result_ft_handle; 
     toku_ft_handle_create(&result_ft_handle);
 
@@ -3146,7 +3146,7 @@ toku_ft_handle_clone(FT_HANDLE *cloned_ft_handle, FT_HANDLE ft_handle, TOKUTXN t
     CACHEFILE cf = ft_handle->ft->cf;
     CACHETABLE ct = toku_cachefile_get_cachetable(cf);
     const char *fname_in_env = toku_cachefile_fname_in_env(cf);
-    int r = toku_ft_handle_open(result_ft_handle, fname_in_env, false, false, ct, txn); 
+    int r = toku_ft_handle_open(result_ft_handle, fname_in_env, false, false, ct, txn, open_rw);
     if (r != 0) {
         toku_ft_handle_close(result_ft_handle);
         result_ft_handle = NULL;
