@@ -39,6 +39,9 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 extern const char *toku_patent_string;
 const char *toku_copyright_string = "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.";
 
+
+extern int writing_rollback;
+
 #include <db.h>
 #include <errno.h>
 #include <string.h>
@@ -1059,6 +1062,7 @@ env_open(DB_ENV * env, const char *home, uint32_t flags, int mode) {
         assert_zero(r);
         r = toku_db_use_builtin_key_cmp(env->i->persistent_environment);
         assert_zero(r);
+	writing_rollback++;
         r = toku_db_open_iname(env->i->persistent_environment, txn, toku_product_name_strings.environmentdictionary, DB_CREATE, mode);
         if (r != 0) {
             r = toku_ydb_do_error(env, r, "Cant open persistent env\n");
@@ -1091,6 +1095,7 @@ env_open(DB_ENV * env, const char *home, uint32_t flags, int mode) {
             assert_zero(r);
         }
         capture_persistent_env_contents(env, txn);
+	writing_rollback--;
     }
     {
         r = toku_db_create(&env->i->directory, env, 0);
@@ -1109,8 +1114,10 @@ env_open(DB_ENV * env, const char *home, uint32_t flags, int mode) {
         txn = NULL;
     }
     cp = toku_cachetable_get_checkpointer(env->i->cachetable);
-    r = toku_checkpoint(cp, env->i->logger, NULL, NULL, NULL, NULL, STARTUP_CHECKPOINT);
-    assert_zero(r);
+    if (!force_recovery) {
+        r = toku_checkpoint(cp, env->i->logger, NULL, NULL, NULL, NULL, STARTUP_CHECKPOINT);
+    }
+    writing_rollback--;
     env_fs_poller(env);          // get the file system state at startup
     r = env_fs_init_minicron(env);
     if (r != 0) {
