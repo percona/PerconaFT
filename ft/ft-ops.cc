@@ -655,7 +655,7 @@ void toku_ftnode_clone_callback(void *value_data,
         node->layout_version_read_from_disk;
     cloned_node->build_id = node->build_id;
     cloned_node->height = node->height;
-    cloned_node->dirty = node->dirty;
+    cloned_node->dirty_ = node->dirty_;
     cloned_node->fullhash = node->fullhash;
     cloned_node->n_children = node->n_children;
 
@@ -671,8 +671,8 @@ void toku_ftnode_clone_callback(void *value_data,
     toku_ftnode_clone_partitions(node, cloned_node);
 
     // clear dirty bit
-    node->dirty = 0;
-    cloned_node->dirty = 0;
+    node->clear_dirty();
+    cloned_node->clear_dirty();
     node->layout_version_read_from_disk = FT_LAYOUT_VERSION;
     // set new pair attr if necessary
     if (node->height == 0) {
@@ -741,7 +741,7 @@ void toku_ftnode_flush_callback(CACHEFILE UU(cachefile),
                 // persisted, we need undo the logical row count adjustments as
                 // they may occur again in the future if/when the node is
                 // re-read from disk for another query or change.
-                if (!ftnode->dirty && !write_me) {
+                if (!ftnode->dirty() && !write_me) {
                     int64_t lrc_delta = 0;
                     for (int i = 0; i < ftnode->n_children; i++) {
                         if (BP_STATE(ftnode, i) == PT_AVAIL) {
@@ -846,8 +846,8 @@ int toku_ftnode_fetch_callback(CACHEFILE UU(cachefile),
     if (r == 0) {
         *sizep = make_ftnode_pair_attr(*node);
         (*node)->ct_pair = p;
-        *dirtyp = (*node)->dirty;  // deserialize could mark the node as dirty
-                                   // (presumably for upgrade)
+        *dirtyp = (*node)->dirty();  // deserialize could mark the node as dirty
+                                     // (presumably for upgrade)
     }
     return r;
 }
@@ -869,7 +869,7 @@ void toku_ftnode_pe_est_callback(
     paranoid_invariant(ftnode_pv != NULL);
     long bytes_to_free = 0;
     FTNODE node = static_cast<FTNODE>(ftnode_pv);
-    if (node->dirty || node->height == 0 ||
+    if (node->dirty() || node->height == 0 ||
         node->layout_version_read_from_disk < FT_FIRST_LAYOUT_VERSION_WITH_BASEMENT_NODES) {
         *bytes_freed_estimate = 0;
         *cost = PE_CHEAP;
@@ -946,7 +946,7 @@ int toku_ftnode_pe_callback(void *ftnode_pv,
     void *pointers_to_free[node->n_children * 2];
 
     // Don't partially evict dirty nodes
-    if (node->dirty) {
+    if (node->dirty()) {
         goto exit;
     }
     // Don't partially evict nodes whose partitions can't be read back
@@ -1399,7 +1399,7 @@ ft_init_new_root(FT ft, FTNODE oldroot, FTNODE *newrootp)
     MSN msna = oldroot->max_msn_applied_to_node_on_disk;
     newroot->max_msn_applied_to_node_on_disk = msna;
     BP_STATE(newroot,0) = PT_AVAIL;
-    newroot->dirty = 1;
+    newroot->set_dirty();
 
     // Set the first child to have the new blocknum,
     // and then swap newroot with oldroot. The new root
@@ -1487,7 +1487,7 @@ static void inject_message_in_locked_node(
     // mark the node as dirty.
     // enforcing invariant here.
     //
-    paranoid_invariant(node->dirty != 0);
+    paranoid_invariant(node->dirty() != 0);
 
     // update some status variables
     if (node->height != 0) {
@@ -1847,7 +1847,7 @@ static void push_something_in_subtree(
                 }
             }
 
-            if (next_loc != NEITHER_EXTREME || child->dirty || toku_bnc_should_promote(ft, bnc)) {
+            if (next_loc != NEITHER_EXTREME || child->dirty() || toku_bnc_should_promote(ft, bnc)) {
                 push_something_in_subtree(ft, child, -1, msg, flow_deltas, gc_info, depth + 1, next_loc, false);
                 toku_sync_fetch_and_add(&bnc->flow[0], flow_deltas[0]);
                 // The recursive call unpinned the child, but
@@ -3547,7 +3547,7 @@ unlock_ftnode_fun (void *v) {
     int r = toku_cachetable_unpin_ct_prelocked_no_flush(
         ft_handle->ft->cf,
         node->ct_pair,
-        (enum cachetable_dirty) node->dirty,
+        (enum cachetable_dirty) node->dirty(),
         x->msgs_applied ? make_ftnode_pair_attr(node) : make_invalid_pair_attr()
         );
     assert_zero(r);
