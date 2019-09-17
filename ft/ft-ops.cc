@@ -4969,6 +4969,14 @@ static void toku_pfs_keys_destroy(void) {
 }
 
 int toku_ft_layer_init(void) {
+    static bool ft_layer_init_started = false;
+
+    if(ft_layer_init_started) {
+        return 0;
+    }
+
+    ft_layer_init_started = true;
+
     int r = 0;
 
     // Portability must be initialized first
@@ -4999,6 +5007,14 @@ exit:
 }
 
 void toku_ft_layer_destroy(void) {
+    static bool ft_layer_destroy_started = false;
+
+    if(ft_layer_destroy_started) {
+        return;
+    }
+
+    ft_layer_destroy_started = true;
+
     toku_mutex_destroy(&ft_open_close_lock);
     toku_ft_serialize_layer_destroy();
     toku_checkpoint_destroy();
