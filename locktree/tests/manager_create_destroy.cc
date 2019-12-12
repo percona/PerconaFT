@@ -38,6 +38,8 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include "manager_unit_test.h"
 
+uint force_recovery = 0;
+
 namespace toku {
 
 void manager_unit_test::test_create_destroy(void) {

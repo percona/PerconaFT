@@ -73,6 +73,8 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 const uint32_t len_ignore = 0xFFFFFFFF;
 
+uint force_recovery;
+
 static const prepared_txn_callback_t NULL_prepared_txn_callback         __attribute__((__unused__)) = NULL;
 static const keep_cachetable_callback_t  NULL_keep_cachetable_callback  __attribute__((__unused__)) = NULL;
 static const TOKULOGGER NULL_logger                                     __attribute__((__unused__)) = NULL;

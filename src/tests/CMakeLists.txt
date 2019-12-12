@@ -51,7 +51,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
   list(REMOVE_ITEM tdb_bins test-5138.tdb)
   add_executable(test-5138.tdb test-5138.cc)
   target_link_libraries(test-5138.tdb ${LIBTOKUDB}_static z ${LIBTOKUPORTABILITY}_static ${CMAKE_THREAD_LIBS_INIT} ${EXTRA_SYSTEM_LIBS})
-  add_space_separated_property(TARGET test-5138.tdb COMPILE_FLAGS -fvisibility=hidden)
   add_ydb_test(test-5138.tdb)
   add_ydb_test(rollback-inconsistency.tdb)
   foreach(bin ${tdb_bins})
@@ -63,7 +62,6 @@ if(BUILD_TESTING OR BUILD_SRC_TESTS)
     # We link the test with util directly so that the test code itself can use
     # some of those things (i.e. kibbutz in the threaded tests).
     target_link_libraries(${base}.tdb util ${LIBTOKUDB} ${LIBTOKUPORTABILITY})
-    add_space_separated_property(TARGET ${base}.tdb COMPILE_FLAGS -fvisibility=hidden)
   endforeach(bin)
 
   foreach(bin loader-cleanup-test.tdb diskfull.tdb)

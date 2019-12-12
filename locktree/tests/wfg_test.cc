@@ -38,6 +38,8 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include <locktree/wfg.h>
 
+uint force_recovery = 0;
+
 namespace toku {
 
 enum {

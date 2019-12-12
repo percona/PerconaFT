@@ -44,6 +44,8 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <errno.h>
 #include <string.h>
 
+uint force_recovery = 0;
+
 enum { N  = 5 };
 enum { M = 10 };
 static void test1 (size_t chars_per_file, size_t UU(bytes_per_read)) {

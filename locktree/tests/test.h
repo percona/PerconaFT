@@ -38,10 +38,13 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #pragma once
 
+
 #include <limits.h>
 
 #include "ft/comparator.h"
 #include "util/dbt.h"
+
+uint force_recovery = 0;
 
 namespace toku {
 

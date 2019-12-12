@@ -39,6 +39,8 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <toku_assert.h>
 #include <locktree/locktree.h>
 
+uint force_recovery = 0;
+
 int main(void) {
     toku::txnid_set set;
     set.create();

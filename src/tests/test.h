@@ -54,6 +54,12 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <signal.h>
 #include <time.h>
 
+#ifndef SKIP_TEST_FORCE_DEF
+extern "C" {
+uint force_recovery = 0;
+}
+#endif
+
 #include "ydb.h"
 //TDB uses DB_NOTFOUND for c_del and DB_CURRENT errors.
 #ifdef DB_KEYEMPTY

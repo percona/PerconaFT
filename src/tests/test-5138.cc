@@ -39,6 +39,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 // test that with full optimizations including the "last IPO pass" and
 // static linking doesn't break lzma
 
+#define SKIP_TEST_FORCE_DEF
 #include "test.h"
 
 int test_main(int argc, char * const argv[]) {

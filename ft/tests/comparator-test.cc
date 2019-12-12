@@ -39,6 +39,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <stdlib.h>
 #include <ft/comparator.h>
 
+uint force_recovery = 0;
 static int MAGIC = 49;
 static DBT dbt_a;
 static DBT dbt_b;

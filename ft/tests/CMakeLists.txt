@@ -32,7 +32,6 @@ if(BUILD_TESTING OR BUILD_FT_TESTS)
     add_executable(${test} ${test}.cc)
     target_link_libraries(${test} ft ${LIBTOKUPORTABILITY})
     set_target_properties(${test} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    add_space_separated_property(TARGET ${test} COMPILE_FLAGS -fvisibility=hidden)
   endforeach(test)
 
   ## declare some tests that should be run with specific options

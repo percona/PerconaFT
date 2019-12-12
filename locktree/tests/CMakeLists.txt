@@ -8,7 +8,6 @@ if(BUILD_TESTING)
     get_filename_component(base ${src} NAME_WE)
 
     add_executable(${base} ${base}.cc)
-    add_space_separated_property(TARGET ${base} COMPILE_FLAGS -fvisibility=hidden)
     target_link_libraries(${base} locktree ft ${LIBTOKUPORTABILITY})
     add_locktree_test(${base})
   endforeach(src)
