@@ -91,7 +91,7 @@ extern int writing_rollback;
 #endif
 
 extern "C" {
-  uint force_recovery = 0;
+  extern uint force_recovery;
 }
 
 // Set when env is panicked, never cleared.

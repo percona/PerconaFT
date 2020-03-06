@@ -50,6 +50,8 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <toku_assert.h>
 #include <portability/toku_atomic.h>
 
+extern "C" { uint force_recovery = 0; }
+
 toku_instr_key *ft_ref_lock_mutex_key;
 
 void toku_reset_root_xid_that_created(FT ft, TXNID new_root_xid_that_created) {
