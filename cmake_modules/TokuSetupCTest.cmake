@@ -94,6 +94,8 @@ if (BUILD_TESTING OR BUILD_FT_TESTS OR BUILD_SRC_TESTS)
   ## set up full valgrind suppressions file (concatenate the suppressions files)
   file(READ ft/valgrind.suppressions valgrind_suppressions)
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/valgrind.suppressions" "${valgrind_suppressions}")
+  file(READ third_party/xz.suppressions xz_suppressions)
+  file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/valgrind.suppressions" "${xz_suppressions}")
   file(READ bash.suppressions bash_suppressions)
   file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/valgrind.suppressions" "${bash_suppressions}")
 
