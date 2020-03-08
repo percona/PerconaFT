@@ -43,7 +43,7 @@ namespace toku {
 static const uint64_t my_lock_wait_time = 10 * 1000; // 10 sec
 
 // make sure deadlocks are detected when a lock request starts
-void lock_request_unit_test::test_wait_time_callback(void) {
+void lock_request_unit_test::run(void) {
     int r;
     locktree lt;
 
@@ -90,7 +90,7 @@ void lock_request_unit_test::test_wait_time_callback(void) {
 
 int main(void) {
     toku::lock_request_unit_test test;
-    test.test_wait_time_callback();
+    test.run();
     return 0;
 }
 
