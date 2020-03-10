@@ -39,9 +39,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 extern const char *toku_patent_string;
 const char *toku_copyright_string = "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.";
 
-
-extern int writing_rollback;
-
 #include <db.h>
 #include <errno.h>
 #include <string.h>
@@ -89,6 +86,8 @@ extern int writing_rollback;
  int toku_set_trace_file (const char *fname __attribute__((__unused__))) { return 0; }
  int toku_close_trace_file (void) { return 0; } 
 #endif
+
+extern std::atomic_int writing_rollback;
 
 extern "C" {
   extern uint force_recovery;
