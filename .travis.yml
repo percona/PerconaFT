@@ -1,0 +1,212 @@
+# Ubuntu 18.04
+dist: bionic
+sudo: required
+language: cpp
+
+cache:
+  ccache: true
+  timeout: 600
+  directories:
+    - $TRAVIS_BUILD_DIR/deps     # cache Boost libraries
+
+env:
+  global:
+    - CCACHE_DIR=$HOME/.ccache
+    - CCACHE_COMPRESS=1
+    - CCACHE_COMPRESSLEVEL=9
+    - CCACHE_MAXSIZE=500Mi
+    - CCACHE_CPP2=1
+
+matrix:
+  allow_failures:
+    - name: osx clang BUILD=Debug
+    - name: osx clang BUILD=RelWithDebInfo
+  include:
+    # Configurations for developers' forks and after merging a pull request for percona/PerconaFT
+    # 1
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env:              BUILD=Debug
+      compiler: clang
+      os: osx
+      name: osx clang BUILD=Debug
+    # 2
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=10   BUILD=RelWithDebInfo
+      compiler: clang
+    # 3
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=9    BUILD=Debug
+      compiler: clang
+    # 4
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=8    BUILD=Debug
+      compiler: clang
+    # 5
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=7    BUILD=Debug
+      compiler: clang
+    # 6
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=6.0  BUILD=Debug
+      compiler: clang
+    # 7
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=5.0  BUILD=Debug
+      compiler: clang
+    # 8
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=4.0  BUILD=Debug
+      compiler: clang
+    # 9
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=9    BUILD=Debug
+      compiler: gcc
+    # 10
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=8    BUILD=Debug
+      compiler: gcc
+    # 11
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=7    BUILD=Debug
+      compiler: gcc
+    # 12
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=6    BUILD=Debug
+      compiler: gcc
+    # 13
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=5    BUILD=Debug
+      compiler: gcc
+    # 14
+    - if: repo != percona/PerconaFT OR repo = percona/PerconaFT AND type IN (push, cron)
+      env: VERSION=4.8  BUILD=Debug
+      compiler: gcc
+
+
+    # Configurations for a pull request and after merging for percona/PerconaFT
+    # 1
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env:              BUILD=RelWithDebInfo
+      compiler: clang
+      os: osx
+      name: osx clang BUILD=RelWithDebInfo
+    # 2
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=10   BUILD=Debug
+      compiler: clang
+    # 3
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=9    BUILD=RelWithDebInfo
+      compiler: clang
+    # 4
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=8    BUILD=RelWithDebInfo
+      compiler: clang
+    # 5
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=7    BUILD=RelWithDebInfo
+      compiler: clang
+    # 6
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=6.0  BUILD=RelWithDebInfo
+      compiler: clang
+    # 7
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=5.0  BUILD=RelWithDebInfo
+      compiler: clang
+    # 8
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=4.0  BUILD=RelWithDebInfo
+      compiler: clang
+    # 9
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=9    BUILD=RelWithDebInfo
+      compiler: gcc
+    # 10
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=8    BUILD=RelWithDebInfo
+      compiler: gcc
+    # 11
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=7    BUILD=RelWithDebInfo
+      compiler: gcc
+    # 12
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=6    BUILD=RelWithDebInfo
+      compiler: gcc
+    # 13
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=5    BUILD=RelWithDebInfo
+      compiler: gcc
+    # 14
+    - if: branch =~ fullci OR repo = percona/PerconaFT AND type IN (push, pull_request, cron)
+      env: VERSION=4.8  BUILD=RelWithDebInfo
+      compiler: gcc
+
+
+script:
+  - INIT_TIME=$SECONDS;
+
+  - echo --- Configure required LLVM and Ubuntu Toolchain repositories;
+    if [[ "$TRAVIS_OS_NAME" == "linux" ]] && [[ "$CC" == "clang" ]]; then
+       PACKAGES="llvm-$VERSION-dev $PACKAGES";
+       curl -sSL "http://apt.llvm.org/llvm-snapshot.gpg.key" | sudo -E apt-key add -;
+       if [[ "$CC-$VERSION" != "clang-4.0" ]]; then
+         echo "deb http://apt.llvm.org/$TRAVIS_DIST/ llvm-toolchain-$TRAVIS_DIST-$VERSION main" | sudo tee -a /etc/apt/sources.list > /dev/null;
+       fi;
+    fi;
+    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+       sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test";
+    fi;
+
+  - echo --- Update list of packages and download dependencies;
+    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+       TIMEOUT_CMD=timeout;
+       CC=$CC-$VERSION;
+       CXX=$CXX-$VERSION;
+       sudo -E apt-get -yq update >> ~/apt-get-update.log 2>&1;
+       sudo -E apt-get -yq --allow-unauthenticated --no-install-suggests --no-install-recommends install $CXX $PACKAGES cmake cmake-curses-gui bison libncurses5-dev libaio-dev libevent-dev || travis_terminate 1;
+       sudo ln -s $(which ccache) /usr/lib/ccache/$CC;
+       sudo ln -s $(which ccache) /usr/lib/ccache/$CXX || echo;
+    else
+       TIMEOUT_CMD=gtimeout;
+       brew update;
+       brew install ccache;
+       brew link ccache;
+       export PATH="/usr/local/opt/ccache/libexec:$PATH";
+    fi;
+    UPDATE_TIME=$(($SECONDS - $INIT_TIME));
+    echo --- Packages updated in $UPDATE_TIME seconds. Initialization time $INIT_TIME seconds.
+
+  - mkdir bin; cd bin;
+  - $CC -v
+  - $CXX -v
+  - ccache --version
+  - ccache --print-config;
+    ccache --zero-stats;
+
+  - echo --- Set cmake parameters;
+    CMAKE_OPT="
+      -DCMAKE_BUILD_TYPE=$BUILD
+      -DBUILD_TESTING=OFF
+      -DUSE_VALGRIND=OFF
+      ";
+
+  - echo --- Perform Debug or RelWithDebInfo compilation;
+    echo --- CMAKE_OPT=\"$CMAKE_OPT\";
+    echo --- ENV_VAR_CMAKE_OPT=\"$ENV_VAR_CMAKE_OPT\";
+    cmake .. $CMAKE_OPT $ENV_VAR_CMAKE_OPT;
+
+  - CMAKE_TIME=$(($SECONDS - $INIT_TIME - $UPDATE_TIME));
+    if [[ "$TRAVIS_REPO_SLUG" == "percona/PerconaFT" ]]; then
+      TIMEOUT_TIME=$((176 * 60 - $SECONDS));
+    else
+      TIMEOUT_TIME=$((46 * 60 - $SECONDS));
+    fi;
+    echo --- Timeout $TIMEOUT_TIME seconds. CMake took $CMAKE_TIME seconds. Packages updated in $UPDATE_TIME seconds. Initialization time $INIT_TIME seconds.;
+    $TIMEOUT_CMD $TIMEOUT_TIME make -j2;
+    if [[ "$?" == "0" ]]; then echo $TRAVIS_COMMIT > $CCACHE_DIR/last_commit.txt; else false; fi;
+
+  - ccache --show-stats;
+    BUILD_TIME=$(($SECONDS - $INIT_TIME - $UPDATE_TIME - $CMAKE_TIME));
+    echo --- Total time $SECONDS seconds. Build time $BUILD_TIME/$TIMEOUT_TIME seconds. CMake took $CMAKE_TIME seconds. Packages updated in $UPDATE_TIME seconds. Initialization time $INIT_TIME seconds.
