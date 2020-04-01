@@ -188,7 +188,7 @@ script:
   - echo --- Set cmake parameters;
     CMAKE_OPT="
       -DCMAKE_BUILD_TYPE=$BUILD
-      -DBUILD_TESTING=OFF
+      -DBUILD_TESTING=ON
       -DUSE_VALGRIND=OFF
       ";
 
