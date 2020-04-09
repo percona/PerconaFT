@@ -42,7 +42,7 @@ namespace toku {
 
 // starting a lock request without immediate success should get
 // stored in the lock request set as pending.
-void lock_request_unit_test::test_start_pending(void) {
+void lock_request_unit_test::run(void) {
     int r;
     locktree lt;
     lock_request request;
@@ -100,7 +100,7 @@ void lock_request_unit_test::test_start_pending(void) {
 
 int main(void) {
     toku::lock_request_unit_test test;
-    test.test_start_pending();
+    test.run();
     return 0;
 }
 
