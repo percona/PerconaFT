@@ -317,16 +317,20 @@ int lock_request::retry(void) {
             m_txnid, m_left_key, m_right_key, &conflicts, m_big_txn);
     }
 
-    // if the acquisition succeeded then remove ourselves from the
-    // set of lock requests, complete, and signal the waiting thread.
-    if (r == 0) {
+    // if the acquisition succeeded or if out of locks
+    // then remove ourselves from the set of lock requests, complete
+    // the lock request, and signal the waiting threads.
+    if (r == 0 || r == TOKUDB_OUT_OF_LOCKS) {
         remove_from_lock_requests();
         complete(r);
         if (m_retry_test_callback)
             m_retry_test_callback();  // test callback
         toku_cond_broadcast(&m_wait_cond);
-    } else {
+    } else if (r == DB_LOCK_NOTGRANTED) {
+        // get the conflicting txnid and remain pending
         m_conflicting_txnid = conflicts.get(0);
+    } else {
+        invariant(0);
     }
     conflicts.destroy();
 
