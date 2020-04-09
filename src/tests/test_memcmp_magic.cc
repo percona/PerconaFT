@@ -103,7 +103,7 @@ static void test_memcmp_magic_sort_order(void) {
     DB_ENV *env;
     r = db_env_create(&env, 0); CKERR(r);
     r = env->set_default_bt_compare(env, comparison_function_unused); CKERR(r);
-    r = env->open(env, TOKU_TEST_FILENAME, DB_CREATE+DB_PRIVATE+DB_INIT_MPOOL+DB_INIT_TXN, 0); CKERR(r);
+    r = env->open(env, TOKU_TEST_FILENAME, DB_CREATE+DB_PRIVATE+DB_INIT_MPOOL+DB_INIT_TXN, S_IRUSR+S_IWUSR); CKERR(r);
 
     const int magic = 49;
 
