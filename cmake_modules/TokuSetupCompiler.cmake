@@ -2,6 +2,10 @@ function(add_c_defines)
   set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS ${ARGN})
 endfunction(add_c_defines)
 
+## always want these
+set(CMAKE_C_FLAGS "-Wall -Werror ${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "-Wall -Werror ${CMAKE_CXX_FLAGS}")
+
 if (APPLE)
   add_c_defines(DARWIN=1 _DARWIN_C_SOURCE)
 endif ()
@@ -169,10 +173,6 @@ if (NOT CMAKE_CXX_COMPILER_ID STREQUAL Clang)
   # Disabling -Wcast-align with clang.  TODO: fix casting and re-enable it, someday.
   prepend_cflags_if_supported(-Wcast-align)
 endif ()
-
-## always want these
-set(CMAKE_C_FLAGS "-Wall -Werror ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "-Wall -Werror ${CMAKE_CXX_FLAGS}")
 
 # pick language dialect
 set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
