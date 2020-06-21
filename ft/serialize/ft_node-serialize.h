@@ -86,6 +86,7 @@ int toku_deserialize_bp_from_compressed(FTNODE node,
                                         int childnum,
                                         ftnode_fetch_extra *bfe);
 int toku_deserialize_ftnode_from(int fd,
+                                 unsigned int blocksize,
                                  BLOCKNUM off,
                                  uint32_t fullhash,
                                  FTNODE *node,
@@ -102,8 +103,9 @@ void toku_create_compressed_partition_from_available(FTNODE node, int childnum,
 int decompress_from_raw_block_into_rbuf(uint8_t *raw_block, size_t raw_block_size, struct rbuf *rb, BLOCKNUM blocknum);
 
 // used by verify
-int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ft, uint32_t version);
+int deserialize_ft_versioned(int fd, unsigned int block_size, struct rbuf *rb, FT *ft, uint32_t version);
 void read_block_from_fd_into_rbuf(int fd,
+                                  unsigned int block_size,
                                   BLOCKNUM blocknum,
                                   FT ft,
                                   struct rbuf *rb);

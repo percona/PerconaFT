@@ -96,7 +96,8 @@ class BlockAllocator {
     //  reserve_at_beginning (IN)        Size of reserved block at beginning.
     //  This size does not have to be aligned.
     //  alignment (IN)                   Block alignment.
-    void Create(uint64_t reserve_at_beginning, uint64_t alignment);
+    //  blocksize (IN)                   Blocksize.
+    void Create(uint64_t reserve_at_beginning, uint64_t alignment, unsigned int blocksize);
 
     // Effect: Create a block allocator, in which the first RESERVE_AT_BEGINNING
     // bytes are not put into a block.
@@ -110,8 +111,10 @@ class BlockAllocator {
     //  reserve_at_beginning (IN)        Size of reserved block at beginning.
     //  This size does not have to be aligned.
     //  alignment (IN)                   Block alignment.
+    //  blocksize (IN)                   Block size.
     void CreateFromBlockPairs(uint64_t reserve_at_beginning,
                               uint64_t alignment,
+                              unsigned int blocksize,
                               struct BlockPair *pairs,
                               uint64_t n_blocks);
 
@@ -173,7 +176,7 @@ class BlockAllocator {
     virtual ~BlockAllocator(){};
 
    private:
-    void CreateInternal(uint64_t reserve_at_beginning, uint64_t alignment);
+    void CreateInternal(uint64_t reserve_at_beginning, uint64_t alignment, unsigned int blocksize);
 
     // How much to reserve at the beginning
     uint64_t _reserve_at_beginning;

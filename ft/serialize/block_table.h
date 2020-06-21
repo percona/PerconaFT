@@ -105,7 +105,7 @@ class block_table {
         TRANSLATION_DEBUG
     };
 
-    void create();
+    void create(unsigned int blocksize);
 
     int create_from_buffer(int fd,
                            DISKOFF location_on_disk,
@@ -146,6 +146,7 @@ class block_table {
 
     // Serialization
     void serialize_translation_to_wbuf(int fd,
+                                       unsigned int blocksize,
                                        struct wbuf *w,
                                        int64_t *address,
                                        int64_t *size);
@@ -258,6 +259,7 @@ class block_table {
     // File management
     void _maybe_truncate_file(int fd, uint64_t size_needed_before);
     void _ensure_safe_write_unlocked(int fd,
+                                     unsigned int disk_block_size,
                                      DISKOFF block_size,
                                      DISKOFF block_offset);
 

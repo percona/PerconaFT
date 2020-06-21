@@ -159,7 +159,7 @@ static void open_header(int fd, FT *header, CACHEFILE cf) {
     FT ft = NULL;
     int r;
     const char *fn = toku_cachefile_fname_in_env(cf);
-    r = toku_deserialize_ft_from (fd, fn, MAX_LSN, &ft);
+    r = toku_deserialize_ft_from (fd, toku_cachefile_get_blocksize(cf), fn, MAX_LSN, &ft);
     if (r != 0) {
         fprintf(stderr, "%s: can not deserialize from %s error %d\n", arg0, fname, r);
         exit(1);
@@ -212,8 +212,9 @@ static int getHeight(int fd, BLOCKNUM blocknum, FT ft){
     FTNODE n;
     FTNODE_DISK_DATA ndd = nullptr;
     ftnode_fetch_extra bfe;
+    unsigned int block_size = toku_cachefile_get_blocksize(ft->cf);
     bfe.create_for_full_read(ft);
-    int r = toku_deserialize_ftnode_from (fd, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
+    int r = toku_deserialize_ftnode_from (fd, block_size, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
     assert_zero(r);
     assert(n!=0);
     return n->height;
@@ -223,8 +224,9 @@ static FTNODE  getNode(int fd, BLOCKNUM blocknum, FT ft) {
     FTNODE n;
     FTNODE_DISK_DATA ndd = nullptr;
     ftnode_fetch_extra bfe;
+    unsigned int block_size = toku_cachefile_get_blocksize(ft->cf);
     bfe.create_for_full_read(ft);
-    int r = toku_deserialize_ftnode_from (fd, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
+    int r = toku_deserialize_ftnode_from (fd, block_size, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
     assert_zero(r);;
     return n;
 }
@@ -398,8 +400,9 @@ static void dump_node(int fd, BLOCKNUM blocknum, FT ft) {
     FTNODE n;
     FTNODE_DISK_DATA ndd = nullptr;
     ftnode_fetch_extra bfe;
+    unsigned int block_size = toku_cachefile_get_blocksize(ft->cf);
     bfe.create_for_full_read(ft);
-    int r = toku_deserialize_ftnode_from (fd, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
+    int r = toku_deserialize_ftnode_from (fd, block_size, blocknum, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
     assert_zero(r);
     assert(n!=0);
     printf("ftnode\n");
@@ -547,7 +550,7 @@ static int nodesizes_helper(BLOCKNUM b, int64_t size, int64_t UU(address), void 
     FTNODE_DISK_DATA ndd = NULL;
     ftnode_fetch_extra bfe;
     bfe.create_for_full_read(info->ft);
-    int r = toku_deserialize_ftnode_from(info->fd, b, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
+    int r = toku_deserialize_ftnode_from(info->fd, info->blocksizes, b, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
     if (r==0) {
         info->blocksizes += size;
         if (n->height == 0) {
@@ -600,7 +603,7 @@ static int summary_helper(BLOCKNUM b, int64_t size, int64_t UU(address), void *e
     ftnode_fetch_extra bfe;
 
     bfe.create_for_full_read(info->ft);
-    int r = toku_deserialize_ftnode_from(info->fd, b, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
+    int r = toku_deserialize_ftnode_from(info->fd, info->blocksizes, b, 0 /*pass zero for hash, it doesn't matter*/, &n, &ndd, &bfe);
     if (r==0) {
         info->blocksizes += size;
 
@@ -988,6 +991,7 @@ static void writeTree(NMC *msgs[],int height){
 
 static void FT_to_JSON(int fd, FT ft, CACHEFILE cf, const char * JsonFile){
     toku_ft_free(ft);
+    assert(fd == toku_cachefile_get_fd(ft->cf));
     open_header(fd, &ft, cf);
     int root=getRootNode(ft);
     BLOCKNUM off = make_blocknum(root);

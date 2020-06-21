@@ -78,11 +78,15 @@ static void test_serialize_leaf(int valsize,
                                 int deser_runs) {
     //    struct ft_handle source_ft;
     struct ftnode *sn, *dn;
+    unsigned int block_size;
+    toku_struct_stat st;
 
     int fd = open(TOKU_TEST_FILENAME,
                   O_RDWR | O_CREAT | O_BINARY,
                   S_IRWXU | S_IRWXG | S_IRWXO);
     invariant(fd >= 0);
+
+    block_size = toku_os_fstat(fd, &st) ? 512 : st.st_blksize;
 
     int r;
 
@@ -202,7 +206,7 @@ static void test_serialize_leaf(int valsize,
         gettimeofday(&t[0], NULL);
         FTNODE_DISK_DATA ndd2 = NULL;
         r = toku_deserialize_ftnode_from(
-            fd, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd2, &bfe);
+            fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd2, &bfe);
         invariant(r == 0);
         gettimeofday(&t[1], NULL);
 
@@ -375,7 +379,7 @@ static void test_serialize_nonleaf(int valsize,
     gettimeofday(&t[0], NULL);
     FTNODE_DISK_DATA ndd2 = NULL;
     r = toku_deserialize_ftnode_from(
-        fd, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd2, &bfe);
+        fd, block_size, make_blocknum(20), 0 /*pass zero for hash*/, &dn, &ndd2, &bfe);
     invariant(r == 0);
     gettimeofday(&t[1], NULL);
     dt = (t[1].tv_sec - t[0].tv_sec) +

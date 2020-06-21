@@ -51,17 +51,20 @@ void toku_serialize_ft_to_wbuf(struct wbuf *wbuf,
                                DISKOFF translation_location_on_disk,
                                DISKOFF translation_size_on_disk);
 void toku_serialize_descriptor_contents_to_fd(int fd,
+                                              unsigned int blocksize,
                                               DESCRIPTOR desc,
                                               DISKOFF offset);
 void toku_serialize_descriptor_contents_to_wbuf(struct wbuf *wb,
                                                 DESCRIPTOR desc);
 int toku_deserialize_ft_from(int fd,
+                             unsigned int blocksize,
                              const char *fn,
                              LSN max_acceptable_lsn,
                              FT *ft);
 
 // TODO rename
 int deserialize_ft_from_fd_into_rbuf(int fd,
+                                     unsigned int block_size,
                                      toku_off_t offset_of_header,
                                      struct rbuf *rb,
                                      uint64_t *checkpoint_count,
@@ -70,4 +73,4 @@ int deserialize_ft_from_fd_into_rbuf(int fd,
 
 // used by verify
 // TODO rename
-int deserialize_ft_versioned(int fd, struct rbuf *rb, FT *ft, uint32_t version);
+int deserialize_ft_versioned(int fd, unsigned int block_size, struct rbuf *rb, FT *ft, uint32_t version);

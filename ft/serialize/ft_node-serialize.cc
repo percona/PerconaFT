@@ -149,7 +149,7 @@ min64(int64_t a, int64_t b) {
 }
 
 void
-toku_maybe_preallocate_in_file (int fd, int64_t size, int64_t expected_size, int64_t *new_size)
+toku_maybe_preallocate_in_file (int fd, unsigned int block_size, int64_t size, int64_t expected_size, int64_t *new_size)
 // Effect: make the file bigger by either doubling it or growing by 16MiB whichever is less, until it is at least size
 // Return 0 on success, otherwise an error number.
 {
@@ -165,7 +165,6 @@ toku_maybe_preallocate_in_file (int fd, int64_t size, int64_t expected_size, int
         lazy_assert_zero(r);
     }
     invariant(file_size >= 0);
-    invariant(expected_size == file_size);
     // We want to double the size of the file, or add 16MiB, whichever is less.
     // We emulate calling this function repeatedly until it satisfies the request.
     int64_t to_write = 0;
@@ -177,8 +176,8 @@ toku_maybe_preallocate_in_file (int fd, int64_t size, int64_t expected_size, int
         to_write += alignup64(min64(file_size + to_write, FILE_CHANGE_INCREMENT), stripe_width);
     }
     if (to_write > 0) {
-        assert(to_write%512==0);
-        toku::scoped_malloc_aligned wbuf_aligned(to_write, 512);
+        assert(to_write%block_size==0);
+        toku::scoped_malloc_aligned wbuf_aligned(to_write, block_size);
         char *wbuf = reinterpret_cast<char *>(wbuf_aligned.get());
         memset(wbuf, 0, to_write);
         toku_off_t start_write = alignup64(file_size, stripe_width);
@@ -1060,6 +1059,7 @@ void destroy_nonleaf_childinfo (NONLEAF_CHILDINFO nl)
 
 void read_block_from_fd_into_rbuf(
     int fd, 
+    unsigned int block_size,
     BLOCKNUM blocknum,
     FT ft,
     struct rbuf *rb
@@ -1068,8 +1068,8 @@ void read_block_from_fd_into_rbuf(
     // get the file offset and block size for the block
     DISKOFF offset, size;
     ft->blocktable.translate_blocknum_to_offset_size(blocknum, &offset, &size);
-    DISKOFF size_aligned = roundup_to_multiple(512, size);
-    uint8_t *XMALLOC_N_ALIGNED(512, size_aligned, raw_block);
+    DISKOFF size_aligned = roundup_to_multiple(block_size, size);
+    uint8_t *XMALLOC_N_ALIGNED(block_size, size_aligned, raw_block);
     rbuf_init(rb, raw_block, size);
     // read the block
     ssize_t rlen = toku_os_pread(fd, raw_block, size_aligned, offset);
@@ -2668,6 +2668,7 @@ int toku_deserialize_bp_from_compressed(FTNODE node,
 }
 
 static int deserialize_ftnode_from_fd(int fd,
+                                      unsigned int block_size,
                                       BLOCKNUM blocknum,
                                       uint32_t fullhash,
                                       FTNODE *ftnode,
@@ -2677,7 +2678,7 @@ static int deserialize_ftnode_from_fd(int fd,
     struct rbuf rb = RBUF_INITIALIZER;
 
     tokutime_t t0 = toku_time_now();
-    read_block_from_fd_into_rbuf(fd, blocknum, bfe->ft, &rb);
+    read_block_from_fd_into_rbuf(fd, block_size, blocknum, bfe->ft, &rb);
     tokutime_t t1 = toku_time_now();
 
     // Decompress and deserialize the ftnode. Time statistics
@@ -2708,6 +2709,7 @@ static int deserialize_ftnode_from_fd(int fd,
 // Effect: Read a node in.  If possible, read just the header.
 //         Perform version upgrade if necessary.
 int toku_deserialize_ftnode_from(int fd,
+                                 unsigned int block_size,
                                  BLOCKNUM blocknum,
                                  uint32_t fullhash,
                                  FTNODE *ftnode,
@@ -2731,7 +2733,7 @@ int toku_deserialize_ftnode_from(int fd,
     if (r != 0) {
         // Something went wrong, go back to doing it the old way.
         r = deserialize_ftnode_from_fd(
-            fd, blocknum, fullhash, ftnode, ndd, bfe, nullptr);
+            fd, block_size, blocknum, fullhash, ftnode, ndd, bfe, nullptr);
     }
 
     toku_free(rb.buf);
@@ -3210,7 +3212,7 @@ cleanup:
 }
 
 int
-toku_upgrade_subtree_estimates_to_stat64info(int fd, FT ft)
+toku_upgrade_subtree_estimates_to_stat64info(int fd, unsigned int block_size, FT ft)
 {
     int r = 0;
     // 15 was the last version with subtree estimates
@@ -3220,7 +3222,7 @@ toku_upgrade_subtree_estimates_to_stat64info(int fd, FT ft)
     FTNODE_DISK_DATA unused_ndd = NULL;
     ftnode_fetch_extra bfe;
     bfe.create_for_min_read(ft);
-    r = deserialize_ftnode_from_fd(fd, ft->h->root_blocknum, 0, &unused_node, &unused_ndd,
+    r = deserialize_ftnode_from_fd(fd, block_size, ft->h->root_blocknum, 0, &unused_node, &unused_ndd,
                                    &bfe, &ft->h->on_disk_stats);
     ft->in_memory_stats = ft->h->on_disk_stats;
 
@@ -3234,7 +3236,7 @@ toku_upgrade_subtree_estimates_to_stat64info(int fd, FT ft)
 }
 
 int
-toku_upgrade_msn_from_root_to_header(int fd, FT ft)
+toku_upgrade_msn_from_root_to_header(int fd, unsigned int block_size, FT ft)
 {
     int r;
     // 21 was the first version with max_msn_in_ft in the header
@@ -3244,7 +3246,7 @@ toku_upgrade_msn_from_root_to_header(int fd, FT ft)
     FTNODE_DISK_DATA ndd;
     ftnode_fetch_extra bfe;
     bfe.create_for_min_read(ft);
-    r = deserialize_ftnode_from_fd(fd, ft->h->root_blocknum, 0, &node, &ndd, &bfe, nullptr);
+    r = deserialize_ftnode_from_fd(fd, block_size, ft->h->root_blocknum, 0, &node, &ndd, &bfe, nullptr);
     if (r != 0) {
         goto exit;
     }

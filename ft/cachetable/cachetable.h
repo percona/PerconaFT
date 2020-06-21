@@ -501,6 +501,9 @@ void toku_cachefile_close (CACHEFILE*, bool oplsn_valid, LSN oplsn);
 // Grabs a read lock protecting the fd
 int toku_cachefile_get_fd (CACHEFILE);
 
+// Get the blocksize associated with the cachefile
+unsigned int toku_cachefile_get_blocksize (CACHEFILE);
+
 // Get the iname (within the environment) associated with the cachefile
 // Return the filename
 char * toku_cachefile_fname_in_env (CACHEFILE cf);
