@@ -147,6 +147,8 @@ void toku_cachetable_begin_checkpoint (CHECKPOINTER cp, struct tokulogger *logge
 void toku_cachetable_end_checkpoint(CHECKPOINTER cp, struct tokulogger *logger, 
                                    void (*testcallback_f)(void*),  void * testextra);
 
+void toku_cachetable_begin_backup(CACHETABLE ct);
+void toku_cachetable_end_backup(CACHETABLE ct);
 
 // Shuts down checkpoint thread
 // Requires no locks be held that are taken by the checkpoint function
@@ -285,7 +287,9 @@ void toku_cachefile_set_userdata(CACHEFILE cf, void *userdata,
     void (*begin_checkpoint_userdata)(LSN, void*),
     void (*end_checkpoint_userdata)(CACHEFILE, int, void*),
     void (*note_pin_by_checkpoint)(CACHEFILE, void*),
-    void (*note_unpin_by_checkpoint)(CACHEFILE, void*));
+    void (*note_unpin_by_checkpoint)(CACHEFILE, void*),
+    void (*note_pin_by_backup)(CACHEFILE, void*),
+    void (*note_unpin_by_backup)(CACHEFILE, void*));
 // Effect: Store some cachefile-specific user data.  When the last reference to a cachefile is closed, we call close_userdata().
 // Before starting a checkpoint, we call checkpoint_prepare_userdata().
 // When the cachefile needs to be checkpointed, we call checkpoint_userdata().

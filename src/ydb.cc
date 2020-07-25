@@ -1911,7 +1911,10 @@ env_checkpointing_postpone(DB_ENV * env) {
     HANDLE_PANICKED_ENV(env);
     int r = 0;
     if (!env_opened(env)) r = EINVAL;
-    else toku_checkpoint_safe_client_lock();
+    else {
+        toku_checkpoint_safe_client_lock();
+        toku_cachetable_begin_backup(env->i->cachetable);
+    }
     return r;
 }
 
@@ -1920,7 +1923,10 @@ env_checkpointing_resume(DB_ENV * env) {
     HANDLE_PANICKED_ENV(env);
     int r = 0;
     if (!env_opened(env)) r = EINVAL;
-    else toku_checkpoint_safe_client_unlock();
+    else {
+        toku_cachetable_end_backup(env->i->cachetable);
+        toku_checkpoint_safe_client_unlock();
+    }
     return r;
 }
 
