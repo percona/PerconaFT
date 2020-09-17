@@ -88,7 +88,7 @@ static bool check_huge_pages_in_practice(void)
     if ((long)second==-1) perror("mmap failed");
     assert((long)second%TWO_MB == 0);
 
-    const long pagesize = 4096;
+    const long pagesize = sysconf(_SC_PAGESIZE);
     const long n_pages = TWO_MB/pagesize;
     unsigned char vec[n_pages];
     {
