@@ -161,6 +161,9 @@ struct cachefile {
     void (*end_checkpoint_userdata)(CACHEFILE cf, int fd, void *userdata); // after checkpointing cachefiles call this function.
     void (*note_pin_by_checkpoint)(CACHEFILE cf, void *userdata); // add a reference to the userdata to prevent it from being removed from memory
     void (*note_unpin_by_checkpoint)(CACHEFILE cf, void *userdata); // add a reference to the userdata to prevent it from being removed from memory
+
+    void (*note_pin_by_backup)(CACHEFILE cf, void *userdata); // add a reference to the userdata to prevent it from being removed from memory
+    void (*note_unpin_by_backup)(CACHEFILE cf, void *userdata); // add a reference to the userdata to prevent it from being removed from memory
     BACKGROUND_JOB_MANAGER bjm;
 };
 
@@ -413,6 +416,8 @@ public:
     void add_background_job();
     void remove_background_job();
     void end_checkpoint(void (*testcallback_f)(void*),  void* testextra);
+    void begin_backup();
+    void end_backup();
     TOKULOGGER get_logger();
     // used during begin_checkpoint
     void increment_num_txns();

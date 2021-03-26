@@ -50,18 +50,10 @@ static void free_usr(CACHEFILE UU(cf), void* UU(p)) {
 }
 
 static void set_cf_userdata(CACHEFILE f1) {
-    toku_cachefile_set_userdata(
-        f1,
-        NULL,
-        &dummy_log_fassociate,
-        &close_usr,
-        &free_usr,
-        &dummy_chckpnt_usr,
-        &dummy_begin,
-        &dummy_end,
-        &dummy_note_pin,
-        &dummy_note_unpin
-        );
+  toku_cachefile_set_userdata(f1, NULL, &dummy_log_fassociate, &close_usr,
+                              &free_usr, &dummy_chckpnt_usr, &dummy_begin,
+                              &dummy_end, &dummy_note_pin, &dummy_note_unpin,
+                              &dummy_note_pin, &dummy_note_unpin);
 }
 
 bool keep_me;
