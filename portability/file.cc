@@ -36,10 +36,10 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
-#include <toku_portability.h>
+#include "toku_portability.h"
 #include <unistd.h>
 #include <errno.h>
-#include <toku_assert.h>
+#include "toku_assert.h"
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
@@ -50,17 +50,25 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "memory.h"
 #include "toku_time.h"
 #include "toku_path.h"
-#include <portability/toku_atomic.h>
+#include "toku_atomic.h"
+#include <atomic>
 
 toku_instr_key *tokudb_file_data_key;
 
-static int toku_assert_on_write_enospc = 0;
-static const int toku_write_enospc_sleep = 1;
-static uint64_t toku_write_enospc_last_report;      // timestamp of most recent
-                                                    // report to error log
-static time_t   toku_write_enospc_last_time;        // timestamp of most recent ENOSPC
-static uint32_t toku_write_enospc_current;          // number of threads currently blocked on ENOSPC
-static uint64_t toku_write_enospc_total;            // total number of times ENOSPC was returned from an attempt to write
+static bool toku_assert_on_write_enospc = false;
+static constexpr int toku_write_enospc_sleep = 1;
+
+// timestamp of most recent report to error log
+static std::atomic<uint64_t> toku_write_enospc_last_report;
+
+// timestamp of most recent ENOSPC
+static std::atomic<time_t> toku_write_enospc_last_time;
+
+// number of threads currently blocked on ENOSPC
+static std::atomic<uint32_t> toku_write_enospc_current;
+
+// total number of times ENOSPC was returned from an attempt to write
+static std::atomic<uint64_t> toku_write_enospc_total;
 
 void toku_set_assert_on_write_enospc(int do_assert) {
     toku_assert_on_write_enospc = do_assert;
@@ -72,70 +80,124 @@ void toku_fs_get_write_info(time_t *enospc_last_time, uint64_t *enospc_current, 
     *enospc_total = toku_write_enospc_total;
 }
 
-//Print any necessary errors
-//Return whether we should try the write again.
-static void
-try_again_after_handling_write_error(int fd, size_t len, ssize_t r_write) {
-    int try_again = 0;
+static void __attribute__((format(printf, 2, 3)))
+report_io_problem(int fd, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
 
-    assert(r_write < 0);
-    int errno_write = get_error_errno();
-    switch (errno_write) {
-    case EINTR: { //The call was interrupted by a signal before any data was written; see signal(7).
-	char err_msg[sizeof("Write of [] bytes to fd=[] interrupted.  Retrying.") + 20+10]; //64 bit is 20 chars, 32 bit is 10 chars
-	snprintf(err_msg, sizeof(err_msg), "Write of [%" PRIu64 "] bytes to fd=[%d] interrupted.  Retrying.", (uint64_t)len, fd);
-	perror(err_msg);
-	fflush(stderr);
-	try_again = 1;
-	break;
-    }
-    case ENOSPC: {
-        if (toku_assert_on_write_enospc) {
-            char err_msg[sizeof("Failed write of [] bytes to fd=[].") + 20+10]; //64 bit is 20 chars, 32 bit is 10 chars
-            snprintf(err_msg, sizeof(err_msg), "Failed write of [%" PRIu64 "] bytes to fd=[%d].", (uint64_t)len, fd);
-            perror(err_msg);
-            fflush(stderr);
-            int out_of_disk_space = 1;
-            assert(!out_of_disk_space); //Give an error message that might be useful if this is the only one that survives.
-        } else {
-            toku_sync_fetch_and_add(&toku_write_enospc_total, 1);
-            toku_sync_fetch_and_add(&toku_write_enospc_current, 1);
+    constexpr int tstr_length = 26;
+    char tstr[tstr_length];
+    time_t t = time(0);
+    ctime_r(&t, tstr);
 
-            time_t tnow = time(0);
-            toku_write_enospc_last_time = tnow;
-            if (toku_write_enospc_last_report == 0 || tnow - toku_write_enospc_last_report >= 60) {
-                toku_write_enospc_last_report = tnow;
+    char buf[4096];
 
-                const int tstr_length = 26;
-                char tstr[tstr_length];
-                time_t t = time(0);
-                ctime_r(&t, tstr);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
 
-                const int MY_MAX_PATH = 256;
-                char fname[MY_MAX_PATH], symname[MY_MAX_PATH+1];
-                sprintf(fname, "/proc/%d/fd/%d", getpid(), fd);
-                ssize_t n = readlink(fname, symname, MY_MAX_PATH);
+#if __linux__
+    char fdname[256];
+    snprintf(fdname, sizeof fdname, "/proc/%d/fd/%d", getpid(), fd);
+    char lname[256];
+    ssize_t s = readlink(fdname, lname, sizeof lname);
+    if (0 < s && s < (ssize_t)sizeof lname)
+        lname[s] = 0;
 
-                if ((int)n == -1)
-                    fprintf(stderr, "%.24s PerconaFT No space when writing %" PRIu64 " bytes to fd=%d ", tstr, (uint64_t) len, fd);
-                else {
-		    tstr[n] = 0; // readlink doesn't append a NUL to the end of the buffer.
-                    fprintf(stderr, "%.24s PerconaFT No space when writing %" PRIu64 " bytes to %*s ", tstr, (uint64_t) len, (int) n, symname);
-		}
-                fprintf(stderr, "retry in %d second%s\n", toku_write_enospc_sleep, toku_write_enospc_sleep > 1 ? "s" : "");
-                fflush(stderr);
+    fprintf(stderr,
+            "%.24s : PerconaFT I/O problem, fd[%d], file[%s] : %s\n",
+            tstr,
+            fd,
+            s > 0 ? lname : "?",
+            buf);
+#else
+    fprintf(stderr,
+            "%.24s : PerconaFT I/O problem, fd[%d], file[?] : %s\n",
+            tstr,
+            fd,
+            buf);
+#endif
+    va_end(ap);
+    fflush(stderr);
+}
+
+// Determines whether or not a retry is in order for any 'write' type
+// operations and logs failures. These include write, fsync, and close.
+// May assert/abort on fatal errors or in debug builds
+static bool handle_write_error(int fd,
+                             int what_errno,
+                             uint64_t retry_count,
+                             const char *operation) {
+    bool ret = false;
+    switch (what_errno) {
+        case ENOSPC:
+            if (toku_assert_on_write_enospc) {
+                report_io_problem(
+                    fd, "[%s] failed with ENOSPC.  Aborting.", operation);
+                resource_assert(0);
+            } else {
+                toku_write_enospc_total++;
+                toku_write_enospc_current++;
+
+                time_t tnow = time(0);
+                toku_write_enospc_last_time = tnow;
+                if (toku_write_enospc_last_report == 0 ||
+                    tnow - toku_write_enospc_last_report >= 60) {
+                    toku_write_enospc_last_report = tnow;
+
+                    report_io_problem(
+                        fd,
+                        "[%s] failed with ENOSPC.  Retry in %d second%s on %" PRIu64
+                        " tries",
+                        operation,
+                        toku_write_enospc_sleep,
+                        toku_write_enospc_sleep > 1 ? "s" : "",
+                        retry_count);
+                }
+                sleep(toku_write_enospc_sleep);
+                toku_write_enospc_current--;
+                ret = true;
+                break;
             }
-            sleep(toku_write_enospc_sleep);
-            try_again = 1;
-            toku_sync_fetch_and_sub(&toku_write_enospc_current, 1);
             break;
-        }
+
+        case ENOLCK:
+        // fallthrough to EINTR
+
+        case EINTR:
+            if (retry_count % 100 == 0) {
+                report_io_problem(fd,
+                                  "[%s] failed with %s. Retry on %" PRIu64
+                                  " tries.",
+                                  operation,
+                                  what_errno == ENOLCK ? "ENOLCK" : "EINTR",
+                                  retry_count);
+            }
+            ret = true;
+            break;
+
+        case EIO:
+            // This is a non-recoverable fatal kernel error. A buffered write
+            // was forever lost and detected duiring close or fsync.
+            // Documentation also indicates that this may be returned from write
+            // if fd is some type of pipe from a orphaned background process to
+            // its now missing controlling terminal. Not likely something we
+            // expect to run into.
+            report_io_problem(fd,
+                              "[%s] failed with EIO.  Aborting.",
+                              operation);
+            resource_assert(0);
+            break;
+
+        default:
+            report_io_problem(
+                fd, "[%s] failed with errno %d.", operation, what_errno);
+            break;
     }
-    default:
-	break;
-    }
-    assert(try_again);
-    errno = errno_write;
+
+    // If we have a debug build, lets go ahead and assert to try and get a call
+    // stack and some context on where we are getting these unusual I/O errors
+    paranoid_invariant(0);
+
+    return ret;
 }
 
 static ssize_t (*t_write)(int, const void *, size_t);
@@ -243,6 +305,8 @@ void toku_os_full_write_with_source_location(int fd,
                                              uint src_line) {
     const char *bp = (const char *)buf;
     size_t bytes_written = len;
+    bool retry = true;
+    uint64_t retry_count = 0;
 
     toku_io_instrumentation io_annotation;
     toku_instr_file_io_begin(io_annotation,
@@ -252,7 +316,7 @@ void toku_os_full_write_with_source_location(int fd,
                              src_file,
                              src_line);
 
-    while (len > 0) {
+    while (len > 0 && retry) {
         ssize_t r;
         if (t_full_write) {
             r = t_full_write(fd, bp, len);
@@ -260,11 +324,12 @@ void toku_os_full_write_with_source_location(int fd,
             r = write(fd, bp, len);
         }
         if (r > 0) {
-            len           -= r;
-            bp            += r;
-        }
-        else {
-            try_again_after_handling_write_error(fd, len, r);
+            len -= r;
+            bp += r;
+        } else {
+            retry =
+                handle_write_error(fd, get_error_errno(), retry_count, "write");
+            retry_count++;
         }
     }
     assert(len == 0);
@@ -319,6 +384,8 @@ void toku_os_full_pwrite_with_source_location(int fd,
     assert(0 == ((long long)buf) % 512);
     assert((len % 512 == 0) && (off % 512) == 0);  // to make pwrite work.
     const char *bp = (const char *)buf;
+    bool retry = true;
+    uint64_t retry_count = 0;
 
     size_t bytes_written = len;
     toku_io_instrumentation io_annotation;
@@ -328,7 +395,7 @@ void toku_os_full_pwrite_with_source_location(int fd,
                              len,
                              src_file,
                              src_line);
-    while (len > 0) {
+    while (len > 0 && retry) {
         ssize_t r;
         if (t_full_pwrite) {
             r = t_full_pwrite(fd, bp, len, off);
@@ -336,12 +403,13 @@ void toku_os_full_pwrite_with_source_location(int fd,
             r = pwrite(fd, bp, len, off);
         }
         if (r > 0) {
-            len           -= r;
-            bp            += r;
-            off           += r;
-        }
-        else {
-            try_again_after_handling_write_error(fd, len, r);
+            len -= r;
+            bp += r;
+            off += r;
+        } else {
+            retry =
+                handle_write_error(fd, get_error_errno(), retry_count, "write");
+            retry_count++;
         }
     }
     assert(len == 0);
@@ -591,26 +659,26 @@ int toku_os_fclose_with_source_location(TOKU_FILE *stream,
     return rval;
 }
 
-int toku_os_close_with_source_location(
-    int fd,
-    const char *src_file,
-    uint src_line) {  // if EINTR, retry until success
-    /* register the file close */
+int toku_os_close_with_source_location(int fd,
+                                       const char *src_file,
+                                       uint src_line) {
     int r = -1;
+    uint64_t retry_count = 0;
+    bool retry = false;
 
     /* register a file descriptor close " */
     toku_io_instrumentation io_annotation;
     toku_instr_file_fd_close_begin(
         io_annotation, toku_instr_file_op::file_close, fd, src_file, src_line);
-    while (r != 0) {
+
+    do {
         r = close(fd);
-        if (r) {
-            int rr = errno;
-            if (rr != EINTR)
-                printf("rr=%d (%s)\n", rr, strerror(rr));
-            assert(rr == EINTR);
+        if (r == -1) {
+            retry =
+                handle_write_error(fd, get_error_errno(), retry_count, "close");
+            retry_count++;
         }
-    }
+    } while (retry);
 
     /* Regsiter the returning value with the system */
     toku_instr_file_close_end(io_annotation, r);
@@ -680,13 +748,13 @@ void toku_os_recursive_delete(const char *path) {
 
 // t_fsync exists for testing purposes only
 static int (*t_fsync)(int) = 0;
-static uint64_t toku_fsync_count;
-static uint64_t toku_fsync_time;
-static uint64_t toku_long_fsync_threshold = 1000000;
-static uint64_t toku_long_fsync_count;
-static uint64_t toku_long_fsync_time;
-static uint64_t toku_long_fsync_eintr_count;
-static int toku_fsync_debug = 0;
+static std::atomic<uint64_t> toku_fsync_count;
+static std::atomic<uint64_t> toku_fsync_time;
+static constexpr uint64_t toku_long_fsync_threshold = 1000000;
+static std::atomic<uint64_t> toku_long_fsync_count;
+static std::atomic<uint64_t> toku_long_fsync_time;
+static std::atomic<uint64_t> toku_long_fsync_retry_count;
+static constexpr bool toku_fsync_debug = false;
 
 void toku_set_func_fsync(int (*fsync_function)(int)) {
     t_fsync = fsync_function;
@@ -698,7 +766,8 @@ void file_fsync_internal_with_source_location(int fd,
                                               uint src_line) {
     uint64_t tstart = toku_current_time_microsec();
     int r = -1;
-    uint64_t eintr_count = 0;
+    uint64_t retry_count = 0;
+    bool retry = false;
 
     toku_io_instrumentation io_annotation;
     toku_instr_file_io_begin(io_annotation,
@@ -708,44 +777,36 @@ void file_fsync_internal_with_source_location(int fd,
                              src_file,
                              src_line);
 
-    while (r != 0) {
+    do {
         if (t_fsync) {
             r = t_fsync(fd);
         } else {
-	    r = fsync(fd);
+            r = fsync(fd);
         }
-	if (r) {
-            assert(get_error_errno() == EINTR);
-            eintr_count++;
-	}
-    }
-    toku_sync_fetch_and_add(&toku_fsync_count, 1);
+
+        if (r == -1) {
+            retry =
+                handle_write_error(fd, get_error_errno(), retry_count, "fsync");
+            retry_count++;
+        }
+    } while (retry);
+
+    toku_fsync_count++;
     uint64_t duration = toku_current_time_microsec() - tstart;
-    toku_sync_fetch_and_add(&toku_fsync_time, duration);
+    toku_fsync_time += duration;
 
     toku_instr_file_io_end(io_annotation, 0);
 
     if (duration >= toku_long_fsync_threshold) {
-        toku_sync_fetch_and_add(&toku_long_fsync_count, 1);
-        toku_sync_fetch_and_add(&toku_long_fsync_time, duration);
-        toku_sync_fetch_and_add(&toku_long_fsync_eintr_count, eintr_count);
+        toku_long_fsync_count++;
+        toku_long_fsync_time += duration;
+        toku_long_fsync_retry_count += retry_count;
         if (toku_fsync_debug) {
-            const int tstr_length = 26;
-            char tstr[tstr_length];
-            time_t t = time(0);
-#if __linux__
-            char fdname[256];
-            snprintf(fdname, sizeof fdname, "/proc/%d/fd/%d", getpid(), fd);
-            char lname[256];
-            ssize_t s = readlink(fdname, lname, sizeof lname);
-            if (0 < s && s < (ssize_t) sizeof lname)
-                lname[s] = 0;
-            fprintf(stderr, "%.24s toku_file_fsync %s fd=%d %s duration=%" PRIu64 " usec eintr=%" PRIu64 "\n", 
-                    ctime_r(&t, tstr), __FUNCTION__, fd, s > 0 ? lname : "?", duration, eintr_count);
-#else
-            fprintf(stderr, "%.24s toku_file_fsync  %s fd=%d duration=%" PRIu64 " usec eintr=%" PRIu64 "\n", 
-                    ctime_r(&t, tstr), __FUNCTION__, fd, duration, eintr_count);
-#endif
+            report_io_problem(fd,
+                              "toku_file_fsync took %" PRIu64
+                              " usec with %" PRIu64 " retries.",
+                              duration,
+                              retry_count);
             fflush(stderr);
         }
     }
