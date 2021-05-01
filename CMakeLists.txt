@@ -27,8 +27,10 @@ if (DEFINED MYSQL_PROJECT_NAME_DOCSTRING)
     add_definitions(-DTOKU_MYSQL_WITH_PFS)
   endif ()
   include_directories(${CMAKE_SOURCE_DIR}/include)
+  # Match exactly the flag `-DENABLED_DEBUG_SYNC` to prevent matching
+  # `-DENABLED_DEBUG_SYNC_EXTRA` or `EXTRA-DENABLED_DEBUG_SYNC`
   if ((CMAKE_BUILD_TYPE MATCHES "Debug") AND
-      (CMAKE_CXX_FLAGS_DEBUG MATCHES " -DENABLED_DEBUG_SYNC"))
+      (CMAKE_CXX_FLAGS_DEBUG MATCHES "( |^)-DENABLED_DEBUG_SYNC( |$)"))
     include_directories(${CMAKE_SOURCE_DIR}/sql)
   endif ()
 endif ()
