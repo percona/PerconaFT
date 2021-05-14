@@ -45,19 +45,59 @@ endif (USE_GCOV)
 
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
+include(CMakePushCheckState)
+
+MACRO (CHECK_C_COMPILER_FLAG FLAG RESULT)
+  CMAKE_PUSH_CHECK_STATE()
+  set(OLD_CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  set(CMAKE_C_FLAGS "")
+  SET(CMAKE_REQUIRED_FLAGS "-Werror ${FLAG}")
+  CHECK_C_SOURCE_COMPILES("int main(void) { return 0; }" ${RESULT}
+          FAIL_REGEX "unknown argument ignored"
+          FAIL_REGEX "argument unused during compilation"
+          FAIL_REGEX "unsupported .*option"
+          FAIL_REGEX "unknown .*option"
+          FAIL_REGEX "unrecognized .*option"
+          FAIL_REGEX "ignoring unknown option"
+          FAIL_REGEX "[Ww]arning: [Oo]ption"
+          FAIL_REGEX "error: visibility"
+          FAIL_REGEX "warning: visibility"
+          )
+  set(${CMAKE_C_FLAGS} OLD_CMAKE_C_FLAGS)
+  CMAKE_POP_CHECK_STATE()
+ENDMACRO()
+
+MACRO (CHECK_CXX_COMPILER_FLAG FLAG RESULT)
+  CMAKE_PUSH_CHECK_STATE()
+  set(OLD_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  set(CMAKE_CXX_FLAGS "")
+  SET(CMAKE_REQUIRED_FLAGS "-Werror ${FLAG}")
+  CHECK_CXX_SOURCE_COMPILES("int main(void) { return 0; }" ${RESULT}
+          FAIL_REGEX "unknown argument ignored"
+          FAIL_REGEX "argument unused during compilation"
+          FAIL_REGEX "unsupported .*option"
+          FAIL_REGEX "unknown .*option"
+          FAIL_REGEX "unrecognized .*option"
+          FAIL_REGEX "ignoring unknown option"
+          FAIL_REGEX "[Ww]arning: [Oo]ption"
+          FAIL_REGEX "error: visibility"
+          FAIL_REGEX "warning: visibility"
+          )
+  set(${CMAKE_CXX_FLAGS} OLD_CMAKE_CXX_FLAGS)
+  CMAKE_POP_CHECK_STATE()
+ENDMACRO()
 
 ## prepends a compiler flag if the compiler supports it
 MACRO (prepend_cflags_if_supported)
   FOREACH (flag ${ARGN})
-    STRING (REGEX REPLACE "-" "_" temp_flag ${flag})
-    check_c_compiler_flag ("-Werror ${flag}" HAVE_C_${temp_flag})
-    IF (HAVE_C_${temp_flag})
+    CHECK_C_COMPILER_FLAG("${flag}" C_RESULT)
+    CHECK_CXX_COMPILER_FLAG("${flag}" CXX_RESULT)
+    IF(C_RESULT)
       SET (CMAKE_C_FLAGS "${flag} ${CMAKE_C_FLAGS}")
-    ENDIF ()
-    check_cxx_compiler_flag ("-Werror ${flag}" HAVE_CXX_${temp_flag})
-    IF (HAVE_CXX_${temp_flag})
+    ENDIF()
+    IF(CXX_RESULT)
       SET (CMAKE_CXX_FLAGS "${flag} ${CMAKE_CXX_FLAGS}")
-    ENDIF ()
+    ENDIF()
   ENDFOREACH (flag)
 ENDMACRO (prepend_cflags_if_supported)
 
