@@ -43,59 +43,64 @@ if (USE_GCOV)
   find_program(COVERAGE_COMMAND NAMES gcov47 gcov)
 endif (USE_GCOV)
 
-include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 include(CMakePushCheckState)
+include(CheckCSourceCompiles)
+include(CheckCXXSourceCompiles)
 
-MACRO (CHECK_C_COMPILER_FLAG FLAG RESULT)
-  CMAKE_PUSH_CHECK_STATE()
-  set(OLD_CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
-  set(CMAKE_C_FLAGS "")
+SET(fail_patterns
+  FAIL_REGEX "unknown argument ignored"
+  FAIL_REGEX "argument unused during compilation"
+  FAIL_REGEX "unsupported .*option"
+  FAIL_REGEX "unknown .*option"
+  FAIL_REGEX "unrecognized .*option"
+  FAIL_REGEX "ignoring unknown option"
+  FAIL_REGEX "[Ww]arning: [Oo]ption"
+  FAIL_REGEX "error: visibility"
+  FAIL_REGEX "warning: visibility"
+  FAIL_REGEX "warning:.*is valid for.*but not for"
+  FAIL_REGEX "error:.*is valid for.*but not for"
+  )
+
+MACRO (TOKUDB_CHECK_C_COMPILER_FLAG FLAG RESULT)
+  CMAKE_PUSH_CHECK_STATE(RESET)
+  SET(OLD_CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  SET(CMAKE_C_FLAGS)
+
   SET(CMAKE_REQUIRED_FLAGS "-Werror ${FLAG}")
-  CHECK_C_SOURCE_COMPILES("int main(void) { return 0; }" ${RESULT}
-          FAIL_REGEX "unknown argument ignored"
-          FAIL_REGEX "argument unused during compilation"
-          FAIL_REGEX "unsupported .*option"
-          FAIL_REGEX "unknown .*option"
-          FAIL_REGEX "unrecognized .*option"
-          FAIL_REGEX "ignoring unknown option"
-          FAIL_REGEX "[Ww]arning: [Oo]ption"
-          FAIL_REGEX "error: visibility"
-          FAIL_REGEX "warning: visibility"
-          )
-  set(${CMAKE_C_FLAGS} OLD_CMAKE_C_FLAGS)
+  CHECK_C_SOURCE_COMPILES("int main(void) { return 0; }" ${RESULT} ${fail_patterns})
+
+  SET(CMAKE_C_FLAGS ${OLD_CMAKE_C_FLAGS})
   CMAKE_POP_CHECK_STATE()
 ENDMACRO()
 
-MACRO (CHECK_CXX_COMPILER_FLAG FLAG RESULT)
-  CMAKE_PUSH_CHECK_STATE()
-  set(OLD_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-  set(CMAKE_CXX_FLAGS "")
+MACRO (TOKUDB_CHECK_CXX_COMPILER_FLAG FLAG RESULT)
+  CMAKE_PUSH_CHECK_STATE(RESET)
+  SET(OLD_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  SET(CMAKE_CXX_FLAGS)
+
   SET(CMAKE_REQUIRED_FLAGS "-Werror ${FLAG}")
-  CHECK_CXX_SOURCE_COMPILES("int main(void) { return 0; }" ${RESULT}
-          FAIL_REGEX "unknown argument ignored"
-          FAIL_REGEX "argument unused during compilation"
-          FAIL_REGEX "unsupported .*option"
-          FAIL_REGEX "unknown .*option"
-          FAIL_REGEX "unrecognized .*option"
-          FAIL_REGEX "ignoring unknown option"
-          FAIL_REGEX "[Ww]arning: [Oo]ption"
-          FAIL_REGEX "error: visibility"
-          FAIL_REGEX "warning: visibility"
-          )
-  set(${CMAKE_CXX_FLAGS} OLD_CMAKE_CXX_FLAGS)
+  CHECK_CXX_SOURCE_COMPILES("int main(void) { return 0; }" ${RESULT} ${fail_patterns})
+
+  SET(CMAKE_CXX_FLAGS ${OLD_CMAKE_CXX_FLAGS})
   CMAKE_POP_CHECK_STATE()
 ENDMACRO()
 
 ## prepends a compiler flag if the compiler supports it
 MACRO (prepend_cflags_if_supported)
   FOREACH (flag ${ARGN})
-    CHECK_C_COMPILER_FLAG("${flag}" C_RESULT)
-    CHECK_CXX_COMPILER_FLAG("${flag}" CXX_RESULT)
-    IF(C_RESULT)
+    # Create a result variable per flag to avoid reusing the same cached result
+    STRING(REGEX REPLACE "[-,= +]" "_" FLAG2 ${flag})
+
+    SET(VAR_RES "C_RESULT_${FLAG2}")
+    TOKUDB_CHECK_C_COMPILER_FLAG(${flag} ${VAR_RES})
+    IF(${VAR_RES})
       SET (CMAKE_C_FLAGS "${flag} ${CMAKE_C_FLAGS}")
     ENDIF()
-    IF(CXX_RESULT)
+
+    SET(VAR_RES "CXX_RESULT_${FLAG2}")
+    TOKUDB_CHECK_CXX_COMPILER_FLAG(${flag} ${VAR_RES})
+    IF(${VAR_RES})
       SET (CMAKE_CXX_FLAGS "${flag} ${CMAKE_CXX_FLAGS}")
     ENDIF()
   ENDFOREACH (flag)
