@@ -102,6 +102,12 @@ toku_memory_startup(void) {
     } else {
         result = EINVAL;
     }
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+    result = 0; // the clang 8 address sanitizer fails mallopt, ignore it
+    status.mmap_threshold = mmap_threshold;
+#endif
+#endif
     assert(result == 0);
 #else
     // just a guess

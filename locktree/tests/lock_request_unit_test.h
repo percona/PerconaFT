@@ -47,23 +47,7 @@ namespace toku {
 
 class lock_request_unit_test {
 public:
-    // create and set the object's internals, destroy should not crash.
-    void test_create_destroy(void);
-
-    // make setting keys and getting them back works properly.
-    // at a high level, we want to make sure keys are copied
-    // when appropriate and plays nice with +/- infinity.
-    void test_get_set_keys(void);
-
-    // starting a lock request without immediate success should get
-    // stored in the lock request set as pending.
-    void test_start_pending(void);
-
-    // make sure deadlocks are detected when a lock request starts
-    void test_start_deadlock(void);
-
-    // test that the get_wait_time callback works
-    void test_wait_time_callback(void);
+    void run(void);
 
 private:
     // releases a single range lock and retries all lock requests.

@@ -54,7 +54,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 // since we implement the same thing here as in toku_os_gettid, this test
 // is pretty pointless
-static int gettid(void) {
+static int test_gettid(void) {
 #if defined(__NR_gettid)
     return syscall(__NR_gettid);
 #elif defined(SYS_gettid)
@@ -68,6 +68,6 @@ static int gettid(void) {
 
 int main(void) {
     assert(toku_os_getpid() == getpid());
-    assert(toku_os_gettid() == gettid());
+    assert(toku_os_gettid() == test_gettid());
     return 0;
 }

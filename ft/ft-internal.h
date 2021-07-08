@@ -80,7 +80,7 @@ extern "C" {
 extern uint force_recovery;
 }
 
-extern int writing_rollback;
+extern std::atomic_int writing_rollback;
 
 // The ft_header is not managed by the cachetable.  Instead, it hangs off the cachefile as userdata.
 struct ft_header {

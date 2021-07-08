@@ -155,7 +155,7 @@ private:
     size_t _total_size;
 };
 
-extern int writing_rollback;
+extern std::atomic_int writing_rollback;
 
 extern "C" {
 extern uint force_recovery;

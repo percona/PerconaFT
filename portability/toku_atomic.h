@@ -58,6 +58,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <atomic>
 
 __attribute__((const, always_inline))
 static inline intptr_t which_cache_line(intptr_t addr) {

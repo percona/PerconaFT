@@ -49,7 +49,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #include "util/status.h"
 
-int writing_rollback = 0;
+std::atomic_int writing_rollback = {0};
 extern "C" {
   uint force_recovery = 0;
 }

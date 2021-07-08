@@ -36,11 +36,14 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
 #ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
+#include <stdio.h>
 #include <stdlib.h>
 
 static void *vp;
 
 int main(void) {
     vp = malloc(42);
+    // GCC has gotten smart enough to optimize this away unless we use it.
+    printf("%p\n", vp);
     return 0;
 }

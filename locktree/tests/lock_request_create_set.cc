@@ -41,7 +41,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 namespace toku {
 
 // create and set the object's internals, destroy should not crash.
-void lock_request_unit_test::test_create_destroy(void) {
+void lock_request_unit_test::run(void) {
     lock_request request;
     request.create();
 
@@ -66,7 +66,7 @@ void lock_request_unit_test::test_create_destroy(void) {
 
 int main(void) {
     toku::lock_request_unit_test test;
-    test.test_create_destroy();
+    test.run();
     return 0;
 }
 

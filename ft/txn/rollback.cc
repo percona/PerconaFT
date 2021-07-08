@@ -43,7 +43,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include "ft/logger/log-internal.h"
 #include "ft/txn/rollback-ct-callbacks.h"
 
-extern int writing_rollback;
+extern std::atomic_int writing_rollback;
 
 static void rollback_unpin_remove_callback(CACHEKEY* cachekey, bool for_checkpoint, void* extra) {
     FT CAST_FROM_VOIDP(ft, extra);
