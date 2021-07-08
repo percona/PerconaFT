@@ -57,9 +57,12 @@ get_data(int *v, int i, int ndbs) {
 static int
 put_callback(DB *dest_db, DB *src_db, DBT_ARRAY *dest_keys, DBT_ARRAY *dest_vals, const DBT *src_key, const DBT *src_val) {
     toku_dbt_array_resize(dest_keys, 1);
-    toku_dbt_array_resize(dest_vals, 1);
     DBT *dest_key = &dest_keys->dbts[0];
-    DBT *dest_val = &dest_vals->dbts[0];
+    DBT *dest_val = NULL;
+    if (dest_vals) {
+        toku_dbt_array_resize(dest_vals, 1);
+        dest_val = &dest_vals->dbts[0];
+    }
     (void) dest_db; (void) src_db; (void) dest_key; (void) dest_val; (void) src_key; (void) src_val;
     assert(src_db == NULL);
 

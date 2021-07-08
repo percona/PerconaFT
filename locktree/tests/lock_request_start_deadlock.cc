@@ -41,7 +41,7 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 namespace toku {
 
 // make sure deadlocks are detected when a lock request starts
-void lock_request_unit_test::test_start_deadlock(void) {
+void lock_request_unit_test::run(void) {
     int r;
     locktree lt;
 
@@ -114,7 +114,7 @@ void lock_request_unit_test::test_start_deadlock(void) {
 
 int main(void) {
     toku::lock_request_unit_test test;
-    test.test_start_deadlock();
+    test.run();
     return 0;
 }
 

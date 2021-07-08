@@ -93,8 +93,8 @@ namespace toku {
         if (toku_dbt_is_infinite(key1) || toku_dbt_is_infinite(key2)) {
             return toku_dbt_infinite_compare(key1, key2);
         } else {
-            invariant(key1->size == sizeof(int64_t));
-            invariant(key2->size == sizeof(int64_t));
+            invariant(key1->size >= sizeof(int64_t));
+            invariant(key2->size >= sizeof(int64_t));
             int64_t a = *(int64_t*) key1->data;
             int64_t b = *(int64_t*) key2->data;
             if (a < b) {
