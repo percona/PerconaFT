@@ -86,10 +86,10 @@ static void toku_print_bytes (FILE *outf, uint32_t len, char *data) {
 
 static bool is_a_logfile_any_version (const char *name, uint64_t *number_result, uint32_t *version_of_log) {
     bool rval = true;
-    uint64_t result;
-    int n;
+    uint64_t result = 0UL;
+    int n = 0;
     int r;
-    uint32_t version;
+    uint32_t version = 0;
     r = sscanf(name, "log%" SCNu64 ".tokulog%" SCNu32 "%n", &result, &version, &n);
     if (r!=2 || name[n]!='\0' || version <= TOKU_LOG_VERSION_1) {
         //Version 1 does NOT append 'version' to end of '.tokulog'
@@ -664,6 +664,11 @@ int toku_logger_find_logfiles (const char *directory, char ***resultp, int *n_lo
     while ((de=readdir(d))) {
         uint64_t thisl;
         uint32_t version_ignore;
+
+        // if de is directory, skip it
+        if (de->d_type == DT_DIR)
+            continue;
+
         if ( !(is_a_logfile_any_version(de->d_name, &thisl, &version_ignore)) ) continue; //#2424: Skip over files that don't match the exact logfile template
         if (n_results+1>=result_limit) {
             result_limit*=2;
