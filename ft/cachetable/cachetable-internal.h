@@ -413,6 +413,8 @@ public:
     void add_background_job();
     void remove_background_job();
     void end_checkpoint(void (*testcallback_f)(void*),  void* testextra);
+    void begin_backup();
+    void end_backup();
     TOKULOGGER get_logger();
     // used during begin_checkpoint
     void increment_num_txns();
@@ -602,6 +604,7 @@ struct cachetable {
     KIBBUTZ client_kibbutz; // pool of worker threads and jobs to do asynchronously for the client.
     KIBBUTZ ct_kibbutz; // pool of worker threads and jobs to do asynchronously for the cachetable
     KIBBUTZ checkpointing_kibbutz; // small pool for checkpointing cloned pairs
+    bool in_backup; // we are in back up or NOT, default is false
 
     char *env_dir;
 };
