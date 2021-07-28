@@ -33,7 +33,7 @@ FOREACH(LIB ${STATIC_LIB_FILES})
   SET(TEMP_SUBDIR ${TEMP_DIR}/${NAME_NO_EXT})
   MAKE_DIRECTORY(${TEMP_SUBDIR})
   EXECUTE_PROCESS(
-    COMMAND ${CMAKE_AR} -t ${LIB}
+    COMMAND ${CMAKE_AR} t ${LIB}
     OUTPUT_VARIABLE LIB_OBJS
     )
   STRING(REGEX REPLACE "\n" ";" LIB_OBJ_LIST "${LIB_OBJS}")
@@ -50,7 +50,7 @@ FOREACH(LIB ${STATIC_LIB_FILES})
     # Optimization for when lib doesn't actually have duplicate object
     # names, we can just extract everything.
     EXECUTE_PROCESS(
-      COMMAND ${CMAKE_AR} -x ${LIB}
+      COMMAND ${CMAKE_AR} x ${LIB}
       WORKING_DIRECTORY ${TEMP_SUBDIR}
       )
   ELSE()
@@ -67,7 +67,7 @@ FOREACH(LIB ${STATIC_LIB_FILES})
       ENDIF()
       SET(LAST_OBJ_NAME "${OBJ}")
       EXECUTE_PROCESS(
-        COMMAND ${CMAKE_AR} -xN ${SAME_OBJ_COUNT} ${LIB} ${OBJ}
+        COMMAND ${CMAKE_AR} xN ${SAME_OBJ_COUNT} ${LIB} ${OBJ}
         WORKING_DIRECTORY ${TEMP_SUBDIR}
         )
     ENDFOREACH()
