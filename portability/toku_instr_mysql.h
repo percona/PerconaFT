@@ -41,7 +41,10 @@ class toku_instr_key {
    public:
     toku_instr_key(toku_instr_object_type type,
                    const char *group,
-                   const char *name) {
+                   const char *name,
+                   const char *os_name = NULL) {
+       assert(type != toku_instr_object_type::thread || os_name);
+
         switch (type) {
             case toku_instr_object_type::mutex: {
                 PSI_mutex_info mutex_info{&m_id, name, 0};
@@ -56,7 +59,11 @@ class toku_instr_key {
                 mysql_cond_register(group, &cond_info, 1);
             } break;
             case toku_instr_object_type::thread: {
+#if (MYSQL_VERSION_ID >= 80027)
+                PSI_thread_info thread_info{&m_id, name, os_name, PSI_FLAG_AUTO_SEQNUM, 0, PSI_DOCUMENT_ME};
+#else
                 PSI_thread_info thread_info{&m_id, name, 0};
+#endif
                 mysql_thread_register(group, &thread_info, 1);
             } break;
             case toku_instr_object_type::file: {
