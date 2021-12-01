@@ -92,7 +92,7 @@ toku_memory_startup(void) {
 
     // The ASAN doesn't support mallopt, it simply returns 0 or -1
     // depending on GCC version.
-#if defined(HAVE_M_MMAP_THRESHOLD) && !defined(__SANITIZE_ADDRESS__)
+#if defined(HAVE_M_MMAP_THRESHOLD) && !defined(UNDER_ASAN)
     // initialize libc malloc
     size_t mmap_threshold = 64 * 1024; // 64K and larger should be malloced with mmap().
     int success = mallopt(M_MMAP_THRESHOLD, mmap_threshold);

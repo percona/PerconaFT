@@ -55,6 +55,18 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 #include <stdlib.h>
 #include <toku_portability.h>
 
+#if defined(__clang__)
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define UNDER_ASAN 1
+#endif  // __has_feature(address_sanitizer)
+#endif  // defined(__has_feature)
+#else   // __clang__
+#ifdef __SANITIZE_ADDRESS__
+#define UNDER_ASAN 1
+#endif  // __SANITIZE_ADDRESS__
+#endif  // __clang__
+
 /* Percona memory allocation functions and macros.
  * These are functions for malloc and free */
 
