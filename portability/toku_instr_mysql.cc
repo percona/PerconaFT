@@ -18,7 +18,11 @@ int toku_pthread_create(const toku_instr_key &key,
                         const pthread_attr_t *attr,
                         void *(*start_routine)(void *),
                         void *arg) {
-#if (MYSQL_VERSION_ID >= 50700)
+#if (MYSQL_VERSION_ID >= 80027)
+    return PSI_THREAD_CALL(spawn_thread)(
+        key.id(), 0, reinterpret_cast<my_thread_handle *>(thread),
+        attr, start_routine, arg);
+#elif (MYSQL_VERSION_ID >= 50700)
     return PSI_THREAD_CALL(spawn_thread)(
         key.id(), reinterpret_cast<my_thread_handle *>(thread),
         attr, start_routine, arg);
@@ -30,7 +34,11 @@ int toku_pthread_create(const toku_instr_key &key,
 
 void toku_instr_register_current_thread(const toku_instr_key &key) {
     struct PSI_thread *psi_thread =
+#if (MYSQL_VERSION_ID >= 80027)
+        PSI_THREAD_CALL(new_thread)(key.id(), 0, nullptr, 0);
+#else
         PSI_THREAD_CALL(new_thread)(key.id(), nullptr, 0);
+#endif
     PSI_THREAD_CALL(set_thread)(psi_thread);
 }
 

@@ -4766,23 +4766,25 @@ static void toku_pfs_keys_init(const char *toku_instr_group_name) {
 
     extractor_thread_key = new toku_instr_key(
         toku_instr_object_type::thread, toku_instr_group_name,
-        "extractor_thread");
+        "extractor_thread", "tk_extractor");
     fractal_thread_key = new toku_instr_key(
-        toku_instr_object_type::thread, toku_instr_group_name, "fractal_thread");
-    io_thread_key =
-        new toku_instr_key(toku_instr_object_type::thread, toku_instr_group_name,
-        "io_thread");
+        toku_instr_object_type::thread, toku_instr_group_name,
+        "fractal_thread", "tk_fractal");
+    io_thread_key = new toku_instr_key(
+        toku_instr_object_type::thread, toku_instr_group_name,
+        "io_thread", "tk_io");
     eviction_thread_key = new toku_instr_key(
         toku_instr_object_type::thread, toku_instr_group_name,
-        "eviction_thread");
+        "eviction_thread", "tk_eviction");
     kibbutz_thread_key = new toku_instr_key(
-        toku_instr_object_type::thread, toku_instr_group_name, "kibbutz_thread");
+        toku_instr_object_type::thread, toku_instr_group_name,
+        "kibbutz_thread", "tk_kibbutz");
     minicron_thread_key = new toku_instr_key(
         toku_instr_object_type::thread, toku_instr_group_name,
-        "minicron_thread");
+        "minicron_thread", "tk_minicron");
     tp_internal_thread_key = new toku_instr_key(
         toku_instr_object_type::thread, toku_instr_group_name,
-        "tp_internal_thread");
+        "tp_internal_thread", "tk_tp_intrnl");
 
     result_state_cond_key = new toku_instr_key(
         toku_instr_object_type::cond, toku_instr_group_name,

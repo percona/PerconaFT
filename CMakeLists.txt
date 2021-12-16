@@ -17,6 +17,10 @@ IF(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-address-of-packed-member")
 ENDIF()
 
+IF(CMAKE_COMPILER_IS_GNUCXX)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wimplicit-fallthrough=3")
+ENDIF()
+
 # detect when we are being built as a subproject
 if (DEFINED MYSQL_PROJECT_NAME_DOCSTRING)
   add_definitions(-DMYSQL_TOKUDB_ENGINE=1)
