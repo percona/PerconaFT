@@ -67,7 +67,9 @@ int toku_pthread_yield(void) {
 #elif defined(HAVE_PTHREAD_YIELD_NP)
     pthread_yield_np();
     return 0;
+#elif defined(HAVE_SCHED_YIELD)
+    return sched_yield();
 #else
-# error "cannot find pthread_yield or pthread_yield_np"
+# error "cannot find pthread_yield or pthread_yield_np or sched_yield"
 #endif
 }
