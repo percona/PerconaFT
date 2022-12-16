@@ -73,15 +73,17 @@ test_enqueue(int n) {
         if (i == 0) {
             xids = toku_xids_get_root_xids();
         } else {
-            int r = toku_xids_create_child(toku_xids_get_root_xids(), &xids, (TXNID)i);
-            assert_zero(r);
+          int r = toku_xids_create_child(toku_xids_get_root_xids(), &xids,
+                                         (TXNID)i);
+          assert_zero(r);
         }
         MSN msn = next_dummymsn();
         if (startmsn.msn == ZERO_MSN.msn)
-            startmsn = msn;
-        enum ft_msg_type type = (enum ft_msg_type) i;
+          startmsn = msn;
+        enum ft_msg_type type = (enum ft_msg_type)i;
         DBT k, v;
-        ft_msg msg(toku_fill_dbt(&k, thekey, thekeylen), toku_fill_dbt(&v, theval, thevallen), type, msn, xids);
+        ft_msg msg(toku_fill_dbt(&k, thekey, thekeylen),
+                   toku_fill_dbt(&v, theval, thevallen), type, msn, xids);
         msg_buffer.enqueue(msg, true, nullptr);
         toku_xids_destroy(&xids);
         toku_free(thekey);
