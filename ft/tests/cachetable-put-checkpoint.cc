@@ -487,20 +487,16 @@ cachetable_test (void) {
     toku_cachetable_create(&ct, test_limit, ZERO_LSN, nullptr);
     const char *fname1 = TOKU_TEST_FILENAME;
     unlink(fname1);
-    r = toku_cachetable_openf(&f1, ct, fname1, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO); assert(r == 0);
+    r = toku_cachetable_openf(&f1, ct, fname1, O_RDWR | O_CREAT,
+                              S_IRWXU | S_IRWXG | S_IRWXO);
+    assert(r == 0);
 
     toku_cachefile_set_userdata(
-        f1,
-        NULL,
-        &dummy_log_fassociate,
-        &dummy_close_usr,
-        &dummy_free_usr,
+        f1, NULL, &dummy_log_fassociate, &dummy_close_usr, &dummy_free_usr,
         &dummy_chckpnt_usr,
         test_begin_checkpoint, // called in begin_checkpoint
-        &dummy_end,
-        &dummy_note_pin,
-        &dummy_note_unpin
-        );
+        &dummy_end, &dummy_note_pin, &dummy_note_unpin, &dummy_note_pin,
+        &dummy_note_unpin);
 
     toku_pthread_t time_tid;
     toku_pthread_t checkpoint_tid;

@@ -58,15 +58,9 @@ static void dummy_note_unpin(CACHEFILE UU(cf), void* UU(p)) { }
 static UU() void
 create_dummy_functions(CACHEFILE cf)
 {
-    void *ud = NULL;
-    toku_cachefile_set_userdata(cf,
-                               ud,
-                               &dummy_log_fassociate,
-                               &dummy_close_usr,
-                               &dummy_free_usr,
-                               &dummy_chckpnt_usr,
-                               &dummy_begin,
-                               &dummy_end,
-                               &dummy_note_pin,
-                               &dummy_note_unpin);
+  void *ud = NULL;
+  toku_cachefile_set_userdata(cf, ud, &dummy_log_fassociate, &dummy_close_usr,
+                              &dummy_free_usr, &dummy_chckpnt_usr, &dummy_begin,
+                              &dummy_end, &dummy_note_pin, &dummy_note_unpin,
+                              &dummy_note_pin, &dummy_note_unpin);
 };

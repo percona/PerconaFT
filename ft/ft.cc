@@ -306,12 +306,41 @@ static void unpin_by_checkpoint_callback(FT ft, void *extra) {
 }
 
 // maps to cf->note_unpin_by_checkpoint
-//Must be protected by ydb lock.
-//Called by end_checkpoint, which grabs ydb lock around note_unpin
+// Must be protected by ydb lock.
+// Called by end_checkpoint, which grabs ydb lock around note_unpin
 static void ft_note_unpin_by_checkpoint (CACHEFILE UU(cachefile), void *header_v) {
     FT ft = (FT) header_v;
     toku_ft_remove_reference(ft, false, ZERO_LSN, unpin_by_checkpoint_callback, NULL);
 }
+
+
+// maps to cf->note_pin_by_backup
+// Must be protected by ydb lock.
+// Is only called by backup begin, which holds it
+static void ft_note_pin_by_backup (CACHEFILE UU(cachefile), void *header_v) {
+    // Note: open_close lock is held by checkpoint begin
+    FT ft = (FT) header_v;
+    toku_ft_grab_reflock(ft);
+    assert(toku_ft_needed_unlocked(ft));
+    ft->num_backups++;
+    toku_ft_release_reflock(ft);
+}
+
+// Requires: the reflock is held.
+static void unpin_by_backup_callback(FT ft, void *extra) {
+    invariant(extra == NULL);
+    invariant(ft->num_backups > 0);
+    ft->num_backups--;
+}
+
+// maps to cf->note_unpin_by_backup
+// Must be protected by ydb lock.
+// Called by end_backup, which grabs ydb lock around note_unpin
+static void ft_note_unpin_by_backup (CACHEFILE UU(cachefile), void *header_v) {
+    FT ft = (FT) header_v;
+    toku_ft_remove_reference(ft, false, ZERO_LSN, unpin_by_backup_callback, NULL);
+}
+
 
 //
 // End of Functions that are callbacks to the cachefile
@@ -332,37 +361,32 @@ static void setup_initial_ft_root_node(FT ft, BLOCKNUM blocknum) {
 }
 
 static void ft_init(FT ft, FT_OPTIONS options, CACHEFILE cf) {
-    // fake, prevent unnecessary upgrade logic
-    ft->layout_version_read_from_disk = FT_LAYOUT_VERSION;
-    ft->checkpoint_header = NULL;
+  // fake, prevent unnecessary upgrade logic
+  ft->layout_version_read_from_disk = FT_LAYOUT_VERSION;
+  ft->checkpoint_header = NULL;
 
-    toku_list_init(&ft->live_ft_handles);
+  toku_list_init(&ft->live_ft_handles);
 
-    // intuitively, the comparator points to the FT's cmp descriptor
-    ft->cmp.create(options->compare_fun, &ft->cmp_descriptor, options->memcmp_magic);
-    ft->update_fun = options->update_fun;
+  // intuitively, the comparator points to the FT's cmp descriptor
+  ft->cmp.create(options->compare_fun, &ft->cmp_descriptor,
+                 options->memcmp_magic);
+  ft->update_fun = options->update_fun;
 
-    if (ft->cf != NULL) {
-        assert(ft->cf == cf);
-    }
-    ft->cf = cf;
-    ft->in_memory_stats = ZEROSTATS;
+  if (ft->cf != NULL) {
+    assert(ft->cf == cf);
+  }
+  ft->cf = cf;
+  ft->in_memory_stats = ZEROSTATS;
 
-    setup_initial_ft_root_node(ft, ft->h->root_blocknum);
-    toku_cachefile_set_userdata(ft->cf,
-                                ft,
-                                ft_log_fassociate_during_checkpoint,
-                                ft_close,
-                                ft_free,
-                                ft_checkpoint,
-                                ft_begin_checkpoint,
-                                ft_end_checkpoint,
-                                ft_note_pin_by_checkpoint,
-                                ft_note_unpin_by_checkpoint);
+  setup_initial_ft_root_node(ft, ft->h->root_blocknum);
+  toku_cachefile_set_userdata(
+      ft->cf, ft, ft_log_fassociate_during_checkpoint, ft_close, ft_free,
+      ft_checkpoint, ft_begin_checkpoint, ft_end_checkpoint,
+      ft_note_pin_by_checkpoint, ft_note_unpin_by_checkpoint,
+      ft_note_pin_by_backup, ft_note_unpin_by_backup);
 
-    ft->blocktable.verify_no_free_blocknums();
+  ft->blocktable.verify_no_free_blocknums();
 }
-
 
 static FT_HEADER
 ft_header_create(FT_OPTIONS options, BLOCKNUM root_blocknum, TXNID root_xid_that_created)
@@ -455,7 +479,9 @@ int toku_read_ft_and_store_in_cachefile (FT_HANDLE ft_handle, CACHEFILE cf, LSN 
                                 ft_begin_checkpoint,
                                 ft_end_checkpoint,
                                 ft_note_pin_by_checkpoint,
-                                ft_note_unpin_by_checkpoint);
+                                ft_note_unpin_by_checkpoint,
+				ft_note_pin_by_backup,
+				ft_note_unpin_by_backup);
     *header = ft;
     return 0;
 }
@@ -475,7 +501,7 @@ static int
 ft_get_reference_count(FT ft) {
     uint32_t pinned_by_checkpoint = ft->pinned_by_checkpoint ? 1 : 0;
     int num_handles = toku_list_num_elements_est(&ft->live_ft_handles);
-    return pinned_by_checkpoint + ft->num_txns + num_handles;
+    return pinned_by_checkpoint + ft->num_txns + ft-> num_backups + num_handles;
 }
 
 // a ft is needed in memory iff its reference count is non-zero

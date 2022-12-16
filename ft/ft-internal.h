@@ -216,7 +216,9 @@ struct ft {
     uint32_t num_txns;
     // A checkpoint is running.  If true, then keep this header around for checkpoint, like a transaction
     bool pinned_by_checkpoint;
-
+    // Number of backups that are using this FT. If it is nonzero, keep this header around until backup
+    // is completd.
+    uint32_t num_backups;
     // is this ft a blackhole? if so, all messages are dropped.
     bool blackhole;
 
