@@ -501,7 +501,10 @@ lzma_lz_encoder_init(lzma_next_coder *next, lzma_allocator *allocator,
 		next->coder->lz.end = NULL;
 
 		next->coder->mf.buffer = NULL;
+                next->coder->mf.size = 0;
 		next->coder->mf.hash = NULL;
+                next->coder->mf.hash_size_sum = 0;
+                next->coder->mf.sons_count = 0;
 
 		next->coder->next = LZMA_NEXT_CODER_INIT;
 	}
