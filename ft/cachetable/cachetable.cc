@@ -372,6 +372,11 @@ toku_cachetable_reserve_filenum(CACHETABLE ct) {
     return ct->cf_list.reserve_filenum();
 }
 
+static unsigned int fd_blocksize(int fd) {
+    toku_struct_stat st;
+    return (unsigned int) toku_os_fstat(fd, &st) ? 512 : st.st_blksize;
+}
+
 static void create_new_cachefile(
     CACHETABLE ct,
     FILENUM filenum,
@@ -390,6 +395,7 @@ static void create_new_cachefile(
 
     newcf->filenum = filenum;
     newcf->fd = fd;
+    newcf->blocksize = fd_blocksize(fd);
     newcf->fname_in_env = toku_xstrdup(fname_in_env);
     bjm_init(&newcf->bjm);
     *cfptr = newcf;
@@ -430,6 +436,7 @@ int toku_cachetable_openfd_with_filenum (CACHEFILE *cfptr, CACHETABLE ct, int fd
         // fix up the fields in the cachefile
         existing_cf->filenum = filenum;
         existing_cf->fd = fd;
+        existing_cf->blocksize = fd_blocksize(fd);
         existing_cf->fname_in_env = toku_xstrdup(fname_in_env);
         bjm_init(&existing_cf->bjm);
 
@@ -501,6 +508,11 @@ toku_cachefile_get_fd (CACHEFILE cf) {
     return cf->fd;
 }
 
+unsigned int
+toku_cachefile_get_blocksize (CACHEFILE cf) {
+    return cf->blocksize;
+}
+
 static void cachefile_destroy(CACHEFILE cf) {
     if (cf->free_userdata) {
         cf->free_userdata(cf, cf->userdata);
@@ -538,6 +550,7 @@ void toku_cachefile_close(CACHEFILE *cfp, bool oplsn_valid, LSN oplsn) {
     int r = close(cf->fd);
     assert(r == 0);
     cf->fd = -1;
+    cf->blocksize = 512;
 
     // destroy the parts of the cachefile
     // that do not persist across opens/closes
