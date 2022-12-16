@@ -489,7 +489,7 @@ int toku_loader_cleanup_temp_files(DB_ENV *env) {
 
     result = 0;
     while ((de = readdir(d))) {
-        int r = memcmp(de->d_name, loader_temp_prefix, strlen(loader_temp_prefix));
+        int r = strncmp(de->d_name, loader_temp_prefix, strlen(loader_temp_prefix));
         if (r == 0 && strlen(de->d_name) == strlen(loader_temp_prefix) + strlen(loader_temp_suffix)) {
             int fnamelen = strlen(dir) + 1 + strlen(de->d_name) + 1; // One for the slash and one for the trailing NUL.
             char fname[fnamelen];
