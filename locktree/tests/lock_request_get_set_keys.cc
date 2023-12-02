@@ -43,7 +43,7 @@ namespace toku {
 // make setting keys and getting them back works properly.
 // at a high level, we want to make sure keys are copied
 // when appropriate and plays nice with +/- infinity.
-void lock_request_unit_test::test_get_set_keys(void) {
+void lock_request_unit_test::run(void) {
     lock_request request;
     request.create();
 
@@ -82,7 +82,7 @@ void lock_request_unit_test::test_get_set_keys(void) {
 
 int main(void) {
     toku::lock_request_unit_test test;
-    test.test_get_set_keys();
+    test.run();
     return 0;
 }
 
