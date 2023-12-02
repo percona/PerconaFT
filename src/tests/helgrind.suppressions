@@ -156,3 +156,10 @@
     ...
     fun:pthread_mutex_destroy
 }
+{
+    pthread_mutex_destroy/pthread_mutex_unlock race glibc 2.30 gcc-9.2.1 valgrind-3.15.0
+    Helgrind:Race
+    obj:/usr/lib*/valgrind/vgpreload_helgrind-amd64-linux.so*
+    obj:/usr/lib*/valgrind/vgpreload_helgrind-amd64-linux.so*
+    fun:*toku_mutex_destroy*
+}

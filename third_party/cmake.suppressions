@@ -1,0 +1,11 @@
+{
+   cmake 3.13.4 on ubuntu 19.04
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:_Znwm
+   fun:_ZN4Json5Value13nullSingletonEv
+   obj:/usr/*lib*/libjsoncpp*
+   ...
+   fun:call_init
+   fun:_dl_init
+}

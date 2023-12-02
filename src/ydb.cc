@@ -39,9 +39,6 @@ Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 extern const char *toku_patent_string;
 const char *toku_copyright_string = "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.";
 
-
-extern int writing_rollback;
-
 #include <db.h>
 #include <errno.h>
 #include <string.h>
@@ -89,6 +86,8 @@ extern int writing_rollback;
  int toku_set_trace_file (const char *fname __attribute__((__unused__))) { return 0; }
  int toku_close_trace_file (void) { return 0; } 
 #endif
+
+extern std::atomic_int writing_rollback;
 
 extern uint force_recovery;
 
@@ -179,23 +178,26 @@ static int toku_maybe_get_engine_status_text (char* buff, int buffsize);  // for
 static int toku_maybe_err_engine_status (void);
 static void toku_maybe_set_env_panic(int code, const char * msg);               // for use by toku_assert
 
-int 
-toku_ydb_init(void) {
+static bool ydb_initialized = false;
+int toku_ydb_init(void) {
     int r = 0;
-    //Lower level must be initialized first.
-    r = toku_ft_layer_init();
+    if (!ydb_initialized) {
+        //Lower level must be initialized first.
+        r = toku_ft_layer_init();
+        if (r == 0)
+            ydb_initialized = true;
+    }
     return r;
 }
 
 // Do not clean up resources if env is panicked, just exit ugly
-void 
-toku_ydb_destroy(void) {
-    if (!ydb_layer_status.initialized)
+void toku_ydb_destroy(void) {
+    if (!ydb_initialized)
         return;
     if (env_is_panicked == 0) {
         toku_ft_layer_destroy();
     }
-    ydb_layer_status.initialized = false;
+    ydb_initialized = false;
 }
 
 static int
