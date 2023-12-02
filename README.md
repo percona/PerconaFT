@@ -104,7 +104,7 @@ All source code and test contributions must be provided under a [BSD 2-Clause][b
 License
 -------
 
-Portions of the PerconaFT library (the 'locktree' and 'omt') are available under the Apache version 2 license.
+Portions of the PerconaFT library (the 'locktree' and 'omt') along with their dependencies (`ft`, `portability`, `util` subdirectories) are available under the Apache version 2 license.
 PerconaFT is available under the GPL version 2, and AGPL version 3.
 See [COPYING.APACHEv2][apachelicense],
 [COPYING.AGPLv3][agpllicense],
