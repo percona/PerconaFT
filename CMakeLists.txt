@@ -2,6 +2,8 @@ if (CMAKE_PROJECT_NAME STREQUAL TokuDB)
   cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 endif()
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules")
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1 )
+set(CMAKE_EXPORT_COMPILE_COMMANDS "${CMAKE_EXPORT_COMPILE_COMMANDS}" CACHE STRING "export compile_commands.json")
 
 project(TokuDB)
 
